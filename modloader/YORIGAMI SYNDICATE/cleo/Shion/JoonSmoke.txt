@@ -50,6 +50,7 @@ end
 18@ = 0     // Time Since Last Smoked Timer (ms)
 19@ = 60000 // Withdrawal Complaint Cooldown Timer (ms)
 21@ = 0     // Loading Screen / Respawn Reset Watchdog Flag
+22@ = 0     // Cigarette Render Object Handle (CLEO+)
 
 26@ = 0     // Chosen Dialogue Variant
 27@ = -999  // Last Tracked Save Slot Tracker (Reallocated from 30@)
@@ -57,7 +58,7 @@ end
 29@ = 0     // Shion Dialogue Eligible Flag
 
 // Request 3D Model and Animations on child boot
-0247: request_model #CIGAR
+0247: request_model 3027
 04ED: load_animation "GANGS"
 04ED: load_animation "SMOKING"
 038B: load_requested_models
@@ -65,7 +66,7 @@ end
 :Wait_For_Smoking_Assets_Loaded
 wait 0
 if or
-    8248: not model #CIGAR available
+    8248: not model 3027 available
     84EE: not animation "GANGS" loaded
     84EE: not animation "SMOKING" loaded
 then
@@ -326,22 +327,22 @@ if and
 then
     8@ = 0
     010B: 14@ = player $PLAYER_CHAR money
-    22@ = 0
+    13@ = 0
     if
         17@ == 0 // Free
     then
-        22@ = 1
+        13@ = 1
     else
         if and
             14@ > 0
             801D: not 17@ > 14@
         then
-            22@ = 1
+            13@ = 1
         end
     end
 
     if
-        22@ == 1
+        13@ == 1
     then
         gosub @Execute_Secondary_Smoking
     end
@@ -525,9 +526,9 @@ goto @JoonSmoke_MainLoop
 // =========================================================================
 :Execute_Secondary_Smoking
 if
-    8248: not model #CIGAR available
+    8248: not model 3027 available
 then
-    0247: request_model #CIGAR
+    0247: request_model 3027
     038B: load_requested_models
     return
 end
@@ -547,14 +548,25 @@ end
 0470: 4@ = actor $PLAYER_ACTOR current_weapon
 01B9: set_actor $PLAYER_ACTOR armed_weapon_to 0
 
-// Spawn Cigar Object
-0107: 1@ = create_object #CIGAR at 0.0 0.0 0.0
+// Spawn dummy object for secondary task handling, shrunk and banished below the map
+0107: 1@ = create_object 3027 at 0.0 0.0 -50.0
+08D2: object 1@ scale_model 0.001
 0085: 30@ = 31@
 000A: 30@ += MEM_JOON_CIGAR_OBJ
 0A8C: write_memory 30@ size 4 value 1@ virtual_protect 0
 
-// Attach directly to Right Hand (Bone 6, Type 16) with secondary partial animation
-070A: AS_actor $PLAYER_ACTOR attach_to_object 1@ offset 0.02 0.06 0.0 on_bone 6 16 perform_animation "SMKCIG_PRTL" IFP_file "GANGS" time 6500
+// Attach via 070A into secondary task slot (allows free walking, steering, and movement)
+070A: AS_actor $PLAYER_ACTOR attach_to_object 1@ offset 0.0 0.0 -50.0 on_bone 6 16 perform_animation "SMKCIG_PRTL" IFP_file "GANGS" time 6500
+
+// Attach single visible horizontal cigarette via CLEO+ bone render object (Bone 25 = BONE_RIGHTHAND)
+// Offset: X 0.03 (between fingers), Y 0.01 (outward toward knuckles), Z 0.015 (finger crease)
+if
+    22@ > 0
+then
+    0E2F: delete_render_object 22@
+    22@ = 0
+end
+0E2E: create_render_object_to_char_bone $PLAYER_ACTOR model 3027 bone 25 offset 0.025 0.01 -0.000 rotation 90.0 0.0 0.0 store_to 22@
 
 0@ = 1  // Smoking active flag
 3@ = 0  // Smoke puff latch
@@ -849,10 +861,18 @@ goto @Smoking_Active_Loop
 // SUBROUTINE: INSTANT CLEANUP & WEAPON RESTORATION
 // =========================================================================
 :Cleanup_Smoking_State
-// Release on-bone entity hold task first
+// Delete visible CLEO+ bone render object
+if
+    22@ > 0
+then
+    0E2F: delete_render_object 22@
+    22@ = 0
+end
+
+// Release on-bone secondary entity hold task
 070B: set_actor $PLAYER_ACTOR onbone_attached_object_operation 0
 
-// Destroy primary cigar prop handle
+// Destroy dummy object handle
 if
     1@ > 0
 then
@@ -883,7 +903,7 @@ then
         24@ = 1
         0984: 23@ = object 25@ model
         if
-            23@ == #CIGAR
+            23@ == 3027
         then
             0682: detach_object 25@ 0.0 0.0 0.0 collision_detection 0
             0108: destroy_object 25@
