@@ -1,9 +1,12 @@
 # YORIGAMI SYNDICATE (GTA San Andreas Mod)
 By **EagleRaviOrange** (grotobuvic on Reddit)
 
+<p align="center">
 <img width="572" height="490" alt="image" src="https://github.com/user-attachments/assets/eb2ea791-a90a-47a2-bf23-0f9d18e23606" />
+<br>
+  <em>"Even though it's just the two of them..."</em>
+</p>
 
-_"Even though it's just two of them..."_
 
 A mod that brings Jo'on and Shion Yorigami from *Touhou Project* into GTA San Andreas as playable characters and a fully voiced (via subtitles) companion system. 
 
@@ -45,37 +48,40 @@ You’ll need a standard downgraded, mod-ready GTA SA setup:
 * **Hold `Y` + `C`** - Cast Pestilence Fever (Jo'on)
 * **Hold `Y` + `Z`** - Tell Shion to scavenge nearby trash bins / dumpsters
 * **Hold `Y` + `R`** - Swap weapons and ammo back and forth with Shion
-* **Hold `Y` + `T`** - Talk to Shion (triggers contextual banter or lore episodes)
+* **Hold `Y` + `T`** - Talk to Shion (triggers contextual banter on command)
 * **Hold `TAB`** - Contextual interactions (eat at food carts/diners, or hand off burglary loot to Shion)
 
 ---
 
 ## 🛠️ What This Mod Actually Does
 
-
 <img width="484" height="250" alt="image" src="https://github.com/user-attachments/assets/f23e2d34-89fa-4d26-a7c7-567127126f76" />
-
 
 ### 1. Playing as the Sisters & The Companion System
 * You can play as CJ, Jo'on, or Shion.
-* If you play as Jo'on, Shion acts as a follower. To fix GTA's notoriously bad follower AI, she can turn into a Hitodama (a floating blue orb). As a ghost, she floats over your shoulder, acts as a bullet-deflecting shield, and automatically clips into the car with you so she never gets lost or stuck on fences.
+* If you play as Jo'on, Shion acts as a follower. To fix GTA's notoriously bad follower AI, she can turn into a Hitodama (a floating blue orb). As a ghost, she floats over your shoulder, acts as a bullet-deflecting shield, and warps into the car (press G or at a certain distance) with you so she never gets lost or stuck on fences.
 * You can swap guns with her (which runs out), tell her to haul your stolen burglary items, and have her take hits for you.
 
 ### 2. Yorigami Prestige (The Sink for Useless Late-Game Cash)
-Every $10,000 you spend or lose in the game earns you 1 **Y-Point** (praying to the gods through reckless spending). You spend these in the `Y+M` menu to level up perks:
+Every $10,000 you spend or lose in the game earns you 1 **Y-Point** (praying to the gods through reckless spending). You allocate these in the `Y+M` menu to level up perks:
 
 * **Jo'on (Greed & Wealth):**
-  * *Jo'on's Bling:* Huge melee damage boost. Locking onto someone and punching lets you do a fast gap-closing dash with 2 seconds of bullet immunity ("graze").
-  * *Vehicle Smasher:* Lets you punch cars until they blow up, eventually making you blast-proof.
-  * *Midas Magnet:* Pulls cash pickups straight to you from far away.
-  * *Drip Worship:* Charms civilians and rival gang members into your entourage based on your sex appeal.
-  * *Street Shakedown:* Rob pedestrians on foot; marks rich targets on the map for extra cash.
-  * *Pestilence Fever:* An active skill that forces nearby pedestrians to drop their cash and panic.
-  * *Money Danmaku:* Pay-to-win shooting. Your guns cost actual cash per shot from your wallet, but shred armor and vehicles instantly.
+  * *Jo'on's Bling:* Fists damage boost. Locking onto someone and punching lets you do a fast gap-closing dash with 2 seconds of bullet immunity ("graze").
+  * *Vehicle Smasher:* Lets you punch cars until they blow up, _because cars are nothing but containers of petroleum._
+  * *Midas Magnet:* Pulls cash pickups straight to you from far away. No more running to pick up money. _Wealth naturally comes to you._
+  * *Drip Worship:* Raises sex appeal and charms civilians and rival gang members into your entourage (`Aim`+`G`).
+  * *Street Shakedown:* Rob pedestrians on foot; marks rich targets on the map for extra cash (`Aim`+`Y`).
+  * *Pestilence Fever:* An active skill that forces nearby pedestrians to drop their cash and panic (`Y`+`C`).
+  * *Money Danmaku:* Pay-to-win shooting. Your guns cost actual cash per shot from your wallet, but shred armor and vehicles instantly (`Y`+`G` to toggle).
+
+<p align="center">
 <img width="742" height="523" alt="image" src="https://github.com/user-attachments/assets/d486bf28-0b00-47dc-a2e2-4b66d4712a1e" />
+<br>
+  <em>"Extortioner of the 80s biiiiiiihh"</em>
+</p>
 
 * **Shion (Misfortune & Poverty):**
-  * *Scavenger Feast:* Shion will dig through bins and dumpsters to pull out food or discarded weapons (Tec-9s, Shotguns, Molotovs).
+  * *Scavenger Feast:* Shion will dig through bins and dumpsters to pull out food or discarded weapons (Tec-9s, Shotguns, Molotovs) (`F` near dumpsters, type `ADDBIN` to register a dumpster if the object is a static prop or addition in another mod).
   * *Shion Resonance:* If you're completely broke ($0), cops will ignore 1-star wanted levels out of pure pity.
   * *Misfortune Aura:* Enemies near Shion have their guns jam and randomly trip over their own feet.
   * *Traffic Hex & Aviation Calamity:* Chasing cop cars stall out, pop tires, and police choppers can spontaneously explode mid-air.
@@ -83,13 +89,16 @@ Every $10,000 you spend or lose in the game earns you 1 **Y-Point** (praying to 
   * *Grim Pity:* If you take lethal damage while completely flat broke, Shion's curse cancels your death, heals you, and gives temporary invulnerability.
   * *Misery Loves Company:* Reflects a chunk of incoming damage back to whoever shot you.
 
+<p align="center">
 <img width="622" height="605" alt="image" src="https://github.com/user-attachments/assets/da975a93-4b9c-43f0-8292-a46af8b3fdd7" />
-
+<br>
+  <em>"She didn't do anything..."</em>
+</p>
 
 ### 3. Food, Hunger & Wallet Drain
-* Shion gets hungry every two in-game days. You can pull into drive-thrus (Burger Shot, Cluckin' Bell), stop by diners, or hit up street carts to feed her. If you don't have cash, she'll beg vendors for scraps or look through the garbage.
-* Optional setting: Shion's shooting drains your wallet. If you run out of money, her guns disappear until you get cash again.
-* Custom idle cigar smoking for Jo'on, and eating/scavenging animations for Shion.
+* Shion gets hungry every two in-game days. You can pull into drive-thrus (Burger Shot, Cluckin' Bell), stop by diners, or hit up street carts to feed her. If you don't have cash, she'll beg vendors for scraps or look through the garbage. (Type `ADDFOOD` to add places where you think ordering should be possible. By default you can stop by vanilla fast food chains)
+* Optional combat resource - `Wallet Drain`: Shion's shooting drains your wallet. If you run out of money, her guns disappear until you get cash again. (Type `DURGASTRA` to enable infinite debt mode)
+* Idle cigar smoking for Jo'on, and eating/scavenging animations for Shion.
 
 ### 4. Ambient Banter & Lore (The 3,000+ Lines)
 I wrote a ton of contextual dialogue based on what you're doing in the game:
@@ -100,7 +109,7 @@ I wrote a ton of contextual dialogue based on what you're doing in the game:
 * **Sister Talk (31 Lore Episodes):** Unlocked through in-game milestones (spending money, surviving on $0, doing paramedic jobs, hitting Mt. Chiliad, etc.). You can read and replay them anytime via the Lore Archive menu.
 
 ### 5. Persistent Tracker (`ShionMemories.ini`)
-The mod saves lifetime stats in the savedata folder:
+The mod saves lifetime stats in the savedata folder, and each save has its own memory:
 * Tracks things like total time spent broke, favorite radio station, favorite car model, casino losses, cars wrecked, and total cash spent feeding Shion.
 
 ---
