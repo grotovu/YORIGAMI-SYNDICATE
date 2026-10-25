@@ -71,7 +71,7 @@ end
 01B4: set_player $PLAYER_CHAR can_move 0
 018C: play_sound 1058 at 0.0 0.0 0.0
 
-0ADF: add_text_label "F_TIT" text "SHION'S MEAL"
+0ADF: add_text_label "F_TIT" text "Shion's Meal"
 0ADF: add_text_label "F_COL" text "MENU"
 0ADF: add_text_label "F_R0" text "$1"
 0ADF: add_text_label "F_R1" text "$2"
