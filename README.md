@@ -1,6 +1,10 @@
 # YORIGAMI SYNDICATE (GTA San Andreas Mod)
 By **EagleRaviOrange** (grotobuvic on Reddit)
 
+<img width="572" height="490" alt="image" src="https://github.com/user-attachments/assets/eb2ea791-a90a-47a2-bf23-0f9d18e23606" />
+
+_"Even though it's just two of them..."_
+
 A mod that brings Jo'on and Shion Yorigami from *Touhou Project* into GTA San Andreas as playable characters and a fully voiced (via subtitles) companion system. 
 
 I initially built this to fix the problem of money becoming completely useless in late-game San Andreas, but it ended up spiraling into a full-blown RPG-lite perk tree and an *Inigo*-inspired companion mod with over 3,000+ lines of contextual banter.
@@ -48,6 +52,10 @@ You’ll need a standard downgraded, mod-ready GTA SA setup:
 
 ## 🛠️ What This Mod Actually Does
 
+
+<img width="484" height="250" alt="image" src="https://github.com/user-attachments/assets/f23e2d34-89fa-4d26-a7c7-567127126f76" />
+
+
 ### 1. Playing as the Sisters & The Companion System
 * You can play as CJ, Jo'on, or Shion.
 * If you play as Jo'on, Shion acts as a follower. To fix GTA's notoriously bad follower AI, she can turn into a Hitodama (a floating blue orb). As a ghost, she floats over your shoulder, acts as a bullet-deflecting shield, and automatically clips into the car with you so she never gets lost or stuck on fences.
@@ -64,6 +72,7 @@ Every $10,000 you spend or lose in the game earns you 1 **Y-Point** (praying to 
   * *Street Shakedown:* Rob pedestrians on foot; marks rich targets on the map for extra cash.
   * *Pestilence Fever:* An active skill that forces nearby pedestrians to drop their cash and panic.
   * *Money Danmaku:* Pay-to-win shooting. Your guns cost actual cash per shot from your wallet, but shred armor and vehicles instantly.
+<img width="742" height="523" alt="image" src="https://github.com/user-attachments/assets/d486bf28-0b00-47dc-a2e2-4b66d4712a1e" />
 
 * **Shion (Misfortune & Poverty):**
   * *Scavenger Feast:* Shion will dig through bins and dumpsters to pull out food or discarded weapons (Tec-9s, Shotguns, Molotovs).
@@ -73,6 +82,9 @@ Every $10,000 you spend or lose in the game earns you 1 **Y-Point** (praying to 
   * *Debt Detonation:* Dropping low on health sets off a shockwave that knocks everyone down and disarms them.
   * *Grim Pity:* If you take lethal damage while completely flat broke, Shion's curse cancels your death, heals you, and gives temporary invulnerability.
   * *Misery Loves Company:* Reflects a chunk of incoming damage back to whoever shot you.
+
+<img width="622" height="605" alt="image" src="https://github.com/user-attachments/assets/da975a93-4b9c-43f0-8292-a46af8b3fdd7" />
+
 
 ### 3. Food, Hunger & Wallet Drain
 * Shion gets hungry every two in-game days. You can pull into drive-thrus (Burger Shot, Cluckin' Bell), stop by diners, or hit up street carts to feed her. If you don't have cash, she'll beg vendors for scraps or look through the garbage.
@@ -88,7 +100,7 @@ I wrote a ton of contextual dialogue based on what you're doing in the game:
 * **Sister Talk (31 Lore Episodes):** Unlocked through in-game milestones (spending money, surviving on $0, doing paramedic jobs, hitting Mt. Chiliad, etc.). You can read and replay them anytime via the Lore Archive menu.
 
 ### 5. Persistent Tracker (`ShionMemories.ini`)
-The mod saves lifetime stats that carry over between saves:
+The mod saves lifetime stats in the savedata folder:
 * Tracks things like total time spent broke, favorite radio station, favorite car model, casino losses, cars wrecked, and total cash spent feeding Shion.
 
 ---
