@@ -130,7 +130,7 @@ The mod saves lifetime stats in the savedata folder, and each save has its own m
 ## ⚙️ Tweaking Stuff
 If you want to rebind keys, change how much money 1 Y-Point costs, disable the hunger mechanic, or turn off the wallet drain, open up `cleo/Shion.ini` and `cleo/YorigamiPerks.ini`. Everything is commented and highly configurable.
 
-CJ's base game stats are tracked completely separately from the experiences accumulated by Jo'on and Shion. So you can play on a 100% save and Shion acts as if Jo'on have yet to accomplish anything.
+CJ's base game stats are tracked completely separately from the experiences accumulated by Jo'on and Shion. So you can play on a 100% save and Shion acts as if Jo'on has yet to accomplish anything.
 
 There is nothing encrypted in the savedata folder. You may alter as you wish.
 
