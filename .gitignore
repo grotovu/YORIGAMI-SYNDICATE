@@ -7,3 +7,4 @@ modloader/YORIGAMI SYNDICATE/cleo/savedata/Yorigami_Ledger.txt
 modloader/YORIGAMI SYNDICATE/cleo/savedata/YorigamiBins.ini
 modloader/YORIGAMI SYNDICATE/cleo/YORIGAMI_CODE.txt
 *.c
+*.cs
