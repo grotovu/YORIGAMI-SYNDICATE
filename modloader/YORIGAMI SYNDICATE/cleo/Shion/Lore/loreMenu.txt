@@ -594,7 +594,7 @@ return
 // SUBROUTINE: INITIALIZE TEXT LABELS
 // =========================================================================
 :Init_Archive_Text_Labels
-0ADF: add_text_label "Y_LMTIT" text "SISTER TALK ARCHIVE"
+0ADF: add_text_label "Y_LMTIT" text "Sister Talk Archive"
 0ADF: add_text_label "Y_LMHDR" text "EPISODES"
 0ADF: add_text_label "Y_LMLCK" text "Episode ~1~: ~r~[Locked]"
 

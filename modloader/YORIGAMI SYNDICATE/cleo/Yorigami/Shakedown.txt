@@ -567,15 +567,15 @@ then
                                         056D: actor 29@ defined
                                         8118: not actor 29@ dead
                                     then
-                                        0687: clear_actor 29@ task
-                                        05DD: AS_actor 29@ flee_from_actor $PLAYER_ACTOR from_origin_radius 40.0 timelimit 12000
-
-                                        // If this was an active Mark, release script hold now that ped is fleeing
+                                        // Release script hold before giving flee task so ClearTasks won't cancel it
                                         if
                                             08B7: test 3@ bit 6
                                         then
                                             01C2: remove_references_to_actor 29@
                                         end
+
+                                        0687: clear_actor 29@ task
+                                        05DD: AS_actor 29@ flee_from_actor $PLAYER_ACTOR from_origin_radius 40.0 timelimit 12000
                                     end
 
                                     // Sync last extorted ped in master heap now that shakedown finished

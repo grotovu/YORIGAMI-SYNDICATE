@@ -1,6 +1,6 @@
 YORIGAMI SYNDICATE
 Author: EagleRaviOrange
-"Even though it's just two of them..."
+"Even though it's just the two of them..."
 
 ==============================================
 [INSTALLATION]

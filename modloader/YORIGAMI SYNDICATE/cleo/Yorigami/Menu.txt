@@ -1467,7 +1467,7 @@ return
 // =========================================================================
 :Init_Menu_Text_Labels
 // Master Titles & Headers
-0ADF: add_text_label "YOR_TIT" text "YORIGAMI PRESTIGE"
+0ADF: add_text_label "YOR_TIT" text "Yorigami Prestige"
 0ADF: add_text_label "YOR_HUB" text "SELECT PATH"
 0ADF: add_text_label "YOR_HJN" text "JO'ON: WEALTH"
 0ADF: add_text_label "YOR_HSH" text "SHION: MISFORTUNE"
