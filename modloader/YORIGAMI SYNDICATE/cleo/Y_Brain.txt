@@ -1,0 +1,22 @@
+{$CLEO .cs}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+
+script_name "Y_Brain" 
+
+// Allocate 1024 Bytes of RAM (Supports 256 variables)
+0AC8: 0@ = allocate_memory_size 1024
+
+// Safely Zero-out the entire memory block to prevent garbage data
+for 1@ = 0 to 1020 step 4
+    0085: 2@ = 0@
+    005A: 2@ += 1@
+    0A8C: write_memory 2@ size 4 value 0 virtual_protect 0
+end
+
+// Keep the script alive forever so the memory isn't dumped
+:Brain_Loop
+wait 1000
+goto @Brain_Loop

@@ -1,0 +1,135 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+{$USE ini}
+
+0000: NOP
+script_name 'Y_AIMTR'
+
+0001: wait 1000 ms
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (TRIMMED)
+// =========================================================================
+const
+    MEM_SAVE_SLOT = 0
+    MEM_PLAYER_FORM = 12 // 0 = CJ, 1 = Jo'on, 2 = Shion
+end
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0 
+then
+    0002: jump @Connect_To_Brain
+end
+
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+1@ = 0 // Alpha State Latch (0 = Normal 255, 1 = Invisible 0)
+3@ = -999 // Save Slot Tracker
+
+:YAimAlpha_Loop
+0001: wait 10 ms
+
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    0002: jump @YAimAlpha_Loop
+end
+
+// Check if Save Slot Changed (for INI reloading)
+0085: 30@ = 31@
+000A: 30@ += MEM_SAVE_SLOT
+0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+if
+    803B: not 0@ == 3@
+then
+    0050: gosub @YAimAlpha_ReloadSettings
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
+// Read Live Character State (0 = CJ, 1 = Jo'on, 2 = Shion)
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 15@ = read_memory 30@ size 4 virtual_protect 0
+
+// Validate if current form is Jo'on or Shion (CJ gets no special treatment)
+2@ = 0
+if
+    0039: 15@ == 1 // Jo'on
+then
+    2@ = 1
+end
+
+if
+    0039: 15@ == 2 // Shion
+then
+    2@ = 1
+end
+
+// Only apply invisibility if the INI setting is enabled (4@ == 1)
+if and
+    0039: 2@ == 1
+    0038: $ONMISSION_Shooting == 1
+    0039: 4@ == 1
+then
+    // Check aiming inputs (RMB / Target Lock)
+    0@ = 0
+    if or
+        0E67: is_aim_button_pressed 0
+        00E1: player 0 pressed_key 6
+    then
+        0@ = 1
+    end
+
+    if
+        0039: 0@ == 1
+    then
+        // Make Jo'on or Shion completely invisible while aiming
+        if
+            0039: 1@ == 0
+        then
+            0D10: set_actor $PLAYER_ACTOR alpha 0
+            1@ = 1
+        end
+    else
+        // Restore full opacity when not aiming down sights
+        if
+            0039: 1@ == 1
+        then
+            0D10: set_actor $PLAYER_ACTOR alpha 255
+            1@ = 0
+        end
+    end
+else
+    // Reset to full opacity if out of range, mission ends, playing as CJ, or INI is disabled
+    if
+        0039: 1@ == 1
+    then
+        0D10: set_actor $PLAYER_ACTOR alpha 255
+        1@ = 0
+    end
+end
+
+0002: jump @YAimAlpha_Loop
+
+// =========================================================================
+// SUBROUTINES
+// =========================================================================
+:YAimAlpha_ReloadSettings
+0085: 3@ = 0@ // Update tracking variable
+
+4@ = 1 // Default to 1 (Enabled)
+0AF0: 4@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "HideModelInShootingRange"
+
+0051: return

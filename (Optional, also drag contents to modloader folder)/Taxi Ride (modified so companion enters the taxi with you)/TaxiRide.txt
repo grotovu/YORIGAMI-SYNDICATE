@@ -1,0 +1,477 @@
+{$CLEO .cs}
+
+0000: NOP 
+
+:Noname_2
+wait 0
+if 
+    0256: is_player_playing $PLAYER_CHAR
+then
+    if 
+        00E1: player 0 pressed_key 4 // TAB
+    then
+        31@ = 0
+        0AB5: store_closest_entities $PLAYER_ACTOR closest_vehicle_to 0@ closest_ped_to 1@
+        if 
+            0019: 0@ > 0
+        then
+            00AA: store_car 0@ position_to 27@ 28@ 29@
+            if 
+                00FE: actor $PLAYER_ACTOR sphere 0 in_sphere 27@ 28@ 29@ radius 3.0 3.0 2.0
+            then
+                goto @Noname_138
+            end
+        end
+    end
+end
+goto @Noname_2
+
+:Noname_138
+0441: 18@ = car 0@ model
+if or
+    18@ == 420 // Taxi
+    18@ == 438 // Cabbie
+then
+    goto @Noname_171
+end
+goto @Noname_2
+
+:Noname_171
+01EA: 18@ = car 0@ max_passengers
+if 
+    0039: 18@ == 0
+then
+    goto @Noname_2
+end
+
+046C: 22@ = car 0@ driver
+if 
+    0019: 22@ > 0
+then
+    goto @Noname_230
+end
+goto @Noname_2
+
+:Noname_230
+wait 0
+00AA: store_car 0@ position_to 27@ 28@ 29@
+02C2: car 0@ drive_to 27@ 28@ 29@
+09B0: set_car 0@ accessible_for_player_using_controller 1
+
+// 1. Player takes the seat behind the driver (Seat 1)
+05CA: AS_actor $PLAYER_ACTOR enter_car 0@ passenger_seat 1 time 10000
+
+07AF: 21@ = player $PLAYER_CHAR group
+07F6: get_group 21@ number_of_leaders_to 22@ number_of_members_to 23@
+
+// 2. Homie #1 (Shion) takes the rear right seat next to CJ (Seat 2)
+if 
+    0019: 23@ > 0
+then
+    24@ = 0
+    092B: 10@ = group 21@ member 24@
+    if 
+        056D: actor 10@ defined
+    then
+        if 
+            8118: not actor 10@ dead
+        then
+            05CA: AS_actor 10@ enter_car 0@ passenger_seat 2 time 10000
+        end
+    end
+end
+
+// 3. Homie #2 (3rd Guy) takes the front passenger seat (Seat 0)
+if 
+    0019: 23@ > 1
+then
+    24@ = 1
+    092B: 20@ = group 21@ member 24@
+    if 
+        056D: actor 20@ defined
+    then
+        if 
+            8118: not actor 20@ dead
+        then
+            05CA: AS_actor 20@ enter_car 0@ passenger_seat 0 time 10000
+        end
+    end
+end
+
+goto @Noname_296
+
+:Noname_289
+goto @Noname_2
+
+:Noname_296
+wait 0
+01C0: 2@ = player $PLAYER_CHAR wanted_level
+if or
+    00E1: player 0 pressed_key 0 // Cancel
+    0112: wasted_or_busted 
+then
+    goto @Noname_2
+end
+goto @Noname_334
+
+:Noname_334
+wait 0
+if 
+    00DB: actor $PLAYER_ACTOR in_car 0@
+then
+    goto @Noname_364
+end
+goto @Noname_296
+
+:Noname_364
+wait 0
+if 
+    80DB: not actor $PLAYER_ACTOR in_car 0@
+then
+    goto @Noname_364
+end
+
+if 
+    0039: 2@ == 0
+then
+    0110: clear_wanted_level $PLAYER_CHAR
+    03BF: set_player $PLAYER_CHAR ignored_by_everyone 1
+end
+
+wait 1000
+03E6: remove_text_box 
+03E5: show_text_box 'MYCONT'
+0A92: create_custom_thread "TAXICAMERA.S" 
+goto @Noname_473
+
+:Noname_473
+wait 0
+if and
+    00DB: actor $PLAYER_ACTOR in_car 0@
+    8112: not wasted_or_busted 
+then
+    goto @Noname_514
+end
+03E6: remove_text_box 
+goto @Noname_2
+
+:Noname_514
+if 
+    0AB6: get_target_blip_coords_to 5@ 6@ 7@
+then
+    if 
+        0039: 31@ == 1
+    then
+        03E5: show_text_box 'MYCONT'
+        31@ = 0
+    end
+    goto @Noname_606
+end
+
+03E6: remove_text_box 
+03E5: show_text_box 'TAXNMRK'
+31@ = 1
+goto @Noname_473
+
+:Noname_606
+if 
+    010F: is_wanted_level_greater $PLAYER_CHAR 2
+then
+    046C: 30@ = car 0@ driver
+    05DB: AS_actor 30@ flee_from_actor $PLAYER_ACTOR from_origin_radius 100.0 timelimit 10000
+    03E6: remove_text_box 
+    goto @Noname_2
+end
+
+if 
+    00E1: player 0 pressed_key 17
+then
+    00AA: store_car 0@ position_to 11@ 12@ 13@
+    050A: 17@ = distance_between_XYZ 11@ 12@ 13@ and_XYZ 5@ 6@ 7@
+    0013: 17@ *= 0.05
+    008C: 18@ = float 17@ to_integer
+    000E: 18@ -= 1
+    if 
+        010A: is_score_greater $PLAYER_CHAR 18@
+    then
+        goto @Noname_762
+    end
+    goto @Noname_841
+end
+goto @Noname_473
+
+:Noname_762
+wait 0
+03E6: remove_text_box 
+03E5: show_text_box 'MCONT'
+0A92: create_custom_thread "TRAFFICRULES.S" 
+00A7: car 0@ drive_to 0.0 0.0 0.0
+00AE: set_car 0@ traffic_behaviour_to 3
+00AD: set_car 0@ max_speed_to 30.0
+02C2: car 0@ drive_to 5@ 6@ 7@
+goto @Noname_1030
+
+:Noname_841
+wait 500
+03E5: show_text_box 'INMON'
+
+:Noname_864
+wait 0
+if 
+    00E1: player 0 pressed_key 17
+then
+    goto @Noname_762
+end
+
+if 
+    00E1: player 0 pressed_key 6
+then
+    00AA: store_car 0@ position_to 11@ 12@ 13@
+    050A: 17@ = distance_between_XYZ 11@ 12@ 13@ and_XYZ 5@ 6@ 7@
+    0013: 17@ *= 0.01
+    008C: 18@ = float 17@ to_integer
+    000E: 18@ -= 1
+    wait 1000
+    if 
+        010A: is_score_greater $PLAYER_CHAR 18@
+    then
+        goto @Noname_762
+    end
+    goto @Noname_864
+end
+
+if or
+    80DB: not actor $PLAYER_ACTOR in_car 0@
+    0112: wasted_or_busted 
+then
+    goto @Noname_2
+end
+goto @Noname_864
+
+:Noname_1030
+wait 0
+if 
+    0112: wasted_or_busted 
+then
+    goto @Noname_2
+end
+
+072F: enable_car 0@ stuck_check_distance 1.0 time 2000 and_restore_if stuck 1 flipped 1 unk_place_on_road_properly 1 to_path 1
+if 
+    01AD: car 0@ sphere 0 near_point 5@ 6@ radius 25.0 25.0
+then
+    00AD: set_car 0@ max_speed_to 0.0
+    goto @Noname_1119
+end
+goto @Noname_1366
+
+:Noname_1119
+wait 0
+if 
+    81C1: not car 0@ stopped
+then
+    goto @Noname_1119
+end
+
+050A: 17@ = distance_between_XYZ 11@ 12@ 13@ and_XYZ 5@ 6@ 7@
+0013: 17@ *= 0.05
+008C: 18@ = float 17@ to_integer
+0085: 22@ = 18@
+0012: 18@ *= -1
+
+050A: 17@ = distance_between_XYZ 11@ 12@ 13@ and_XYZ 5@ 6@ 7@
+0013: 17@ *= 0.05
+008C: 14@ = float 17@ to_integer
+if 
+    0019: 14@ > 0
+then
+    000E: 14@ -= 1
+end
+
+:Noname_1253
+if 
+    010A: is_score_greater $PLAYER_CHAR 14@
+then
+    0109: player $PLAYER_CHAR money += 18@
+    wait 1000
+    0633: AS_actor $PLAYER_ACTOR exit_car
+    
+    gosub @Order_Companions_Out
+    
+    0085: 18@ = 22@
+    01E3: show_text_1number_styled GXT 'FARED' number 18@ time 2000 style 5
+    03E6: remove_text_box 
+    wait 1000
+    00AE: set_car 0@ traffic_behaviour_to 1
+    00AD: set_car 0@ max_speed_to 30.0
+    01C3: remove_references_to_car 0@
+    wait 1000
+    015A: restore_camera 
+    03BF: set_player $PLAYER_CHAR ignored_by_everyone 0
+    goto @Noname_2
+end
+goto @Noname_2031
+
+:Noname_1366
+if 
+    80DB: not actor $PLAYER_ACTOR in_car 0@
+then
+    00AA: store_car 0@ position_to 21@ 22@ 23@
+    02C2: car 0@ drive_to 21@ 22@ 23@
+    
+    050A: 17@ = distance_between_XYZ 11@ 12@ 13@ and_XYZ 21@ 22@ 23@
+    0013: 17@ *= 0.05
+    008C: 18@ = float 17@ to_integer
+    0085: 22@ = 18@
+    0012: 18@ *= -1
+    
+    050A: 17@ = distance_between_XYZ 11@ 12@ 13@ and_XYZ 21@ 22@ 23@
+    0013: 17@ *= 0.05
+    008C: 14@ = float 17@ to_integer
+    if 
+        0019: 14@ > 0
+    then
+        000E: 14@ -= 1
+    end
+    goto @Noname_1527
+end
+goto @Noname_1608
+
+:Noname_1527
+if 
+    010A: is_score_greater $PLAYER_CHAR 14@
+then
+    0109: player $PLAYER_CHAR money += 18@
+    0085: 18@ = 22@
+    01E3: show_text_1number_styled GXT 'FARED' number 18@ time 2000 style 5
+    
+    gosub @Order_Companions_Out
+    
+    01C3: remove_references_to_car 0@
+    03E6: remove_text_box 
+    wait 1000
+    015A: restore_camera 
+    03BF: set_player $PLAYER_CHAR ignored_by_everyone 0
+    goto @Noname_2
+end
+goto @Noname_2031
+
+:Noname_1608
+wait 0
+if 
+    00E1: player 0 pressed_key 11
+then
+    0169: set_fade_color_RGB 0 0 0
+    016A: fade 0 time 2000
+    wait 2200
+    000B: 7@ += 3.0
+    04E4: refresh_game_renderer_at 5@ 6@
+    00AB: put_car 0@ at 5@ 6@ 7@
+    wait 800
+    00AB: put_car 0@ at 5@ 6@ 7@
+    wait 800
+    00AB: put_car 0@ at 5@ 6@ 7@
+    wait 100
+    02C1: store_to 5@ 6@ 7@ car_path_coords_closest_to 5@ 6@ 7@
+    wait 800
+    00AB: put_car 0@ at 5@ 6@ -100.0
+    wait 100
+    016A: fade 1 time 2000
+    
+    050A: 17@ = distance_between_XYZ 11@ 12@ 13@ and_XYZ 5@ 6@ 7@
+    0013: 17@ *= 0.05
+    008C: 18@ = float 17@ to_integer
+    0085: 22@ = 18@
+    0012: 18@ *= -1
+    
+    050A: 17@ = distance_between_XYZ 11@ 12@ 13@ and_XYZ 5@ 6@ 7@
+    0013: 17@ *= 0.05
+    008C: 14@ = float 17@ to_integer
+    if 
+        0019: 14@ > 0
+    then
+        000E: 14@ -= 1
+    end
+    goto @Noname_1889
+end
+goto @Noname_1030
+
+:Noname_1889
+0085: 15@ = 18@
+0012: 15@ *= -1
+0AA5: call_function 4461760 num_params 1 pop 1 15@ 
+
+if 
+    010A: is_score_greater $PLAYER_CHAR 14@
+then
+    0109: player $PLAYER_CHAR money += 18@
+    01C3: remove_references_to_car 0@
+    0633: AS_actor $PLAYER_ACTOR exit_car
+    
+    gosub @Order_Companions_Out
+    
+    0085: 18@ = 22@
+    01E3: show_text_1number_styled GXT 'FARED' number 18@ time 2000 style 5
+    wait 2000
+    00AE: set_car 0@ traffic_behaviour_to 1
+    02C2: car 0@ drive_to 11@ 12@ 13@
+    03E6: remove_text_box 
+    wait 1000
+    015A: restore_camera 
+    03BF: set_player $PLAYER_CHAR ignored_by_everyone 0
+    goto @Noname_2
+end
+goto @Noname_2031
+
+:Noname_2031
+wait 0
+046C: 30@ = car 0@ driver
+03E5: show_text_box 'NMON'
+
+:Noname_2061
+wait 0
+00AA: store_car 0@ position_to 25@ 26@ 27@
+02C2: car 0@ drive_to 25@ 26@ 27@
+0633: AS_actor 30@ exit_car
+0634: AS_actor 30@ attack_using_weapon_actor $PLAYER_ACTOR flags 4 perform_actions_after_time 30000 chance_of_action 100
+0633: AS_actor $PLAYER_ACTOR exit_car
+
+gosub @Order_Companions_Out
+
+wait 20000
+if 
+    8118: not actor 30@ dead
+then
+    05CB: AS_actor 30@ enter_car 0@ as_driver 10000 ms
+    01C2: remove_references_to_actor 30@
+    01C3: remove_references_to_car 0@
+    goto @Noname_2
+end
+goto @Noname_2
+
+// =========================================================================
+// SUBROUTINE: ORDER COMPANIONS OUT OF THE TAXI
+// =========================================================================
+:Order_Companions_Out
+if
+    8431: not car 0@ passenger_seat_free 2 // Rear right (Homie #1)
+then
+    0432: 10@ = get_actor_handle_from_car 0@ passenger_seat 2
+    if
+        056D: actor 10@ defined
+    then
+        0633: AS_actor 10@ exit_car
+    end
+end
+
+if
+    8431: not car 0@ passenger_seat_free 0 // Front right (Homie #2)
+then
+    0432: 20@ = get_actor_handle_from_car 0@ passenger_seat 0
+    if
+        056D: actor 20@ defined
+    then
+        0633: AS_actor 20@ exit_car
+    end
+end
+return

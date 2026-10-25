@@ -1,0 +1,480 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+script_name "Y_FXS"
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED)
+// =========================================================================
+const
+    MEM_PLAYER_FORM = 12
+    MEM_DANMAKU_TOGGLE = 76
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// Master Orbital Angles & Clocks (Floats)
+0@ = 0.0    // Cluster 1 Orbit Angle
+1@ = 120.0  // Cluster 2 Orbit Angle
+12@ = 240.0 // Cluster 3 Orbit Angle
+16@ = 0.0   // Master Flutter Clock
+
+10@ = 0.0   // Current Fade Multiplier
+15@ = 0.0   // Target Fade Multiplier
+
+TIMERB = 10000 // Combat Linger Timer (starts expired)
+
+:ShionFlames_Loop
+wait 0 // 60 FPS smooth tracking
+
+if or
+    8256: not player $PLAYER_CHAR defined
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+then
+    15@ = 0.0
+    10@ = 0.0
+    wait 250
+    goto @ShionFlames_Loop
+end
+
+// Strictly active for Player Shion (State 2)
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+0665: get_actor $PLAYER_ACTOR model_to 27@
+
+if or
+    8039: not 28@ == 2
+    8039: not 27@ == 290 // Model #SPECIAL01
+then
+    15@ = 0.0
+    10@ = 0.0
+    TIMERB = 10000
+    wait 250
+    goto @ShionFlames_Loop
+end
+
+// =========================================================================
+// CONDITIONAL COMBAT ACTIVATION ENGINE (3.5s Linger)
+// =========================================================================
+15@ = 0.0
+
+// Condition A: Money Danmaku Active
+0085: 30@ = 31@
+000A: 30@ += MEM_DANMAKU_TOGGLE
+0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 28@ == 1
+then
+    15@ = 1.0
+end
+
+// Condition B: Fighting, Punching or Firing Weapons
+if or
+    0E47: is_char_fighting $PLAYER_ACTOR
+    0E8D: is_any_fire_button_pressed 0
+    02E0: actor $PLAYER_ACTOR firing_weapon
+then
+    TIMERB = 0
+end
+
+// Condition C: Low HP / Debt Detonation Gate Active
+0226: 29@ = actor $PLAYER_ACTOR health
+if
+    001B: 50 > 29@
+then
+    15@ = 1.0
+end
+
+// Linger check
+if
+    0043: 15@ == 0.0
+then
+    if
+        001B: 3500 > TIMERB
+    then
+        15@ = 1.0
+    end
+end
+
+// Hide flames inside enclosed vehicles
+if
+    0449: actor $PLAYER_ACTOR in_a_car
+then
+    if
+        8E4A: not is_char_exiting_any_car $PLAYER_ACTOR
+    then
+        15@ = 0.0
+    end
+end
+
+// Read CTimer::ms_fTimeStep (float) and normalize to 30 FPS baseline
+0A8D: 8@ = read_memory 0xB7CB5C size 4 virtual_protect 0
+0013: 8@ *= 0.6
+
+// Smooth Alpha Interpolation scaled by framerate
+0087: 17@ = 8@
+0013: 17@ *= 0.08
+
+if
+    0025: 15@ > 10@
+then
+    005B: 10@ += 17@
+    if
+        0021: 10@ > 1.0
+    then
+        10@ = 1.0
+    end
+end
+
+0087: 17@ = 8@
+0013: 17@ *= 0.06
+
+if
+    0025: 10@ > 15@
+then
+    0063: 10@ -= 17@
+    if
+        0023: 0.0 > 10@
+    then
+        10@ = 0.0
+    end
+end
+
+if
+    0023: 0.01 > 10@
+then
+    wait 50
+    goto @ShionFlames_Loop
+end
+
+// =========================================================================
+// RENDER BLUE HITODAMA FLAME CLUSTERS
+// =========================================================================
+0087: 17@ = 8@
+0013: 17@ *= 0.85
+005B: 16@ += 17@ // Master flutter clock scaled by framerate
+if
+    0031: 16@ >= 360.0
+then
+    000F: 16@ -= 360.0
+end
+
+00A0: store_actor $PLAYER_ACTOR position_to 2@ 3@ 4@
+000B: 4@ += 0.10 // Torso level
+
+// Scaled Radii
+0087: 11@ = 10@
+0013: 11@ *= 0.19 // Base Radius
+
+0087: 13@ = 10@
+0013: 13@ *= 0.17 // Belly Radius
+
+0087: 14@ = 10@
+0013: 14@ *= 0.13 // Neck Radius
+
+0087: 9@ = 10@
+0013: 9@ *= 0.08 // Tip Radius
+
+0087: 26@ = 10@
+0013: 26@ *= 0.06 // Core Radius
+
+// --- CLUSTER 1 ---
+02F6: 24@ = sine 16@
+0013: 24@ *= 0.50
+000B: 24@ += 0.90
+006B: 24@ *= 8@
+005B: 0@ += 24@
+if
+    0031: 0@ >= 360.0
+then
+    000F: 0@ -= 360.0
+end
+
+02F7: 19@ = cosine 16@
+0013: 19@ *= 0.18
+000B: 19@ += 0.66
+
+0087: 23@ = 16@
+0013: 23@ *= 2.0
+if
+    0031: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+02F6: 22@ = sine 23@
+0013: 22@ *= 0.25
+000B: 22@ += 0.10
+
+02F6: 20@ = sine 0@
+02F7: 21@ = cosine 0@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000F: 24@ -= 0.04
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+
+0087: 25@ = 0@
+000B: 25@ += 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+0087: 25@ = 0@
+000F: 25@ -= 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.035
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+0087: 25@ = 0@
+000B: 25@ += 1.5
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.075
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 9@ type 0 flare 0 RGB 140 220 255
+
+// Cluster 2 advance scaled by framerate
+02F6: 24@ = sine 23@
+0013: 24@ *= 0.55
+000B: 24@ += 0.85
+006B: 24@ *= 8@
+005B: 1@ += 24@
+if
+    0031: 1@ >= 360.0
+then
+    000F: 1@ -= 360.0
+end
+
+02F7: 19@ = cosine 23@
+0013: 19@ *= 0.20
+000B: 19@ += 0.62
+
+0087: 25@ = 23@
+0013: 25@ *= 2.0
+if
+    0031: 25@ >= 360.0
+then
+    000F: 25@ -= 360.0
+end
+02F6: 22@ = sine 25@
+0013: 22@ *= 0.25
+
+02F6: 20@ = sine 1@
+02F7: 21@ = cosine 1@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000F: 24@ -= 0.04
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+
+0087: 25@ = 1@
+000B: 25@ += 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+0087: 25@ = 1@
+000F: 25@ -= 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.035
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+0087: 25@ = 1@
+000B: 25@ += 1.5
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.075
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 9@ type 0 flare 0 RGB 140 220 255
+
+// Cluster 3 advance scaled by framerate
+02F7: 24@ = cosine 23@
+0013: 24@ *= 0.50
+000B: 24@ += 0.75
+006B: 24@ *= 8@
+005B: 12@ += 24@
+if
+    0031: 12@ >= 360.0
+then
+    000F: 12@ -= 360.0
+end
+
+02F6: 19@ = sine 23@
+0013: 19@ *= 0.18
+000B: 19@ += 0.68
+
+0087: 25@ = 23@
+0013: 25@ *= 2.0
+if
+    0031: 25@ >= 360.0
+then
+    000F: 25@ -= 360.0
+end
+02F7: 22@ = cosine 25@
+0013: 22@ *= 0.22
+000F: 22@ -= 0.08
+
+02F6: 20@ = sine 12@
+02F7: 21@ = cosine 12@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000F: 24@ -= 0.04
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+
+0087: 25@ = 12@
+000B: 25@ += 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+0087: 25@ = 12@
+000F: 25@ -= 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.035
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+0087: 25@ = 12@
+000B: 25@ += 1.5
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.075
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 9@ type 0 flare 0 RGB 140 220 255
+
+goto @ShionFlames_Loop

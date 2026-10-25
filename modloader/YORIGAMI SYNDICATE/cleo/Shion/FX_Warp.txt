@@ -1,0 +1,138 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+script_name "Sh_Warp"
+
+// 0@ = Mode (0 = Static Coordinates, 1 = Attached to Live Actor)
+// Mode 0: 1@ = X, 2@ = Y, 3@ = Z
+// Mode 1: 1@ = Actor Handle
+0085: 10@ = 0@
+
+if
+    10@ == 0
+then
+    0087: 20@ = 1@
+    0087: 21@ = 2@
+    0087: 22@ = 3@
+    000B: 22@ += 0.20 // Torso level
+else
+    0085: 11@ = 1@ // Stored Actor Handle
+end
+
+// Soft mystical chime and gentle camera rumble
+018C: play_sound 1052 at 0.0 0.0 0.0
+0003: shake_camera 80
+
+TIMERA = 0
+
+:FX_Warp_Loop
+wait 0 // Run every frame for smooth 60 FPS tracking
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    0A93: terminate_this_custom_script
+end
+
+// 1. Calculate Real-Time Render Position
+if
+    10@ == 1
+then
+    if or
+        11@ <= 0
+        856D: not actor 11@ defined
+        0118: actor 11@ dead
+    then
+        goto @FX_Warp_Finish
+    end
+    // Live Actor Offset (Glued to Shion inside any moving vehicle!)
+    04C4: store_coords_to 2@ 3@ 4@ from_actor 11@ with_offset 0.0 0.0 0.20
+else
+    // Static World Coordinates
+    0087: 2@ = 20@
+    0087: 3@ = 21@
+    0087: 4@ = 22@
+end
+
+// 2. Snapshot TIMERA into standard register 29@
+0085: 29@ = TIMERA
+
+// =========================================================================
+// 2-PHASE HITODAMA BLOOM & CONTRACT (Total Duration: 500ms)
+// =========================================================================
+
+// --- PHASE 1: BLOOM (0ms to 200ms) ---
+if
+    29@ < 200
+then
+    0093: 8@ = integer 29@ to_float
+    0017: 8@ /= 200.0 // 0.0 to 1.0 progress
+
+    // Clamp progress
+    if
+        8@ < 0.0
+    then
+        8@ = 0.0
+    end
+    if
+        0021: 8@ > 1.0
+    then
+        8@ = 1.0
+    end
+
+    0087: 5@ = 8@
+    0013: 5@ *= 2.4 // Outer Sapphire: 0.0m -> 2.4m
+
+    0087: 6@ = 8@
+    0013: 6@ *= 1.0 // Inner Core: 0.0m -> 1.0m
+else
+    // --- PHASE 2: CONTRACT & DISSIPATE (200ms to 500ms) ---
+    if
+        29@ < 500
+    then
+        28@ = 500
+        0062: 28@ -= 29@
+        0093: 8@ = integer 28@ to_float
+        0017: 8@ /= 300.0 // 1.0 down to 0.0
+
+        // Clamp progress
+        if
+            8@ < 0.0
+        then
+            8@ = 0.0
+        end
+        if
+            0021: 8@ > 1.0
+        then
+            8@ = 1.0
+        end
+
+        0087: 5@ = 8@
+        0013: 5@ *= 2.4
+
+        0087: 6@ = 8@
+        0013: 6@ *= 1.0
+    else
+        goto @FX_Warp_Finish
+    end
+end
+
+// Render Double-Layered Coronas at Live Position
+if
+    0021: 5@ > 0.01
+then
+    04D5: create_corona_at 2@ 3@ 4@ radius 5@ type 0 flare 0 RGB 0 120 255   // Electric Sapphire
+end
+
+if
+    0021: 6@ > 0.01
+then
+    04D5: create_corona_at 2@ 3@ 4@ radius 6@ type 0 flare 0 RGB 240 250 255 // Pure Luminous Core
+end
+
+goto @FX_Warp_Loop
+
+:FX_Warp_Finish
+0A93: terminate_this_custom_script

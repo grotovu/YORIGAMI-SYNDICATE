@@ -1,0 +1,23 @@
+========================================================================
+CALL TAXI (ON-DEMAND DISPATCH)
+By: EagleRaviOrange
+========================================================================
+
+Because running around looking for a taxi when you want to take 
+a road trip with your companion is a pain.
+
+[HOW IT WORKS]
+- Pulls out a cellphone, places a call, and dispatches a taxi right to 
+  the nearest road node beside you (or curbside if no road is nearby).
+- Locks the taxi in place with its roof light on until you walk up to it, 
+  so the driver doesn't get spooked and drive away.
+- Combines with the companion-aware "Taxi Ride" mod so you and Shion can 
+  hop in the back and cruise across San Andreas anytime.
+
+[CONTROLS]
+- Press [L] + [Numpad 9] while on foot to order a cab.
+- configurable in CallTaxi.ini
+
+[INSTALLATION]
+Drop the 'Call Taxi with L and Num9' folder into your 'modloader' directory.
+========================================================================

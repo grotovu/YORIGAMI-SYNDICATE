@@ -1,0 +1,1523 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+{$USE ini}
+
+0000: NOP
+script_name "Y_Smk"
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (SCOPED TO JOON SMOKE)
+// =========================================================================
+const
+    MEM_SAVE_SLOT = 0             // Formerly 700
+    MEM_SHION_BUSY = 4            // Formerly 708
+    MEM_PLAYER_FORM = 12          // Formerly 725
+    MEM_PRIORITY_LOCK = 20        // Formerly 765
+    MEM_SHION_HANDLE = 116        // Formerly 703
+    MEM_JOON_CIGAR_OBJ = 220      // Formerly 740
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+0@ = 0      // Smoking Active State Flag (0 = No, 1 = Yes)
+1@ = 0      // Cigar Object Handle
+2@ = 0      // Exhale Particle Handle
+3@ = 0      // Smoke Particle Spawned Latch Flag
+4@ = 0      // Saved Armed Weapon ID
+5@ = 1      // EnableJoonSmoking INI Setting (1 = ON, 0 = OFF)
+6@ = 45000  // Configured Cooldown Duration (ms)
+7@ = 0      // Active Cooldown Remaining Timer (ms)
+8@ = 0      // Idle Hands Accumulator Timer (ms)
+9@ = 0      // Shion Dialogue Cooldown Timer (ms)
+12@ = 90000 // Configured Withdrawal Complaint Cooldown Duration (ms)
+
+15@ = 0     // Withdrawal Complaint Session Counter
+16@ = 3     // Max Withdrawal Complaints Per Session (-1 = Infinite)
+17@ = 1     // Cigarette Cost in Dollars (Configurable, default $1)
+18@ = 0     // Time Since Last Smoked Timer (ms)
+19@ = 60000 // Withdrawal Complaint Cooldown Timer (ms)
+21@ = 0     // Loading Screen / Respawn Reset Watchdog Flag
+
+26@ = 0     // Chosen Dialogue Variant
+27@ = -999  // Last Tracked Save Slot Tracker (Reallocated from 30@)
+28@ = 0     // Dialogue Step Progression Flag
+29@ = 0     // Shion Dialogue Eligible Flag
+
+// Request 3D Model and Animations on child boot
+0247: request_model #CIGAR
+04ED: load_animation "GANGS"
+04ED: load_animation "SMOKING"
+038B: load_requested_models
+
+:Wait_For_Smoking_Assets_Loaded
+wait 0
+if or
+    8248: not model #CIGAR available
+    84EE: not animation "GANGS" loaded
+    84EE: not animation "SMOKING" loaded
+then
+    goto @Wait_For_Smoking_Assets_Loaded
+end
+
+gosub @Reload_Smoking_Config
+
+// =========================================================================
+// MAIN CHILD LOOP
+// =========================================================================
+:JoonSmoke_MainLoop
+wait 50
+
+// Detect loading screens or player despawning to reset complaint session
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    21@ = 1
+    goto @JoonSmoke_MainLoop
+end
+
+// Reset complaint session counter upon finishing a save load or fresh spawn
+if
+    21@ == 1
+then
+    21@ = 0
+    15@ = 0    // Reset withdrawal complaint count
+    18@ = 0    // Reset time since last smoke
+    27@ = -999 // Force slot check
+end
+
+// Detect save slot change from shared memory to reset complaint session
+0085: 30@ = 31@
+000A: 30@ += MEM_SAVE_SLOT
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+if
+    803B: not 14@ == 27@
+then
+    0085: 27@ = 14@
+    15@ = 0 // Reset withdrawal complaint count
+    18@ = 0 // Reset time since last smoke
+end
+
+// Self-termination check: Only alive while playing as Jo'on
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 11@ = read_memory 30@ size 4 virtual_protect 0
+if
+    8039: not 11@ == 1
+then
+    gosub @Cleanup_Smoking_State
+    0A93: terminate_this_custom_script
+end
+
+// Tick down smoking cooldown
+if
+    7@ > 0
+then
+    000E: 7@ -= 50
+    if
+        7@ < 0
+    then
+        7@ = 0
+    end
+end
+
+// Tick down Shion dialogue cooldown
+if
+    9@ > 0
+then
+    000E: 9@ -= 50
+    if
+        9@ < 0
+    then
+        9@ = 0
+    end
+end
+
+// Tick down withdrawal complaint cooldown
+if
+    19@ > 0
+then
+    000E: 19@ -= 50
+    if
+        19@ < 0
+    then
+        19@ = 0
+    end
+end
+
+// Hold a 15-second buffer on withdrawal complaints while any dialogue priority lock is active
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+if
+    14@ > 0
+then
+    if
+        15000 > 19@
+    then
+        19@ = 15000
+    end
+end
+
+// Clamp withdrawal timer and cooldown during active missions until OnMission is 0
+if or
+    0038: $ONMISSION == 1
+    0E1D: is_on_mission
+then
+    18@ = 0
+    if
+        15000 > 19@
+    then
+        19@ = 15000
+    end
+end
+
+// Accumulate time since last smoked while not actively smoking
+if
+    0@ == 0
+then
+    000A: 18@ += 50
+    if
+        18@ > 600000 // Cap at 10 minutes to prevent overflow
+    then
+        18@ = 600000
+    end
+end
+
+// Periodic config reload
+gosub @Reload_Smoking_Config
+
+// Evaluate whether Jo'on's hands are busy
+13@ = 0
+
+// Disallow smoking on two-wheelers, driving, or in wrecked/flipped vehicles
+if
+    0449: actor $PLAYER_ACTOR in_a_car
+then
+    if
+        047A: actor $PLAYER_ACTOR driving_bike
+    then
+        13@ = 1
+    else
+        03C0: 25@ = actor $PLAYER_ACTOR car
+        if or
+            0119: car 25@ wrecked
+            01F4: car 25@ flipped
+            02BF: car 25@ sunk
+        then
+            13@ = 1
+        end
+
+        02E3: 20@ = car 25@ speed
+        if
+            0021: 20@ > 3.0 // Driving above crawl speed requires hands on the wheel
+        then
+            13@ = 1
+        end
+    end
+end
+
+// Check combat, aiming, brawling, firing
+if or
+    0E67: is_aim_button_pressed 0
+    0E8D: is_any_fire_button_pressed 0
+    0E47: is_char_fighting $PLAYER_ACTOR
+    02E0: actor $PLAYER_ACTOR firing_weapon
+then
+    13@ = 1
+end
+
+// Check actions, climbing, water, cutscenes, door transitions
+if or
+    0E49: is_char_entering_any_car $PLAYER_ACTOR
+    0E4A: is_char_exiting_any_car $PLAYER_ACTOR
+    0E48: is_char_fallen_on_ground $PLAYER_ACTOR
+    04AD: actor $PLAYER_ACTOR in_water
+    016B: fading
+    0E25: is_on_cutscene
+then
+    13@ = 1
+end
+
+// Disallow idle smoking during burglary side mission
+if
+    0038: $ONMISSION_BURGLARY == 1
+then
+    13@ = 1
+end
+
+// Check mobile phone usage and phone tasks
+if or
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1600 // TASK_COMPLEX_USE_MOBILE_PHONE
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1601 // TASK_SIMPLE_PHONE_TALK
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1602 // TASK_SIMPLE_PHONE_IN
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1603 // TASK_SIMPLE_PHONE_OUT
+then
+    13@ = 1
+end
+
+// Check phone animations
+if or
+    0611: actor $PLAYER_ACTOR performing_animation "phone_talk"
+    0611: actor $PLAYER_ACTOR performing_animation "phone_in"
+    0611: actor $PLAYER_ACTOR performing_animation "phone_out"
+then
+    13@ = 1
+end
+
+// Guardrails for scripted cutscene gestures & mission tasks
+if or
+    0E4B: is_char_playing_any_script_animation $PLAYER_ACTOR include_anims 1
+    0E4C: is_char_doing_any_important_task $PLAYER_ACTOR include_anims 1
+then
+    13@ = 1
+end
+
+// Check on-foot movement (bypassed while inside vehicle)
+if
+    8449: not actor $PLAYER_ACTOR in_a_car
+then
+    06AC: 20@ = actor $PLAYER_ACTOR movement_speed
+    if
+        0021: 20@ > 2.0 // Faster than walking pace
+    then
+        13@ = 1
+    end
+
+    if and
+        00E1: player 0 pressed_key 16 // Sprint Key held
+        0021: 20@ > 0.5 // Moving forward
+    then
+        13@ = 1
+    end
+
+    if
+        0818: actor $PLAYER_ACTOR in_air
+    then
+        13@ = 1
+    end
+end
+
+if
+    13@ == 1
+then
+    8@ = 0 // Hands are busy; reset 10-second idle tracker
+else
+    000A: 8@ += 50 // Hands are idle
+end
+
+// Auto-trigger smoking on 10 seconds of idle hands (Blocked if broke unless free)
+if and
+    5@ == 1     // Enabled in Shion.ini
+    8@ >= 10000 // 10 seconds of idle hands
+    7@ <= 0     // Cooldown has expired
+then
+    8@ = 0
+    010B: 14@ = player $PLAYER_CHAR money
+    22@ = 0
+    if
+        17@ == 0 // Free
+    then
+        22@ = 1
+    else
+        if and
+            14@ > 0
+            801D: not 17@ > 14@
+        then
+            22@ = 1
+        end
+    end
+
+    if
+        22@ == 1
+    then
+        gosub @Execute_Secondary_Smoking
+    end
+end
+
+// Optional manual override (F11 Key / VK 122)
+if and
+    0@ == 0 // Cannot start a new smoke while already smoking
+    0AB0: is_key_pressed 122
+    816B: not fading
+    8E25: not is_on_cutscene
+then
+    :Wait_For_F11_Release
+    wait 50
+    if
+        0AB0: is_key_pressed 122
+    then
+        goto @Wait_For_F11_Release
+    end
+
+    23@ = 1
+    if
+        0449: actor $PLAYER_ACTOR in_a_car
+    then
+        if
+            047A: actor $PLAYER_ACTOR driving_bike
+        then
+            23@ = 0
+        else
+            03C0: 25@ = actor $PLAYER_ACTOR car
+            02E3: 20@ = car 25@ speed
+            if
+                0021: 20@ > 3.0
+            then
+                23@ = 0
+            end
+        end
+    end
+
+    // Block manual smoking while on a phone call
+    if or
+        0E42: is_char_doing_task_id $PLAYER_ACTOR 1600
+        0E42: is_char_doing_task_id $PLAYER_ACTOR 1601
+        0E42: is_char_doing_task_id $PLAYER_ACTOR 1602
+        0E42: is_char_doing_task_id $PLAYER_ACTOR 1603
+    then
+        23@ = 0
+    end
+
+    if or
+        0611: actor $PLAYER_ACTOR performing_animation "phone_talk"
+        0611: actor $PLAYER_ACTOR performing_animation "phone_in"
+        0611: actor $PLAYER_ACTOR performing_animation "phone_out"
+    then
+        23@ = 0
+    end
+    
+    // Block manual smoking during burglary side mission
+    if
+        0038: $ONMISSION_BURGLARY == 1
+    then
+        23@ = 0
+    end
+
+    if
+        23@ == 1
+    then
+        8@ = 0
+        010B: 14@ = player $PLAYER_CHAR money
+        13@ = 0
+        if
+            17@ == 0 // Free
+        then
+            13@ = 1
+        else
+            if and
+                14@ > 0
+                801D: not 17@ > 14@
+            then
+                13@ = 1
+            end
+        end
+
+        if
+            13@ == 1
+        then
+            gosub @Execute_Secondary_Smoking
+        else
+            // Broke outcome: 50% chance to trigger withdrawal complaint dialogue
+            0209: 14@ = random_int_in_ranges 0 100
+            25@ = 0
+            if
+                14@ < 50
+            then
+                0085: 30@ = 31@
+                000A: 30@ += MEM_PRIORITY_LOCK
+                0A8D: 13@ = read_memory 30@ size 4 virtual_protect 0
+                if
+                    13@ == 0
+                then
+                    25@ = 1
+                    0085: 19@ = 12@ // Apply configured withdrawal cooldown
+                    gosub @Execute_Withdrawal_Complaint
+                end
+            end
+
+            if
+                25@ == 0
+            then
+                0085: 30@ = 31@
+                000A: 30@ += MEM_PRIORITY_LOCK
+                0A8D: 13@ = read_memory 30@ size 4 virtual_protect 0
+                if and
+                    13@ == 0
+                    8038: not $ONMISSION == 1
+                    8E1D: not is_on_mission
+                then
+                    if
+                        15000 > 19@
+                    then
+                        19@ = 15000
+                    end
+                    018C: play_sound 1057 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_SMKBK" text "~y~Jo'on: ~s~\"Are you kiddin' me?! I don't even have a lousy dollar for a smoke?!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SMKBK' time 3000 flag 1
+                end
+            end
+        end
+    end
+end
+
+// Withdrawal complaint check (Triggered when Jo'on hasn't smoked in over 2.5 minutes)
+if and
+    0@ == 0
+    5@ == 1
+    18@ >= 150000 // 150 seconds without smoking
+    19@ <= 0      // Complaint off cooldown
+then
+    // Verify session complaint cap
+    25@ = 0
+    if
+        16@ == -1 // Infinite complaints allowed
+    then
+        25@ = 1
+    else
+        if
+            001D: 16@ > 15@ // Current complaints < Max complaints
+        then
+            25@ = 1
+        end
+    end
+
+    if
+        25@ == 1
+    then
+        if and
+            816B: not fading
+            8E25: not is_on_cutscene
+            8E47: not is_char_fighting $PLAYER_ACTOR
+            82E0: not actor $PLAYER_ACTOR firing_weapon
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                14@ == 0 // Channel completely free
+            then
+                gosub @Execute_Withdrawal_Complaint
+            end
+        end
+    end
+end
+
+goto @JoonSmoke_MainLoop
+
+
+// =========================================================================
+// SUBROUTINE: EXECUTE SECONDARY-TASK SMOKING
+// =========================================================================
+:Execute_Secondary_Smoking
+if
+    8248: not model #CIGAR available
+then
+    0247: request_model #CIGAR
+    038B: load_requested_models
+    return
+end
+
+// Deduct cigarette cost if configured
+if
+    17@ > 0
+then
+    0085: 14@ = 17@
+    0012: 14@ *= -1
+    0109: player $PLAYER_CHAR money += 14@
+end
+
+18@ = 0 // Reset time since last smoked
+
+// Save current weapon and temporarily switch to unarmed to free right hand
+0470: 4@ = actor $PLAYER_ACTOR current_weapon
+01B9: set_actor $PLAYER_ACTOR armed_weapon_to 0
+
+// Spawn Cigar Object
+0107: 1@ = create_object #CIGAR at 0.0 0.0 0.0
+0085: 30@ = 31@
+000A: 30@ += MEM_JOON_CIGAR_OBJ
+0A8C: write_memory 30@ size 4 value 1@ virtual_protect 0
+
+// Attach directly to Right Hand (Bone 6, Type 16) with secondary partial animation
+070A: AS_actor $PLAYER_ACTOR attach_to_object 1@ offset 0.02 0.06 0.0 on_bone 6 16 perform_animation "SMKCIG_PRTL" IFP_file "GANGS" time 6500
+
+0@ = 1  // Smoking active flag
+3@ = 0  // Smoke puff latch
+28@ = 0 // Dialogue step
+TIMERA = 0
+
+// Subtitle priority check (Tier 1)
+// If any other dialogue is active or on a mission, Jo'on smokes physically in silence
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 13@ = read_memory 30@ size 4 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_BUSY
+0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0 // Scavenge busy flag (Safely using 25@ to protect 15@!)
+
+29@ = 0
+if and
+    13@ == 0 // Channel must be completely free
+    25@ == 0
+    9@ <= 0  // Smoke dialogue off cooldown
+    8038: not $ONMISSION == 1
+    8E1D: not is_on_mission
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_HANDLE
+    0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0 // Live Shion Handle
+    // Hitodama Form (-1) is always floating near Jo'on
+    if
+        10@ == -1
+    then
+        29@ = 1
+    end
+
+    // Solid Ped Form (> 0) must be alive and within 15 meters
+    if
+        10@ > 0
+    then
+        if and
+            056D: actor 10@ defined
+            8118: not actor 10@ dead
+            0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 15.0
+        then
+            29@ = 1
+        end
+    end
+end
+
+if
+    29@ == 1
+then
+    0209: 14@ = random_int_in_ranges 0 100
+    if
+        14@ < 50
+    then
+        29@ = 1
+        0209: 26@ = random_int_in_ranges 0 3
+        9@ = 60000 // 60-second cooldown on smoke dialogue
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 1 virtual_protect 0 // Claim Tier 1 Priority
+    else
+        29@ = 0
+    end
+end
+
+// =========================================================================
+// SMOKING ACTIVE LOOP (50ms non-blocking checks)
+// =========================================================================
+:Smoking_Active_Loop
+wait 50
+
+// Instant combat abort checks for zero-lag weapon restoration
+13@ = 0
+
+if or
+    8256: not is_player_playing $PLAYER_CHAR
+    0118: actor $PLAYER_ACTOR dead
+    02E0: actor $PLAYER_ACTOR firing_weapon
+    0E67: is_aim_button_pressed 0
+    0E8D: is_any_fire_button_pressed 0
+    0E47: is_char_fighting $PLAYER_ACTOR
+then
+    13@ = 1
+end
+
+if or
+    00E1: player 0 pressed_key 17 // Fire Key
+    00E1: player 0 pressed_key 6  // Aim Key
+    0E49: is_char_entering_any_car $PLAYER_ACTOR
+    0E4A: is_char_exiting_any_car $PLAYER_ACTOR
+    04AD: actor $PLAYER_ACTOR in_water
+    016B: fading
+    0E25: is_on_cutscene
+then
+    13@ = 1
+end
+
+// Abort active smoking immediately if burglary mission is active
+if
+    0038: $ONMISSION_BURGLARY == 1
+then
+    13@ = 1
+end
+
+// Abort active smoking immediately if an incoming phone call is picked up
+if or
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1600
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1601
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1602
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1603
+then
+    13@ = 1
+end
+
+if or
+    0611: actor $PLAYER_ACTOR performing_animation "phone_talk"
+    0611: actor $PLAYER_ACTOR performing_animation "phone_in"
+    0611: actor $PLAYER_ACTOR performing_animation "phone_out"
+then
+    13@ = 1
+end
+// Vehicle state abort checks while inside a car
+if
+    0449: actor $PLAYER_ACTOR in_a_car
+then
+    if
+        047A: actor $PLAYER_ACTOR driving_bike
+    then
+        13@ = 1
+    else
+        03C0: 25@ = actor $PLAYER_ACTOR car
+        if or
+            0119: car 25@ wrecked
+            01F4: car 25@ flipped
+            02BF: car 25@ sunk
+        then
+            13@ = 1
+        end
+
+        02E3: 20@ = car 25@ speed
+        if
+            0021: 20@ > 3.0 // Accelerating or driving immediately aborts smoking
+        then
+            13@ = 1
+        end
+    end
+else
+    // On-foot abort checks
+    06AC: 20@ = actor $PLAYER_ACTOR movement_speed
+    if
+        0021: 20@ > 2.0 // Jogging or running
+    then
+        13@ = 1
+    end
+
+    if and
+        00E1: player 0 pressed_key 16 // Sprinting
+        0021: 20@ > 0.5
+    then
+        13@ = 1
+    end
+
+    if
+        0818: actor $PLAYER_ACTOR in_air // Jumping or falling
+    then
+        13@ = 1
+    end
+end
+
+// Abort if smoking animation was cancelled on foot by engine tasks
+if
+    8449: not actor $PLAYER_ACTOR in_a_car
+then
+    if
+        TIMERA >= 500
+    then
+        if
+            8611: not actor $PLAYER_ACTOR performing_animation "SMKCIG_PRTL"
+        then
+            13@ = 1
+        end
+    end
+end
+
+// Manual toggle off (F11) - Debounced after 500ms to prevent double-tap cancellation
+if
+    TIMERA >= 500
+then
+    if
+        0AB0: is_key_pressed 122
+    then
+        :Wait_For_Cancel_F11
+        wait 50
+        if
+            0AB0: is_key_pressed 122
+        then
+            goto @Wait_For_Cancel_F11
+        end
+        13@ = 1
+    end
+end
+
+// Also abort if player is no longer Jo'on
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 11@ = read_memory 30@ size 4 virtual_protect 0
+if
+    8039: not 11@ == 1
+then
+    13@ = 1
+end
+
+if
+    13@ == 1
+then
+    goto @Cleanup_Smoking_State
+end
+
+// Dynamic preemption check: Surrender mic if higher tier claims channel or mission starts
+if
+    29@ == 1
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        14@ > 1
+    then
+        29@ = 0
+    else
+        if or
+            0038: $ONMISSION == 1
+            0E1D: is_on_mission
+        then
+            03EB: clear_small_messages_only
+            if
+                14@ == 1
+            then
+                0085: 30@ = 31@
+                000A: 30@ += MEM_PRIORITY_LOCK
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+            end
+            29@ = 0
+        end
+    end
+end
+
+// Non-blocking Shion commentary stages
+if
+    29@ == 1
+then
+    if and
+        28@ == 0
+        TIMERA >= 1200
+    then
+        28@ = 1
+        gosub @Dispatch_Shion_Smoke_Line_A
+    end
+
+    if and
+        28@ == 1
+        TIMERA >= 4200
+    then
+        28@ = 2
+        gosub @Dispatch_Joon_Smoke_Line_B
+    end
+end
+
+// Spawn mouth exhale smoke puff at 4.2 seconds
+if and
+    3@ == 0
+    TIMERA >= 4200
+then
+    3@ = 1
+    0669: 2@ = attach_particle "EXHALE" to_actor $PLAYER_ACTOR with_offset 0.0 0.12 0.0 type 0
+    0883: attach_particle 2@ to_actor $PLAYER_ACTOR mode 5
+    064C: make_particle 2@ visible
+end
+
+// Full animation cycle completed (~6.5 seconds)
+if
+    TIMERA >= 6500
+then
+    goto @Cleanup_Smoking_State
+end
+
+goto @Smoking_Active_Loop
+
+
+// =========================================================================
+// SUBROUTINE: INSTANT CLEANUP & WEAPON RESTORATION
+// =========================================================================
+:Cleanup_Smoking_State
+// Release on-bone entity hold task first
+070B: set_actor $PLAYER_ACTOR onbone_attached_object_operation 0
+
+// Destroy primary cigar prop handle
+if
+    1@ > 0
+then
+    if
+        03CA: object 1@ exists
+    then
+        0682: detach_object 1@ 0.0 0.0 0.0 collision_detection 0
+        0108: destroy_object 1@
+    end
+    1@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_JOON_CIGAR_OBJ
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+// Sweep vicinity for any detached orphan cigar models using isolated scratch registers (10@ 11@ 13@)
+if and
+    056D: actor $PLAYER_ACTOR defined
+    8118: not actor $PLAYER_ACTOR dead
+then
+    00A0: store_actor $PLAYER_ACTOR position_to 10@ 11@ 13@
+    24@ = 0
+
+    :Cigar_Cleanup_Purge
+    if
+        0AE3: 25@ = random_object_near_point 10@ 11@ 13@ in_radius 4.0 find_next 24@
+    then
+        24@ = 1
+        0984: 23@ = object 25@ model
+        if
+            23@ == #CIGAR
+        then
+            0682: detach_object 25@ 0.0 0.0 0.0 collision_detection 0
+            0108: destroy_object 25@
+        end
+        goto @Cigar_Cleanup_Purge
+    end
+end
+
+// Release smoke particle reference so it lingers and disperses in the air
+if
+    2@ > 0
+then
+    064F: remove_references_to_particle 2@
+    2@ = 0
+end
+
+// Immediately restore previous weapon
+if
+    4@ > 0
+then
+    01B9: set_actor $PLAYER_ACTOR armed_weapon_to 4@
+end
+
+// Release Tier 1 Priority lock if held
+if
+    29@ == 1
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        14@ == 1
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
+end
+
+0085: 7@ = 6@ // Set Cooldown Timer
+8@ = 0        // Reset Idle Hands Timer
+0@ = 0        // Clear Active Flag
+3@ = 0        // Clear Smoke Puff Latch
+28@ = 0       // Clear Dialogue Step
+29@ = 0       // Clear Dialogue Active Flag
+return
+
+
+// =========================================================================
+// SUBROUTINE: DISPATCH SHION SMOKE COMMENTARY (LINE A)
+// =========================================================================
+:Dispatch_Shion_Smoke_Line_A
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+if
+    10@ == -1
+then
+    // Hitodama Spirit Form Variants
+    if
+        26@ == 0
+    then
+        0ADF: add_text_label "Y_SM1AH" text "~b~Shion: ~s~\"Cough! Blow that cheap smoke somewhere else, Jo'on... it's blinding me.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM1AH' time 2800 flag 1
+    end
+
+    if
+        26@ == 1
+    then
+        0ADF: add_text_label "Y_SM2AH" text "~b~Shion: ~s~\"Watch where you're flicking that ash, Jo'on! You almost hit me with an ember.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM2AH' time 2800 flag 1
+    end
+
+    if
+        26@ == 2
+    then
+        0ADF: add_text_label "Y_SM3AH" text "~b~Shion: ~s~\"Four dollars a pack... and you're blowing all that expensive smoke right through me.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM3AH' time 2800 flag 1
+    end
+else
+    // Physical Ped Form Variants
+    if
+        26@ == 0
+    then
+        0ADF: add_text_label "Y_SM1A" text "~b~Shion: ~s~\"-Cough- -cough-... Jo'on, those cheap cigarettes are gonna rot your lungs.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM1A' time 2800 flag 1
+    end
+
+    if
+        26@ == 1
+    then
+        0ADF: add_text_label "Y_SM2A" text "~b~Shion: ~s~\"Your secondhand smoke's gonna make me sick, sis... and four dollars a pack is burning lunch money.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM2A' time 2800 flag 1
+    end
+
+    if
+        26@ == 2
+    then
+        0ADF: add_text_label "Y_SM3A" text "~b~Shion: ~s~\"Your tobacco smoke's drifting right into my face, Jo'on... -cough-!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM3A' time 2800 flag 1
+    end
+end
+return
+
+// =========================================================================
+// SUBROUTINE: DISPATCH JO'ON SMOKE RETORT (LINE B)
+// =========================================================================
+:Dispatch_Joon_Smoke_Line_B
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+if
+    10@ == -1
+then
+    // Hitodama Spirit Form Responses
+    if
+        26@ == 0
+    then
+        0ADF: add_text_label "Y_SM1BH" text "~y~Jo'on: ~s~\"Spirits don't even have lungs, Shion! Quit fake-coughin' and act like an exhaust fan!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM1BH' time 3200 flag 1
+    end
+
+    if
+        26@ == 1
+    then
+        0ADF: add_text_label "Y_SM2BH" text "~y~Jo'on: ~s~\"You're a ball of fire, idiot! A tiny cigarette ember isn't gonna put out a god!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM2BH' time 3200 flag 1
+    end
+
+    if
+        26@ == 2
+    then
+        0ADF: add_text_label "Y_SM3BH" text "~y~Jo'on: ~s~\"It's called aroma therapy! Be grateful I'm drownin' out the stench of poverty with Redwood!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM3BH' time 3200 flag 1
+    end
+else
+    // Physical Ped Form Responses
+    if
+        26@ == 0
+    then
+        0ADF: add_text_label "Y_SM1B" text "~y~Jo'on: ~s~\"I'm an immortal pestilence god, Shion! I'll outlive Redwood by ten thousand years!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM1B' time 3200 flag 1
+    end
+
+    if
+        26@ == 1
+    then
+        0ADF: add_text_label "Y_SM2B" text "~y~Jo'on: ~s~\"Sickness is for mortal losers! A pestilence god smokes wherever she damn well pleases!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM2B' time 3200 flag 1
+    end
+
+    if
+        26@ == 2
+    then
+        0ADF: add_text_label "Y_SM3B" text "~y~Jo'on: ~s~\"Then act like an exhaust fan and blow it away from my hair! Quit whinin'!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM3B' time 3200 flag 1
+    end
+end
+return
+
+
+// =========================================================================
+// SUBROUTINE: CONFIG LOADER
+// =========================================================================
+:Reload_Smoking_Config
+0AF0: 5@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "EnableJoonSmoking"
+if
+    5@ < 0
+then
+    5@ = 1
+end
+
+0AF0: 14@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "JoonSmokeCooldownSeconds"
+if
+    14@ <= 0
+then
+    14@ = 45
+end
+
+0085: 6@ = 14@
+0012: 6@ *= 1000
+
+0AF0: 17@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "CigaretteCost"
+if
+    17@ < 0
+then
+    17@ = 1
+end
+
+0AF0: 16@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "MaxWithdrawalComplaints"
+if or
+    16@ < -1
+    16@ == 0
+then
+    16@ = 3
+end
+
+0AF0: 14@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "WithdrawalCooldownSeconds"
+if
+    14@ <= 0
+then
+    0AF0: 14@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "WithdrawalComplaintCooldownSeconds"
+    if
+        14@ <= 0
+    then
+        14@ = 90
+    end
+end
+
+0085: 12@ = 14@
+0012: 12@ *= 1000
+return
+
+
+// =========================================================================
+// SUBROUTINE: WITHDRAWAL COMPLAINT DIALOGUE
+// =========================================================================
+:Execute_Withdrawal_Complaint
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+if
+    14@ > 1 // Do not interrupt Tier 2 Ambient, Tier 3 Action, or Tier 4 Theater
+then
+    return
+end
+
+// Do not trigger withdrawal complaints during burglary
+if
+    0038: $ONMISSION_BURGLARY == 1
+then
+    return
+end
+
+// Do not trigger withdrawal complaints during missions
+if or
+    0038: $ONMISSION == 1
+    0E1D: is_on_mission
+then
+    return
+end
+
+// Do not interrupt phone conversations with withdrawal complaints
+if or
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1600
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1601
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1602
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1603
+then
+    return
+end
+
+if or
+    0611: actor $PLAYER_ACTOR performing_animation "phone_talk"
+    0611: actor $PLAYER_ACTOR performing_animation "phone_in"
+    0611: actor $PLAYER_ACTOR performing_animation "phone_out"
+then
+    return
+end
+
+// Passed all checks: apply cooldown and increment session complaint counter
+0085: 19@ = 12@
+000A: 15@ += 1
+
+// Preempt Tier 1 smoking lines
+03EB: clear_small_messages_only
+
+// Claim Tier 2 Priority immediately before audio or screen wipe
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+22@ = 0 // Shion nearby flag (Using isolated 22@ to protect 12@ cooldown duration)
+if
+    10@ == -1 // Hitodama floating with Jo'on
+then
+    22@ = 1
+end
+if
+    10@ > 0
+then
+    if and
+        056D: actor 10@ defined
+        8118: not actor 10@ dead
+        0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 15.0
+    then
+        22@ = 1
+    end
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+
+if
+    22@ == 1
+then
+    0209: 26@ = random_int_in_ranges 0 4
+
+    if
+        26@ == 0
+    then
+        0ADF: add_text_label "Y_WD0A" text "~y~Jo'on: ~s~\"Ugh, my hands are shakin'! I haven't had a smoke in ages and I'm losin' my mind!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD0A' time 3400 flag 1
+        wait 3400
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WD0B" text "~b~Shion: ~s~\"Maybe it's a good chance to quit smoking, Jo'on... think of your lungs.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD0B' time 3400 flag 1
+        wait 3400
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WD0C" text "~y~Jo'on: ~s~\"Quit?! I'm a pestilence god! I don't quit luxuries, I indulge in 'em!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD0C' time 3400 flag 1
+        wait 3400
+        03EB: clear_small_messages_only
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+        if
+            14@ == 2
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+        end
+        return
+    end
+
+    if
+        26@ == 1
+    then
+        0ADF: add_text_label "Y_WD1A" text "~y~Jo'on: ~s~\"My head's poundin'... Goin' without a smoke is torture!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD1A' time 3400 flag 1
+        wait 3400
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            10@ == -1
+        then
+            0ADF: add_text_label "Y_WD1BH" text "~b~Shion: ~s~\"Whenever I get cravings, I just chew on grass... now I can't even chew on that.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WD1BH' time 3400 flag 1
+        else
+            0ADF: add_text_label "Y_WD1B" text "~b~Shion: ~s~\"Whenever I get cravings, I just chew on a toothpick or dry grass, sis.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WD1B' time 3400 flag 1
+        end
+        wait 3400
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WD1C" text "~y~Jo'on: ~s~\"I ain't chewin' grass like a goat! Find me a pack of Redwood right now!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD1C' time 3500 flag 1
+        wait 3500
+        03EB: clear_small_messages_only
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+        if
+            14@ == 2
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+        end
+        return
+    end
+
+    if
+        26@ == 2
+    then
+        0ADF: add_text_label "Y_WD2A" text "~y~Jo'on: ~s~\"Don't look at me like that, Shion! I haven't had a smoke in hours and I'm on edge!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD2A' time 3400 flag 1
+        wait 3400
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            10@ == -1
+        then
+            0ADF: add_text_label "Y_WD2BH" text "~b~Shion: ~s~\"I didn't even say anything, Jo'on... please stop yelling in my ear.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WD2BH' time 3200 flag 1
+        else
+            0ADF: add_text_label "Y_WD2B" text "~b~Shion: ~s~\"I didn't even say anything, Jo'on... please don't yell at my hoodie.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WD2B' time 3200 flag 1
+        end
+        wait 3200
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WD2C" text "~y~Jo'on: ~s~\"Your silence is loud enough! Where's the nearest counter around here?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD2C' time 3300 flag 1
+        wait 3300
+        03EB: clear_small_messages_only
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+        if
+            14@ == 2
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+        end
+        return
+    end
+
+    if
+        26@ == 3
+    then
+        0ADF: add_text_label "Y_WD3A" text "~y~Jo'on: ~s~\"How does a pestilence god not even have a single cigarette lit right now?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD3A' time 3400 flag 1
+        wait 3400
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WD3B" text "~b~Shion: ~s~\"Cravings are tough, sis... you get used to the hollow feeling after a while.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD3B' time 3400 flag 1
+        wait 3400
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WD3C" text "~y~Jo'on: ~s~\"I refuse to get used to it! We need to score cash and buy out a tobacco stand!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD3C' time 3500 flag 1
+        wait 3500
+        03EB: clear_small_messages_only
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+        if
+            14@ == 2
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+        end
+        return
+    end
+else
+    0209: 26@ = random_int_in_ranges 0 2
+    if
+        26@ == 0
+    then
+        0ADF: add_text_label "Y_WD4A" text "~y~Jo'on: ~s~\"Ugh, my hands are shakin'... I need a smoke before I lose my temper!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD4A' time 3200 flag 1
+        wait 3200
+    else
+        0ADF: add_text_label "Y_WD4B" text "~y~Jo'on: ~s~\"Ugh, massive headache comin' on... Where's a 24-7 when ya need one?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD4B' time 3400 flag 1
+        wait 3400
+    end
+    03EB: clear_small_messages_only
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        14@ == 2
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
+end
+return
+
+:Check_Withdrawal_Alive
+13@ = 0
+if or
+    8256: not is_player_playing $PLAYER_CHAR
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+then
+    03EB: clear_small_messages_only
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    13@ = 1
+    return
+end
+
+// Abort dialogue immediately if a phone call is received
+if or
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1600
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1601
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1602
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1603
+then
+    03EB: clear_small_messages_only
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    13@ = 1
+    return
+end
+
+if or
+    0611: actor $PLAYER_ACTOR performing_animation "phone_talk"
+    0611: actor $PLAYER_ACTOR performing_animation "phone_in"
+    0611: actor $PLAYER_ACTOR performing_animation "phone_out"
+then
+    03EB: clear_small_messages_only
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    13@ = 1
+    return
+end
+
+// Abort immediately if player reverted from Jo'on back to CJ
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 11@ = read_memory 30@ size 4 virtual_protect 0
+if
+    8039: not 11@ == 1
+then
+    03EB: clear_small_messages_only
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    13@ = 1
+    return
+end
+
+// Abort dialogue immediately if a mission starts
+if or
+    0038: $ONMISSION == 1
+    0E1D: is_on_mission
+then
+    03EB: clear_small_messages_only
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    13@ = 1
+    return
+end
+
+// Abort immediately if combat breaks out
+if or
+    0E47: is_char_fighting $PLAYER_ACTOR
+    02E0: actor $PLAYER_ACTOR firing_weapon
+then
+    03EB: clear_small_messages_only
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    13@ = 1
+    return
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+if
+    14@ > 2
+then
+    13@ = 1
+end
+return

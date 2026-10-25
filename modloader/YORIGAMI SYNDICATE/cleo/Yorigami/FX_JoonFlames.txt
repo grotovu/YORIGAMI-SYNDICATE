@@ -1,0 +1,544 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+script_name "Y_FXJ"
+
+wait 1000
+
+// =========================================================================
+// SKINNED HEAP CONSTANTS
+// =========================================================================
+const
+    MEM_PLAYER_FORM = 12
+    MEM_ALLOC_JOONBLING = 36
+    MEM_ALLOC_SMASHER = 40
+    MEM_DANMAKU_TOGGLE = 76
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    0039: 31@ == 0
+then
+    goto @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// --- MASTER ROTATION & WAVE CLOCKS (Floats) ---
+0@ = 0.0    // Cluster 1 Orbit Angle (0.0 to 360.0)
+1@ = 120.0  // Cluster 2 Orbit Angle (+120 deg)
+12@ = 240.0 // Cluster 3 Orbit Angle (+240 deg)
+16@ = 0.0   // Master S-Flutter Clock (0.0 to 360.0)
+
+10@ = 0.0   // Current Fade Multiplier (0.0 to 1.0)
+15@ = 0.0   // Target Fade Multiplier (0.0 to 1.0)
+
+TIMERB = 10000 // Combat Linger Timer (starts expired)
+
+:Main_Lp
+wait 0 // 0ms wait for 60 FPS tracking
+
+if or
+    8256: not player $PLAYER_CHAR defined
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+then
+    15@ = 0.0
+    10@ = 0.0
+    wait 250
+    goto @Main_Lp
+end
+
+// Check if Flame FX is enabled in INI
+0AF0: 17@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "EnableJoonFlames"
+if
+    8029: not 17@ >= 0
+then
+    17@ = 1
+end
+
+if
+    0039: 17@ == 0
+then
+    15@ = 0.0
+    10@ = 0.0
+    wait 250
+    goto @Main_Lp
+end
+
+// =========================================================================
+// STRICT JO'ON IDENTITY GATE (MUST BE JO'ON, NEVER CJ)
+// =========================================================================
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0 // Jo'on Active State (1 = Jo'on, 0 = CJ)
+0665: get_actor $PLAYER_ACTOR model_to 25@ // Live Player Model ID
+
+// Condition 1: Variable must be strictly 1
+// Condition 2: Model must be #SPECIAL01 (290), not CJ (#NULL / 0)
+if or
+    8039: not 27@ == 1
+    8039: not 25@ == 290
+then
+    15@ = 0.0
+    10@ = 0.0
+    TIMERB = 10000
+    wait 250
+    goto @Main_Lp
+end
+
+// =========================================================================
+// CONDITIONAL ACTIVATION ENGINE (With 3.5s Combat Linger Timer)
+// =========================================================================
+15@ = 0.0 // Default: Inactive
+
+// CONDITION A: MONEY DANMAKU IS TOGGLED ON!
+0085: 30@ = 31@
+000A: 30@ += MEM_DANMAKU_TOGGLE
+0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 27@ == 1
+then
+    15@ = 1.0
+end
+
+// CONDITION B: FIST COMBAT WITH BLING OR CAR SMASHER
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_JOONBLING
+0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0 // Alloc_JoonBling
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_SMASHER
+0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0 // Alloc_CarSmasher
+
+if or
+    0019: 28@ > 0
+    0019: 29@ > 0
+then
+    0470: 27@ = actor $PLAYER_ACTOR current_weapon
+    if or
+        0039: 27@ == 0 // Fists
+        0039: 27@ == 1 // Brass Knuckles
+    then
+        if or
+            0E47: is_char_fighting $PLAYER_ACTOR
+            0E8D: is_any_fire_button_pressed 0
+        then
+            TIMERB = 0 // Reset linger timer on every punch!
+        end
+    end
+end
+
+// CONDITION C: FLEX (Y + J) OR PESTILENCE FEVER (Y + C)
+if
+    0AB0: is_key_pressed 89 // Y Key held
+then
+    if or
+        0AB0: is_key_pressed 74 // J Key (Flex)
+        0AB0: is_key_pressed 67 // C Key (Fever)
+    then
+        TIMERB = 0 // Reset linger timer on skill cast!
+    end
+end
+
+// Linger check: Stay ignited for 3.5 seconds after last attack/skill
+if
+    0043: 15@ == 0.0
+then
+    if
+        001B: 3500 > TIMERB
+    then
+        15@ = 1.0
+    end
+end
+
+// Hide flames if inside an enclosed vehicle
+if
+    0449: actor $PLAYER_ACTOR in_a_car
+then
+    if
+        8E4A: not is_char_exiting_any_car $PLAYER_ACTOR
+    then
+        15@ = 0.0
+    end
+end
+
+// Read CTimer::ms_fTimeStep (float) and normalize to 30 FPS baseline
+0A8D: 8@ = read_memory 0xB7CB5C size 4 virtual_protect 0
+0013: 8@ *= 0.6
+
+// Smooth Alpha / Scale Interpolation scaled by framerate
+0087: 23@ = 8@
+0013: 23@ *= 0.08
+
+if
+    0025: 15@ > 10@
+then
+    005B: 10@ += 23@
+    if
+        0021: 10@ > 1.0
+    then
+        10@ = 1.0
+    end
+end
+
+0087: 23@ = 8@
+0013: 23@ *= 0.06
+
+if
+    0025: 10@ > 15@
+then
+    0063: 10@ -= 23@
+    if
+        0023: 0.0 > 10@
+    then
+        10@ = 0.0
+    end
+end
+
+// Sleep only when fully inactive and completely faded out
+if and
+    0043: 15@ == 0.0
+    0023: 0.01 > 10@
+then
+    10@ = 0.0
+    wait 50
+    goto @Main_Lp
+end
+
+// =========================================================================
+// ADVANCE CLOCKS & SCALED SIZES
+// =========================================================================
+0087: 23@ = 8@
+0013: 23@ *= 1.4
+005B: 0@ += 23@ // Orbit angle advance scaled by framerate
+if
+    0031: 0@ >= 360.0
+then
+    000F: 0@ -= 360.0
+end
+
+0087: 23@ = 8@
+0013: 23@ *= 5.5
+005B: 16@ += 23@ // S-flutter clock advance scaled by framerate
+if
+    0031: 16@ >= 360.0
+then
+    000F: 16@ -= 360.0
+end
+
+// Base Position
+00A0: store_actor $PLAYER_ACTOR position_to 2@ 3@ 4@
+000F: 4@ -= 0.05
+
+// Orbit radius: 0.62m to 0.70m
+02F7: 20@ = cosine 16@
+0013: 20@ *= 0.04
+0087: 19@ = 20@
+000B: 19@ += 0.66
+
+// S-flutter angle offset (+/- 1.8 deg)
+02F6: 18@ = sine 16@
+0013: 18@ *= 1.8
+
+// Scaled Radii (Fades in/out smoothly via 10@)
+0087: 11@ = 10@
+0013: 11@ *= 0.18 // Base
+
+0087: 13@ = 10@
+0013: 13@ *= 0.15 // Belly
+
+0087: 14@ = 10@
+0013: 14@ *= 0.11 // Neck
+
+0087: 9@ = 10@
+0013: 9@ *= 0.07 // Tip Radius
+
+0087: 26@ = 10@
+0013: 26@ *= 0.05 // Core
+
+// =========================================================================
+// CLUSTER 1: HIGH FLAME TONGUE (Reaches High to Drills / Top-Hat)
+// =========================================================================
+02F6: 22@ = sine 16@
+0013: 22@ *= 0.10
+000B: 22@ += 0.38
+
+// --- Orb 1: Base Anchor ---
+02F6: 20@ = sine 0@
+02F7: 21@ = cosine 0@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000F: 24@ -= 0.07
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 255 210 20
+
+// --- Orb 2: Belly (Sway Right) ---
+0087: 25@ = 0@
+005B: 25@ += 18@
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 255 225 25
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 255 255 220
+
+// --- Orb 3: Neck (Sway Left) ---
+0087: 25@ = 0@
+0063: 25@ -= 18@
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000B: 24@ += 0.07
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 255 235 30
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 255 255 220
+
+// --- Orb 4: Flickering Tip ---
+0087: 23@ = 18@
+0013: 23@ *= 1.4
+0087: 25@ = 0@
+005B: 25@ += 23@
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000B: 24@ += 0.14
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 9@ type 0 flare 0 RGB 255 245 50
+
+// =========================================================================
+// CLUSTER 2: MID FLAME TONGUE (Offset +120 deg, Torso Height)
+// =========================================================================
+0087: 1@ = 0@
+000B: 1@ += 120.0
+if
+    0031: 1@ >= 360.0
+then
+    000F: 1@ -= 360.0
+end
+
+0087: 25@ = 16@
+000B: 25@ += 120.0
+02F6: 22@ = sine 25@
+0013: 22@ *= 0.08
+000B: 22@ += 0.14
+
+// --- Orb 1: Base ---
+02F6: 20@ = sine 1@
+02F7: 21@ = cosine 1@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000F: 24@ -= 0.07
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 255 210 20
+
+// --- Orb 2: Belly ---
+0087: 25@ = 1@
+005B: 25@ += 18@
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 255 225 25
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 255 255 220
+
+// --- Orb 3: Neck ---
+0087: 25@ = 1@
+0063: 25@ -= 18@
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000B: 24@ += 0.07
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 255 235 30
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 255 255 220
+
+// --- Orb 4: Tip ---
+0087: 23@ = 18@
+0013: 23@ *= 1.4
+0087: 25@ = 1@
+005B: 25@ += 23@
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000B: 24@ += 0.14
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 9@ type 0 flare 0 RGB 255 245 50
+
+// =========================================================================
+// CLUSTER 3: LOW FLAME TONGUE (Offset +240 deg, Waist / Hip Height)
+// =========================================================================
+0087: 12@ = 0@
+000B: 12@ += 240.0
+if
+    0031: 12@ >= 360.0
+then
+    000F: 12@ -= 360.0
+end
+
+0087: 25@ = 16@
+000B: 25@ += 240.0
+02F6: 22@ = sine 25@
+0013: 22@ *= 0.08
+000F: 22@ -= 0.10
+
+// --- Orb 1: Base ---
+02F6: 20@ = sine 12@
+02F7: 21@ = cosine 12@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000F: 24@ -= 0.07
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 255 210 20
+
+// --- Orb 2: Belly ---
+0087: 25@ = 12@
+005B: 25@ += 18@
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 255 225 25
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 255 255 220
+
+// --- Orb 3: Neck ---
+0087: 25@ = 12@
+0063: 25@ -= 18@
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000B: 24@ += 0.07
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 255 235 30
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 255 255 220
+
+// --- Orb 4: Tip ---
+0087: 23@ = 18@
+0013: 23@ *= 1.4
+0087: 25@ = 12@
+005B: 25@ += 23@
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000B: 24@ += 0.14
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 9@ type 0 flare 0 RGB 255 245 50
+
+goto @Main_Lp

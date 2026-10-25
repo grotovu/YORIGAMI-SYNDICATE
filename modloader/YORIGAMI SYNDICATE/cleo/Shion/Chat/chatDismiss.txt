@@ -1,0 +1,312 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+03A4: script_name 'Sh_Dism'
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED FOR SH_DISM)
+// =========================================================================
+const
+    MEM_QUICK_DISM_LATCH = 16     // Formerly 737
+    MEM_PRIORITY_LOCK = 20        // Formerly 765
+end
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0 
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER SAFELY.
+
+// Check if Tier 4 is holding the channel
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    04B5: 16@ >= 4
+then
+    0A93: terminate_this_custom_script
+end
+
+// Preempt lower tiers and claim Tier 3 Action Lock!
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Zone'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Mny'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Idle'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Snip'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Int'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Veh'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Rad'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Sub'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Star'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Wthr'
+03EB: clear_small_messages_only
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 3 virtual_protect 0
+
+// 0@ = Shion Actor Handle passed from Entourage.c
+0085: 10@ = 0@
+
+0050: gosub @Check_Dismiss_Alive_Or_Exit
+
+// =========================================================================
+// EASTER EGG: QUICK DISMISSAL (Summoned via cheat & dismissed within 12s)
+// =========================================================================
+0085: 30@ = 31@
+000A: 30@ += MEM_QUICK_DISM_LATCH
+0A8D: 17@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 17@ == 1
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_QUICK_DISM_LATCH
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DSQA" text "~b~Shion: ~s~\"Wait... you called me five seconds ago. Did you summon me just to get rid of me?\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DSQA' time 3400 flag 1
+    0001: wait 3400 ms
+    0050: gosub @Check_Dismiss_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DSQB" text "~b~Shion: ~s~\"...Did you just miss having me around, sis?\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DSQB' time 3000 flag 1
+    0001: wait 3000 ms
+    0050: gosub @Check_Dismiss_Alive_Or_Exit
+
+    // hilariously you summon Shion by typing SHION so Jo'on had deliberately summoned her
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DSQC" text "~y~Jo'on: ~s~\"Like hell I missed you! I hit the wrong button, ya pest! Shove off and find a box!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DSQC' time 3700 flag 1
+    0001: wait 3700 ms
+    0002: jump @Finish_Dismiss_Chat
+end
+
+// Randomized Dismissal Exchanges
+0209: 29@ = random_int_in_ranges 0 6
+
+// =========================================================================
+// DISMISSAL: HIGH-ROLLER BUSINESS & DUMPSTER LUNCH
+// =========================================================================
+if
+    0039: 29@ == 0
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DS0A" text "~y~Jo'on: ~s~\"Get lost, Shion! I've got real money to fleece today and you're stinkin' up the curb!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DS0A' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Dismiss_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DS0B" text "~b~Shion: ~s~\"Alright, Jo'on... I'll go check the dumpster behind the pizza shop for lunch.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DS0B' time 3500 flag 1
+    0001: wait 3500 ms
+    0002: jump @Finish_Dismiss_Chat
+end
+
+// =========================================================================
+// DISMISSAL: POVERTY AURA & DESIGNER COAT
+// =========================================================================
+if
+    0039: 29@ == 1
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DS1A" text "~y~Jo'on: ~s~\"Shoo! Beat it! You're leakin' bad luck all over my designer coat! Go lay low!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DS1A' time 3400 flag 1
+    0001: wait 3400 ms
+    0050: gosub @Check_Dismiss_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DS1B" text "~b~Shion: ~s~\"Understood, sis... at least the alleyway doesn't yell at my hoodie for existing.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DS1B' time 3400 flag 1
+    0001: wait 3400 ms
+    0002: jump @Finish_Dismiss_Chat
+end
+
+// =========================================================================
+// DISMISSAL: POLICE HEAT & OUT-OF-SIGHT BANKRUPTCY
+// =========================================================================
+if
+    0039: 29@ == 2
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DS2A" text "~y~Jo'on: ~s~\"Split up, Shion! You're jinxin' my luck and pullin' every squad car in the city to my bumper!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DS2A' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Dismiss_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DS2B" text "~b~Shion: ~s~\"Right away, Jo'on... try not to go bankrupt while I'm not looking, okay?\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DS2B' time 3500 flag 1
+    0001: wait 3500 ms
+    0002: jump @Finish_Dismiss_Chat
+end
+
+// =========================================================================
+// DISMISSAL: QUIET CORNERS & DRY CRUSTS
+// =========================================================================
+if
+    0039: 29@ == 3
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DS3A" text "~y~Jo'on: ~s~\"Scram! Go find a quiet corner and don't move until I come lookin' for ya!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DS3A' time 3400 flag 1
+    0001: wait 3400 ms
+    0050: gosub @Check_Dismiss_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DS3B" text "~b~Shion: ~s~\"Okay, sis... I'll just sit on some cardboard and count dry bread crusts.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DS3B' time 3300 flag 1
+    0001: wait 3300 ms
+    0002: jump @Finish_Dismiss_Chat
+end
+
+// =========================================================================
+// DISMISSAL: IMPULSIVE SPENDING HABITS
+// =========================================================================
+if
+    0039: 29@ == 4
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DS4A" text "~y~Jo'on: ~s~\"Go lay low for a bit! Every second you're standin' next to me, my wallet feels lighter!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DS4A' time 3500 flag 1
+    0001: wait 3500 ms
+    0050: gosub @Check_Dismiss_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DS4B" text "~b~Shion: ~s~\"You blow all your cash anyway, Jo'on... but fine, I'll go wait by the bench.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DS4B' time 3600 flag 1
+    0001: wait 3600 ms
+    0002: jump @Finish_Dismiss_Chat
+end
+
+// =========================================================================
+// DISMISSAL: BEGGAR'S CUP & MEAT SHIELD RETIREMENT
+// =========================================================================
+if
+    0039: 29@ == 5
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DS5A" text "~y~Jo'on: ~s~\"Beat it for now! I'm closin' VIP deals, and you look like a soggy phantom hauntin' my sidewalk!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DS5A' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Dismiss_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DS5B" text "~b~Shion: ~s~\"Fine, fine... I'll go hold out my cup until you need your meat shield again.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DS5B' time 3600 flag 1
+    0001: wait 3600 ms
+    0002: jump @Finish_Dismiss_Chat
+end
+
+:Finish_Dismiss_Chat
+018C: play_sound 1057 at 0.0 0.0 0.0
+0ADF: add_text_label "Y_SDISM" text "~y~SHION DISMISSED~n~~w~WAITING AT HANGOUT SPOT"
+00BA: show_text_styled GXT 'Y_SDISM' time 2500 style 5
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 16@ == 3
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0 // Cleanly release Tier 3 lock without stomping higher tiers
+end
+0A93: terminate_this_custom_script
+
+// =========================================================================
+// SUBROUTINE: SAFETY BAILOUT
+// =========================================================================
+:Check_Dismiss_Alive_Or_Exit
+if or
+    8256: not player $PLAYER_CHAR defined
+    8019: not 10@ > 0
+    0E25: is_on_cutscene
+    0EB7: is_on_scripted_cutscene
+then
+    0050: gosub @Release_Tier3_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+if or
+    0118: actor $PLAYER_ACTOR dead
+    0741: actor $PLAYER_ACTOR busted
+then
+    0050: gosub @Release_Tier3_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+if
+    856D: not actor 10@ defined
+then
+    0050: gosub @Release_Tier3_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+if
+    0118: actor 10@ dead
+then
+    0050: gosub @Release_Tier3_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+0051: return
+
+:Release_Tier3_Lock_Safely
+03EB: clear_small_messages_only
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 16@ == 3
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+0051: return

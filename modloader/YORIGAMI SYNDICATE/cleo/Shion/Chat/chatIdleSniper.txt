@@ -1,0 +1,474 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+
+script_name "Sh_Snip"
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED)
+// =========================================================================
+const
+    MEM_PRIORITY_LOCK = 20        // Formerly 765
+    MEM_SHION_HANDLE = 116        // Formerly 703
+end
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// 0@ = Shion Actor Handle passed from ShionChat.c
+0085: 10@ = 0@
+
+if
+    8019: not 10@ > 0
+then
+    0002: jump @Finalize_Ambient_Chat
+end
+
+if
+    856D: not actor 10@ defined
+then
+    0002: jump @Finalize_Ambient_Chat
+end
+
+0050: gosub @Check_Alive_Or_Exit
+
+// Strict outdoor check: redirect to indoor-safe idle chat instead of dropping the conversation
+077E: get_active_interior_to 28@
+if
+    28@ > 0
+then
+    0A92: create_custom_thread "Shion\Chat\chatIdle.c" 10@
+    0A93: terminate_this_custom_script
+end
+
+// Strict on-foot only guard
+if
+    00DF: actor $PLAYER_ACTOR driving
+then
+    0002: jump @Finalize_Ambient_Chat
+end
+
+0470: 25@ = actor 10@ current_weapon
+
+// Fallback if somehow unarmed
+if
+    25@ <= 1
+then
+    0A92: create_custom_thread "Shion\Chat\chatIdle.c" 10@
+    0A93: terminate_this_custom_script
+end
+
+// All fallback checks passed: Check channel and claim Tier 2 Ambient Lock!
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    16@ >= 3
+then
+    0A93: terminate_this_custom_script
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+
+// =========================================================================
+// HEAVY ORDNANCE & MINIGUN (IDs 35, 36, 38)
+// =========================================================================
+if or
+    0039: 25@ == 35 // Rocket Launcher ($300/rocket)
+    0039: 25@ == 36 // Heatseeker ($400/rocket)
+    0039: 25@ == 38 // Minigun ($7/bullet, thousands per burst)
+then
+    0209: 27@ = random_int_in_ranges 0 2
+
+    // Variant 0: Capitalist Danmaku
+    if
+        0039: 27@ == 0
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_HV0A" text "~y~Jo'on: ~s~\"A ten-thousand-dollar minigun! AHAHAHA! This is what real Danmaku looks like out here, Shion!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HV0A' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_HV0B" text "~y~Jo'on: ~s~\"Forget spiritual energy! We're literally blastin' piles of cash at these broke chumps! Keep firin'!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HV0B' time 3800 flag 1
+        0001: wait 3800 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_HV0C" text "~b~Shion: ~s~\"Sis, that three-second burst cost more than all the food I've eaten this whole year...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HV0C' time 3500 flag 1
+        0001: wait 3500 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    // Variant 1: Rocket Launcher Fireworks
+    if
+        0039: 27@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_HV1A" text "~y~Jo'on: ~s~\"Four hundred bucks every time you pull the trigger! That's how the Yorigami do fireworks!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HV1A' time 3500 flag 1
+        0001: wait 3500 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_HV1B" text "~b~Shion: ~s~\"The backblast singed my skirt, Jo'on... watching that much money vanish into thin air hurts.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HV1B' time 3700 flag 1
+        0001: wait 3700 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// SHOTGUNS & SPAS-12 (IDs 25, 26, 27)
+// =========================================================================
+if or
+    0039: 25@ == 25 // Chrome Shotgun ($40/shell)
+    0039: 25@ == 26 // Sawn-off ($67/shell)
+    0039: 25@ == 27 // Combat Shotgun ($100/shell)
+then
+    0209: 27@ = random_int_in_ranges 0 2
+
+    // Variant 0: Heavy Blast
+    if
+        0039: 27@ == 0
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SG0A" text "~y~Jo'on: ~s~\"Listen to that bang! That's the sound of real money blowin' people away!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SG0A' time 3400 flag 1
+        0001: wait 3400 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SG0B" text "~b~Shion: ~s~\"The kick's rattling my ribs, and the price of the ammo's rattling my heart, Jo'on...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SG0B' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    // Variant 1: Sawn-off Breech Loading
+    if
+        0039: 27@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SG1A" text "~b~Shion: ~s~\"I'm loading them as fast as I can, sis... but each pair of shells is another lunch wasted.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SG1A' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SG1B" text "~y~Jo'on: ~s~\"Just rack it and shoot! Nothin' clears out broke scrubs like heavy buckshot!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SG1B' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// SNIPER RIFLE (ID 34 - The Canon $500/Shot Flex)
+// =========================================================================
+if
+    0039: 25@ == 34
+then
+    0209: 27@ = random_int_in_ranges 0 4
+
+    // Variant 0: The Iconic $500/Shot Reality
+    if
+        0039: 27@ == 0
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SN0A" text "~b~Shion: ~s~\"Why do you keep handing me this scoped rifle, Jo'on?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SN0A' time 3200 flag 1
+        0001: wait 3200 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SN0B" text "~y~Jo'on: ~s~\"'Cause it's expensive! Five hundred bucks a pop! That's how they know who's boss!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SN0B' time 3500 flag 1
+        0001: wait 3500 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    // Variant 1: Two Tons of Rice vs. Luxury Caliber
+    if
+        0039: 27@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SN1A" text "~b~Shion: ~s~\"Are you sure about this, sis? Five hundred dollars could buy two tons of white rice...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SN1A' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SN1B" text "~y~Jo'on: ~s~\"Who cares about rice?! Whoever takes that bullet is gettin' put down in style! Line it up!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SN1B' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    // Variant 2: Looking Through the High-Powered Optic
+    if
+        0039: 27@ == 2
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SN2A" text "~y~Jo'on: ~s~\"Look through that scope, Shion! Clock someone loaded so we can shake 'em down!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SN2A' time 3500 flag 1
+        0001: wait 3500 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SN2B" text "~b~Shion: ~s~\"All I see are pigeons and debt collectors looking through binoculars, Jo'on...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SN2B' time 3500 flag 1
+        0001: wait 3500 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    // Variant 3: Rumbling Stomach Behind the Scope
+    if
+        0039: 27@ == 3
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SN3A" text "~b~Shion: ~s~\"Even holding this five-thousand-dollar rifle, my stomach's rumbling, sis...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SN3A' time 3500 flag 1
+        0001: wait 3500 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SN3B" text "~y~Jo'on: ~s~\"Quit whinin' about your gut! We're clockin' serious cash today, so rack another round!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SN3B' time 3500 flag 1
+        0001: wait 3500 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// CHEAP WEAPONS: 9MM & TEC-9 (IDs 22, 28, 32)
+// =========================================================================
+if or
+    0039: 25@ == 22 // 9mm ($7/bullet)
+    0039: 25@ == 28 // Micro Uzi ($8/bullet)
+    0039: 25@ == 32 // Tec-9 ($5/bullet)
+then
+    0209: 27@ = random_int_in_ranges 0 2
+
+    // Variant 0: Peasant Peashooter Disgust
+    if
+        0039: 27@ == 0
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_CP0A" text "~y~Jo'on: ~s~\"Five bucks a pop?! Shion, what's this cheap garbage you're holdin'?! Put that peashooter away!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CP0A' time 3500 flag 1
+        0001: wait 3500 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_CP0B" text "~b~Shion: ~s~\"Five dollars is a lot of money to me, Jo'on... please don't insult my peashooter.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CP0B' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    // Variant 1: Rusted Slide & Street Hood Aesthetics
+    if
+        0039: 27@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_CP1A" text "~y~Jo'on: ~s~\"You look like a two-bit thug holdin' that rusted slide! Where's the gold plating?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CP1A' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_CP1B" text "~b~Shion: ~s~\"Chrome costs extra at Ammu-Nation, sis... this black finish shoots just fine.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CP1B' time 3500 flag 1
+        0001: wait 3500 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// ASSAULT RIFLES, DEAGLE & SMGS (M4, AK-47, MP5, Deagle, Rifle - IDs 24, 29, 30, 31, 33)
+// =========================================================================
+if or
+    0039: 25@ == 24 // Desert Eagle ($140/magazine)
+    0039: 25@ == 29 // MP5
+    0039: 25@ == 30 // AK-47
+    0039: 25@ == 31 // M4
+    0039: 25@ == 33 // Country Rifle
+then
+    0209: 27@ = random_int_in_ranges 0 2
+
+    // Variant 0: Thirty Dollars Every Pop
+    if
+        0039: 27@ == 0
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_AR0A" text "~y~Jo'on: ~s~\"AHAHAHA! Thirty bucks every pop! Spray down the whole damn block, Shion!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_AR0A' time 3400 flag 1
+        0001: wait 3400 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_AR0B" text "~b~Shion: ~s~\"I'm firing as gently as I can, Jo'on... our wallet's screaming with every trigger pull!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_AR0B' time 3700 flag 1
+        0001: wait 3700 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    // Variant 1: Burst Fire vs. High-Roller Spray
+    if
+        0039: 27@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_AR1A" text "~b~Shion: ~s~\"I'm only firing in short bursts, Jo'on! That's still ninety dollars every trigger pull!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_AR1A' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_AR1B" text "~y~Jo'on: ~s~\"Stop countin' pennies like a cheapskate! Hold down the trigger and bury 'em in lead!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_AR1B' time 3700 flag 1
+        0001: wait 3700 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+end
+
+// Fallback: If weapon is unhandled or melee, cleanly release Tier 2 lock before delegating
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0A92: create_custom_thread "Shion\Chat\chatIdle.c" 10@
+0A93: terminate_this_custom_script
+
+// =========================================================================
+// SUBROUTINE: SAFETY BAILOUT
+// =========================================================================
+:Check_Alive_Or_Exit
+if or
+    8256: not player $PLAYER_CHAR defined
+    0E25: is_on_cutscene
+    0EB7: is_on_scripted_cutscene
+then
+    03EB: clear_small_messages_only
+    0050: gosub @Release_Tier2_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+if or
+    0118: actor $PLAYER_ACTOR dead
+    0741: actor $PLAYER_ACTOR busted
+then
+    03EB: clear_small_messages_only
+    0050: gosub @Release_Tier2_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+// Verify Shion handle and distance (stay within 30m)
+if or
+    8019: not 10@ > 0
+    856D: not actor 10@ defined
+then
+    03EB: clear_small_messages_only
+    0050: gosub @Release_Tier2_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+if or
+    0118: actor 10@ dead
+    8EE4: not locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 30.0
+then
+    03EB: clear_small_messages_only
+    0050: gosub @Release_Tier2_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+0051: return
+
+:Release_Tier2_Lock_Safely
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 19@ == 2
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+0051: return
+
+:Finalize_Ambient_Chat
+03EB: clear_small_messages_only
+0050: gosub @Release_Tier2_Lock_Safely
+0A93: terminate_this_custom_script

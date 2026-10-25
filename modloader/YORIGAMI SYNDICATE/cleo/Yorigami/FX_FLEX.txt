@@ -1,0 +1,96 @@
+{$CLEO .c}
+{$USE memory}
+{$USE CLEO+}
+
+0000: NOP
+script_name "Y_FXF"
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    0A93: terminate_this_custom_script
+end
+
+// --- WAVE 1: Initial Central Burst & Front-Right / Rear-Left Sparks ---
+04C4: store_coords_to 0@ 1@ 2@ from_actor $PLAYER_ACTOR with_offset 0.0 0.2 0.3
+064B: 10@ = create_particle "explosion_tiny" at 0@ 1@ 2@ type 1
+064C: make_particle 10@ visible
+064F: remove_references_to_particle 10@
+
+04D5: create_corona_at 0@ 1@ 2@ radius 1.2 type 0 flare 0 RGB 255 220 50
+
+04C4: store_coords_to 0@ 1@ 2@ from_actor $PLAYER_ACTOR with_offset 0.55 0.45 0.25
+064B: 10@ = create_particle "joon_gold" at 0@ 1@ 2@ type 1
+064C: make_particle 10@ visible
+064F: remove_references_to_particle 10@
+
+04C4: store_coords_to 0@ 1@ 2@ from_actor $PLAYER_ACTOR with_offset -0.55 -0.35 0.35
+064B: 10@ = create_particle "joon_gold" at 0@ 1@ 2@ type 1
+064C: make_particle 10@ visible
+064F: remove_references_to_particle 10@
+
+wait 50
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    0A93: terminate_this_custom_script
+end
+
+// --- WAVE 2: Front-Left & Rear-Right Surrounding Sparks ---
+04C4: store_coords_to 0@ 1@ 2@ from_actor $PLAYER_ACTOR with_offset -0.55 0.45 0.25
+064B: 10@ = create_particle "joon_gold" at 0@ 1@ 2@ type 1
+064C: make_particle 10@ visible
+064F: remove_references_to_particle 10@
+
+04C4: store_coords_to 0@ 1@ 2@ from_actor $PLAYER_ACTOR with_offset 0.55 -0.35 0.35
+064B: 10@ = create_particle "joon_gold" at 0@ 1@ 2@ type 1
+064C: make_particle 10@ visible
+064F: remove_references_to_particle 10@
+
+04C4: store_coords_to 0@ 1@ 2@ from_actor $PLAYER_ACTOR with_offset 0.0 0.3 0.5
+04D5: create_corona_at 0@ 1@ 2@ radius 0.8 type 0 flare 0 RGB 255 240 100
+
+wait 60
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    0A93: terminate_this_custom_script
+end
+
+// --- WAVE 3: Crown Overhead & Forward Spark Cascade ---
+04C4: store_coords_to 0@ 1@ 2@ from_actor $PLAYER_ACTOR with_offset 0.0 0.1 0.85
+064B: 10@ = create_particle "joon_gold" at 0@ 1@ 2@ type 1
+064C: make_particle 10@ visible
+064F: remove_references_to_particle 10@
+
+04C4: store_coords_to 0@ 1@ 2@ from_actor $PLAYER_ACTOR with_offset 0.0 0.65 -0.1
+064B: 10@ = create_particle "joon_gold" at 0@ 1@ 2@ type 1
+064C: make_particle 10@ visible
+064F: remove_references_to_particle 10@
+
+wait 60
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    0A93: terminate_this_custom_script
+end
+
+// --- WAVE 4: Wide Lateral Flank Sparks ---
+04C4: store_coords_to 0@ 1@ 2@ from_actor $PLAYER_ACTOR with_offset 0.7 0.0 0.4
+064B: 10@ = create_particle "joon_gold" at 0@ 1@ 2@ type 1
+064C: make_particle 10@ visible
+064F: remove_references_to_particle 10@
+
+04C4: store_coords_to 0@ 1@ 2@ from_actor $PLAYER_ACTOR with_offset -0.7 0.0 0.4
+064B: 10@ = create_particle "joon_gold" at 0@ 1@ 2@ type 1
+064C: make_particle 10@ visible
+064F: remove_references_to_particle 10@
+
+if
+    8EC1: not is_fx_system_available_with_name "joon_gold"
+then
+    0ACD: print_string_now "~r~Error: joon_gold particle not loaded by EffectLoader!" 3000
+    0A93: terminate_this_custom_script
+end
+
+0A93: terminate_this_custom_script

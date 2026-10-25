@@ -1,0 +1,246 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+
+script_name "Sh_Dnmk"
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED)
+// =========================================================================
+const
+    MEM_PRIORITY_LOCK = 20
+    MEM_SHION_HANDLE = 116
+end
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+
+// 0@ = Shion Actor Handle passed from Danmaku.c
+0085: 10@ = 0@
+
+if
+    8019: not 10@ > 0
+then
+    0002: jump @Finalize_Ambient_Chat
+end
+
+if
+    856D: not actor 10@ defined
+then
+    0002: jump @Finalize_Ambient_Chat
+end
+
+0050: gosub @Check_Alive_Or_Exit
+
+// -------------------------------------------------------------------------
+// 30% CHANCE GATE (0 to 29 = Trigger, 30 to 99 = Silent Activation)
+// -------------------------------------------------------------------------
+0209: 22@ = random_int_in_ranges 0 100
+if
+    22@ >= 30
+then
+    0A93: terminate_this_custom_script
+end
+
+// Claim Tier 2 Ambient Lock (Terminate if busy or blocked)
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    16@ >= 2
+then
+    0A93: terminate_this_custom_script
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+
+// =========================================================================
+// ACTIVATION BANTER VARIANTS
+// =========================================================================
+0209: 27@ = random_int_in_ranges 0 4
+
+// Variant 0: Gold-Plated Bullets
+if
+    0039: 27@ == 0
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DK0A" text "~y~Jo'on: ~s~\"AHAHAHA! Gold-plated bullets, baby! Time to show these broke chumps how the rich fight!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DK0A' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DK0B" text "~b~Shion: ~s~\"You're literally shooting dollar bills out of a barrel, Jo'on... I feel sick.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DK0B' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DK0C" text "~y~Jo'on: ~s~\"Shut up and watch 'em drop! Flashin' cash is how you command respect!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DK0C' time 3500 flag 1
+    0001: wait 3500 ms
+    0002: jump @Finalize_Ambient_Chat
+end
+
+// Variant 1: Burning Food Money
+if
+    0039: 27@ == 1
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DK1A" text "~b~Shion: ~s~\"Are we really gonna burn our cash on ammo? We haven't even had breakfast yet...\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DK1A' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DK1B" text "~y~Jo'on: ~s~\"Quit your whinin'! Once we blow 'em away, their wallets are ours! It's an investment!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DK1B' time 3800 flag 1
+    0001: wait 3800 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DK1C" text "~b~Shion: ~s~\"You always call losing money an investment, sis...\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DK1C' time 3200 flag 1
+    0001: wait 3200 ms
+    0002: jump @Finalize_Ambient_Chat
+end
+
+// Variant 2: The Sound of High Society
+if
+    0039: 27@ == 2
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DK2A" text "~y~Jo'on: ~s~\"Every pull of the trigger screams high society! That's the Yorigami golden touch!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DK2A' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DK2B" text "~b~Shion: ~s~\"All I hear is the sound of our wallet getting completely drained...\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DK2B' time 3500 flag 1
+    0001: wait 3500 ms
+    0002: jump @Finalize_Ambient_Chat
+end
+
+// Variant 3: Bankrupt Bargain
+if
+    0039: 27@ == 3
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DK3A" text "~y~Jo'on: ~s~\"AHAHAHA! Load up the gold, Shion! We're blowin' stacks on every single trigger pull!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DK3A' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DK3B" text "~b~Shion: ~s~\"If we go bankrupt because you wanted to look cool, you're buying me three lunches.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DK3B' time 3800 flag 1
+    0001: wait 3800 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_DK3C" text "~y~Jo'on: ~s~\"Deal! Now keep your eyes open and let's rack up the body count!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_DK3C' time 3500 flag 1
+    0001: wait 3500 ms
+    0002: jump @Finalize_Ambient_Chat
+end
+
+// =========================================================================
+// SUBROUTINE: SAFETY BAILOUT
+// =========================================================================
+:Check_Alive_Or_Exit
+if or
+    8256: not player $PLAYER_CHAR defined
+    0E25: is_on_cutscene
+    0EB7: is_on_scripted_cutscene
+then
+    03EB: clear_small_messages_only
+    0050: gosub @Release_Tier2_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+if or
+    0118: actor $PLAYER_ACTOR dead
+    0741: actor $PLAYER_ACTOR busted
+then
+    03EB: clear_small_messages_only
+    0050: gosub @Release_Tier2_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+if or
+    8019: not 10@ > 0
+    856D: not actor 10@ defined
+then
+    03EB: clear_small_messages_only
+    0050: gosub @Release_Tier2_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+if or
+    0118: actor 10@ dead
+    8EE4: not locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 30.0
+then
+    03EB: clear_small_messages_only
+    0050: gosub @Release_Tier2_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+0051: return
+
+:Release_Tier2_Lock_Safely
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 19@ == 2
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+0051: return
+
+:Finalize_Ambient_Chat
+03EB: clear_small_messages_only
+0050: gosub @Release_Tier2_Lock_Safely
+0A93: terminate_this_custom_script

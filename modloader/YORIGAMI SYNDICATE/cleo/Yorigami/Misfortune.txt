@@ -1,0 +1,479 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+script_name "Y_Misfortune"
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (SCOPED TO Y_MISFORTUNE)
+// =========================================================================
+const
+    MEM_SAVE_SLOT = 0             // Formerly 700
+    MEM_ALLOC_RESONANCE = 80      // Formerly 750
+    MEM_ALLOC_MISFORTUNE = 88     // Formerly 752
+    MEM_SHION_HANDLE = 116        // Formerly 703
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+1@ = -999
+TIMERA = 0
+6@ = 0  // Shion 1-Star Timer Active
+7@ = 0  // Shion 1-Star Elapsed (ms)
+14@ = 0 // Audio Limiter Flag
+
+:YMisfortune_StartupWait
+wait 250
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @YMisfortune_StartupWait
+end
+
+:YMisfortune_Loop
+wait 100
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @YMisfortune_Loop
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
+// Check if Save Slot Changed
+0085: 30@ = 31@
+000A: 30@ += MEM_SAVE_SLOT
+0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+if
+    803B: not 0@ == 1@
+then
+    gosub @YMisfortune_ReloadSettings
+end
+
+// Read Live Allocated Perks from Shared Memory
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_RESONANCE
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0 // Alloc_ShionResonance
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_MISFORTUNE
+0A8D: 12@ = read_memory 30@ size 4 virtual_protect 0 // Alloc_MisfortuneAura
+
+// Calculate Stumble Chance: Alloc_MisfortuneAura * ChancePerPoint (Strict 006A)
+006A: 12@ *= 10@
+
+// Soft Cap clamp against MaxBadLuckPercent
+if
+    001D: 12@ > 11@
+then
+    0085: 12@ = 11@
+end
+
+// -------------------------------------------------------------------------
+// SHION RESONANCE (Active if Alloc_ShionResonance >= RequiredUnlockPoints)
+// -------------------------------------------------------------------------
+if
+    002D: 2@ >= 15@   // Alloc_ShionResonance >= RequiredUnlockPoints (5)
+then
+    010B: 26@ = player $PLAYER_CHAR money
+    01C0: 27@ = player $PLAYER_CHAR wanted_level
+    if and
+        26@ <= 0
+        27@ == 1
+        80DF: not actor $PLAYER_ACTOR driving
+    then
+        if
+            6@ == 0
+        then
+            6@ = 1
+            7@ = 0
+        else
+            000A: 7@ += 100
+            if
+                7@ >= 6000
+            then
+                0110: clear_player $PLAYER_CHAR wanted_level
+                6@ = 0
+                7@ = 0
+                if
+                    4@ == 1
+                then
+                    018C: play_sound 1057 at 0.0 0.0 0.0
+                end
+                if
+                    5@ == 1
+                then
+                    0ADF: add_text_label "Y_SRES" text "~r~SHION RESONANCE~n~~w~TOO BROKE TO PURSUE"
+                    00BA: show_text_styled GXT 'Y_SRES' time 2500 style 5
+                end
+            end
+        end
+    else
+        6@ = 0
+        7@ = 0
+    end
+else
+    6@ = 0
+    7@ = 0
+end
+
+// -------------------------------------------------------------------------
+// SHION'S MISFORTUNE AURA (Active if Alloc_MisfortuneAura > 0)
+// -------------------------------------------------------------------------
+if and
+    12@ > 0        // Misfortune chance > 0%
+    TIMERA > 1000  // Check every 1 second
+then
+    TIMERA = 0
+    14@ = 0
+    04C4: store_coords_to 21@ 22@ 23@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.0
+    24@ = 0
+
+    :Misfortune_Scan_Loop
+    0AE1: 29@ = random_char_near_point 21@ 22@ 23@ in_radius 25.0 find_next 24@ pass_deads 1
+    if
+        29@ > 0
+    then
+        24@ = 1
+        gosub @Check_Misfortune_Target
+        goto @Misfortune_Scan_Loop
+    end
+end
+
+goto @YMisfortune_Loop
+
+
+// =========================================================================
+// SUBROUTINES
+// =========================================================================
+
+:YMisfortune_ReloadSettings
+0085: 1@ = 0@
+
+0AF0: 4@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionResonance" key "PlayBrokeSound"
+if
+    4@ <= -1
+then
+    4@ = 1
+end
+
+0AF0: 5@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionResonance" key "ShowBrokeMessage"
+if
+    5@ <= -1
+then
+    5@ = 1
+end
+
+0AF0: 15@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionResonance" key "RequiredUnlockPoints"
+if
+    15@ <= 0
+then
+    15@ = 5
+end
+
+0AF0: 9@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionMisfortune" key "EnableGunJams"
+if
+    9@ <= -1
+then
+    9@ = 1
+end
+
+0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionMisfortune" key "ChancePerPoint"
+if
+    10@ <= 0
+then
+    10@ = 1
+end
+
+0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionMisfortune" key "MaxBadLuckPercent"
+if
+    11@ <= 0
+then
+    11@ = 20
+end
+
+0AF0: 13@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionMisfortune" key "PlayJamSound"
+if
+    13@ <= -1
+then
+    13@ = 1
+end
+return
+
+:Check_Misfortune_Target
+if
+    29@ <= 0
+then
+    return
+end
+
+if
+    856D: not actor 29@ defined
+then
+    return
+end
+
+if
+    0118: actor 29@ dead
+then
+    return
+end
+
+if
+    07D6: 29@ == $PLAYER_ACTOR
+then
+    return
+end
+
+// Shion companion handle and model 299 immunity
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+if
+    003B: 29@ == 27@
+then
+    return
+end
+
+0665: get_actor 29@ model_to 28@
+if
+    28@ == 299
+then
+    return
+end
+
+// Entourage group protection
+07AF: 27@ = player $PLAYER_CHAR group
+if
+    06EE: actor 29@ in_group 27@
+then
+    return
+end
+
+// Must be strictly on foot (No vehicle passenger animation glitches!)
+if
+    0449: actor 29@ in_a_car
+then
+    return
+end
+
+// Prevent disembark engine crash! Do not interrupt peds entering/exiting vehicles!
+if or
+    0E49: is_char_entering_any_car 29@
+    0E4A: is_char_exiting_any_car 29@
+then
+    return
+end
+
+if
+    0818: actor 29@ in_air
+then
+    return
+end
+
+if
+    0E48: is_char_fallen_on_ground 29@
+then
+    return
+end
+
+16@ = 0 // Hostile Flag
+
+// Check 1: Firing or actively fighting
+if
+    02E0: actor 29@ firing_weapon
+then
+    16@ = 1
+end
+
+if and
+    16@ == 0
+    0E47: is_char_fighting 29@
+then
+    16@ = 1
+end
+
+// Check 2: Direct combat damage exchange with player
+if
+    16@ == 0
+then
+    if or
+        051A: actor $PLAYER_ACTOR damaged_by_actor 29@
+        051A: actor 29@ damaged_by_actor $PLAYER_ACTOR
+    then
+        16@ = 1
+    end
+end
+
+// Check 3: Active Police Pursuit (PedType 6)
+if
+    16@ == 0
+then
+    01C0: 27@ = player $PLAYER_CHAR wanted_level
+    if
+        27@ > 0
+    then
+        089F: get_actor 29@ pedtype_to 28@
+        if
+            28@ == 6
+        then
+            16@ = 1
+        end
+    end
+end
+
+// Check 4: Armed Rival Gangs (PedTypes 7..16, excluding Grove 8)
+if
+    16@ == 0
+then
+    089F: get_actor 29@ pedtype_to 28@
+    if and
+        28@ >= 7
+        28@ <= 16
+        8039: not 28@ == 8
+    then
+        0470: 27@ = actor 29@ current_weapon
+        if
+            27@ > 1
+        then
+            if
+                0A03: unknown_gang_war_in_progress
+            then
+                16@ = 1
+            end
+
+            if
+                16@ == 0
+            then
+                if
+                    0AD2: 25@ = player $PLAYER_CHAR targeted_actor
+                then
+                    if
+                        003B: 25@ == 29@
+                    then
+                        16@ = 1
+                    end
+                end
+            end
+        end
+    end
+end
+
+// =========================================================================
+// EXECUTE STUMBLE / GUN JAM OUTCOME
+// =========================================================================
+if
+    16@ == 1
+then
+    0209: 25@ = random_int_in_ranges 1 101
+    if
+        002D: 12@ >= 25@
+    then
+        if and
+            8611: not actor 29@ performing_animation "KO_SKID_BACK"
+            8611: not actor 29@ performing_animation "KO_SKID_FRONT"
+            8611: not actor 29@ performing_animation "KO_SPIN_L"
+            8611: not actor 29@ performing_animation "KO_SPIN_R"
+        then
+            if and
+                8611: not actor 29@ performing_animation "GETUP"
+                8611: not actor 29@ performing_animation "GETUP_FRONT"
+                8611: not actor 29@ performing_animation "HANDS_COWER"
+                8611: not actor 29@ performing_animation "DUCK_COWER"
+            then
+                0470: 27@ = actor 29@ current_weapon
+                26@ = 0
+                if and
+                    27@ > 1
+                    9@ == 1 // EnableGunJams setting
+                then
+                    0209: 26@ = random_int_in_ranges 0 2
+                end
+
+                // Attach Single Blue Hitodama Curse Flame above victim's head!
+                0A92: create_custom_thread "Yorigami\FX_HexFlame.c" 29@ 2600
+
+                if
+                    26@ == 1
+                then
+                    // Gun Jam Outcome: Cower in Panic
+                    0687: clear_actor 29@ task
+                    05C5: AS_actor 29@ cower 2500 ms
+                    if and
+                        13@ == 1
+                        14@ == 0
+                    then
+                        018C: play_sound 1057 at 0.0 0.0 0.0
+                        14@ = 1
+                    end
+                else
+                    // Physical Stumble & Knockdown Outcome
+                    0687: clear_actor 29@ task
+                    0851: set_actor 29@ decrease_health_by 1 affect_armour 0
+
+                    0209: 25@ = random_int_in_ranges 0 4
+
+                    if
+                        25@ == 0
+                    then
+                        0615: define_AS_pack_begin 17@
+                        0605: actor -1 perform_animation "KO_SKID_FRONT" IFP "PED" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 1 time 1500
+                        0605: actor -1 perform_animation "GETUP_FRONT" IFP "PED" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time -1
+                        0616: define_AS_pack_end 17@
+                        0618: assign_actor 29@ to_AS_pack 17@
+                        061B: remove_references_to_AS_pack 17@
+                    end
+
+                    if
+                        25@ == 1
+                    then
+                        0615: define_AS_pack_begin 17@
+                        0605: actor -1 perform_animation "KO_SKID_BACK" IFP "PED" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 1 time 1500
+                        0605: actor -1 perform_animation "GETUP" IFP "PED" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time -1
+                        0616: define_AS_pack_end 17@
+                        0618: assign_actor 29@ to_AS_pack 17@
+                        061B: remove_references_to_AS_pack 17@
+                    end
+
+                    if
+                        25@ == 2
+                    then
+                        0615: define_AS_pack_begin 17@
+                        0605: actor -1 perform_animation "KO_SPIN_L" IFP "PED" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 1 time 1500
+                        0605: actor -1 perform_animation "GETUP" IFP "PED" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time -1
+                        0616: define_AS_pack_end 17@
+                        0618: assign_actor 29@ to_AS_pack 17@
+                        061B: remove_references_to_AS_pack 17@
+                    end
+
+                    if
+                        25@ == 3
+                    then
+                        0615: define_AS_pack_begin 17@
+                        0605: actor -1 perform_animation "KO_SPIN_R" IFP "PED" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 1 time 1500
+                        0605: actor -1 perform_animation "GETUP" IFP "PED" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time -1
+                        0616: define_AS_pack_end 17@
+                        0618: assign_actor 29@ to_AS_pack 17@
+                        061B: remove_references_to_AS_pack 17@
+                    end
+                end
+            end
+        end
+    end
+end
+return

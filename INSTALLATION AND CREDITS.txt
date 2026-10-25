@@ -1,0 +1,59 @@
+YORIGAMI SYNDICATE
+Author: EagleRaviOrange
+"Even though it's just two of them..."
+
+==============================================
+[INSTALLATION]
+==============================================
+Extract/merge the folders into your root GTA San Andreas directory. 
+Your game folder structure should look like this:
+
+GTA San Andreas/
+    ├── EffectLoader.asi  <-- (Must be in root or modloader)
+    ├── modloader/
+    │   └── YORIGAMI SYNDICATE/
+    │       ├── cleo/
+    │       └── models/
+    └── models/
+        └── effects/
+            ├── joon_gold/
+            └── shion_misfortune/
+
+==============================================
+[REQUIREMENTS & PREREQUISITES]
+==============================================
+Ensure your GTA San Andreas installation is mod-ready with the following:
+- CLEO (Developed with CLEO 4, fully tested/working on CLEO 5)
+- CLEO+ (Required for advanced scripting opcodes)
+- Modloader
+- EffectLoader.asi (Required for custom particle effects)
+- A Limit Adjuster (Recommended: fastman92limitAdjuster or Open Limit Adjuster)
+- Essentials Pack / SilentPatch (Recommended standard setup from MixMods)
+
+*Note: If you are new to modding GTA San Andreas, follow a basic modding 
+setup guide online first to make sure your game is downgraded and ready.*
+
+There is also an "optional" folder included in the package. Check it out 
+for extra companion balance and immersion scripts!
+
+==============================================
+[CREDITS & ATTRIBUTIONS]
+==============================================
+- Misaki Yutsuki: Shion MMD model port to GTA SA
+- tudhsbf123: Jo'on MMD model port to GTA SA
+- schwarz: 
+    - Yorigami Jo'on original MMD Model (https://3d.nicovideo.jp/works/td32247)
+    - Yorigami Shion original MMD Model (https://3d.nicovideo.jp/works/td31923)
+- WarButler: 
+    - GTA SA CombatFX (Base shootlight FX modified into joon_gold 
+      and shion_misfortune particles via texture and keyvalue edits)
+- ZUN / Team Shanghai Alice: Touhou Project and the Yorigami Sisters
+
+DISCLAIMER:
+A lot of the coding and text formulation process was heavily AI-assisted.
+
+==============================================
+[FEEDBACK & BUG REPORTS]
+==============================================
+If you encounter any bugs, crashes, or glaring out-of-character moments, 
+please feel free to report them on the GitHub repository issues page!

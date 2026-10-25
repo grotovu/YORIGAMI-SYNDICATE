@@ -1,0 +1,231 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+script_name "Y_HexF"
+
+// 0@ = Victim Actor Handle
+// 1@ = Lifetime Duration in ms (optional, default 2800ms)
+0085: 10@ = 0@
+0085: 9@ = 1@
+
+if
+    9@ <= 0
+then
+    9@ = 2800
+end
+
+0@ = 0.0    // Orbit Angle (float)
+16@ = 0.0   // Master Harmonic Wave Oscillator (float)
+17@ = 0.0   // Fade Multiplier (0.0 to 1.0)
+
+TIMERA = 0
+
+:HexFlame_Loop
+wait 0 // Run at 60 FPS for smooth organic flame animation
+
+if or
+    8256: not is_player_playing $PLAYER_CHAR
+    10@ <= 0
+    856D: not actor 10@ defined
+    0118: actor 10@ dead
+    016B: fading
+    0E25: is_on_cutscene
+then
+    0A93: terminate_this_custom_script
+end
+
+// =========================================================================
+// 1. LIFETIME & SMOOTH FADE ENVELOPE (Fade In -> Sustain -> Fade Out)
+// =========================================================================
+0085: 29@ = TIMERA
+
+if
+    002D: 29@ >= 9@
+then
+    0A93: terminate_this_custom_script
+end
+
+// --- FADE IN (First 200ms) ---
+if
+    29@ < 200
+then
+    0093: 17@ = integer 29@ to_float
+    0017: 17@ /= 200.0
+    if
+        0021: 17@ > 1.0
+    then
+        17@ = 1.0
+    end
+else
+    // --- FADE OUT (Last 350ms) ---
+    0085: 28@ = 9@
+    000E: 28@ -= 350
+    if
+        002D: 29@ >= 28@
+    then
+        0085: 27@ = 9@
+        0062: 27@ -= 29@ // Remaining ms
+        0093: 17@ = integer 27@ to_float
+        0017: 17@ /= 350.0
+        if
+            0023: 0.0 > 17@
+        then
+            17@ = 0.0
+        end
+    else
+        17@ = 1.0
+    end
+end
+
+if
+    0023: 0.01 > 17@
+then
+    0A93: terminate_this_custom_script
+end
+
+// =========================================================================
+// 2. ADVANCE HARMONIC CLOCKS & DANCE TRAJECTORY
+// =========================================================================
+// Read CTimer::ms_fTimeStep (float) and normalize to 30 FPS baseline
+0A8D: 8@ = read_memory 0xB7CB5C size 4 virtual_protect 0
+0013: 8@ *= 0.6
+
+0087: 24@ = 8@
+0013: 24@ *= 2.2
+005B: 16@ += 24@ // Master organic flutter clock scaled by framerate
+if
+    0021: 16@ >= 360.0
+then
+    000F: 16@ -= 360.0
+end
+
+// Orbit angle rate around the crown
+02F6: 24@ = sine 16@
+0013: 24@ *= 0.60
+000B: 24@ += 1.20
+006B: 24@ *= 8@
+005B: 0@ += 24@
+if
+    0021: 0@ >= 360.0
+then
+    000F: 0@ -= 360.0
+end
+
+// Store live position above victim's head
+04C4: store_coords_to 2@ 3@ 4@ from_actor 10@ with_offset 0.0 0.0 0.70
+
+// Dynamic breathing radius (0.08m to 0.18m around crown)
+02F7: 19@ = cosine 16@
+0013: 19@ *= 0.05
+000B: 19@ += 0.13
+
+// Vertical wave oscillation
+0087: 23@ = 16@
+0013: 23@ *= 2.0
+if
+    0021: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+02F6: 22@ = sine 23@
+0013: 22@ *= 0.07 // Vertical sweep delta
+
+// Scaled Teardrop Radii
+0087: 11@ = 17@
+0013: 11@ *= 0.16 // Base Radius
+
+0087: 13@ = 17@
+0013: 13@ *= 0.14 // Belly Radius
+
+0087: 14@ = 17@
+0013: 14@ *= 0.10 // Neck Radius
+
+0087: 15@ = 17@
+0013: 15@ *= 0.06 // Tip Radius
+
+0087: 26@ = 17@
+0013: 26@ *= 0.045 // Diamond Core Radius
+
+
+// =========================================================================
+// 3. RENDER HITODAMA FLAME (Base, Belly, Neck, Tip & Core)
+// =========================================================================
+
+// --- Orb 1: Base Anchor ---
+02F6: 20@ = sine 0@
+02F7: 21@ = cosine 0@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000F: 24@ -= 0.03
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+
+// --- Orb 2: Belly ---
+0087: 25@ = 0@
+000B: 25@ += 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// --- Orb 3: Neck ---
+0087: 25@ = 0@
+000F: 25@ -= 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000B: 24@ += 0.03
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// --- Orb 4: Flickering Tip ---
+0087: 25@ = 0@
+000B: 25@ += 1.5
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000B: 24@ += 0.06
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+
+goto @HexFlame_Loop

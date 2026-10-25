@@ -1,0 +1,238 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+{$USE ini}
+
+0000: NOP
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+script_name "Sh_Pimp"
+
+// 0@ = Shion Actor Handle passed from SpawnShion.cs
+0085: 10@ = 0@
+
+1@ = 0 // Session Prompt Latch (0 = Not shown yet, 1 = Shown once this session)
+
+// Load Configuration from Shion.ini
+gosub @Load_Pimp_Config
+
+:ShionPimp_Loop
+wait 100
+
+if or
+    8256: not player $PLAYER_CHAR defined
+    8019: not 10@ > 0
+    856D: not actor 10@ defined
+    0118: actor 10@ dead
+then
+    0A93: terminate_this_custom_script
+end
+
+// Only evaluate when driving, not on a mission, and not fading
+if and
+    00DF: actor $PLAYER_ACTOR driving
+    0038: $ONMISSION == 0
+    816B: not fading
+    8E25: not is_on_cutscene
+then
+    03C0: 24@ = actor $PLAYER_ACTOR car
+    if and
+        056E: car 24@ defined
+        8119: not car 24@ wrecked
+    then
+        // Shion must be in the vehicle with you
+        if
+            00DB: actor 10@ in_car 24@
+        then
+            0441: 25@ = car 24@ model
+
+            // Filter Out Incompatible Vehicles
+            26@ = 1 // 1 = Valid 4-Door Car
+
+            // Exclude Broadway (Vanilla game handles Broadway natively)
+            if
+                25@ == 575
+            then
+                26@ = 0
+            end
+
+            // Exclude Taxis & Cabbie
+            if or
+                25@ == 420
+                25@ == 438
+            then
+                26@ = 0
+            end
+
+            // Exclude Emergency & Service Vehicles (Batch 1)
+            if or
+                25@ == 416 // Ambulance
+                25@ == 407 // Firetruck
+                25@ == 544 // Firetruck LA
+                25@ == 596 // Cop LA
+                25@ == 597 // Cop SF
+                25@ == 598 // Cop LV
+                25@ == 599 // Cop Rural
+                25@ == 427 // Enforcer
+            then
+                26@ = 0
+            end
+
+            // Exclude Emergency & Service Vehicles (Batch 2)
+            if or
+                25@ == 490 // FBI Rancher
+                25@ == 528 // FBI Truck
+                25@ == 609 // Boxville
+            then
+                26@ = 0
+            end
+
+            // Exclude 2-Door Vehicles (Must have rear passenger seats)
+            if
+                26@ == 1
+            then
+                01EA: 27@ = car 24@ max_passengers
+                if
+                    8019: not 27@ > 1
+                then
+                    26@ = 0
+                end
+            end
+
+            // VALID 4-DOOR CAR CONFIRMED!
+            if
+                26@ == 1
+            then
+                // Check if we should display the once-per-session help prompt
+                if and
+                    4@ == 1 // Enabled in Shion.ini
+                    1@ == 0 // Not shown yet this session
+                then
+                    gosub @Check_Nearby_Prostitute
+                    if
+                        18@ == 1 // Working girl spotted nearby! (Freed from 31@)
+                    then
+                        1@ = 1 // Lock it permanently for this game session
+                        03E6: remove_text_box
+                        0ADF: add_text_label "Y_PMPT" text "Press ~y~[Y + 2]~w~ to start Pimping Management with Shion."
+                        09C1: add_next_text_to_brief_history 1
+                        03E5: show_text_box 'Y_PMPT'
+                    end
+                end
+
+                // LISTEN FOR MODIFIER KEY + 2 TRIGGER
+                if and
+                    0AB0: is_key_pressed 3@  // ModifierKey from Shion.ini (Default 89 = Y)
+                    0AB0: is_key_pressed 50 // '2' Key
+                then
+                    :Wait_Pimp_Keys_Rel
+                    wait 50
+                    if or
+                        0AB0: is_key_pressed 3@
+                        0AB0: is_key_pressed 50
+                    then
+                        goto @Wait_Pimp_Keys_Rel
+                    end
+
+                    gosub @Launch_Native_Pimping_Mission
+                end
+            end
+        end
+    end
+end
+
+goto @ShionPimp_Loop
+
+
+// =========================================================================
+// SUBROUTINE: SCAN FOR NEARBY WORKING GIRLS (Within 35m)
+// =========================================================================
+:Check_Nearby_Prostitute
+18@ = 0 // Found flag (0 = None, 1 = Present) (Freed from 31@)
+00AA: store_car 24@ position_to 20@ 21@ 22@
+19@ = 0 // Scan iterator (Freed from 30@)
+
+:Prostitute_Scan_Loop
+0AE1: 29@ = random_char_near_point 20@ 21@ 22@ in_radius 35.0 find_next 19@ pass_deads 1
+if
+    29@ > 0
+then
+    19@ = 1
+    if and
+        056D: actor 29@ defined
+        8118: not actor 29@ dead
+        87D6: not 29@ == $PLAYER_ACTOR
+        803B: not 29@ == 10@
+    then
+        // Check PedType 22 (PEDTYPE_PROSTITUTE)
+        089F: get_actor 29@ pedtype_to 28@
+        if
+            28@ == 22
+        then
+            18@ = 1
+            return
+        end
+
+        // Direct Prostitute Model Checks (All 6 Prostitute Skins)
+        0665: get_actor 29@ model_to 28@
+        if or
+            28@ == 63  // BFYPRO (Black Female Young Prostitute)
+            28@ == 64  // HFYPRO (Hispanic Female Young Prostitute)
+            28@ == 75  // SWFOPRO (White Female Old Prostitute)
+            28@ == 152 // SFYPRO (SF Prostitute)
+            28@ == 246 // VFYPRO (Vegas Prostitute 1)
+            28@ == 252 // VWFYPRO (Vegas Prostitute 2)
+        then
+            18@ = 1
+            return
+        end
+    end
+    goto @Prostitute_Scan_Loop
+end
+return
+
+// =========================================================================
+// SUBROUTINE: LAUNCH NATIVE PIMPING MISSION (Direct Mission Index 127)
+// =========================================================================
+:Launch_Native_Pimping_Mission
+03E6: remove_text_box
+018C: play_sound 1058 at 0.0 0.0 0.0
+
+// Show native Pimping style 5 banner
+00BA: show_text_styled GXT 'PIMP' time 3000 style 5
+
+// Directly launch native sub-mission 127 (pimp.sc)
+0417: start_mission 127
+
+wait 1000
+return
+
+// =========================================================================
+// SUBROUTINE: LOAD CONFIG FROM SHION.INI
+// =========================================================================
+:Load_Pimp_Config
+0AF0: 3@ = read_int_from_ini_file "cleo\Shion.ini" section "Controls" key "ModifierKey"
+if
+    3@ == 0
+then
+    3@ = 89 // Default: Y Key
+end
+
+0AF0: 4@ = read_int_from_ini_file "cleo\Shion.ini" section "Pimping" key "ShowPimpPrompt"
+if
+    001B: 0 > 4@
+then
+    4@ = 1
+end
+return

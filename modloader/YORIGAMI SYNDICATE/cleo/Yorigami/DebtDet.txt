@@ -1,0 +1,378 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+script_name "Y_DebtD"
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI HEAP DICTIONARY (SKINNED)
+// =========================================================================
+const
+    MEM_SAVE_SLOT = 0             // Formerly 700
+    MEM_ALLOC_DEBTDET = 100       // Formerly 755
+    MEM_SHION_HANDLE = 116        // Formerly 703
+    MEM_DMG_RECURSION_LCK = 184   // Formerly 745
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+1@ = -999 
+12@ = 0 // Detonation Cooldown Remaining (ms)
+
+:YDebtDet_StartupWait
+wait 250
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    0002: jump @YDebtDet_StartupWait
+end
+
+:YDebtDet_Loop
+wait 100
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    0002: jump @YDebtDet_Loop
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
+// Check if Save Slot Changed
+0085: 30@ = 31@
+000A: 30@ += MEM_SAVE_SLOT
+0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+if
+    803B: not 0@ == 1@
+then
+    gosub @YDebtDet_ReloadSettings
+end
+
+// Read Live Allocated Points in Debt Detonation (Shion Perk #6)
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_DEBTDET
+0A8D: 17@ = read_memory 30@ size 4 virtual_protect 0
+
+// Tick down Detonation Cooldown
+if
+    12@ > 0
+then
+    000E: 12@ -= 100
+    if
+        8019: not 12@ > 0
+    then
+        12@ = 0
+    end
+end
+
+// -------------------------------------------------------------------------
+// DEBT DETONATION TRIGGER
+// -------------------------------------------------------------------------
+if and
+    17@ > 0     // Has points in Debt Detonation
+    8019: not 12@ > 0    // Not on cooldown
+    816B: not fading
+then
+    0226: 26@ = actor $PLAYER_ACTOR health
+    0653: 18@ = get_float_stat 24
+    0017: 18@ /= 5.69
+    0092: 16@ = float 18@ to_integer
+
+    if
+        16@ <= 0
+    then
+        16@ = 100
+    end
+
+    0085: 27@ = 26@
+    0012: 27@ *= 100
+    0072: 27@ /= 16@
+
+    if and
+        26@ > 0
+        002D: 10@ >= 27@ // Health % <= Threshold
+    then
+        // Launch Shared Spirit Flash Shockwave!
+        0A92: create_custom_thread "Yorigami\FX_GrimBurst.c"
+
+        // Dynamic Cooldown Calculation
+        0AF0: 12@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "BaseCooldown"
+        if
+            12@ == 0
+        then
+            12@ = 60
+        end
+
+        0AF0: 23@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "CooldownReductionPerPoint"
+        if
+            23@ == 0
+        then
+            23@ = 2
+        end
+
+        0085: 24@ = 17@
+        006A: 24@ *= 23@ // Local-to-Local Integer Multiply (006A)
+        0062: 12@ -= 24@
+
+        0AF0: 23@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "MinDetonationCooldown"
+        if
+            23@ == 0
+        then
+            23@ = 10
+        end
+
+        if
+            001D: 23@ > 12@
+        then
+            0085: 12@ = 23@
+        end
+        0012: 12@ *= 1000 // Convert seconds to ms
+
+        0003: shake_camera 120
+        if
+            14@ == 1
+        then
+            018C: play_sound 1052 at 0.0 0.0 0.0
+        end
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_DDET" text "~r~MISFORTUNE DETONATION~n~~w~CATASTROPHE UNLEASHED"
+            00BA: show_text_styled GXT 'Y_DDET' time 2500 style 5
+        end
+
+        // Dynamic Radius Calculation
+        0AF2: 13@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "BaseRadius"
+        if
+            13@ <= 0.0
+        then
+            13@ = 30.0
+        end
+
+        0AF2: 25@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "RadiusPerPoint"
+        if
+            25@ <= 0.0
+        then
+            25@ = 1.5
+        end
+
+        0093: 24@ = integer 17@ to_float
+        006B: 24@ *= 25@
+        005B: 13@ += 24@
+
+        0AF2: 25@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "MaxRadiusCap"
+        if
+            25@ <= 0.0
+        then
+            25@ = 60.0
+        end
+
+        if
+            0025: 13@ > 25@
+        then
+            0087: 13@ = 25@
+        end
+
+        04C4: store_coords_to 20@ 21@ 22@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.0
+        28@ = 0 // Clean scan iterator
+
+        :Detonate_Scan_Loop
+        if
+            0AE1: 29@ = random_char_near_point 20@ 21@ 22@ in_radius 13@ find_next 28@ pass_deads 1
+        then
+            28@ = 1
+            if
+                29@ > 0
+            then
+                gosub @Detonate_Ped_Target
+            end
+            0002: jump @Detonate_Scan_Loop
+        end
+    end
+end
+
+0002: jump @YDebtDet_Loop
+
+
+// =========================================================================
+// SUBROUTINES
+// =========================================================================
+
+:YDebtDet_ReloadSettings
+0085: 1@ = 0@
+
+0AF0: 9@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "EnableDisarmDrops"
+if
+    9@ < 0
+then
+    9@ = 1
+end
+
+0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "HealthPercentThreshold"
+if
+    10@ == 0
+then
+    10@ = 15
+end
+
+0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "ShowDetonationMessage"
+0AF0: 14@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "PlayDetonationSound"
+return
+
+// =========================================================================
+// SUBROUTINE: DETONATE PED TARGET (Collision-Free Registers)
+// =========================================================================
+:Detonate_Ped_Target
+if
+    29@ > 0
+then
+    if and
+        056D: actor 29@ defined
+        8118: not actor 29@ dead
+        87D6: not 29@ == $PLAYER_ACTOR
+    then
+        // Check Shion Immunity by Live Handle and Model
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_HANDLE
+        0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+
+        0665: get_actor 29@ model_to 25@
+        if and
+            803B: not 29@ == 2@
+            8039: not 25@ == 299
+        then
+            // Protect only actively recruited squad members (Slots 0 to 6)
+            07AF: 23@ = player $PLAYER_CHAR group
+            07F6: get_group 23@ number_of_leaders_to 7@ number_of_members_to 6@
+            if
+                6@ > 0
+            then
+                for 7@ = 0 to 6
+                    092B: 8@ = group 23@ member 7@
+                    if
+                        003B: 29@ == 8@
+                    then
+                        return
+                    end
+                end
+            end
+
+            // Exclude Special Actors ONLY during missions (Slots 1 to 10: Models 290..299)
+            if
+                0E1D: is_on_mission
+            then
+                if and
+                    25@ >= 290
+                    299 >= 25@
+                then
+                    return
+                end
+            end
+
+            if
+                8449: not actor 29@ in_a_car // Strictly On Foot (No passenger glitches!)
+            then
+                // Determine if target should retaliate with bare fists upon standing up
+                8@ = 0
+
+                // Check if ped was actively targeting player before blast
+                0E44: get_char_kill_target_char 29@ store_to 24@
+                if
+                    003B: 24@ == $PLAYER_ACTOR
+                then
+                    8@ = 1
+                end
+
+                // Check if target is an enemy gang member during a live Gang War
+                if
+                    087A: gang_war_in_progress
+                then
+                    089F: get_actor 29@ pedtype_to 24@
+                    if and
+                        24@ >= 7
+                        14 >= 24@
+                    then
+                        if
+                            8039: not 24@ == 8 // Exclude Grove Street
+                        then
+                            8@ = 1
+                        end
+                    end
+                end
+
+                if
+                    9@ == 1
+                then
+                    0470: 24@ = actor 29@ current_weapon
+                    if
+                        24@ > 1
+                    then
+                        0781: get_weapon_with_ID 24@ model_to 23@
+                        if and
+                            23@ > 0
+                            0248: model 23@ available
+                        then
+                            04C4: store_coords_to 3@ 4@ 5@ from_actor 29@ with_offset 0.0 0.0 0.0
+                            0213: 24@ = create_pickup 23@ type 4 at 3@ 4@ 5@
+                        end
+                    end
+                end
+
+                // Sever ambient gang group hierarchy so group AI cannot override tasks
+                06C9: remove_actor 29@ from_group
+
+                // Kill all weapons, tasks, and forward momentum
+                048F: actor 29@ remove_weapons
+                0687: clear_actor 29@ task
+                0E96: clear_char_primary_tasks 29@
+                0E97: clear_char_secondary_tasks 29@
+                083C: set_actor 29@ velocity_in_direction_XYZ 0.0 0.0 0.0
+
+                // Prevent Recursive Callback Loop via Master Heap Lock
+                0085: 30@ = 31@
+                000A: 30@ += MEM_DMG_RECURSION_LCK
+                0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+                0851: set_actor 29@ decrease_health_by 5 affect_armour 0
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_DMG_RECURSION_LCK
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                
+                // Spawn Single Blue Hitodama Curse Flame above victim's head!
+                0A92: create_custom_thread "Yorigami\FX_HexFlame.c" 29@ 3200
+
+                // Force immediate bone-level animation snap to override gang walk style
+                0605: actor 29@ perform_animation "KO_SKID_BACK" IFP "PED" framedelta 8.0 loop 0 lockX 1 lockY 1 lockF 1 time 1500
+
+                // Queue Task Sequence: Skid -> Get Up -> Bare-fisted Retaliation if Hostile
+                0615: define_AS_pack_begin 23@
+                0812: AS_actor -1 perform_animation "KO_SKID_BACK" IFP "PED" framedelta 8.0 loopA 0 lockX 1 lockY 1 lockF 1 time 1500
+                0812: AS_actor -1 perform_animation "GETUP" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
+                if
+                    8@ == 1
+                then
+                    05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
+                end
+                0616: define_AS_pack_end 23@
+                0618: assign_actor 29@ to_AS_pack 23@
+                061B: remove_references_to_AS_pack 23@
+            end
+        end
+    end
+end
+return

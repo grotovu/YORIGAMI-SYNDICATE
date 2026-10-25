@@ -1,0 +1,1547 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+script_name "Y_Menu"
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (SKINNED FOR Y_MENU)
+// =========================================================================
+const
+    // --- PRESTIGE & PERKS (JO'ON) ---
+    MEM_TOTAL_POINTS = 28
+    MEM_AVAIL_POINTS = 32
+    MEM_ALLOC_JOONBLING = 36
+    MEM_ALLOC_SMASHER = 40
+    MEM_ALLOC_TAXIEXT = 44
+    MEM_ALLOC_DRIPWORSHIP = 48
+    MEM_ALLOC_SHAKEDOWN = 52
+    MEM_ALLOC_MIDAS = 56
+    MEM_ALLOC_FEVER = 60
+    MEM_ALLOC_DANMAKU = 64
+    MEM_CONTRACT_ESCROW = 68
+
+    // --- PRESTIGE & PERKS (SHION) ---
+    MEM_ALLOC_RESONANCE = 80
+    MEM_ALLOC_SCAVENGER = 84
+    MEM_ALLOC_MISFORTUNE = 88
+    MEM_ALLOC_TRAFFICHEX = 92
+    MEM_ALLOC_AVIATION = 96
+    MEM_ALLOC_DEBTDET = 100
+    MEM_ALLOC_GRIMPITY = 104
+    MEM_ALLOC_MISERY = 108
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    0039: 31@ == 0
+then
+    goto @Connect_To_Brain
+end
+// 31@ holds the verified master brain pointer
+
+// Initialize custom text labels in RAM once on startup
+gosub @Init_Menu_Text_Labels
+
+0@ = -1  // Active Panel handle (-1 = none)
+15@ = 0  // Menu State: 0 = Master Hub, 1 = Jo'on, 2 = Shion, 3 = Preferences
+3@ = -1  // Last Active Row (Tooltip tracker)
+14@ = -1 // Last Active State (Tooltip tracker)
+
+// Read Keys from INI
+0AF0: 16@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "MainKey"
+if
+    0039: 16@ == 0
+then
+    16@ = 89 // Y
+end
+
+0AF0: 17@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "MenuKey"
+if
+    0039: 17@ == 0
+then
+    17@ = 77 // M
+end
+
+// =========================================================================
+// IDLE LISTENER LOOP
+// =========================================================================
+:Menu_Idle_Loop
+wait 100
+
+if and
+    0256: is_player_playing $PLAYER_CHAR
+    80DF: not actor $PLAYER_ACTOR driving
+    816B: not fading
+then
+    if and
+        0AB0: is_key_pressed 16@ // Y Key
+        0AB0: is_key_pressed 17@ // M Key
+    then
+        :Menu_WaitReleaseKey
+        wait 50
+        if or
+            0AB0: is_key_pressed 16@
+            0AB0: is_key_pressed 17@
+        then
+            goto @Menu_WaitReleaseKey
+        end
+        goto @Menu_Open
+    end
+end
+goto @Menu_Idle_Loop
+
+// =========================================================================
+// OPEN MENU (Panel Created Once)
+// =========================================================================
+:Menu_Open
+01B4: set_player $PLAYER_CHAR can_move 0
+018C: play_sound 1058 at 0.0 0.0 0.0
+
+if
+    04B5: 0@ >= 0
+then
+    08DA: remove_panel 0@
+    0@ = -1
+end
+
+// Create Native Panel ONCE
+08D4: 0@ = create_panel_with_title 'YOR_TIT' position 29.0 145.0 280.0 columns 1 interactive 1 background 1 alignment 0
+
+// Start at Master Hub
+15@ = 0
+gosub @Load_Master_Hub_Rows
+
+// =========================================================================
+// MASTER UI LOOP
+// =========================================================================
+:Menu_Master_Loop
+wait 0
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @Menu_Close_All
+end
+
+// Read Live Available Points from Heap
+0085: 30@ = 31@
+000A: 30@ += MEM_AVAIL_POINTS
+0A8D: 1@ = read_memory 30@ size 4 virtual_protect 0
+if
+    001B: 0 > 1@
+then
+    1@ = 0
+    0085: 30@ = 31@
+    000A: 30@ += MEM_AVAIL_POINTS
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+
+// Display Bottom Banner Based on Active State
+if
+    0039: 15@ == 0
+then
+    0AD1: print_formatted_now "~y~Available Y-Points: ~w~%d   ~s~[SPACE: Select / ENTER: Exit]" 100 1@
+    goto @Process_Hub_Menu
+end
+
+if or
+    0039: 15@ == 1
+    0039: 15@ == 2
+then
+    0AD1: print_formatted_now "~y~Avail: ~w~%d ~s~[A/D: 1 | SHIFT: 10 | CTRL: 100 | HOLD: ALL | ENTER: Back]" 100 1@
+    goto @Process_Sister_Menu
+end
+
+if
+    0039: 15@ == 3
+then
+    0AD1: print_formatted_now "~y~Mod Preferences ~s~[A/D: Toggle or Adjust / ENTER: Back]" 100
+    goto @Process_Preferences_Menu
+end
+
+goto @Menu_Master_Loop
+
+// =========================================================================
+// 1. STATE 0: MASTER HUB CONTROLLER
+// =========================================================================
+:Process_Hub_Menu
+08D7: 2@ = panel 0@ active_row
+
+// Auto-refresh dynamic tooltips on active row change in Master Hub
+if or
+    803B: not 2@ == 3@
+    803B: not 15@ == 14@
+then
+    0085: 3@ = 2@
+    0085: 14@ = 15@
+    gosub @Show_Dynamic_Tooltip
+end
+
+// Exit Menu
+if or
+    00E1: player 0 pressed_key 15
+    0AB0: is_key_pressed 13 // Enter
+    0AB0: is_key_pressed 27 // Esc
+    0AB0: is_key_pressed 8  // Backspace
+then
+    goto @Menu_Close_All
+end
+
+// Select Hub Option
+if or
+    00E1: player 0 pressed_key 16 // Sprint
+    0AB0: is_key_pressed 32       // Space
+then
+    08D7: 2@ = panel 0@ active_row
+
+    if
+        0039: 2@ == 0 // Jo'on: Wealth
+    then
+        15@ = 1
+        gosub @Load_Joon_Rows
+        goto @Wait_Hub_Select_Release
+    end
+
+    if
+        0039: 2@ == 1 // Shion: Misfortune
+    then
+        15@ = 2
+        gosub @Load_Shion_Rows
+        goto @Wait_Hub_Select_Release
+    end
+
+    if
+        0039: 2@ == 2 // YORIGAMI CONTRACT
+    then
+        gosub @Menu_Execute_Contract
+        goto @Wait_Hub_Select_Release
+    end
+
+    if
+        0039: 2@ == 3 // Mod Preferences
+    then
+        15@ = 3
+        gosub @Load_Preferences_Rows
+        goto @Wait_Hub_Select_Release
+    end
+
+    if
+        0039: 2@ == 4 // Respec All Points
+    then
+        gosub @Menu_Execute_Respec
+        goto @Wait_Hub_Select_Release
+    end
+
+    if
+        0039: 2@ == 5 // Exit Menu
+    then
+        goto @Menu_Close_All
+    end
+end
+
+goto @Menu_Master_Loop
+
+:Wait_Hub_Select_Release
+wait 50
+if or
+    00E1: player 0 pressed_key 16
+    0AB0: is_key_pressed 32
+then
+    goto @Wait_Hub_Select_Release
+end
+wait 100
+goto @Menu_Master_Loop
+
+// =========================================================================
+// 2. STATES 1 & 2: SISTER SUBMENU CONTROLLER (JO'ON & SHION)
+// =========================================================================
+:Process_Sister_Menu
+08D7: 2@ = panel 0@ active_row
+
+// Auto-refresh dynamic tooltips on row/state change
+if or
+    803B: not 2@ == 3@
+    803B: not 15@ == 14@
+then
+    0085: 3@ = 2@
+    0085: 14@ = 15@
+    gosub @Show_Dynamic_Tooltip
+end
+
+if
+    0039: 15@ == 1
+then
+    24@ = MEM_ALLOC_JOONBLING // Base Offset: Jo'on
+    25@ = 7                   // Max Row (0..7)
+else
+    24@ = MEM_ALLOC_RESONANCE // Base Offset: Shion
+    25@ = 7                   // Max Row (0..7)
+end
+
+// Reset hold timer (18@) when neither directional key is pressed
+if and
+    8AB0: not is_key_pressed 68 // D
+    8AB0: not is_key_pressed 39 // Right Arrow
+    8AB0: not is_key_pressed 65 // A
+    8AB0: not is_key_pressed 37 // Left Arrow
+then
+    18@ = 0
+end
+
+// --- D OR RIGHT ARROW: ADD POINTS ---
+if or
+    0AB0: is_key_pressed 68
+    0AB0: is_key_pressed 39
+then
+    if and
+        04B5: 2@ >= 0
+        801D: not 2@ > 25@
+    then
+        if
+            0019: 1@ > 0
+        then
+            gosub @Calculate_Step_Size // Computes 6@
+
+            // Hold accumulator check for Ctrl + Shift
+            if and
+                0AB0: is_key_pressed 16 // Shift
+                0AB0: is_key_pressed 17 // Ctrl
+            then
+                000A: 18@ += 140
+                if
+                    0019: 18@ >= 2500 // Held for 2.5s -> Dump all remaining
+                then
+                    6@ = 9999999
+                end
+            else
+                18@ = 0
+            end
+
+            if
+                001D: 6@ > 1@
+            then
+                0085: 6@ = 1@
+            end
+
+            // TargetOffset = BaseOffset + (Row * 4)
+            0085: 4@ = 2@
+            0012: 4@ *= 4
+            005A: 4@ += 24@
+
+            0085: 30@ = 31@
+            005A: 30@ += 4@
+            0A8D: 5@ = read_memory 30@ size 4 virtual_protect 0
+            005A: 5@ += 6@
+            0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+            0062: 1@ -= 6@
+            0085: 30@ = 31@
+            000A: 30@ += MEM_AVAIL_POINTS
+            0A8C: write_memory 30@ size 4 value 1@ virtual_protect 0
+
+            // Sound feedback: Cash bell on mass dump, normal click on standard steps
+            if
+                0019: 6@ > 100
+            then
+                018C: play_sound 1137 at 0.0 0.0 0.0
+                wait 250
+            else
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                wait 140
+            end
+
+            gosub @Refresh_Active_Sister_Numbers
+        else
+            018C: play_sound 1057 at 0.0 0.0 0.0
+            wait 150
+        end
+    end
+end
+
+// --- A OR LEFT ARROW: DEDUCT POINTS ---
+if or
+    0AB0: is_key_pressed 65
+    0AB0: is_key_pressed 37
+then
+    if and
+        04B5: 2@ >= 0
+        801D: not 2@ > 25@
+    then
+        0085: 4@ = 2@
+        0012: 4@ *= 4
+        005A: 4@ += 24@
+
+        0085: 30@ = 31@
+        005A: 30@ += 4@
+        0A8D: 5@ = read_memory 30@ size 4 virtual_protect 0
+        if
+            0019: 5@ > 0
+        then
+            gosub @Calculate_Step_Size // Computes 6@
+
+            // Hold accumulator check for Ctrl + Shift
+            if and
+                0AB0: is_key_pressed 16 // Shift
+                0AB0: is_key_pressed 17 // Ctrl
+            then
+                000A: 18@ += 140
+                if
+                    0019: 18@ >= 2500 // Held for 2.5s -> Pull all points
+                then
+                    6@ = 9999999
+                end
+            else
+                18@ = 0
+            end
+
+            if
+                001D: 6@ > 5@
+            then
+                0085: 6@ = 5@
+            end
+
+            0062: 5@ -= 6@
+            0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+            005A: 1@ += 6@
+            0085: 30@ = 31@
+            000A: 30@ += MEM_AVAIL_POINTS
+            0A8C: write_memory 30@ size 4 value 1@ virtual_protect 0
+
+            // Sound feedback: Cash bell on mass dump, normal click on standard steps
+            if
+                0019: 6@ > 100
+            then
+                018C: play_sound 1137 at 0.0 0.0 0.0
+                wait 250
+            else
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                wait 140
+            end
+
+            gosub @Refresh_Active_Sister_Numbers
+        else
+            018C: play_sound 1057 at 0.0 0.0 0.0
+            wait 150
+        end
+    end
+end
+
+// Back to Master Hub
+if or
+    00E1: player 0 pressed_key 15
+    0AB0: is_key_pressed 13
+    0AB0: is_key_pressed 27
+    0AB0: is_key_pressed 8
+then
+    18@ = 0
+    03E6: remove_text_box
+    15@ = 0
+    gosub @Load_Master_Hub_Rows
+    goto @Wait_Sister_Back_Release
+end
+
+goto @Menu_Master_Loop
+
+:Wait_Sister_Back_Release
+wait 50
+if or
+    00E1: player 0 pressed_key 15
+    0AB0: is_key_pressed 13
+    0AB0: is_key_pressed 27
+    0AB0: is_key_pressed 8
+then
+    goto @Wait_Sister_Back_Release
+end
+wait 100
+goto @Menu_Master_Loop
+
+// =========================================================================
+// 3. STATE 3: PREFERENCES CONTROLLER (LIVE INI TUNER)
+// =========================================================================
+:Process_Preferences_Menu
+08D7: 2@ = panel 0@ active_row
+
+// Auto-refresh dynamic tooltips on active row change
+if or
+    803B: not 2@ == 3@
+    803B: not 15@ == 14@
+then
+    0085: 3@ = 2@
+    0085: 14@ = 15@
+    gosub @Show_Dynamic_Tooltip
+end
+
+// Adjust settings with Left / Right
+if or
+    0AB0: is_key_pressed 68 // D
+    0AB0: is_key_pressed 39 // Right
+    0AB0: is_key_pressed 65 // A
+    0AB0: is_key_pressed 37 // Left
+then
+    // ROW 0: FLEX & ROLLOVER RATE (CashPerPoint)
+    if
+        0039: 2@ == 0
+    then
+        0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "CashPerPoint"
+        8@ = 1000
+        if
+            0AB0: is_key_pressed 16 // Shift
+        then
+            8@ = 5000
+            if
+                0AB0: is_key_pressed 17 // Ctrl
+            then
+                8@ = 10000
+            end
+        end
+
+        if or
+            0AB0: is_key_pressed 68
+            0AB0: is_key_pressed 39
+        then
+            005A: 7@ += 8@
+        else
+            0062: 7@ -= 8@
+        end
+
+        if
+            001B: 1000 > 7@
+        then
+            7@ = 1000
+        end
+
+        0AF1: write_int 7@ to_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "CashPerPoint"
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        gosub @Refresh_Preferences_Numbers
+        wait 150
+    end
+
+    // ROW 1: YORIGAMI CONTRACT LOAN SIZE (ContractPoints)
+    if
+        0039: 2@ == 1
+    then
+        0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Contract" key "ContractPoints"
+        if or
+            0AB0: is_key_pressed 68
+            0AB0: is_key_pressed 39
+        then
+            000A: 7@ += 25
+        else
+            000E: 7@ -= 25
+        end
+
+        if
+            001B: 25 > 7@
+        then
+            7@ = 25
+        end
+        if
+            0019: 7@ > 1000
+        then
+            7@ = 1000
+        end
+
+        0AF1: write_int 7@ to_ini_file "cleo\YorigamiPerks.ini" section "Contract" key "ContractPoints"
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        gosub @Refresh_Preferences_Numbers
+        wait 150
+    end
+
+    // ROW 2: DEBT DETONATION TRIGGER HP% (HealthPercentThreshold)
+    if
+        0039: 2@ == 2
+    then
+        0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "HealthPercentThreshold"
+        if or
+            0AB0: is_key_pressed 68
+            0AB0: is_key_pressed 39
+        then
+            000A: 7@ += 5
+        else
+            000E: 7@ -= 5
+        end
+
+        if
+            001B: 15 > 7@
+        then
+            7@ = 15
+        end
+        if
+            0019: 7@ > 85
+        then
+            7@ = 85
+        end
+
+        0AF1: write_int 7@ to_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "HealthPercentThreshold"
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        gosub @Refresh_Preferences_Numbers
+        wait 150
+    end
+
+    // ROW 3: TRASH WEAPON SCAVENGING TOGGLE (EnableWeaponScavenging)
+    if
+        0039: 2@ == 3
+    then
+        0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "EnableWeaponScavenging"
+        if
+            0039: 7@ == 1
+        then
+            8@ = 0
+        else
+            8@ = 1
+        end
+
+        0AF1: write_int 8@ to_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "EnableWeaponScavenging"
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        gosub @Refresh_Preferences_Numbers
+        wait 200
+    end
+
+    // ROW 4: MASTER DISARM WEAPON DROPS TOGGLE (EnableDisarmDrops)
+    if
+        0039: 2@ == 4
+    then
+        0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "EnableDisarmDrops"
+        if
+            0039: 7@ == 1
+        then
+            8@ = 0
+        else
+            8@ = 1
+        end
+
+        0AF1: write_int 8@ to_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "EnableDisarmDrops"
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        gosub @Refresh_Preferences_Numbers
+        wait 200
+    end
+
+    // ROW 5: HOSTILE GUN JAMS TOGGLE (EnableGunJams)
+    if
+        0039: 2@ == 5
+    then
+        0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionMisfortune" key "EnableGunJams"
+        if
+            0039: 7@ == 1
+        then
+            8@ = 0
+        else
+            8@ = 1
+        end
+
+        0AF1: write_int 8@ to_ini_file "cleo\YorigamiPerks.ini" section "ShionMisfortune" key "EnableGunJams"
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        gosub @Refresh_Preferences_Numbers
+        wait 200
+    end
+
+    // ROW 6: POLICE BRIBE FEE (BribeCostPerStar)
+    if
+        0039: 2@ == 6
+    then
+        0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "PoliceBribe" key "BribeCostPerStar"
+        8@ = 2500
+        if
+            0AB0: is_key_pressed 16 // Shift
+        then
+            8@ = 10000
+        end
+
+        if or
+            0AB0: is_key_pressed 68
+            0AB0: is_key_pressed 39
+        then
+            005A: 7@ += 8@
+        else
+            0062: 7@ -= 8@
+        end
+
+        if
+            001B: 5000 > 7@
+        then
+            7@ = 5000
+        end
+        if
+            0019: 7@ > 100000
+        then
+            7@ = 100000
+        end
+
+        0AF1: write_int 7@ to_ini_file "cleo\YorigamiPerks.ini" section "PoliceBribe" key "BribeCostPerStar"
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        gosub @Refresh_Preferences_Numbers
+        wait 150
+    end
+
+    // ROW 7: HIGH-ROLLER MARK TOGGLE (EnableHighRollerMarks)
+    if
+        0039: 2@ == 7
+    then
+        0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "EnableHighRollerMarks"
+        if
+            0039: 7@ == 1
+        then
+            8@ = 0
+        else
+            8@ = 1
+        end
+
+        0AF1: write_int 8@ to_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "EnableHighRollerMarks"
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        gosub @Refresh_Preferences_Numbers
+        wait 200
+    end
+
+    // ROW 8: SAVE/LOAD CONFIRMATION BANNER (ShowSaveLoadMessage)
+    if
+        0039: 2@ == 8
+    then
+        0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Notifications" key "ShowSaveLoadMessage"
+        if
+            0039: 7@ == 1
+        then
+            8@ = 0
+        else
+            8@ = 1
+        end
+
+        0AF1: write_int 8@ to_ini_file "cleo\YorigamiPerks.ini" section "Notifications" key "ShowSaveLoadMessage"
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        gosub @Refresh_Preferences_Numbers
+        wait 200
+    end
+end
+
+// Back to Master Hub
+if or
+    00E1: player 0 pressed_key 15
+    0AB0: is_key_pressed 13
+    0AB0: is_key_pressed 27
+    0AB0: is_key_pressed 8
+then
+    03E6: remove_text_box
+    15@ = 0
+    gosub @Load_Master_Hub_Rows
+    goto @Wait_Sister_Back_Release
+end
+
+goto @Menu_Master_Loop
+
+// =========================================================================
+// SUBROUTINES: ROW LOADERS (Zero-Leak Panel Recycling)
+// =========================================================================
+
+:Load_Master_Hub_Rows
+03E6: remove_text_box
+3@ = -1
+14@ = -1
+08DB: set_panel 0@ column 0 header 'YOR_HUB' data 'YOR_M00' 'YOR_M01' 'YOR_M02' 'YOR_M03' 'YOR_M04' 'YOR_M05' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY'
+090E: set_panel 0@ active_row 0
+return
+
+:Load_Joon_Rows
+3@ = -1
+14@ = -1
+08DB: set_panel 0@ column 0 header 'YOR_HJN' data 'YOR_J00' 'YOR_J01' 'YOR_J02' 'YOR_J03' 'YOR_J04' 'YOR_J05' 'YOR_J06' 'YOR_J07' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY'
+090E: set_panel 0@ active_row 0
+gosub @Refresh_Active_Sister_Numbers
+return
+
+:Load_Shion_Rows
+3@ = -1
+14@ = -1
+08DB: set_panel 0@ column 0 header 'YOR_HSH' data 'YOR_S00' 'YOR_S01' 'YOR_S02' 'YOR_S03' 'YOR_S04' 'YOR_S05' 'YOR_S06' 'YOR_S07' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY'
+090E: set_panel 0@ active_row 0
+gosub @Refresh_Active_Sister_Numbers
+return
+
+:Load_Preferences_Rows
+3@ = -1
+14@ = -1
+08DB: set_panel 0@ column 0 header 'YOR_HPR' data 'YOR_P00' 'YOR_P01' 'YOR_P02' 'YOR_P03' 'YOR_P04' 'YOR_P05' 'YOR_P06' 'YOR_P07' 'YOR_P08' 'DUMMY' 'DUMMY' 'DUMMY'
+090E: set_panel 0@ active_row 0
+gosub @Refresh_Preferences_Numbers
+return
+
+// =========================================================================
+// SUBROUTINES: REFRESH NUMBERS VIA HEAP MEMORY
+// =========================================================================
+
+:Refresh_Active_Sister_Numbers
+if
+    0039: 15@ == 1
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_JOONBLING
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 0 text_1number GXT 'YOR_J00' number 21@
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_SMASHER
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 1 text_1number GXT 'YOR_J01' number 21@
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_TAXIEXT
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 2 text_1number GXT 'YOR_J02' number 21@
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_DRIPWORSHIP
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 3 text_1number GXT 'YOR_J03' number 21@
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_SHAKEDOWN
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 4 text_1number GXT 'YOR_J04' number 21@
+    
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_MIDAS
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 5 text_1number GXT 'YOR_J05' number 21@
+    
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_FEVER
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 6 text_1number GXT 'YOR_J06' number 21@
+    
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_DANMAKU
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 7 text_1number GXT 'YOR_J07' number 21@
+end
+
+if
+    0039: 15@ == 2
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_RESONANCE
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 0 text_1number GXT 'YOR_S00' number 21@
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_SCAVENGER
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 1 text_1number GXT 'YOR_S01' number 21@
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_MISFORTUNE
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 2 text_1number GXT 'YOR_S02' number 21@
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_TRAFFICHEX
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 3 text_1number GXT 'YOR_S03' number 21@
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_AVIATION
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 4 text_1number GXT 'YOR_S04' number 21@
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_DEBTDET
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 5 text_1number GXT 'YOR_S05' number 21@
+    
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_GRIMPITY
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 6 text_1number GXT 'YOR_S06' number 21@
+    
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ALLOC_MISERY
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    08EE: set_panel 0@ column 0 row 7 text_1number GXT 'YOR_S07' number 21@
+end
+return
+
+:Refresh_Preferences_Numbers
+// Row 0: CashPerPoint
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "CashPerPoint"
+08EE: set_panel 0@ column 0 row 0 text_1number GXT 'YOR_P00' number 7@
+
+// Row 1: ContractPoints
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Contract" key "ContractPoints"
+08EE: set_panel 0@ column 0 row 1 text_1number GXT 'YOR_P01' number 7@
+
+// Row 2: HealthPercentThreshold
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "HealthPercentThreshold"
+08EE: set_panel 0@ column 0 row 2 text_1number GXT 'YOR_P02' number 7@
+
+// Row 3: EnableWeaponScavenging
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "EnableWeaponScavenging"
+08EE: set_panel 0@ column 0 row 3 text_1number GXT 'YOR_P03' number 7@
+
+// Row 4: EnableDisarmDrops (Master Toggle)
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "EnableDisarmDrops"
+08EE: set_panel 0@ column 0 row 4 text_1number GXT 'YOR_P04' number 7@
+
+// Row 5: EnableGunJams
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionMisfortune" key "EnableGunJams"
+08EE: set_panel 0@ column 0 row 5 text_1number GXT 'YOR_P05' number 7@
+
+// Row 6: BribeCostPerStar
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "PoliceBribe" key "BribeCostPerStar"
+08EE: set_panel 0@ column 0 row 6 text_1number GXT 'YOR_P06' number 7@
+
+// Row 7: High-Roller Mark
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "EnableHighRollerMarks"
+08EE: set_panel 0@ column 0 row 7 text_1number GXT 'YOR_P07' number 7@
+
+// Row 8: Save/Load Banner
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Notifications" key "ShowSaveLoadMessage"
+08EE: set_panel 0@ column 0 row 8 text_1number GXT 'YOR_P08' number 7@
+return
+
+// =========================================================================
+// STEPPING CALCULATOR (±1, ±10, ±100, or ALL via SPACE)
+// =========================================================================
+:Calculate_Step_Size
+6@ = 1
+if
+    0AB0: is_key_pressed 16 // Shift
+then
+    6@ = 10
+    if
+        0AB0: is_key_pressed 17 // Ctrl
+    then
+        6@ = 100
+    end
+end
+return
+
+// =========================================================================
+// DYNAMIC TOOLTIPS (Read on-the-fly via 10@)
+// =========================================================================
+:Show_Dynamic_Tooltip
+03E6: remove_text_box
+if
+    0039: 15@ == 0 // MASTER HUB TOOLTIPS
+then
+    if
+        0039: 2@ == 0 // Jo'on: Extravagance
+    then
+        0ACE: print_help_formatted "~y~Jo'on: Extravagance~n~~w~God of Wealth and Greed.~n~~s~Heavy melee damage, mass extortion, and fast cash inflow."
+    end
+    if
+        0039: 2@ == 1 // Shion: Misfortune
+    then
+        0ACE: print_help_formatted "~y~Shion: Misfortune~n~~w~God of Poverty and Calamity.~n~~s~Disaster auras, vehicle hexes, dumpster food, and death defiance."
+    end
+    if
+        0039: 2@ == 2 // Yorigami Contract
+    then
+        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Contract" key "ContractPoints"
+        if
+            002B: 0 >= 10@
+        then
+            10@ = 100
+        end
+
+        0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "CashPerPoint"
+        if
+            002B: 0 >= 11@
+        then
+            11@ = 10000
+        end
+
+        0085: 12@ = 10@
+        006A: 12@ *= 11@ // Total Debt Dollars
+
+        0ACE: print_help_formatted "~r~Yorigami Contract~n~~w~Loan of ~y~+%d Y-Points~w~ for ~r~-$%d Debt~w~.~n~~s~Requires $0+ wallet. Cannot be spammed." 10@ 12@
+    end
+    if
+        0039: 2@ == 3 // Mod Preferences
+    then
+        0ACE: print_help_formatted "~y~Mod Preferences~n~~w~Customize audio chimes, notifications, and flex cash thresholds in real-time."
+    end
+    if
+        0039: 2@ == 4 // Respec All Points
+    then
+        0ACE: print_help_formatted "~y~Respec All Points~n~~w~Refund all allocated points to available pool.~n~~g~Zero penalty. Existing debt is not cleared."
+    end
+    if
+        0039: 2@ == 5 // Exit Menu
+    then
+        0ACE: print_help_formatted "~y~Exit Menu~n~~w~Close the Yorigami Prestige menu and return to the game."
+    end
+end
+
+if
+    0039: 15@ == 1 // JO'ON PERKS
+then
+    if
+        0039: 2@ == 0 // Jo'on's Bling
+    then
+        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "JoonBling" key "BonusDamagePerPoint"
+        if
+            002B: 0 >= 10@
+        then
+            10@ = 1
+        end
+
+        0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "JoonBling" key "MaxDamageCap"
+        if
+            002B: 0 >= 11@
+        then
+            11@ = 40
+        end
+
+        0085: 12@ = 11@
+        0072: 12@ /= 10@
+        0ACE: print_help_formatted "~y~Jo'on's Bling~n~~w~+1 Melee/Knuckle DMG per pt.~n~~g~Soft Cap: %d Pts (+%d DMG max)." 12@ 11@
+    end
+
+    if
+        0039: 2@ == 1 // Vehicle Smasher
+    then
+        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "JoonBling" key "BlastShieldUnlockPoints"
+        if
+            002B: 0 >= 10@
+        then
+            10@ = 10
+        end
+
+        0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "JoonBling" key "MaxDamageCap"
+        if
+            002B: 0 >= 11@
+        then
+            11@ = 40
+        end
+
+        0ACE: print_help_formatted "~y~Vehicle Smasher~n~~w~Punch & explode cars.~n~~y~Blast Shield: %d Pts ~w~| ~g~Max DMG: %d Pts." 10@ 11@
+    end
+
+    if
+        0039: 2@ == 2 // Taxi Extortion
+    then
+        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "TaxiExtortion" key "BonusPercentPerPoint"
+        if
+            002B: 0 >= 10@
+        then
+            10@ = 2
+        end
+
+        11@ = 100
+        0072: 11@ /= 10@
+        0ACE: print_help_formatted "~y~Taxi Extortion~n~~w~+%d%% passenger fare per pt.~n~~g~Milestone: %d Pts (+100%% Double Fare)." 10@ 11@
+    end
+
+    if
+        0039: 2@ == 3 // Drip Worship
+    then
+        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DripWorship" key "PercentPerPoint"
+        if
+            002B: 0 >= 10@
+        then
+            10@ = 1
+        end
+
+        11@ = 100
+        0072: 11@ /= 10@
+        0ACE: print_help_formatted "~y~Drip Worship~n~~w~+%d%% Sex Appeal per pt.~n~~g~Max Cap: %d Pts (100%% Max Bar)." 10@ 11@
+    end
+
+    if
+        0039: 2@ == 4 // Street Shakedown
+    then
+        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "BonusPerPoint"
+        if
+            002B: 0 >= 10@
+        then
+            10@ = 25
+        end
+
+        0ACE: print_help_formatted "~y~Street Shakedown~n~~w~+$%d cash per pt & drops gang weapons.~n~~g~Min Gang Resist Floor: 100 Pts." 10@
+    end
+
+    if
+        0039: 2@ == 5 // Midas Magnet
+    then
+        0AF2: 13@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "MidasMagnet" key "MaxRadiusCap"
+        if
+            0033: 0.0 >= 13@
+        then
+            13@ = 35.0
+        end
+
+        0092: 10@ = float 13@ to_integer
+        000E: 10@ -= 8
+        0012: 10@ *= 2
+
+        0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MidasMagnet" key "MaxBonusPercentCap"
+        if
+            002B: 0 >= 11@
+        then
+            11@ = 100
+        end
+
+        0085: 12@ = 11@
+        0016: 12@ /= 2
+        0ACE: print_help_formatted "~y~Midas Magnet~n~~w~Vacuums nearby cash pickups.~n~~g~Caps: %d Pts (35m Reach) | %d Pts (+100%%)." 10@ 12@
+    end
+
+    if
+        0039: 2@ == 6 // Pestilence Fever
+    then
+        0ACE: print_help_formatted "~y~Pestilence Fever (Y + C)~n~~w~Forces crowds to drop cash.~n~~g~Caps: 40 Pts (20s CD) | 60 Pts ($300/ped)."
+    end
+
+    if
+        0039: 2@ == 7 // Money Danmaku
+    then
+        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MoneyDanmaku" key "BonusDamagePerPoint"
+        if
+            002B: 0 >= 10@
+        then
+            10@ = 2
+        end
+
+        0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MoneyDanmaku" key "MaxDamageCap"
+        if
+            002B: 0 >= 11@
+        then
+            11@ = 80
+        end
+
+        0085: 12@ = 11@
+        0072: 12@ /= 10@
+
+        0ACE: print_help_formatted "~y~Money Danmaku (Y + G)~n~~w~Bullets burn cash for lethal damage.~n~~g~Soft Cap: %d Pts (+%d DMG | Shreds Armor)." 12@ 11@
+    end
+end
+
+if
+    0039: 15@ == 2 // SHION PERKS
+then
+    if
+        0039: 2@ == 0 // Shion Resonance
+    then
+        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionResonance" key "RequiredUnlockPoints"
+        if
+            002B: 0 >= 10@
+        then
+            10@ = 5
+        end
+
+        0ACE: print_help_formatted "~y~Shion Resonance~n~~w~Cops ignore 1-star on foot at $0.~n~~y~Unlock Milestone: %d Pts." 10@
+    end
+
+    if
+        0039: 2@ == 1 // Scavenger Feast
+    then
+        0ACE: print_help_formatted "~y~Scavenger Feast~n~~w~Free vending, carts, and dumpster food.~n~~g~Max Chance Cap: 20 Pts (All Sources)."
+    end
+
+    if
+        0039: 2@ == 2 // Misfortune Aura
+    then
+        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionMisfortune" key "MaxBadLuckPercent"
+        if
+            002B: 0 >= 10@
+        then
+            10@ = 20
+        end
+
+        0ACE: print_help_formatted "~y~Misfortune Aura~n~~w~Hostile stumble & weapon jam aura.~n~~g~Soft Cap: %d Pts (%d%% max chance)." 10@ 10@
+    end
+
+    if
+        0039: 2@ == 3 // Traffic Hex
+    then
+        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "TrafficHex" key "MaxStallPercent"
+        if
+            002B: 0 >= 10@
+        then
+            10@ = 20
+        end
+
+        0ACE: print_help_formatted "~y~Traffic Hex~n~~w~Pursuit cop cruisers stall out.~n~~g~Soft Cap: %d Pts (%d%% max chance)." 10@ 10@
+    end
+
+    if
+        0039: 2@ == 4 // Aviation Calamity
+    then
+        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "AviationMisfortune" key "MaxAviationChance"
+        if
+            002B: 0 >= 10@
+        then
+            10@ = 20
+        end
+
+        0ACE: print_help_formatted "~y~Aviation Calamity~n~~w~Pursuit choppers explode mid-air.~n~~g~Soft Cap: %d Pts (%d%% max chance)." 10@ 10@
+    end
+
+    if
+        0039: 2@ == 5 // Debt Detonation
+    then
+        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "HealthPercentThreshold"
+        if
+            002B: 0 >= 10@
+        then
+            10@ = 50
+        end
+
+        0ACE: print_help_formatted "~y~Debt Detonation~n~~w~Disarm shockwave under %d%% HP.~n~~g~Caps: 20 Pts (60m Radius) | 25 Pts (10s CD)." 10@
+    end
+
+    if
+        0039: 2@ == 6 // Grim Pity
+    then
+        0ACE: print_help_formatted "~y~Grim Pity~n~~w~Death defiance & 75%% burst heal at $0.~n~~g~Caps: 25 Pts (75%% Heal) | 48 Pts (60s CD)."
+    end
+
+    if
+        0039: 2@ == 7 // Misery Loves Company
+    then
+        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MiseryLovesCompany" key "ReflectionPerPoint"
+        if
+            002B: 0 >= 10@
+        then
+            10@ = 2
+        end
+
+        0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MiseryLovesCompany" key "MaxReflectionCap"
+        if
+            002B: 0 >= 11@
+        then
+            11@ = 100
+        end
+
+        0085: 12@ = 11@
+        0072: 12@ /= 10@
+
+        0ACE: print_help_formatted "~y~Misery Loves Company~n~~w~Reflects damage at $0 to attacker.~n~~g~Soft Cap: %d Pts (%d%% Voodoo Reflection)." 12@ 11@
+    end
+end
+
+if
+    0039: 15@ == 3 // PREFERENCES TOOLTIPS
+then
+    if
+        0039: 2@ == 0 // CashPerPoint
+    then
+        0ACE: print_help_formatted "~y~Flex and Rollover Rate~n~~w~Dollars required to earn 1 Y-Point.~n~~g~Lower = faster points | Higher = hardcore."
+    end
+    if
+        0039: 2@ == 1 // ContractPoints
+    then
+        0ACE: print_help_formatted "~y~Yorigami Contract Size~n~~w~Points granted and equivalent debt taken.~n~~g~Cycle between 25 and 1000 points."
+    end
+    if
+        0039: 2@ == 2 // HealthPercentThreshold
+    then
+        0ACE: print_help_formatted "~y~Debt Detonation HP%%~n~~w~HP threshold to trigger emergency blast.~n~~g~Lower = last stand | Higher = early safety net."
+    end
+    if
+        0039: 2@ == 3 // EnableWeaponScavenging
+    then
+        0ACE: print_help_formatted "~y~Trash Weapon Loot~n~~w~Allow finding guns and Molotovs in trash.~n~~g~1 = Weapons enabled | 0 = Food only."
+    end
+    if
+        0039: 2@ == 4 // EnableDisarmDrops
+    then
+        0ACE: print_help_formatted "~y~Disarm Gun Drops~n~~w~Disarmed peds drop weapons as ground pickups.~n~~g~1 = Drops enabled | 0 = Clean streets."
+    end
+    if
+        0039: 2@ == 5 // EnableGunJams
+    then
+        0ACE: print_help_formatted "~y~Hostile Weapon Jams~n~~w~Hostiles suffer weapon jams in Misfortune Aura.~n~~g~1 = Jams enabled | 0 = Stumbles only."
+    end
+    if
+        0039: 2@ == 6 // BribeCostPerStar
+    then
+        0ACE: print_help_formatted "~y~Police Bribe Fee~n~~w~Cost per star cleared when typing BRIBE.~n~~g~Adjust the price of buying off the law."
+    end
+    if
+        0039: 2@ == 7 // EnableHighRollerMarks
+    then
+        0ACE: print_help_formatted "~y~High-Roller Mark~n~~w~Spawns wealthy radar targets in free-roam.~n~~g~1 = Marks active | 0 = Turn off radar marks."
+    end
+    if
+        0039: 2@ == 8 // ShowSaveLoadMessage
+    then
+        0ACE: print_help_formatted "~y~Save/Load Confirmation~n~~w~On-screen banner when saving at safehouses.~n~~g~1 = Show banner | 0 = Silent saves."
+    end
+end
+return
+
+// =========================================================================
+// RESPEC CONTROLLER
+// =========================================================================
+:Menu_Execute_Respec
+// Total Points -> Available Points
+0085: 30@ = 31@
+000A: 30@ += MEM_TOTAL_POINTS
+0A8D: 6@ = read_memory 30@ size 4 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_AVAIL_POINTS
+0A8C: write_memory 30@ size 4 value 6@ virtual_protect 0
+
+// Reset Jo'on Perk Allocations
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_JOONBLING
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_SMASHER
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_TAXIEXT
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_DRIPWORSHIP
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_SHAKEDOWN
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_MIDAS
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_FEVER
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_DANMAKU
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+// Reset Shion Perk Allocations
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_RESONANCE
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_SCAVENGER
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_MISFORTUNE
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_TRAFFICHEX
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_AVIATION
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_DEBTDET
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_GRIMPITY
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_MISERY
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+0ACD: print_string_now "~g~All Y-Points refunded to available pool!" 2500
+return
+
+// =========================================================================
+// SUBROUTINE: EXECUTE YORIGAMI CONTRACT (Predatory Loan)
+// =========================================================================
+:Menu_Execute_Contract
+010B: 20@ = player $PLAYER_CHAR money
+
+// Read Minimum Cash Required to qualify (Default: $0)
+0AF0: 21@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Contract" key "MinCashRequiredToSign"
+if
+    001B: 0 > 21@
+then
+    21@ = 0
+end
+
+// Check if player is eligible (Must NOT be in debt!)
+if
+    001D: 21@ > 20@
+then
+    // REJECTED: Player is already in debt!
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ACE: print_help_formatted "~r~Contract Rejected! You must pay off your existing debt first!"
+else
+    // ACCEPTED: The Shark Deal is sealed!
+    0AF0: 22@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Contract" key "ContractPoints"
+    if
+        002B: 0 >= 22@
+    then
+        22@ = 100
+    end
+
+    0AF0: 23@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "CashPerPoint"
+    if
+        002B: 0 >= 23@
+    then
+        23@ = 10000
+    end
+
+    // Calculate Total Debt: ContractPoints * CashPerPoint (006A)
+    0085: 24@ = 22@
+    006A: 24@ *= 23@ // 24@ = Total Debt (e.g. $1,000,000)
+
+    // Inform yorigami.txt Escrow of the contract debt to prevent double-dipping!
+    0085: 30@ = 31@
+    000A: 30@ += MEM_CONTRACT_ESCROW
+    0A8D: 26@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        001B: 0 > 26@
+    then
+        26@ = 0
+    end
+    005A: 26@ += 24@
+    0085: 30@ = 31@
+    000A: 30@ += MEM_CONTRACT_ESCROW
+    0A8C: write_memory 30@ size 4 value 26@ virtual_protect 0
+
+    // Negate to deduct cash
+    0085: 25@ = 24@
+    0012: 25@ *= -1
+    0109: player $PLAYER_CHAR money += 25@
+
+    // CREDIT Y-POINTS TO LIFETIME TOTAL & AVAILABLE POOL!
+    0085: 30@ = 31@
+    000A: 30@ += MEM_TOTAL_POINTS
+    0A8D: 26@ = read_memory 30@ size 4 virtual_protect 0
+    005A: 26@ += 22@
+    0085: 30@ = 31@
+    000A: 30@ += MEM_TOTAL_POINTS
+    0A8C: write_memory 30@ size 4 value 26@ virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_AVAIL_POINTS
+    0A8D: 26@ = read_memory 30@ size 4 virtual_protect 0
+    005A: 26@ += 22@
+    0085: 30@ = 31@
+    000A: 30@ += MEM_AVAIL_POINTS
+    0A8C: write_memory 30@ size 4 value 26@ virtual_protect 0
+
+    // Sensory & Audio
+    0AF0: 26@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Contract" key "PlayContractSound"
+    if
+        0039: 26@ == 1
+    then
+        018C: play_sound 1147 at 0.0 0.0 0.0
+    end
+
+    0AF0: 26@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Contract" key "ShowContractMessage"
+    if
+        0039: 26@ == 1
+    then
+        03EB: clear_small_messages_only
+        0ACE: print_help_formatted "~r~YORIGAMI CONTRACT SIGNED! ~w~+$%d Debt Taken | +%d Y-Points!" 24@ 22@
+    end
+end
+return
+
+// =========================================================================
+// SUBROUTINE: INITIALIZE ALL MENU TEXT LABELS IN RAM
+// =========================================================================
+:Init_Menu_Text_Labels
+// Master Titles & Headers
+0ADF: add_text_label "YOR_TIT" text "YORIGAMI PRESTIGE"
+0ADF: add_text_label "YOR_HUB" text "SELECT PATH"
+0ADF: add_text_label "YOR_HJN" text "JO'ON: WEALTH"
+0ADF: add_text_label "YOR_HSH" text "SHION: MISFORTUNE"
+0ADF: add_text_label "YOR_HPR" text "PREFERENCES"
+
+// Master Hub Navigation
+0ADF: add_text_label "YOR_M00" text "Jo'on: Extravagance"
+0ADF: add_text_label "YOR_M01" text "Shion: Misfortune"
+0ADF: add_text_label "YOR_M02" text "Yorigami Contract"
+0ADF: add_text_label "YOR_M03" text "Mod Preferences"
+0ADF: add_text_label "YOR_M04" text "Respec All Points"
+0ADF: add_text_label "YOR_M05" text "Exit Menu"
+
+// Jo'on Perks
+0ADF: add_text_label "YOR_J00" text "Jo'on's Bling - ~1~"
+0ADF: add_text_label "YOR_J01" text "Vehicle Smasher - ~1~"
+0ADF: add_text_label "YOR_J02" text "Taxi Extortion - ~1~"
+0ADF: add_text_label "YOR_J03" text "Drip Worship - ~1~"
+0ADF: add_text_label "YOR_J04" text "Street Shakedown - ~1~"
+0ADF: add_text_label "YOR_J05" text "Midas Magnet - ~1~"
+0ADF: add_text_label "YOR_J06" text "Pestilence Fever - ~1~"
+0ADF: add_text_label "YOR_J07" text "Money Danmaku - ~1~"
+
+// Shion Perks
+0ADF: add_text_label "YOR_S00" text "Shion Resonance - ~1~"
+0ADF: add_text_label "YOR_S01" text "Scavenger Feast - ~1~"
+0ADF: add_text_label "YOR_S02" text "Misfortune Aura - ~1~"
+0ADF: add_text_label "YOR_S03" text "Traffic Hex - ~1~"
+0ADF: add_text_label "YOR_S04" text "Aviation Calamity - ~1~"
+0ADF: add_text_label "YOR_S05" text "Debt Detonation - ~1~"
+0ADF: add_text_label "YOR_S06" text "Grim Pity - ~1~"
+0ADF: add_text_label "YOR_S07" text "Misery Loves Company - ~1~"
+
+// Preferences Rows
+0ADF: add_text_label "YOR_P00" text "Flex & Rollover - $~1~"
+0ADF: add_text_label "YOR_P01" text "Contract Loan - ~1~ Pts"
+0ADF: add_text_label "YOR_P02" text "Detonation Gate - ~1~%"
+0ADF: add_text_label "YOR_P03" text "Trash Weapon Loot - ~1~"
+0ADF: add_text_label "YOR_P04" text "Disarm Gun Drops - ~1~"
+0ADF: add_text_label "YOR_P05" text "Hostile Gun Jams - ~1~"
+0ADF: add_text_label "YOR_P06" text "Police Bribe Fee - $~1~"
+0ADF: add_text_label "YOR_P07" text "High-Roller Mark - ~1~"
+0ADF: add_text_label "YOR_P08" text "Save/Load Banner - ~1~"
+return
+
+// =========================================================================
+// CLOSE MENU
+// =========================================================================
+:Menu_Close_All
+03E6: remove_text_box
+03EB: clear_small_messages_only
+
+if
+    04B5: 0@ >= 0
+then
+    08DA: remove_panel 0@
+    0@ = -1
+end
+
+if
+    0256: is_player_playing $PLAYER_CHAR
+then
+    01B4: set_player $PLAYER_CHAR can_move 1
+end
+
+:Wait_Exit_Release_All
+wait 50
+if or
+    00E1: player 0 pressed_key 15
+    0AB0: is_key_pressed 13
+    0AB0: is_key_pressed 27
+    0AB0: is_key_pressed 8
+then
+    goto @Wait_Exit_Release_All
+end
+wait 100
+goto @Menu_Idle_Loop

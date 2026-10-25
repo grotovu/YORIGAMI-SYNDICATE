@@ -1,0 +1,141 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+script_name "Y_FXGB"
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    0A93: terminate_this_custom_script
+end
+
+// -------------------------------------------------------------------------
+// ACCESSIBILITY / FLASH TOGGLE WATCHDOG
+// -------------------------------------------------------------------------
+0AF0: 20@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "EnableFlashFX"
+if
+    20@ == 0
+then
+    0A93: terminate_this_custom_script
+end
+
+// Camera rumble on instant death defiance / detonation
+0003: shake_camera 80
+
+TIMERA = 0
+
+:GrimBurst_Loop
+wait 0
+
+if or
+    8256: not is_player_playing $PLAYER_CHAR
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+then
+    0A93: terminate_this_custom_script
+end
+
+// 1. Get Live Player Torso Position
+04C4: store_coords_to 2@ 3@ 4@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.15
+
+// 2. Snapshot TIMERA into standard integer register
+0085: 29@ = TIMERA
+
+// =========================================================================
+// 2-PHASE ETHEREAL SPIRIT FLASH (Total Duration: 750ms)
+// =========================================================================
+
+// --- PHASE 1: EXPLOSIVE BLOOM (0ms to 150ms) ---
+if
+    29@ < 150
+then
+    0093: 8@ = integer 29@ to_float
+    0017: 8@ /= 150.0
+
+    if
+        8@ < 0.0
+    then
+        8@ = 0.0
+    end
+    if
+        0021: 8@ > 1.0
+    then
+        8@ = 1.0
+    end
+
+    // Outer Sapphire Aura (0.0m -> 7.5m)
+    0087: 5@ = 8@
+    0013: 5@ *= 7.5
+
+    // Mid Cyan Diamond Flare (0.0m -> 4.5m)
+    0087: 6@ = 8@
+    0013: 6@ *= 4.5
+
+    // Core Blinding White Spark (0.0m -> 2.5m)
+    0087: 7@ = 8@
+    0013: 7@ *= 2.5
+    
+    064B: 14@ = create_particle "shion_misfortune" at 2@ 3@ 4@ type 1
+    064C: make_particle 14@ visible
+    064F: remove_references_to_particle 14@
+else
+    // --- PHASE 2: LINGERING DISSIPATE & COLLAPSE (150ms to 750ms) ---
+    if
+        29@ < 750
+    then
+        28@ = 750
+        0062: 28@ -= 29@
+        0093: 8@ = integer 28@ to_float
+        0017: 8@ /= 600.0
+
+        if
+            8@ < 0.0
+        then
+            8@ = 0.0
+        end
+        if
+            0021: 8@ > 1.0
+        then
+            8@ = 1.0
+        end
+
+        // Outer Sapphire Aura
+        0087: 5@ = 8@
+        0013: 5@ *= 7.5
+
+        // Mid Cyan Diamond Flare
+        0087: 6@ = 8@
+        0013: 6@ *= 4.5
+
+        // Core Blinding White Spark
+        0087: 7@ = 8@
+        0013: 7@ *= 2.5
+    else
+        0A93: terminate_this_custom_script
+    end
+end
+
+// Render Triple-Layered Coronas at Player Position
+if
+    0021: 5@ > 0.01
+then
+    04D5: create_corona_at 2@ 3@ 4@ radius 5@ type 0 flare 0 RGB 0 100 255   // Electric Sapphire
+end
+
+if
+    0021: 6@ > 0.01
+then
+    04D5: create_corona_at 2@ 3@ 4@ radius 6@ type 0 flare 0 RGB 80 200 255  // Brilliant Cyan
+end
+
+if
+    0021: 7@ > 0.01
+then
+    04D5: create_corona_at 2@ 3@ 4@ radius 7@ type 0 flare 0 RGB 255 255 255 // Pure Luminous Center
+end
+
+goto @GrimBurst_Loop

@@ -1,0 +1,1644 @@
+{$CLEO .cs}
+{$USE CLEO+}
+{$USE memory}
+{$USE ini}
+{$USE bitwise}
+
+0000: NOP
+script_name "Y_Joon"
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (SCOPED: JOON CORE)
+// =========================================================================
+const
+    MEM_SAVE_SLOT = 0             // Formerly 700
+    MEM_INTENTIONAL_DISM = 8      // Formerly 722
+    MEM_PLAYER_FORM = 12          // Formerly 725
+    MEM_SHION_HANDLE = 116        // Formerly 703
+    MEM_SHION_WEAPON_ID = 124     // Formerly 731
+    MEM_SHION_AMMO_COUNT = 128    // Formerly 732
+    MEM_JOON_STASH_WEAPON = 136   // Formerly 738
+    MEM_JOON_STASH_AMMO = 140     // Formerly 739
+    MEM_JOON_CIGAR_OBJ = 220      // Formerly 740
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+0@ = 0    // Jo'on Active State: 0 = CJ, 1 = Jo'on, 2 = Shion
+1@ = 0    // Last Tracked Shion Handle
+4@ = -999 // Last Tracked Save Slot (-999 forces initial boot load)
+5@ = 0    // Reload Latch: 0 = None, 1 = Silent Reload, 2 = Save Clothes & Reload (Freed from 30@)
+7@ = 0    // Acquaintance Snapshot Heap Memory Pointer
+8@ = 0    // Acquaintance Snapshot Active Flag (0 = CJ Matrix, 1 = Jo'on Neutralized)
+9@ = 89   // ModifierKey (Default: 89 = Y)
+10@ = 76  // SwitchKey (Default: 76 = L)
+11@ = 0.0 // Last Tracked Fat Stat (float)
+12@ = 0.0 // Last Tracked Muscle Stat (float)
+19@ = 0   // Girlfriend Suppression State (-1 = Disabled in INI, 0 = CJ, 1 = Suppressed)
+20@ = 1   // Target Armed Weapon Slot (Default: 1 = Unarmed/Fists)
+29@ = 0   // Save Watchdog Reload Latch
+
+// Share Jo'on State across scripts
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+gosub @Load_Joon_Settings
+
+// Allocate 256-byte RAM cache on boot for acquaintance snapshot
+0AC8: 7@ = allocate_memory_size 256
+
+// Ensure native player-ignore flag is completely cleared
+03BF: set_player $PLAYER_CHAR ignored_by_everyone 0
+
+// Register Save Confirmation Callback (Using isolated 18@ to protect 20@ TargetSlot)
+0ED1: set_script_event_save_confirmation 1 @OnSaveConfirmationCallback 18@
+
+:Joon_MainLoop
+wait 50
+
+// Detect loading screens or player despawning to catch save reloads
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    29@ = 1
+    goto @Joon_MainLoop
+end
+
+// Force save watchdog to trigger 100% of the time after any load screen
+if
+    29@ == 1
+then
+    29@ = 0
+    4@ = -999
+end
+
+// =========================================================================
+// SAVE LOAD / BOOT AUTO-APPLY WATCHDOG (StartupPlayerCharacter)
+// =========================================================================
+// Read active save slot from master memory
+0085: 30@ = 31@
+000A: 30@ += MEM_SAVE_SLOT
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+if
+    803B: not 2@ == 4@ // Save game loaded or fresh boot detected
+then
+    0085: 4@ = 2@
+    0@ = 0 // Reset state: engine freshly reloaded world as CJ
+
+    gosub @Load_Joon_Settings // Reloads keys and re-evaluates SuppressGirlfriends INI flag
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PLAYER_FORM
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    8@ = 0 // Invalidate old snapshot so new save slot baseline is captured
+
+    0AF0: 3@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "StartupPlayerCharacter"
+    if
+        3@ < 0
+    then
+        3@ = 1
+    end
+
+    // Ensure Jo'on stash is read directly from disk on boot to prevent thread race
+    0AD3: string_format 24@v "Slot_%d" 4@
+    0AF0: 13@ = read_int_from_ini_file "cleo\savedata\ShionWeapon.ini" section 24@v key "JoWeaponID"
+    if
+        13@ < 0
+    then
+        13@ = 0
+    end
+    0AF0: 14@ = read_int_from_ini_file "cleo\savedata\ShionWeapon.ini" section 24@v key "JoAmmoCount"
+    if
+        14@ < 0
+    then
+        14@ = 0
+    end
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_STASH_WEAPON
+    0A8C: write_memory 30@ size 4 value 13@ virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_STASH_AMMO
+    0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+
+    if
+        3@ == 1 // Jo'on Mode
+    then
+        5@ = 1 // Queue Jo'on rebuild
+    end
+    if
+        3@ == 2 // Shion Mode
+    then
+        5@ = 2 // Queue Shion rebuild
+    end
+end
+
+// =========================================================================
+// CHEAT LISTENER: TYPE "JOON" (Toggle Jo'on <-> CJ)
+// =========================================================================
+if
+    0ADC: test_cheat "JOON"
+then
+    if and
+        8449: not actor $PLAYER_ACTOR in_a_car // Must be on foot!
+        816B: not fading
+    then
+        gosub @Record_Current_Weapon_Slot
+        if
+            0@ == 1
+        then
+            gosub @Revert_Player_Back_To_CJ
+        else
+            if
+                0@ == 0
+            then
+                0793: save_player_clothes
+            end
+            if
+                0@ == 2
+            then
+                gosub @Stash_Shion_Live_Weapon
+                gosub @Restore_Joon_Stashed_Weapon
+            end
+            gosub @Apply_Joon_Skin_With_Banner
+            gosub @Restore_Target_Weapon_Slot
+        end
+    end
+end
+
+// =========================================================================
+// CHEAT LISTENER: TYPE "POVERTY" (Toggle Shion <-> CJ)
+// =========================================================================
+if
+    0ADC: test_cheat "POVERTY"
+then
+    if and
+        8449: not actor $PLAYER_ACTOR in_a_car // Must be on foot!
+        816B: not fading
+    then
+        gosub @Record_Current_Weapon_Slot
+        if
+            0@ == 2
+        then
+            gosub @Revert_Player_Back_To_CJ
+        else
+            if
+                0@ == 0
+            then
+                0793: save_player_clothes
+            end
+            if
+                0@ == 1
+            then
+                gosub @Stash_Joon_Slot_Weapon
+            end
+            gosub @Apply_Shion_Skin_With_Banner
+            gosub @Equip_Shion_Designated_Weapon
+            gosub @Restore_Target_Weapon_Slot
+        end
+    end
+end
+
+// =========================================================================
+// TAG-TEAM SWITCH LISTENER: PRESS Y + L (Swap Jo'on <-> Shion)
+// =========================================================================
+if and
+    8449: not actor $PLAYER_ACTOR in_a_car // Must be on foot!
+    816B: not fading
+    8E25: not is_on_cutscene
+then
+    if and
+        0AB0: is_key_pressed 9@  // ModifierKey (Y)
+        0AB0: is_key_pressed 10@ // SwitchKey (L)
+    then
+        :Wait_TagSwitch_Keys_Rel
+        wait 50
+        if
+            8256: not player $PLAYER_CHAR defined
+        then
+            goto @Joon_MainLoop
+        end
+        if or
+            0AB0: is_key_pressed 9@
+            0AB0: is_key_pressed 10@
+        then
+            goto @Wait_TagSwitch_Keys_Rel
+        end
+
+        // Record active slot prior to any stashing or model reconstruction
+        gosub @Record_Current_Weapon_Slot
+
+        if
+            0@ == 1 // Currently Jo'on -> Tag to Shion
+        then
+            gosub @Stash_Joon_Slot_Weapon
+            gosub @Apply_Shion_Skin_With_Banner
+            gosub @Equip_Shion_Designated_Weapon
+            gosub @Restore_Target_Weapon_Slot
+        else
+            if
+                0@ == 2 // Currently Shion -> Tag to Jo'on
+            then
+                gosub @Stash_Shion_Live_Weapon
+                gosub @Apply_Joon_Skin_With_Banner
+                gosub @Restore_Joon_Stashed_Weapon
+                gosub @Restore_Target_Weapon_Slot
+            else
+                // Currently CJ -> Save clothes & Switch to Jo'on
+                0793: save_player_clothes
+                gosub @Apply_Joon_Skin_With_Banner
+                gosub @Restore_Target_Weapon_Slot
+            end
+        end
+    end
+end
+
+// =========================================================================
+// EXTERNAL FORM CHANGE LISTENER (Catches requests from SpawnShion.cs)
+// =========================================================================
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+if and
+    0@ == 0
+    2@ == 1
+    8449: not actor $PLAYER_ACTOR in_a_car
+    816B: not fading
+    8E25: not is_on_cutscene
+then
+    gosub @Record_Current_Weapon_Slot
+    0793: save_player_clothes
+    gosub @Apply_Joon_Skin_With_Banner
+    gosub @Restore_Target_Weapon_Slot
+end
+
+// =========================================================================
+// AUTO-TRANSFORM INTO JO'ON WHEN SHION IS SPAWNED / RECRUITED
+// =========================================================================
+// Read Live Shion Handle
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+if
+    2@ > 0
+then
+    if
+        803B: not 2@ == 1@ // New Shion detected!
+    then
+        0085: 1@ = 2@
+        if and
+            0@ == 0 // Only transform if currently CJ
+            8449: not actor $PLAYER_ACTOR in_a_car
+            816B: not fading
+        then
+            gosub @Record_Current_Weapon_Slot
+            0793: save_player_clothes
+            gosub @Apply_Joon_Skin_With_Banner
+            gosub @Restore_Target_Weapon_Slot
+        end
+    end
+else
+    1@ = 0
+end
+
+// =========================================================================
+// VERTEX PURGE WATCHDOG (Catches Fat/Muscle Morphing for Jo'on & Shion)
+// =========================================================================
+if or
+    0@ == 1
+    0@ == 2
+then
+    0653: 21@ = float_stat 21 // Live Fat Stat
+    0653: 22@ = float_stat 23 // Live Muscle Stat
+
+    0087: 23@ = 21@
+    0063: 23@ -= 11@
+    0097: make 23@ absolute_float
+
+    0063: 22@ -= 12@
+    0097: make 22@ absolute_float
+
+    if or
+        0021: 23@ > 0.5
+        0021: 22@ > 0.5
+    then
+        0653: 11@ = float_stat 21
+        0653: 12@ = float_stat 23
+
+        if
+            5@ == 0
+        then
+            0085: 5@ = 0@ // Queues 1 for Jo'on, 2 for Shion
+        end
+    end
+end
+
+// =========================================================================
+// PROCESS PENDING RELOAD LATCH
+// =========================================================================
+if
+    5@ > 0
+then
+    if and
+        8449: not actor $PLAYER_ACTOR in_a_car
+        816B: not fading
+        8E25: not is_on_cutscene
+    then
+        if
+            0@ == 0
+        then
+            0793: save_player_clothes
+        end
+
+        if
+            5@ == 2
+        then
+            5@ = 0
+            gosub @Silent_Rebuild_Shion_Model
+            gosub @Equip_Shion_Designated_Weapon
+            gosub @Restore_Target_Weapon_Slot
+        else
+            5@ = 0
+            gosub @Silent_Rebuild_Joon_Model
+
+            // If save was created while playing as Shion, restore Jo'on's stashed loadout
+            0085: 30@ = 31@
+            000A: 30@ += MEM_JOON_STASH_WEAPON
+            0A8D: 13@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                13@ > 1
+            then
+                // Strip Shion's weapon that was restored by native save file
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_WEAPON_ID
+                0A8D: 15@ = read_memory 30@ size 4 virtual_protect 0
+                if
+                    15@ > 1
+                then
+                    0555: remove_weapon 15@ from_actor $PLAYER_ACTOR
+                end
+                gosub @Restore_Joon_Stashed_Weapon
+            end
+            gosub @Restore_Target_Weapon_Slot
+        end
+    end
+end
+
+// =========================================================================
+// GANG MATRIX WATCHDOG (Neutralizes all gangs while playing as Jo'on)
+// =========================================================================
+if
+    0@ == 1 // Currently Jo'on
+then
+    if
+        8@ == 0
+    then
+        gosub @Snapshot_And_Neutralize_Gangs
+    end
+else
+    if
+        8@ == 1
+    then
+        gosub @Restore_CJ_Gang_Acquaintances
+    end
+end
+
+// =========================================================================
+// GIRLFRIEND RADAR & CALL WATCHDOG (Suppresses Hearts & Calls in Jo'on Mode)
+// =========================================================================
+if
+    19@ >= 0 // Feature enabled in Shion.ini (SuppressGirlfriends != 0)
+then
+    if
+        0@ > 0 // Jo'on or Shion active
+    then
+        if
+            19@ == 0
+        then
+            19@ = 1
+            08BA: set $391 bit 11 // Native GTA SA girlfriend phone call & date suppression
+            gosub @Hide_Girlfriend_Radar_Blips
+        end
+    else
+        if
+            19@ == 1
+        then
+            19@ = 0
+            08C0: clear $391 bit 11 // Restore native girlfriend phone calls & date invitations
+            gosub @Restore_Girlfriend_Radar_Blips
+        end
+    end
+end
+
+goto @Joon_MainLoop
+
+
+// =========================================================================
+// SUBROUTINE: APPLY JO'ON SKIN WITH BANNER
+// =========================================================================
+:Apply_Joon_Skin_With_Banner
+0A92: create_custom_thread "Shion\FX_SwitchBurst.c" 1
+gosub @Silent_Rebuild_Joon_Model
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+0ADF: add_text_label "Y_JON1" text "~y~JO'ON YORIGAMI~n~~w~PESTILENCE GOD"
+09C1: add_next_text_to_brief_history 1
+00BA: show_text_styled GXT 'Y_JON1' time 2500 style 5
+return
+
+// =========================================================================
+// SUBROUTINE: SILENT HARD VERTEX PURGE & CHILD SCRIPT LAUNCHER
+// =========================================================================
+:Silent_Rebuild_Joon_Model
+// Clear any stuck tasks before rebuilding
+0687: clear_actor $PLAYER_ACTOR task
+0E96: clear_char_primary_tasks $PLAYER_ACTOR
+0E97: clear_char_secondary_tasks $PLAYER_ACTOR
+
+// Cloak player before reverting to base CJ
+0D10: set_actor $PLAYER_ACTOR alpha 0
+
+09C7: change_player $PLAYER_CHAR model_to #NULL
+0794: restore_player_clothes
+070D: rebuild_player $PLAYER_CHAR
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+0D10: set_actor $PLAYER_ACTOR alpha 0 // Ensure CJ remains hidden while streaming model
+0296: unload_special_actor 1
+wait 50
+
+023C: load_special_actor 'joon' as 1
+038B: load_requested_models
+
+:Wait_For_Joon_Model_Loaded
+wait 0
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    0296: unload_special_actor 1
+    return
+end
+if
+    823D: not special_actor 1 loaded
+then
+    0D10: set_actor $PLAYER_ACTOR alpha 0
+    goto @Wait_For_Joon_Model_Loaded
+end
+
+// Swap cleanly to Special Actor
+09C7: change_player $PLAYER_CHAR model_to #SPECIAL01
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+0296: unload_special_actor 1
+
+// Maintain fireproof immunity
+02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 0 CP 0 MP 0
+
+// If switch burst effect is not active (e.g. boot/save load), restore alpha immediately
+0AAA: 26@ = get_script_struct_named 'Sh_Swtc'
+if
+    26@ == 0
+then
+    0D10: set_actor $PLAYER_ACTOR alpha 255
+end
+
+// Wipe leftover stance-locks and unfreeze pad controls
+0792: disembark_instantly_actor $PLAYER_ACTOR
+0E96: clear_char_primary_tasks $PLAYER_ACTOR
+0E97: clear_char_secondary_tasks $PLAYER_ACTOR
+01B4: set_player $PLAYER_CHAR can_move 1
+
+0653: 11@ = float_stat 21
+0653: 12@ = float_stat 23
+
+// Voice muting configuration
+6@ = 0
+0AF0: 6@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "MuteCharacterVoice"
+if
+    6@ < 0
+then
+    6@ = 1
+end
+
+if
+    6@ == 1
+then
+    0489: set_actor $PLAYER_ACTOR muted 1
+    094E: set_actor $PLAYER_ACTOR mute_pain_audio 1
+else
+    0489: set_actor $PLAYER_ACTOR muted 0
+    094F: enable_actor $PLAYER_ACTOR pain_audio
+end
+
+0@ = 1
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+// Launch Jo'on's exclusive idle smoking child thread cleanly
+gosub @Terminate_Joon_Smoking_Safely
+0A92: create_custom_thread "Shion\JoonSmoke.c"
+return
+
+// =========================================================================
+// SUBROUTINE: REVERT BACK TO NORMAL CJ
+// =========================================================================
+:Revert_Player_Back_To_CJ
+if
+    0@ == 2
+then
+    gosub @Stash_Shion_Live_Weapon
+    gosub @Restore_Joon_Stashed_Weapon
+end
+
+// Terminate smoking thread and cleanly destroy attached cigar object
+gosub @Terminate_Joon_Smoking_Safely
+
+// Clear tasks prior to clothes restoration
+0792: disembark_instantly_actor $PLAYER_ACTOR
+0E96: clear_char_primary_tasks $PLAYER_ACTOR
+0E97: clear_char_secondary_tasks $PLAYER_ACTOR
+
+// Revert model to CJ and force full opacity
+09C7: change_player $PLAYER_CHAR model_to #NULL
+0794: restore_player_clothes
+070D: rebuild_player $PLAYER_CHAR
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR // Re-acquire fresh actor handle!
+0D10: set_actor $PLAYER_ACTOR alpha 255              // Restore 100% visibility!
+
+// CJ keeps fireproof because by praying to the Yorigami, he is blessed
+02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 0 CP 0 MP 0
+
+// Wipe any leftover stance-locks and unfreeze pad controls
+0792: disembark_instantly_actor $PLAYER_ACTOR
+0E96: clear_char_primary_tasks $PLAYER_ACTOR
+0E97: clear_char_secondary_tasks $PLAYER_ACTOR
+01B4: set_player $PLAYER_CHAR can_move 1
+
+0489: set_actor $PLAYER_ACTOR muted 0
+094F: enable_actor $PLAYER_ACTOR pain_audio
+
+// Restore CJ's storyline gang hostility matrix immediately
+gosub @Restore_CJ_Gang_Acquaintances
+
+0@ = 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+// =========================================================================
+// DISMISS SHION COMPANION (Shion does not recognize CJ)
+// =========================================================================
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+if
+    25@ > 0 // Solid Ped Form
+then
+    if and
+        056D: actor 25@ defined
+        8118: not actor 25@ dead
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_INTENTIONAL_DISM
+        0A8C: write_memory 30@ size 4 value 1 virtual_protect 0 // Set intentional dismissal flag
+
+        07AF: 24@ = player $PLAYER_CHAR group
+        06C9: remove_actor 25@ from_group
+        0687: clear_actor 25@ task
+        0E96: clear_char_primary_tasks 25@
+        0E97: clear_char_secondary_tasks 25@
+        05DE: AS_actor 25@ walk_around_ped_path
+        01C2: remove_references_to_actor 25@
+
+        // Display bewildered reaction line
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_CJDIS" text "~b~Shion: ~s~\"Wait... where'd Jo'on go? Who are you? Don't mug me, I'm broke...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CJDIS' time 3500 flag 1
+    end
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_HANDLE
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+else
+    if
+        25@ == -1 // Hitodama Spirit Form
+    then
+        0ABA: terminate_all_custom_scripts_with_this_name "Sh_HitoF"
+        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Warp"
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_HANDLE
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_CJDIH" text "~b~Shion: ~s~\"Wait... how'd she ditch me when I'm literally haunting her?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CJDIH' time 3500 flag 1
+    end
+end
+
+018C: play_sound 1057 at 0.0 0.0 0.0
+0ADF: add_text_label "Y_JON0" text "~s~CJ RESTORED~n~~w~NORMAL REALITY"
+09C1: add_next_text_to_brief_history 1
+00BA: show_text_styled GXT 'Y_JON0' time 2500 style 5
+return
+
+// =========================================================================
+// SUBROUTINE: SNAPSHOT CJ GANG STATE & NEUTRALIZE GANGS
+// =========================================================================
+:Snapshot_And_Neutralize_Gangs
+if
+    8@ == 0
+then
+    8@ = 1
+
+    for 25@ = 7 to 16
+        // Calculate base memory offset for this gang type
+        0085: 27@ = 25@
+        000E: 27@ -= 7
+        0012: 27@ *= 8
+        005A: 27@ += 7@ // Memory address for gang to player (0)
+
+        // Snapshot gang (25@) to player (0)
+        26@ = 0
+        if
+            07E8: acquaintance 0 of_actors_type 25@ to_actors_type 0 set
+        then
+            000A: 26@ += 1
+        end
+
+        if
+            07E8: acquaintance 1 of_actors_type 25@ to_actors_type 0 set
+        then
+            000A: 26@ += 2
+        end
+
+        if
+            07E8: acquaintance 3 of_actors_type 25@ to_actors_type 0 set
+        then
+            000A: 26@ += 8
+        end
+
+        if
+            07E8: acquaintance 4 of_actors_type 25@ to_actors_type 0 set
+        then
+            000A: 26@ += 16
+        end
+
+        0A8C: write_memory 27@ size 4 value 26@ virtual_protect 0
+
+        // Snapshot gang (25@) to Grove / Shion (8)
+        000A: 27@ += 4 // Memory address for gang to Grove (8)
+        26@ = 0
+        if
+            07E8: acquaintance 0 of_actors_type 25@ to_actors_type 8 set
+        then
+            000A: 26@ += 1
+        end
+
+        if
+            07E8: acquaintance 1 of_actors_type 25@ to_actors_type 8 set
+        then
+            000A: 26@ += 2
+        end
+
+        if
+            07E8: acquaintance 3 of_actors_type 25@ to_actors_type 8 set
+        then
+            000A: 26@ += 8
+        end
+
+        if
+            07E8: acquaintance 4 of_actors_type 25@ to_actors_type 8 set
+        then
+            000A: 26@ += 16
+        end
+
+        0A8C: write_memory 27@ size 4 value 26@ virtual_protect 0
+    end
+end
+
+for 25@ = 7 to 16
+    // Clear hostilities and set Like (1) of gang to player (0)
+    0747: clear_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 0
+    0747: clear_acquaintance 3 of_actors_pedtype 25@ to_actors_pedtype 0
+    0747: clear_acquaintance 4 of_actors_pedtype 25@ to_actors_pedtype 0
+    0746: set_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 0
+
+    // Clear hostilities and set Like (1) of gang to Grove / Shion (8)
+    0747: clear_acquaintance 3 of_actors_pedtype 25@ to_actors_pedtype 8
+    0747: clear_acquaintance 4 of_actors_pedtype 25@ to_actors_pedtype 8
+    0746: set_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 8
+end
+return
+
+// =========================================================================
+// SUBROUTINE: RESTORE CJ STORYLINE GANG ACQUAINTANCES
+// =========================================================================
+:Restore_CJ_Gang_Acquaintances
+if
+    8@ == 1
+then
+    8@ = 0
+
+    for 25@ = 7 to 16
+        // Calculate base memory offset for this gang type
+        0085: 27@ = 25@
+        000E: 27@ -= 7
+        0012: 27@ *= 8
+        005A: 27@ += 7@ // Memory address for gang to player (0)
+
+        // Clear temporary neutralized state for gang to player (0)
+        0747: clear_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 0
+        0747: clear_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 0
+        0747: clear_acquaintance 3 of_actors_pedtype 25@ to_actors_pedtype 0
+        0747: clear_acquaintance 4 of_actors_pedtype 25@ to_actors_pedtype 0
+
+        // Read snapshotted acquaintance bitmask for gang to player (0)
+        0A8D: 26@ = read_memory 27@ size 4 virtual_protect 0
+
+        if
+            08B7: test 26@ bit 0
+        then
+            0746: set_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 0
+        end
+
+        if
+            08B7: test 26@ bit 1
+        then
+            0746: set_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 0
+        end
+
+        if
+            08B7: test 26@ bit 3
+        then
+            0746: set_acquaintance 3 of_actors_pedtype 25@ to_actors_pedtype 0
+        end
+
+        if
+            08B7: test 26@ bit 4
+        then
+            0746: set_acquaintance 4 of_actors_pedtype 25@ to_actors_pedtype 0
+        end
+
+        // Clear temporary neutralized state for gang to Grove / Shion (8)
+        0747: clear_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 8
+        0747: clear_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 8
+        0747: clear_acquaintance 3 of_actors_pedtype 25@ to_actors_pedtype 8
+        0747: clear_acquaintance 4 of_actors_pedtype 25@ to_actors_pedtype 8
+
+        // Read snapshotted acquaintance bitmask for gang to Grove / Shion (8)
+        000A: 27@ += 4
+        0A8D: 26@ = read_memory 27@ size 4 virtual_protect 0
+
+        if
+            08B7: test 26@ bit 0
+        then
+            0746: set_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 8
+        end
+
+        if
+            08B7: test 26@ bit 1
+        then
+            0746: set_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 8
+        end
+
+        if
+            08B7: test 26@ bit 3
+        then
+            0746: set_acquaintance 3 of_actors_pedtype 25@ to_actors_pedtype 8
+        end
+
+        if
+            08B7: test 26@ bit 4
+        then
+            0746: set_acquaintance 4 of_actors_pedtype 25@ to_actors_pedtype 8
+        end
+    end
+end
+return
+
+// =========================================================================
+// SAVE CONFIRMATION CALLBACK (Safehouse Floppy Disk Touch)
+// =========================================================================
+:OnSaveConfirmationCallback
+// Remember active slot prior to stripping weapons for native save
+gosub @Record_Current_Weapon_Slot
+
+if
+    8@ == 1
+then
+    gosub @Restore_CJ_Gang_Acquaintances
+end
+
+// Restore Girlfriend Call System and Radar Blips before writing save file
+if
+    19@ == 1
+then
+    19@ = 0
+    08C0: clear $391 bit 11
+    gosub @Restore_Girlfriend_Radar_Blips
+end
+
+// Flush live weapon persistence to ShionWeapon.ini using isolated 24@v buffer
+0E2C: 28@ = get_current_save_slot
+if
+    28@ < 0
+then
+    28@ = 0
+end
+0AD3: string_format 24@v "Slot_%d" 28@
+
+// If saving while playing as Shion, snapshot her live weapon into the Shion pool
+if
+    0@ == 2
+then
+    gosub @Stash_Shion_Live_Weapon
+end
+
+// Shion's designated weapon and ammo (Using isolated 2@ and 3@ to protect 19@ and 24@v)
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_WEAPON_ID
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_AMMO_COUNT
+0A8D: 3@ = read_memory 30@ size 4 virtual_protect 0
+
+0AF1: write_int 2@ to_ini_file "cleo\savedata\ShionWeapon.ini" section 24@v key "WeaponID"
+0AF1: write_int 3@ to_ini_file "cleo\savedata\ShionWeapon.ini" section 24@v key "AmmoCount"
+
+// Only record Jo'on's stashed loadout if actively playing as Shion
+if
+    0@ == 2
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_STASH_WEAPON
+    0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_STASH_AMMO
+    0A8D: 3@ = read_memory 30@ size 4 virtual_protect 0
+
+    0AF1: write_int 2@ to_ini_file "cleo\savedata\ShionWeapon.ini" section 24@v key "JoWeaponID"
+    0AF1: write_int 3@ to_ini_file "cleo\savedata\ShionWeapon.ini" section 24@v key "JoAmmoCount"
+else
+    // When saved as Jo'on or CJ, Jo'on's weapons exist in the native save file; zero the stash
+    0AF1: write_int 0 to_ini_file "cleo\savedata\ShionWeapon.ini" section 24@v key "JoWeaponID"
+    0AF1: write_int 0 to_ini_file "cleo\savedata\ShionWeapon.ini" section 24@v key "JoAmmoCount"
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_STASH_WEAPON
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_STASH_AMMO
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+
+0ED0: return_script_event
+
+// =========================================================================
+// SUBROUTINE: APPLY SHION SKIN WITH BANNER
+// =========================================================================
+:Apply_Shion_Skin_With_Banner
+0A92: create_custom_thread "Shion\FX_SwitchBurst.c" 2
+gosub @Silent_Rebuild_Shion_Model
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+0ADF: add_text_label "Y_SHN1" text "~b~SHION YORIGAMI~n~~w~POVERTY GOD"
+09C1: add_next_text_to_brief_history 1
+00BA: show_text_styled GXT 'Y_SHN1' time 2500 style 5
+return
+
+// =========================================================================
+// SUBROUTINE: SILENT HARD VERTEX PURGE FOR SHION
+// =========================================================================
+:Silent_Rebuild_Shion_Model
+// Terminate Jo'on exclusive idle threads and cleanly destroy attached cigar object
+gosub @Terminate_Joon_Smoking_Safely
+
+// Clear tasks before rebuilding
+0792: disembark_instantly_actor $PLAYER_ACTOR
+0E96: clear_char_primary_tasks $PLAYER_ACTOR
+0E97: clear_char_secondary_tasks $PLAYER_ACTOR
+
+// Cloak player before reverting to base CJ
+0D10: set_actor $PLAYER_ACTOR alpha 0
+
+09C7: change_player $PLAYER_CHAR model_to #NULL
+0794: restore_player_clothes
+070D: rebuild_player $PLAYER_CHAR
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+0D10: set_actor $PLAYER_ACTOR alpha 0 // Ensure CJ remains hidden while streaming model
+0296: unload_special_actor 1
+wait 50
+
+023C: load_special_actor 'shion' as 1
+038B: load_requested_models
+
+:Wait_For_Shion_Player_Loaded
+wait 0
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    0296: unload_special_actor 1
+    return
+end
+if
+    823D: not special_actor 1 loaded
+then
+    0D10: set_actor $PLAYER_ACTOR alpha 0
+    goto @Wait_For_Shion_Player_Loaded
+end
+
+// Swap cleanly to Special Actor
+09C7: change_player $PLAYER_CHAR model_to #SPECIAL01
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+0296: unload_special_actor 1
+
+// Maintain fireproof immunity
+02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 0 CP 0 MP 0
+
+// If switch burst effect is not active (e.g. boot/save load), restore alpha immediately
+0AAA: 26@ = get_script_struct_named 'Sh_Swtc'
+if
+    26@ == 0
+then
+    0D10: set_actor $PLAYER_ACTOR alpha 255
+end
+
+0792: disembark_instantly_actor $PLAYER_ACTOR
+0E96: clear_char_primary_tasks $PLAYER_ACTOR
+0E97: clear_char_secondary_tasks $PLAYER_ACTOR
+01B4: set_player $PLAYER_CHAR can_move 1
+
+0653: 11@ = float_stat 21
+0653: 12@ = float_stat 23
+
+// Voice muting configuration
+6@ = 0
+0AF0: 6@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "MuteCharacterVoice"
+if
+    6@ < 0
+then
+    6@ = 1
+end
+
+if
+    6@ == 1
+then
+    0489: set_actor $PLAYER_ACTOR muted 1
+    094E: set_actor $PLAYER_ACTOR mute_pain_audio 1
+else
+    0489: set_actor $PLAYER_ACTOR muted 0
+    094F: enable_actor $PLAYER_ACTOR pain_audio
+end
+
+// Set State 2: Shion Mode Active
+0@ = 2
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+return
+
+// =========================================================================
+// SUBROUTINES: DYNAMIC WEAPON STASH & TAG HANDOVER
+// =========================================================================
+:Stash_Joon_Slot_Weapon
+// Read Shion designated weapon ID
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_WEAPON_ID
+0A8D: 15@ = read_memory 30@ size 4 virtual_protect 0
+if
+    15@ <= 1
+then
+    // Shion has no designated weapon assigned, nothing to stash
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_STASH_WEAPON
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_STASH_AMMO
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    return
+end
+
+// Check if Jo'on has this weapon or a same-slot sibling directly
+gosub @Get_Joon_Slot_Weapon
+
+if
+    14@ > 0
+then
+    // Stash Jo'on's slot weapon ID and ammo count into RAM
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_STASH_WEAPON
+    0A8C: write_memory 30@ size 4 value 13@ virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_STASH_AMMO
+    0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+
+    0555: remove_weapon 13@ from_actor $PLAYER_ACTOR
+else
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_STASH_WEAPON
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_STASH_AMMO
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+return
+
+:Get_Joon_Slot_Weapon
+// Output: 13@ (Weapon ID), 14@ (Ammo Count)
+13@ = 0
+14@ = 0
+
+// Direct check for Shion's exact designated weapon
+041A: 14@ = actor $PLAYER_ACTOR weapon 15@ ammo
+if
+    14@ > 0
+then
+    0085: 13@ = 15@
+    return
+end
+
+// Same-slot sibling fallback: Rifles (Sniper 34 <-> Country 33)
+if
+    15@ == 34
+then
+    041A: 14@ = actor $PLAYER_ACTOR weapon 33 ammo
+    if
+        14@ > 0
+    then
+        13@ = 33
+        return
+    end
+end
+
+if
+    15@ == 33
+then
+    041A: 14@ = actor $PLAYER_ACTOR weapon 34 ammo
+    if
+        14@ > 0
+    then
+        13@ = 34
+        return
+    end
+end
+
+// Same-slot sibling fallback: Assault Rifles (M4 31 <-> AK-47 30)
+if
+    15@ == 31
+then
+    041A: 14@ = actor $PLAYER_ACTOR weapon 30 ammo
+    if
+        14@ > 0
+    then
+        13@ = 30
+        return
+    end
+end
+
+if
+    15@ == 30
+then
+    041A: 14@ = actor $PLAYER_ACTOR weapon 31 ammo
+    if
+        14@ > 0
+    then
+        13@ = 31
+        return
+    end
+end
+
+// Same-slot sibling fallback: SMGs (MP5 29 <-> Uzi 28 <-> Tec-9 32)
+if or
+    15@ == 28
+    15@ == 29
+    15@ == 32
+then
+    041A: 14@ = actor $PLAYER_ACTOR weapon 29 ammo
+    if
+        14@ > 0
+    then
+        13@ = 29
+        return
+    end
+    041A: 14@ = actor $PLAYER_ACTOR weapon 28 ammo
+    if
+        14@ > 0
+    then
+        13@ = 28
+        return
+    end
+    041A: 14@ = actor $PLAYER_ACTOR weapon 32 ammo
+    if
+        14@ > 0
+    then
+        13@ = 32
+        return
+    end
+end
+
+// Same-slot sibling fallback: Shotguns (Combat 27 <-> Chrome 25 <-> Sawn-off 26)
+if or
+    15@ == 25
+    15@ == 26
+    15@ == 27
+then
+    041A: 14@ = actor $PLAYER_ACTOR weapon 27 ammo
+    if
+        14@ > 0
+    then
+        13@ = 27
+        return
+    end
+    041A: 14@ = actor $PLAYER_ACTOR weapon 25 ammo
+    if
+        14@ > 0
+    then
+        13@ = 25
+        return
+    end
+    041A: 14@ = actor $PLAYER_ACTOR weapon 26 ammo
+    if
+        14@ > 0
+    then
+        13@ = 26
+        return
+    end
+end
+
+// Same-slot sibling fallback: Pistols (Desert Eagle 24 <-> Silenced 23 <-> 9mm 22)
+if or
+    15@ == 22
+    15@ == 23
+    15@ == 24
+then
+    041A: 14@ = actor $PLAYER_ACTOR weapon 24 ammo
+    if
+        14@ > 0
+    then
+        13@ = 24
+        return
+    end
+    041A: 14@ = actor $PLAYER_ACTOR weapon 23 ammo
+    if
+        14@ > 0
+    then
+        13@ = 23
+        return
+    end
+    041A: 14@ = actor $PLAYER_ACTOR weapon 22 ammo
+    if
+        14@ > 0
+    then
+        13@ = 22
+        return
+    end
+end
+return
+
+:Equip_Shion_Designated_Weapon
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_WEAPON_ID
+0A8D: 15@ = read_memory 30@ size 4 virtual_protect 0 // Shion Weapon ID
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_AMMO_COUNT
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0 // Shion Ammo Count
+
+if and
+    15@ > 1
+    16@ > 0
+then
+    0781: get_weapon_with_ID 15@ model_to 17@
+    if
+        17@ > 0
+    then
+        0247: load_model 17@
+        038B: load_requested_models
+
+        :Wait_Shion_Equip_Model
+        wait 0
+        if
+            8256: not player $PLAYER_CHAR defined
+        then
+            0249: release_model 17@
+            return
+        end
+        if
+            8248: not model 17@ available
+        then
+            goto @Wait_Shion_Equip_Model
+        end
+
+        01B2: give_actor $PLAYER_ACTOR weapon 15@ ammo 16@
+        0249: release_model 17@
+    end
+end
+return
+
+:Stash_Shion_Live_Weapon
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_WEAPON_ID
+0A8D: 15@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    15@ > 1
+then
+    // Snapshot live ammo of Shion's designated weapon only
+    041A: 16@ = actor $PLAYER_ACTOR weapon 15@ ammo
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_AMMO_COUNT
+    0A8C: write_memory 30@ size 4 value 16@ virtual_protect 0
+
+    0555: remove_weapon 15@ from_actor $PLAYER_ACTOR
+end
+return
+
+:Restore_Joon_Stashed_Weapon
+0085: 30@ = 31@
+000A: 30@ += MEM_JOON_STASH_WEAPON
+0A8D: 13@ = read_memory 30@ size 4 virtual_protect 0 // JoWeaponID
+
+0085: 30@ = 31@
+000A: 30@ += MEM_JOON_STASH_AMMO
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0 // JoAmmoCount
+
+if and
+    13@ > 1
+    14@ > 0
+then
+    0781: get_weapon_with_ID 13@ model_to 17@
+    if
+        17@ > 0
+    then
+        0247: load_model 17@
+        038B: load_requested_models
+
+        :Wait_Joon_Restore_Model
+        wait 0
+        if
+            8256: not player $PLAYER_CHAR defined
+        then
+            0249: release_model 17@
+            return
+        end
+        if
+            8248: not model 17@ available
+        then
+            goto @Wait_Joon_Restore_Model
+        end
+
+        01B2: give_actor $PLAYER_ACTOR weapon 13@ ammo 14@
+        0249: release_model 17@
+    end
+end
+
+// Clear Jo'on's stash in RAM since it has been restored
+0085: 30@ = 31@
+000A: 30@ += MEM_JOON_STASH_WEAPON
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_JOON_STASH_AMMO
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+return
+
+// =========================================================================
+// SUBROUTINES: WEAPON SLOT MEMORY (Exact 1-Indexed GTA SA Table)
+// =========================================================================
+:Record_Current_Weapon_Slot
+0470: 6@ = actor $PLAYER_ACTOR current_weapon
+gosub @Get_Weapon_Slot_From_ID
+return
+
+:Get_Weapon_Slot_From_ID
+// Input: 6@ (Weapon ID) -> Output: 20@ (1-Indexed Slot 1..13)
+20@ = 1
+if or
+    6@ == 0
+    6@ == 1
+then
+    20@ = 1
+    return
+end
+
+// Slot 2: Melee Weapons (Golf Club..Chainsaw)
+if and
+    6@ >= 2
+    9 >= 6@
+then
+    20@ = 2
+    return
+end
+
+// Slot 3: Handguns (Pistol, Silenced, Desert Eagle)
+if and
+    6@ >= 22
+    24 >= 6@
+then
+    20@ = 3
+    return
+end
+
+// Slot 4: Shotguns (Chrome, Sawn-off, Combat)
+if and
+    6@ >= 25
+    27 >= 6@
+then
+    20@ = 4
+    return
+end
+
+// Slot 5: Sub-Machine Guns (Micro Uzi, MP5, Tec-9)
+if or
+    6@ == 28
+    6@ == 29
+    6@ == 32
+then
+    20@ = 5
+    return
+end
+
+// Slot 6: Assault Rifles (AK-47, M4)
+if or
+    6@ == 30
+    6@ == 31
+then
+    20@ = 6
+    return
+end
+
+// Slot 7: Rifles (Country Rifle, Sniper Rifle)
+if or
+    6@ == 33
+    6@ == 34
+then
+    20@ = 7
+    return
+end
+
+// Slot 8: Heavy Weapons (Rocket Launcher, Heatseeker, Flamethrower, Minigun)
+if and
+    6@ >= 35
+    38 >= 6@
+then
+    20@ = 8
+    return
+end
+
+// Slot 9: Projectiles & Satchel Charges (Grenades, Tear Gas, Molotovs, Satchels)
+if or
+    6@ == 16
+    6@ == 17
+    6@ == 18
+    6@ == 39
+then
+    20@ = 9
+    return
+end
+
+// Slot 10: Special 2 (Spray Paint, Fire Extinguisher, Camera)
+if and
+    6@ >= 41
+    43 >= 6@
+then
+    20@ = 10
+    return
+end
+
+// Slot 11: Gifts / Special 1 (Dildos, Flowers, Cane)
+if and
+    6@ >= 10
+    15 >= 6@
+then
+    20@ = 11
+    return
+end
+
+// Slot 12: Special 3 (Nightvision, Thermal, Parachute)
+if and
+    6@ >= 44
+    46 >= 6@
+then
+    20@ = 12
+    return
+end
+
+// Slot 13: Detonator
+if
+    6@ == 40
+then
+    20@ = 13
+    return
+end
+return
+
+:Restore_Target_Weapon_Slot
+if
+    1 >= 20@
+then
+    // Slot 1: Check for Brass Knuckles (1), otherwise bare fists (0)
+    04B8: get_weapon_data_from_actor $PLAYER_ACTOR slot 1 weapon 26@ ammo 27@ model 28@
+    if
+        26@ == 1
+    then
+        01B9: set_actor $PLAYER_ACTOR armed_weapon_to 1
+    else
+        01B9: set_actor $PLAYER_ACTOR armed_weapon_to 0
+    end
+else
+    if and
+        20@ >= 2
+        13 >= 20@
+    then
+        04B8: get_weapon_data_from_actor $PLAYER_ACTOR slot 20@ weapon 26@ ammo 27@ model 28@
+        if
+            26@ > 0
+        then
+            if or
+                20@ == 2  // Melee
+                20@ == 11 // Gifts
+                20@ == 12 // Special 3
+                27@ > 0   // Firearms with remaining ammunition
+            then
+                01B9: set_actor $PLAYER_ACTOR armed_weapon_to 26@
+            else
+                01B9: set_actor $PLAYER_ACTOR armed_weapon_to 0
+            end
+        else
+            01B9: set_actor $PLAYER_ACTOR armed_weapon_to 0
+        end
+    else
+        01B9: set_actor $PLAYER_ACTOR armed_weapon_to 0
+    end
+end
+return
+
+// =========================================================================
+// SUBROUTINE: SAFELY TERMINATE SMOKING AND DESTROY CIGAR PROP
+// =========================================================================
+:Terminate_Joon_Smoking_Safely
+0ABA: terminate_all_custom_scripts_with_this_name "Y_Smk"
+070B: set_actor $PLAYER_ACTOR onbone_attached_object_operation 0
+
+// Destroy tracked cigar prop from shared memory
+0085: 30@ = 31@
+000A: 30@ += MEM_JOON_CIGAR_OBJ
+0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+if
+    25@ > 0
+then
+    if
+        03CA: object 25@ exists
+    then
+        0682: detach_object 25@ 0.0 0.0 0.0 collision_detection 0
+        0108: destroy_object 25@
+    end
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_CIGAR_OBJ
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+
+// Sweep vicinity for any detached orphan cigar models
+00A0: store_actor $PLAYER_ACTOR position_to 26@ 27@ 28@
+24@ = 0
+
+:Cigar_Purge_Scan
+if
+    0AE3: 25@ = random_object_near_point 26@ 27@ 28@ in_radius 3.0 find_next 24@
+then
+    24@ = 1
+    0984: 23@ = object 25@ model
+    if
+        23@ == #CIGAR
+    then
+        0682: detach_object 25@ 0.0 0.0 0.0 collision_detection 0
+        0108: destroy_object 25@
+    end
+    goto @Cigar_Purge_Scan
+end
+return
+
+// =========================================================================
+// SUBROUTINES: GIRLFRIEND RADAR ICON HIDING (0xBA86F0)
+// =========================================================================
+:Hide_Girlfriend_Radar_Blips
+25@ = 0xBA86F0 // CRadar::ms_RadarTrace base pool (175 entries)
+for 26@ = 0 to 174
+    0085: 27@ = 25@
+    000A: 27@ += 0x24 // Offset to m_nRadarSprite
+    0A8D: 28@ = read_memory 27@ size 1 virtual_protect 0
+    if
+        28@ == 21 // RADAR_SPRITE_GIRLFRIEND (Pink Heart)
+    then
+        0085: 27@ = 25@
+        000A: 27@ += 0x25 // Offset to flags (Bit 1 = m_bInUse)
+        0A8D: 28@ = read_memory 27@ size 1 virtual_protect 0
+        if
+            08B7: test 28@ bit 1
+        then
+            0085: 27@ = 25@
+            000A: 27@ += 0x26 // Offset to m_nBlipDisplay (Bits 0..1)
+            0A8D: 28@ = read_memory 27@ size 1 virtual_protect 0
+
+            // Clear display bits 0 and 1 to hide blip (BLIP_DISPLAY_NEITHER)
+            0B10: 28@ = 28@ AND 0xFC
+            0A8C: write_memory 27@ size 1 value 28@ virtual_protect 0
+        end
+    end
+    000A: 25@ += 40 // Next trace entry (sizeof(tRadarTrace) = 0x28)
+end
+return
+
+:Restore_Girlfriend_Radar_Blips
+25@ = 0xBA86F0 // CRadar::ms_RadarTrace base pool (175 entries)
+for 26@ = 0 to 174
+    0085: 27@ = 25@
+    000A: 27@ += 0x24 // Offset to m_nRadarSprite
+    0A8D: 28@ = read_memory 27@ size 1 virtual_protect 0
+    if
+        28@ == 21 // RADAR_SPRITE_GIRLFRIEND (Pink Heart)
+    then
+        0085: 27@ = 25@
+        000A: 27@ += 0x25 // Offset to flags (Bit 1 = m_bInUse)
+        0A8D: 28@ = read_memory 27@ size 1 virtual_protect 0
+        if
+            08B7: test 28@ bit 1
+        then
+            0085: 27@ = 25@
+            000A: 27@ += 0x26 // Offset to m_nBlipDisplay (Bits 0..1)
+            0A8D: 28@ = read_memory 27@ size 1 virtual_protect 0
+
+            // Set display bits 0 and 1 to restore blip (BLIP_DISPLAY_BOTH)
+            0B11: 28@ = 28@ OR 0x03
+            0A8C: write_memory 27@ size 1 value 28@ virtual_protect 0
+        end
+    end
+    000A: 25@ += 40 // Next trace entry (sizeof(tRadarTrace) = 0x28)
+end
+return
+
+// =========================================================================
+// SUBROUTINE: LOAD CONTROL KEYS & SETTINGS FROM INI
+// =========================================================================
+:Load_Joon_Settings
+0AF0: 9@ = read_int_from_ini_file "cleo\Shion.ini" section "Controls" key "ModifierKey"
+if
+    9@ == 0
+then
+    9@ = 89 // Y
+end
+
+0AF0: 10@ = read_int_from_ini_file "cleo\Shion.ini" section "Controls" key "SwitchKey"
+if
+    10@ == 0
+then
+    10@ = 76 // L
+end
+
+// Read Girlfriend Suppression Setting (Tri-state 19@: -1 = Disabled, 0 = CJ, 1 = Suppressed)
+0AF0: 2@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "SuppressGirlfriends"
+if
+    2@ == 0
+then
+    // If previously suppressed, restore immediately before disabling
+    if
+        19@ == 1
+    then
+        08C0: clear $391 bit 11
+        gosub @Restore_Girlfriend_Radar_Blips
+    end
+    19@ = -1 // Feature disabled in INI
+else
+    19@ = 0 // Enable feature (Always reset to baseline 0 so reloaded saves re-suppress cleanly)
+end
+return

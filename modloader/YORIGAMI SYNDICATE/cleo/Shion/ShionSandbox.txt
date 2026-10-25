@@ -1,0 +1,3593 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+script_name "Sh_Sndb"
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED TO ACTIVE USAGE)
+// =========================================================================
+const
+    MEM_SHION_BUSY = 4
+    MEM_PRIORITY_LOCK = 20
+    MEM_SHION_HANDLE = 116
+    MEM_CARS_WRECKED = 268
+    MEM_CAR_SMASH_SIGNAL = 372
+    MEM_FLEX_SIGNAL = 376
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// Header initialization
+0@ = 0  // Dialogue Random Selector
+1@ = 0  // Global Sandbox Reaction Cooldown Timer (ms)
+2@ = 0  // Swimming Duration Accumulator Timer (ms)
+3@ = 0  // Swimming In Deep Water Latch (0 = Ready, 1 = Latched/Spoken)
+4@ = 0  // Hydraulics Bounce Spam Accumulator Timer (ms)
+5@ = 0  // Car Was Wrecked / Smoking Latch (0 = No, 1 = Yes)
+6@ = 0  // Stunt Rollover State (0 = Ground, 1 = Air, 2 = Flipped in Air)
+7@ = 0  // Stunt Air Timeout Timer (ms)
+8@ = 0  // Damage Event Victim Handle (Event Receiver)
+9@ = 0  // Damage Event Recursion Lock Flag
+10@ = 0 // Shion Handle
+12@ = 0 // Pending Sandbox Reaction Type (0 = None, 1 = Firehose, 2 = Ocean Sunk, 3 = Swim, 4 = PayNSpray, 5 = Stunt, 6 = CivPunch, 7 = Hydraulics, 8 = Car Destroyed, 9 = Car Smasher, 10 = CivRunOver)
+14@ = -1 // Last Tracked Cars Wrecked Count (-1 = Uninitialized)
+15@ = 0 // Firetruck Hose-Down Stream Accumulator Timer (ms)
+
+// Register Damage Event specifically for Sandbox Interactions
+0EDE: set_script_event_char_damage 1 @OnSandboxDamage 8@
+
+:ShionSandbox_Loop
+wait 100
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @ShionSandbox_Loop
+end
+
+// Read Live Shion Handle from Master Heap
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+// If Shion is currently absent or dismissed, idle until she is back
+if
+    10@ == 0
+then
+    // Flush pending physical signals so they don't trigger when summoned later
+    0085: 30@ = 31@
+    000A: 30@ += MEM_FLEX_SIGNAL
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_CAR_SMASH_SIGNAL
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    goto @ShionSandbox_Loop
+end
+
+// If Shion is a physical ped and dead or undefined, idle until respawned
+if
+    0019: 10@ > 0
+then
+    if or
+        856D: not actor 10@ defined
+        0118: actor 10@ dead
+    then
+        goto @ShionSandbox_Loop
+    end
+end
+
+// Don't evaluate during cutscenes or screen fades
+if or
+    016B: fading
+    0E25: is_on_cutscene
+then
+    goto @ShionSandbox_Loop
+end
+
+// Mute sandbox chatter during busy states (Lowrider dance, dining, scavenging) or minigame
+28@ = 0
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_BUSY
+0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+if
+    27@ == 1
+then
+    28@ = 1
+end
+
+0AAA: 27@ = get_script_struct_named 'LOWR'
+if
+    8039: not 27@ == 0
+then
+    28@ = 1
+end
+
+if
+    28@ == 1
+then
+    4@ = 0  // Suppress and flush hydraulics bounce accumulator
+    12@ = 0 // Cancel any queued reaction
+    goto @ShionSandbox_Loop
+end
+
+// Tick down Global Sandbox Reaction Cooldown
+if
+    1@ > 0
+then
+    000E: 1@ -= 100
+    if
+        001B: 0 > 1@
+    then
+        1@ = 0
+    end
+end
+
+// Determine Form Mode: 1 = Hitodama Spirit (-1), 0 = Solid Ped (> 0)
+11@ = 0
+if
+    10@ == -1
+then
+    11@ = 1
+end
+
+// Firetruck Hose-down on Shion
+if
+    0039: 11@ == 0 // Guarantee physical ped form before checking car state
+then
+    if
+        8449: not actor 10@ in_a_car // Shion on foot outside
+    then
+        if
+            00DF: actor $PLAYER_ACTOR driving
+        then
+            03C0: 23@ = actor $PLAYER_ACTOR car
+            0441: 27@ = car 23@ model
+            if or
+                27@ == 407 // Standard Firetruck
+                27@ == 601 // SWAT Tank
+            then
+                // Check if player is holding the fire button
+                if or
+                    00E1: player 0 pressed_key 17 // LMB / Shoot
+                    0E8D: is_any_fire_button_pressed 0
+                then
+                    // Get Shion and Player coordinates
+                    00A0: store_actor 10@ position_to 19@ 20@ 21@
+                    00A0: store_actor $PLAYER_ACTOR position_to 16@ 17@ 18@
+
+                    // Water stream effective range (1.5m to 15.0m)
+                    050A: 22@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 19@ 20@ 21@
+                    if and
+                        0021: 22@ > 1.5
+                        8021: not 22@ > 15.0
+                    then
+                        // Calculate True Camera Aiming Yaw Angle using Position and Target Point
+                        068D: get_camera_position_to 16@ 17@ 18@
+                        068E: get_camera_target_point_to 26@ 27@ 28@
+                        0063: 26@ -= 16@ // CamDirX = TargetX - CamX
+                        0063: 27@ -= 17@ // CamDirY = TargetY - CamY
+                        0604: get_Z_angle_for_point 26@ 27@ store_to 28@ // True Crosshair Yaw Angle
+
+                        // Calculate Angle from Camera Lens to Shion
+                        0087: 26@ = 19@
+                        0063: 26@ -= 16@ // dx = ShionX - CamX
+                        0087: 27@ = 20@
+                        0063: 27@ -= 17@ // dy = ShionY - CamY
+                        0604: get_Z_angle_for_point 26@ 27@ store_to 29@ // Target Yaw Angle to Shion
+
+                        // Compute the angular difference
+                        0063: 28@ -= 29@
+                        0097: make 28@ absolute_float
+                        if
+                            0021: 28@ > 180.0
+                        then
+                            0007: 29@ = 360.0
+                            0063: 29@ -= 28@
+                            0087: 28@ = 29@
+                        end
+
+                        // Verify physical reaction (Stumbling, Skidding, or Water Cannon Hit Tasks)
+                        25@ = 0
+                        if or
+                            0E42: is_char_doing_task_id 10@ 1018 // TASK_COMPLEX_HIT_BY_WATER_CANNON
+                            0E42: is_char_doing_task_id 10@ 1019 // TASK_SIMPLE_HIT_BY_WATER_CANNON
+                            0E48: is_char_fallen_on_ground 10@
+                            0611: actor 10@ performing_animation "KO_SKID_FRONT"
+                            0611: actor 10@ performing_animation "KO_SKID_BACK"
+                            0611: actor 10@ performing_animation "KO_SPIN_R"
+                            0611: actor 10@ performing_animation "KO_SPIN_L"
+                        then
+                            25@ = 1
+                        end
+
+                        // If Shion is within the 25-degree stream cone and actively affected
+                        if and
+                            8021: not 28@ > 25.0
+                            0039: 25@ == 1
+                        then
+                            000A: 15@ += 100 // Accumulate time sprayed
+                            if
+                                0029: 15@ >= 200 // Stream held and affecting her for 200ms
+                            then
+                                15@ = 0
+                                if
+                                    8019: not 1@ > 0 // Global Sandbox Cooldown is ready
+                                then
+                                    12@ = 1 // Queue Firehose Reaction
+                                end
+                            end
+                        else
+                            15@ = 0
+                        end
+                    else
+                        15@ = 0
+                    end
+                else
+                    15@ = 0
+                end
+            else
+                15@ = 0
+            end
+        else
+            15@ = 0
+        end
+    else
+        15@ = 0
+    end
+else
+    15@ = 0
+end
+
+// Car driven into ocean / deep water (Exclude boats, hovercraft, and seaplanes)
+if
+    00DF: actor $PLAYER_ACTOR driving
+then
+    03C0: 24@ = actor $PLAYER_ACTOR car
+    if
+        056E: car 24@ defined
+    then
+        0441: 25@ = car 24@ model
+        if and
+            84A7: not actor $PLAYER_ACTOR driving_boat
+            881E: not model 25@ boat
+            8039: not 25@ == 539 // Vortex Hovercraft
+            8039: not 25@ == 460 // Skimmer (Seaplane)
+            02BF: car 24@ sunk
+        then
+            // Verify Shion is riding together
+            23@ = 0
+            if
+                11@ == 1
+            then
+                23@ = 1
+            else
+                if
+                    00DB: actor 10@ in_car 24@
+                then
+                    23@ = 1
+                end
+            end
+
+            if
+                23@ == 1
+            then
+                if
+                    8019: not 1@ > 0
+                then
+                    12@ = 2 // Queue Sunk Reaction
+                end
+            end
+        end
+    end
+end
+
+// Swimming in deep water on foot
+if and
+    80DF: not actor $PLAYER_ACTOR driving // On foot
+    04AD: actor $PLAYER_ACTOR in_water    // In water
+    0038: $ONMISSION == 0                 // Mute during missions and triathlon
+then
+    // Verify Shion is with Jo'on (Spirit or in water nearby)
+    23@ = 0
+    if
+        11@ == 1
+    then
+        23@ = 1
+    else
+        if and
+            04AD: actor 10@ in_water
+            0EE4: locate_char_distance_to_char 10@ char $PLAYER_ACTOR radius 30.0
+        then
+            23@ = 1
+        end
+    end
+
+    if
+        23@ == 1
+    then
+        if
+            3@ == 0 // Only monitor if not already latched for this swim
+        then
+            if
+                0965: actor $PLAYER_ACTOR swimming
+            then
+                000A: 2@ += 100
+                if
+                    0029: 2@ >= 5000 // Swam continuously for 5 seconds
+                then
+                    if
+                        8019: not 1@ > 0
+                    then
+                        2@ = 0
+                        12@ = 3 // Queue Swimming Reaction
+                        3@ = 1  // Latch until player exits the water
+                    else
+                        2@ = 5000 // Hold duration until global cooldown is ready
+                    end
+                end
+            else
+                2@ = 0
+            end
+        else
+            2@ = 0
+        end
+    else
+        2@ = 0
+    end
+else
+    2@ = 0
+    3@ = 0 // Reset latch when player steps out of the water
+end
+
+// Pay 'n' Spray heavily wrecked car repair
+if
+    00DF: actor $PLAYER_ACTOR driving
+then
+    03C0: 24@ = actor $PLAYER_ACTOR car
+    if and
+        056E: car 24@ defined
+        8119: not car 24@ wrecked
+    then
+        // Check if riding together
+        23@ = 0
+        if
+            11@ == 1
+        then
+            23@ = 1
+        else
+            if
+                00DB: actor 10@ in_car 24@
+            then
+                23@ = 1
+            end
+        end
+
+        if
+            23@ == 1
+        then
+            0227: 22@ = car 24@ health
+
+            // Detect if vehicle was heavily damaged
+            if
+                001B: 500 > 22@
+            then
+                0085: 5@ = 24@ // Store exact car handle that was heavily wrecked
+            end
+
+            // Detect sudden full repair (Jump from < 500 to >= 990 HP on the same car)
+            if and
+                003B: 5@ == 24@
+                0029: 22@ >= 990
+            then
+                5@ = 0
+                if
+                    8019: not 1@ > 0
+                then
+                    12@ = 4 // Queue Pay'n'Spray Reaction
+                end
+            end
+        else
+            5@ = 0
+        end
+    else
+        5@ = 0
+    end
+else
+    5@ = 0
+end
+
+// Insane stunt: In-air flip and wheel landing (Cars only, excluding bikes, boats, aircraft)
+if and
+    00DF: actor $PLAYER_ACTOR driving
+    847A: not actor $PLAYER_ACTOR driving_bike
+then
+    03C0: 24@ = actor $PLAYER_ACTOR car
+    if and
+        056E: car 24@ defined
+        8119: not car 24@ wrecked
+    then
+        0E12: get_vehicle 24@ subclass_to 22@
+        if or
+            0039: 22@ == 0 // Automobile
+            0039: 22@ == 1 // Monster Truck
+        then
+            // Check if riding together
+            23@ = 0
+            if
+                11@ == 1
+            then
+                23@ = 1
+            else
+                if
+                    00DB: actor 10@ in_car 24@
+                then
+                    23@ = 1
+                end
+            end
+
+            if
+                23@ == 1
+            then
+                // State 0: Car takes off into air
+                if
+                    6@ == 0
+                then
+                    if
+                        01F3: car 24@ in_air
+                    then
+                        6@ = 1
+                        7@ = 0
+                    end
+                else
+                    // State 1: Car flips upside-down while in air
+                    if
+                        6@ == 1
+                    then
+                        000A: 7@ += 100
+                        if
+                            01F4: car 24@ flipped
+                        then
+                            6@ = 2
+                        else
+                            // Reset if landed without flipping
+                            if
+                                09D0: car 24@ on_wheels
+                            then
+                                6@ = 0
+                            end
+                        end
+
+                        // Abort if airborne for over 10s
+                        if
+                            0019: 7@ > 10000
+                        then
+                            6@ = 0
+                        end
+                    else
+                        // State 2: Flipped car recovers and lands cleanly on wheels
+                        if
+                            6@ == 2
+                        then
+                            000A: 7@ += 100
+                            if
+                                09D0: car 24@ on_wheels
+                            then
+                                6@ = 0
+                                if
+                                    8019: not 1@ > 0
+                                then
+                                    12@ = 5 // Queue Stunt Miracle Reaction
+                                end
+                            end
+
+                            // Abort if car remains upside-down / stranded for over 10s
+                            if
+                                0019: 7@ > 10000
+                            then
+                                6@ = 0
+                            end
+                        end
+                    end
+                end
+            else
+                6@ = 0
+            end
+        else
+            6@ = 0
+        end
+    else
+        6@ = 0
+    end
+else
+    6@ = 0
+end
+
+// Car hydraulics bounce spam detection
+if
+    00DF: actor $PLAYER_ACTOR driving
+then
+    03C0: 24@ = actor $PLAYER_ACTOR car
+    if and
+        056E: car 24@ defined
+        8119: not car 24@ wrecked
+    then
+        if
+            0803: car 24@ have_hydraulics
+        then
+            // Check if riding together
+            23@ = 0
+            if
+                11@ == 1
+            then
+                23@ = 1
+            else
+                if
+                    00DB: actor 10@ in_car 24@
+                then
+                    23@ = 1
+                end
+            end
+
+            if
+                23@ == 1
+            then
+                // Check hydraulic inputs (analog stick axes, horn key, or secondary controls)
+                22@ = 0
+                0494: get_joystick 0 data_to 26@ 27@ 28@ 29@
+                if or
+                    0019: 28@ > 40
+                    001B: -40 > 28@
+                    0019: 29@ > 40
+                    001B: -40 > 29@
+                    0122: player $PLAYER_CHAR pressing_horn
+                    00E1: player 0 pressed_key 19
+                then
+                    22@ = 1
+                end
+
+                if
+                    22@ == 1
+                then
+                    000A: 4@ += 100
+                    if
+                        0029: 4@ >= 3000 // 3.0 seconds of cumulative bounce activity
+                    then
+                        if
+                            8019: not 1@ > 0
+                        then
+                            4@ = 0
+                            12@ = 7 // Queue Hydraulics Reaction
+                        else
+                            4@ = 3000 // Hold at ceiling until cooldown expires
+                        end
+                    end
+                else
+                    // Gentle decay between hops so rhythmic tapping accumulates
+                    if
+                        0019: 4@ > 0
+                    then
+                        000E: 4@ -= 20
+                        if
+                            001B: 0 > 4@
+                        then
+                            4@ = 0
+                        end
+                    end
+                end
+            else
+                4@ = 0
+            end
+        else
+            4@ = 0
+        end
+    else
+        4@ = 0
+    end
+else
+    4@ = 0
+end
+
+// Car Smasher Detonation Watchdog (Triggered by Jo'on's fiery vehicle punch in Y_BLING)
+0085: 30@ = 31@
+000A: 30@ += MEM_CAR_SMASH_SIGNAL
+0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    0039: 27@ == 1
+then
+    // Reset signal in Master Heap immediately
+    0085: 30@ = 31@
+    000A: 30@ += MEM_CAR_SMASH_SIGNAL
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    // Suppress commentary during missions
+    if and
+        0038: $ONMISSION == 0
+        8E1D: not is_on_mission
+    then
+        // Roll chance to trigger sandbox commentary
+        0209: 28@ = random_int_in_ranges 0 100
+        if
+            001B: 50 > 28@ // 50% chance to react
+        then
+            if
+                8019: not 1@ > 0
+            then
+                12@ = 9 // Queue Car Smasher Reaction
+            end
+        end
+    end
+end
+
+// Didier Sachs Flex Watchdog (Triggered when Jo'on throws cash in YPrestige)
+0085: 30@ = 31@
+000A: 30@ += MEM_FLEX_SIGNAL
+0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    0039: 27@ == 1
+then
+    // Reset signal in Master Heap
+    0085: 30@ = 31@
+    000A: 30@ += MEM_FLEX_SIGNAL
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    // Roll chance to trigger sandbox commentary (50% chance)
+    0209: 28@ = random_int_in_ranges 0 100
+    if
+        001B: 50 > 28@
+    then
+        if
+            8019: not 1@ > 0
+        then
+            12@ = 11 // Queue Cash Flex Reaction
+        end
+    end
+end
+
+// Vehicle Wreck / Destruction Watchdog (References MEM_CARS_WRECKED from Master Heap)
+0085: 30@ = 31@
+000A: 30@ += MEM_CARS_WRECKED
+0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    14@ == -1
+then
+    0085: 14@ = 28@
+else
+    if
+        001D: 28@ > 14@
+    then
+        0085: 14@ = 28@
+
+        // Suppress if already handling ocean sinking, car smasher, flex, or if currently in water
+        27@ = 0
+        if
+            0019: 12@ > 0
+        then
+            27@ = 1
+        end
+        if
+            04AD: actor $PLAYER_ACTOR in_water
+        then
+            27@ = 1
+        end
+
+        if
+            27@ == 0
+        then
+            if
+                8019: not 1@ > 0
+            then
+                12@ = 8 // Queue Generic Car Destroyed Reaction
+            end
+        end
+    else
+        0085: 14@ = 28@
+    end
+end
+
+// Process pending sandbox reactions
+if
+    0019: 12@ > 0
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+
+    // Firetruck hose-down (12@ == 1) always takes priority
+    if or
+        001B: 3 > 29@
+        0039: 12@ == 1
+    then
+        1@ = 12000 // 12-second sandbox cooldown
+        gosub @Dispatch_Sandbox_Dialogue
+    else
+        12@ = 0
+    end
+end
+
+goto @ShionSandbox_Loop
+
+
+// =========================================================================
+// DAMAGE EVENT CALLBACK: INNOCENT CIVILIAN PUNCH & RUN-OVER HOOK
+// =========================================================================
+:OnSandboxDamage
+if
+    9@ == 1
+then
+    0ED0: return_script_event
+end
+
+if
+    856D: not actor 8@ defined
+then
+    0ED0: return_script_event
+end
+
+// Allow fresh lethal KOs (< 200ms dead), but ignore stale corpses
+if
+    0118: actor 8@ dead
+then
+    0ECE: get_time_char_is_dead 8@ store_to 22@
+    if
+        0019: 22@ > 200
+    then
+        0ED0: return_script_event
+    end
+end
+
+9@ = 1
+0EB5: get_char_damage_last_frame 8@ damager 26@ type 27@ part 28@ intensity 29@
+0A96: 25@ = ped $PLAYER_ACTOR struct
+
+if and
+    87D6: not 8@ == $PLAYER_ACTOR
+    803B: not 8@ == 10@
+then
+    21@ = 0 // Hit Mode: 0 = None, 1 = Melee Punch, 2 = Car Run-Over
+
+    // Check Case 1: Jo'on Punches on Foot (Fists / Brass Knuckles)
+    if or
+        003B: 26@ == 25@
+        07D6: 26@ == $PLAYER_ACTOR
+    then
+        if or
+            27@ == 0
+            27@ == 1
+        then
+            21@ = 1
+        end
+    end
+
+    // Check Case 2: Jo'on Runs Over Ped With Car
+    if
+        21@ == 0
+    then
+        if
+            00DF: actor $PLAYER_ACTOR driving
+        then
+            03C0: 17@ = actor $PLAYER_ACTOR car
+            if
+                056E: car 17@ defined
+            then
+                0E12: get_vehicle 17@ subclass_to 22@
+                if or
+                    0039: 22@ == 0 // Automobile
+                    0039: 22@ == 1 // Monster Truck
+                then
+                    0A97: 18@ = vehicle 17@ struct
+                    20@ = 0
+                    if or
+                        003B: 26@ == 18@
+                        003B: 26@ == 17@
+                        003B: 26@ == 25@
+                        07D6: 26@ == $PLAYER_ACTOR
+                        051B: actor 8@ damaged_by_car 17@
+                    then
+                        20@ = 1
+                    end
+
+                    if
+                        20@ == 1
+                    then
+                        if or
+                            27@ == 49 // Rammed by car
+                            27@ == 50 // Run over by car
+                        then
+                            // Verify Shion is riding together (Spirit or physically in car)
+                            19@ = 0
+                            if
+                                0039: 11@ == 1
+                            then
+                                19@ = 1
+                            else
+                                // Only check physical car occupancy if Shion is a valid ped handle
+                                if
+                                    0019: 10@ > 0
+                                then
+                                    if and
+                                        056D: actor 10@ defined
+                                        8118: not actor 10@ dead
+                                    then
+                                        if
+                                            00DB: actor 10@ in_car 17@
+                                        then
+                                            19@ = 1
+                                        end
+                                    end
+                                end
+                            end
+
+                            if
+                                0039: 19@ == 1
+                            then
+                                21@ = 2
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    // If valid strike/impact occurred, filter civilian innocence
+    if
+        0019: 21@ > 0
+    then
+        089F: get_actor 8@ pedtype_to 23@
+        // Victim must be an ambient civilian (PedType 4 or 5)
+        if or
+            23@ == 4 // CivMale
+            23@ == 5 // CivFemale
+        then
+            // Exclude script-controlled mission actors/targets
+            if
+                8E0A: not is_char_script_controlled 8@
+            then
+                // Exclude armed peds (holding any knife, bat, gun, etc.)
+                0470: 22@ = actor 8@ current_weapon
+                if
+                    8019: not 22@ > 0 // Unarmed bare fists only
+                then
+                    // Exclude peds actively fighting, aiming, or firing
+                    if and
+                        8E47: not is_char_fighting 8@
+                        8E46: not is_char_using_gun 8@
+                        82E0: not actor 8@ firing_weapon
+                    then
+                        // Exclude peds who have already struck Player or Shion
+                        24@ = 0
+                        if
+                            051A: actor $PLAYER_ACTOR damaged_by_actor 8@
+                        then
+                            24@ = 1
+                        end
+
+                        // Nested check guarantees 051A is never called on an invalid handle
+                        if
+                            0039: 24@ == 0
+                        then
+                            if
+                                0019: 10@ > 0
+                            then
+                                if
+                                    056D: actor 10@ defined
+                                then
+                                    if
+                                        051A: actor 10@ damaged_by_actor 8@
+                                    then
+                                        24@ = 1
+                                    end
+                                end
+                            end
+                        end
+
+                        if
+                            24@ == 0
+                        then
+                            // Exclude peds actively targeting anyone to kill/attack
+                            0E44: get_char_kill_target_char 8@ store_to 22@
+                            if
+                                8019: not 22@ > 0 // Must have NO active kill target
+                            then
+                                // Exclude corner drug dealers & street criminal skins
+                                0665: get_actor 8@ model_to 22@
+                                28@ = 0
+                                if or
+                                    22@ == 29  // BMYDRUG
+                                    22@ == 30  // WMYDRUG
+                                    22@ == 21  // BMYST
+                                    22@ == 47  // BMYCR
+                                then
+                                    28@ = 1
+                                end
+                                if or
+                                    22@ == 143 // WMYCR
+                                    22@ == 144 // BMYCR
+                                    22@ == 188 // WMYCR
+                                    22@ == 230 // HMYCR
+                                then
+                                    28@ = 1
+                                end
+                                if or
+                                    22@ == 253 // WMYCR
+                                    22@ == 254 // BMYCR
+                                    22@ == 255 // HMYCR
+                                    22@ == 256 // BMYCR
+                                then
+                                    28@ = 1
+                                end
+
+                                if
+                                    28@ == 0
+                                then
+                                    if
+                                        8019: not 1@ > 0
+                                    then
+                                        if
+                                            21@ == 1
+                                        then
+                                            12@ = 6 // Queue Innocent Punch Reaction
+                                        else
+                                            12@ = 10 // Queue Innocent Run-Over Reaction
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+9@ = 0
+0ED0: return_script_event
+
+
+// =========================================================================
+// SUBROUTINE: DIALOGUE DISPATCHER
+// =========================================================================
+:Dispatch_Sandbox_Dialogue
+// Preempt lower-priority ambient chatter immediately
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
+03EB: clear_small_messages_only
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 3 virtual_protect 0
+
+// Event: Firetruck Hose-Down (Physical Ped Only)
+if
+    12@ == 1
+then
+    12@ = 0
+    0209: 0@ = random_int_in_ranges 0 3
+
+    // Variant 0: High-Pressure Shower
+    if
+        0@ == 0
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB1A" text "~b~Shion: ~s~\"Guh-! Wait... this is cold city tap water. It's actually knocking the dirt off my hoodie.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB1A' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB1B" text "~y~Jo'on: ~s~\"Good! Hold still, ya needed a bath anyway! Scour that gutter grime right off!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB1B' time 3400 flag 1
+        wait 3400
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB1C" text "~b~Shion: ~s~\"My hair hasn't seen soap in six months, Jo'on... hit my shoulders before you stop.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB1C' time 3400 flag 1
+        wait 3400
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB1D" text "~y~Jo'on: ~s~\"I'm an elite high-roller, not a dog washer! Wring yourself out and get in the truck!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB1D' time 3400 flag 1
+        wait 3400
+    end
+
+    // Variant 1: Swept Across Asphalt
+    if
+        0@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB1E" text "~b~Shion: ~s~\"Pbbbt-! The nozzle pressure is sliding me right across the asphalt, Jo'on...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB1E' time 3400 flag 1
+        wait 3400
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB1F" text "~y~Jo'on: ~s~\"Lean into it! Municipal water's paid by taxpayers, get our money's worth!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB1F' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB1G" text "~b~Shion: ~s~\"Reminds me of landlords spraying me off their porches with garden hoses...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB1G' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB1H" text "~y~Jo'on: ~s~\"Except this time I'm runnin' the hose! You're welcome for the free bath! AHAHAHA!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB1H' time 3400 flag 1
+        wait 3400
+    end
+
+    // Variant 2: Wet Eviction Notice Cement
+    if
+        0@ == 2
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB1I" text "~b~Shion: ~s~\"Guh-! All the eviction notices taped to my hoodie are turning into wet papier-mache...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB1I' time 3400 flag 1
+        wait 3400
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB1J" text "~y~Jo'on: ~s~\"Good! Peel 'em off! I told ya carryin' past-due bills is bad for my reputation!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB1J' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB1K" text "~b~Shion: ~s~\"Now they're stuck to my skin like wet cement, Jo'on... debt really is eternal.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB1K' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB1L" text "~y~Jo'on: ~s~\"Then scrub harder! If ya leave wet paper on my truck seats, you're walkin'!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB1L' time 3400 flag 1
+        wait 3400
+    end
+
+    goto @Finish_Sandbox_Dialogue
+end
+
+// Event: Car Driven Into Ocean
+if
+    12@ == 2
+then
+    12@ = 0
+
+    // Hitodama Spirit Form Variants
+    if
+        11@ == 1
+    then
+        0209: 0@ = random_int_in_ranges 0 3
+
+        if
+            0@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_2SH0A" text "~b~Shion: ~s~\"I can float through the roof, Jo'on... but you're gonna drown if you don't unbuckle.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_2SH0A' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_2SH0B" text "~y~Jo'on: ~s~\"I AM UNBUCKLIN'! The door won't budge! My silk coat's soakin' up seawater!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_2SH0B' time 3500 flag 1
+            wait 3500
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_2SH0C" text "~b~Shion: ~s~\"Swim straight up... head toward the surface, Jo'on. I'm right above you.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_2SH0C' time 3200 flag 1
+            wait 3200
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_2SH0D" text "~y~Jo'on: ~s~\"I'm swimmin'! If my mascara washes off in the harbor, you're payin' for it!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_2SH0D' time 3500 flag 1
+            wait 3500
+        end
+
+        if
+            0@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_2SH1A" text "~b~Shion: ~s~\"We're all the way at the bottom, Jo'on... the harbor fish are staring right at us.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_2SH1A' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_2SH1B" text "~y~Jo'on: ~s~\"I don't care about fish! Don't just float there glowin', help me pry this latch open!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_2SH1B' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_2SH1C" text "~b~Shion: ~s~\"Spirits don't drown, but you still have to breathe, Jo'on... kick the latch open.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_2SH1C' time 3400 flag 1
+            wait 3400
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_2SH1D" text "~y~Jo'on: ~s~\"I AM PUSHIN'! Swim for the pier! Move, move, move!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_2SH1D' time 3200 flag 1
+            wait 3200
+        end
+
+        if
+            0@ == 2
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_2SH2A" text "~b~Shion: ~s~\"Bubbles everywhere... I think we turned this stolen car into a submarine, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_2SH2A' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_2SH2B" text "~y~Jo'on: ~s~\"Submarines have air tanks, dummy! This is an iron anchor draggin' us to the bottom!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_2SH2B' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_2SH2C" text "~b~Shion: ~s~\"At least the water cooled down the burning radiator... let's head for the shore.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_2SH2C' time 3500 flag 1
+            wait 3500
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_2SH2D" text "~y~Jo'on: ~s~\"Break the surface before I run outta breath! KICK!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_2SH2D' time 3000 flag 1
+            wait 3000
+        end
+
+        goto @Finish_Sandbox_Dialogue
+    end
+
+    // Physical Ped Form Variants
+    0209: 0@ = random_int_in_ranges 0 4
+
+    // Variant 0: Sinking Sedan Bailout
+    if
+        0@ == 0
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2A" text "~b~Shion: ~s~\"-Glug-! Jo'on, why are we sinking to the bottom of the harbor?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2A' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2B" text "~y~Jo'on: ~s~\"Kick the door open! I ain't gettin' my designer mascara soaked! Bail out!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2B' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2C" text "~b~Shion: ~s~\"The car was paid for, right? ...Please tell me it wasn't on loan.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2C' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2D" text "~y~Jo'on: ~s~\"It was borrowed without askin'! Swim for the pier before it hits bottom!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2D' time 3500 flag 1
+        wait 3500
+    end
+
+    // Variant 1: Hell of Blood Pools Comparison
+    if
+        0@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2E" text "~b~Shion: ~s~\"Bubbles everywhere... reminds me of the Hell of Blood Pools, but colder.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2E' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2F" text "~y~Jo'on: ~s~\"Stop daydreamin' about Former Hell and kick the window out before we drown!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2F' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2G" text "~b~Shion: ~s~\"At least saltwater doesn't burn like boiling grease, sis...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2G' time 3200 flag 1
+        wait 3200
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2H" text "~y~Jo'on: ~s~\"It ruins my dry-clean-only silk! PUSH! PUSH THE DOOR!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2H' time 3300 flag 1
+        wait 3300
+    end
+
+    // Variant 2: Living With Fish
+    if
+        0@ == 2
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2I" text "~b~Shion: ~s~\"There are sea bass swimming past the windshield, Jo'on... looks peaceful.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2I' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2J" text "~y~Jo'on: ~s~\"PEACEFUL?! We're sinkin' in three fathoms of harbor water! UNBUCKLE YOURSELF!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2J' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2K" text "~b~Shion: ~s~\"Fish get to live rent-free down here... no landlords anywhere in sight.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2K' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2L" text "~y~Jo'on: ~s~\"I ain't roomin' with bottom feeders! Kick for the surface right now!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2L' time 3400 flag 1
+        wait 3400
+    end
+
+    // Variant 3: Dark Water Paranoia
+    if
+        0@ == 3
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2M" text "~b~Shion: ~s~\"Pbbbt-! Jo'on, are you trying to drown me in dark waters AGAIN?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2M' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2N" text "~y~Jo'on: ~s~\"AGAIN?! WHAT D'YA MEAN 'AGAIN'?! UNBUCKLE AND KICK THE DOOR OPEN! NOW!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2N' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2O" text "~b~Shion: ~s~\"...I'm strangely relieved by your reaction.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2O' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB2P" text "~y~Jo'on: ~s~\"I don't know what you're babblin' about! Reminisce later, now swim!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB2P' time 3400 flag 1
+        wait 3400
+    end
+
+    goto @Finish_Sandbox_Dialogue
+end
+
+// Event: Swimming in Deep Water
+if
+    12@ == 3
+then
+    12@ = 0
+
+    // Hitodama Spirit Form Variants
+    if
+        11@ == 1
+    then
+        0209: 0@ = random_int_in_ranges 0 3
+
+        if
+            0@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_3SH0A" text "~b~Shion: ~s~\"Floating over the waves is so easy... your arms must feel like lead, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_3SH0A' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_3SH0B" text "~y~Jo'on: ~s~\"Shut it, Shion! Swimmin' in a five-thousand-dollar silk dress is brutal labor!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_3SH0B' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_3SH0C" text "~b~Shion: ~s~\"You look like a very angry duck paddling for the beach, sis.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_3SH0C' time 3400 flag 1
+            wait 3400
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_3SH0D" text "~y~Jo'on: ~s~\"A DUCK?! I'm an elegant swan! Drift ahead and scout a dry dock right now!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_3SH0D' time 3600 flag 1
+            wait 3600
+        end
+
+        if
+            0@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_3SH1A" text "~b~Shion: ~s~\"I'm drifting over your head like a buoy... just keep paddling toward the docks, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_3SH1A' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_3SH1B" text "~y~Jo'on: ~s~\"Keep your light steady! The harbor waves keep splashin' right in my mouth!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_3SH1B' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_3SH1C" text "~b~Shion: ~s~\"At least the saltwater cleans your boots, Jo'on... think of the silver lining.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_3SH1C' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_3SH1D" text "~y~Jo'on: ~s~\"Saltwater destroys leather, ya stupid orb! Now guide me to shore!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_3SH1D' time 3600 flag 1
+            wait 3600
+        end
+
+        if
+            0@ == 2
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_3SH2A" text "~b~Shion: ~s~\"Is the water freezing, Jo'on? I could hover closer to warm you up.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_3SH2A' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_3SH2B" text "~y~Jo'on: ~s~\"Your flame is cold, ya idiot! It'd give me instant hypothermia!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_3SH2B' time 3500 flag 1
+            wait 3500
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_3SH2C" text "~b~Shion: ~s~\"...I was just offering. Head for those wooden pier pilings, sis.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_3SH2C' time 3500 flag 1
+            wait 3500
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_3SH2D" text "~y~Jo'on: ~s~\"I'm headin' for land! Never let me jump off a dock again!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_3SH2D' time 3400 flag 1
+            wait 3400
+        end
+
+        goto @Finish_Sandbox_Dialogue
+    end
+
+    // Physical Ped Form Variants
+    0209: 0@ = random_int_in_ranges 0 3
+
+    // Variant 0: High-Society Conditioning
+    if
+        0@ == 0
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB3A" text "~b~Shion: ~s~\"Are you trying to drown yourself, Jo'on? The water's freezing...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB3A' time 3400 flag 1
+        wait 3400
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB3B" text "~y~Jo'on: ~s~\"I'm doin' open-water conditionin'! High-society swimmin'! Head for shore!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB3B' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB3C" text "~b~Shion: ~s~\"Swimming in a heavy silk dress doesn't look very high-society, sis...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB3C' time 3400 flag 1
+        wait 3400
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB3D" text "~y~Jo'on: ~s~\"It builds core strength! Shut up and kick your legs!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB3D' time 3200 flag 1
+        wait 3200
+    end
+
+    // Variant 1: Seaweed & Harbor Kelp
+    if
+        0@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB3E" text "~b~Shion: ~s~\"Pbbbt-! A mouthful of salty water... seaweed tastes better than you think.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB3E' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB3F" text "~y~Jo'on: ~s~\"DON'T EAT HARBOR KELP! You're gonna catch typhoid from that filth!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB3F' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB3G" text "~b~Shion: ~s~\"Free minerals and salt, Jo'on. My stomach doesn't complain.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB3G' time 3400 flag 1
+        wait 3400
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB3H" text "~y~Jo'on: ~s~\"I complain! Paddle to the sand before my shoes waterlog completely!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB3H' time 3500 flag 1
+        wait 3500
+    end
+
+    // Variant 2: Arms Turning to Lead
+    if
+        0@ == 2
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB3I" text "~b~Shion: ~s~\"We've been treading water for a while, Jo'on... my arms are turning to lead.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB3I' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB3J" text "~y~Jo'on: ~s~\"Keep kickin'! Ain't no lifeguard comin' to pull two broke hustlers out of the drink!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB3J' time 3400 flag 1
+        wait 3400
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB3K" text "~b~Shion: ~s~\"If I sink, just let me drift to the bottom... I'll save you the trouble.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB3K' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB3L" text "~y~Jo'on: ~s~\"Don't give me that gloomy garbage! Grab my shoulder and keep movin'!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB3L' time 3500 flag 1
+        wait 3500
+    end
+
+    goto @Finish_Sandbox_Dialogue
+end
+
+// Event: Pay 'N' Spray Repair
+if
+    12@ == 4
+then
+    12@ = 0
+
+    // Brief pause to let the garage doors open before they react
+    wait 800
+    gosub @Check_Sandbox_Alive
+    if
+        13@ == 1
+    then
+        return
+    end
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+
+    0209: 0@ = random_int_in_ranges 0 5
+
+    // Variant 0: Instant Bodywork Logic
+    if
+        0@ == 0
+    then
+        0ADF: add_text_label "Y_SB4A" text "~b~Shion: ~s~\"Wait... a quick spray of paint fixes a shattered windshield and bent axle?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB4A' time 3700 flag 1
+        wait 3700
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB4B" text "~y~Jo'on: ~s~\"A fresh coat of paint solves everythin', Shion! Resale value restored! AHAHAHA!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB4B' time 3500 flag 1
+        wait 3500
+    end
+
+    // Variant 1: The Blue Mokou / Color Disguise Joke
+    if
+        0@ == 1
+    then
+        0ADF: add_text_label "Y_SB4I" text "~b~Shion: ~s~\"They repainted the doors... and the police cruiser outside just drove right past us.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB4I' time 3700 flag 1
+        wait 3700
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB4J" text "~y~Jo'on: ~s~\"See? Cops in this state only look at colors! Bunch'a suckers!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB4J' time 3200 flag 1
+        wait 3200
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB4K" text "~b~Shion: ~s~\"If I bleached my hair white, would landlords stop recognizing me, Jo'on?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB4K' time 3400 flag 1
+        wait 3400
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB4L" text "~y~Jo'on: ~s~\"If it's white, make sure ya wear somethin' red and keep a smoke in your mouth, too.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB4L' time 3700 flag 1
+        wait 3700
+    end
+
+    // Variant 2: Smoking Wreck Restored
+    if
+        0@ == 2
+    then
+        0ADF: add_text_label "Y_SB4E" text "~b~Shion: ~s~\"The garage doors opened and our smoking wreck looks brand new... didn't even hear a wrench.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB4E' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB4F" text "~y~Jo'on: ~s~\"A hundred bucks to wipe our heat and fix the bumper! Best deal in town!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB4F' time 3700 flag 1
+        wait 3700
+    end
+
+    // Variant 3: Fresh Scent of Legal Immunity
+    if
+        0@ == 3
+    then
+        0ADF: add_text_label "Y_SB4G" text "~b~Shion: ~s~\"These paint fumes smell awful, Jo'on... my head's spinning.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB4G' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB4H" text "~y~Jo'on: ~s~\"Roll the window down! That's the fresh scent of legal immunity!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB4H' time 3300 flag 1
+        wait 3300
+    end
+
+    // Variant 4: Glossy Enamel
+    if
+        0@ == 4
+    then
+        0ADF: add_text_label "Y_4SH1A" text "~b~Shion: ~s~\"The fresh paint is so glossy... it's like a mirror. Makes my ragged hoodie look worse, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_4SH1A' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_4SH1B" text "~y~Jo'on: ~s~\"A hundred bucks for showroom shine! The casino valet will actually respect us now!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_4SH1B' time 3600 flag 1
+        wait 3600
+    end
+
+    goto @Finish_Sandbox_Dialogue
+end
+
+// Event: Stunt Rollover Recovery
+if
+    12@ == 5
+then
+    12@ = 0
+
+    // Brief pause to let the car settle after the impact
+    wait 800
+    gosub @Check_Sandbox_Alive
+    if
+        13@ == 1
+    then
+        return
+    end
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+
+    0209: 0@ = random_int_in_ranges 0 8
+
+    if
+        0@ == 0
+    then
+        0ADF: add_text_label "Y_SB5A" text "~b~Shion: ~s~\"We just flipped completely upside down... I was sure the roof was gonna cave in.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB5A' time 3500 flag 1
+        wait 3500
+    end
+
+    if
+        0@ == 1
+    then
+        0ADF: add_text_label "Y_SB5B" text "~y~Jo'on: ~s~\"AHAHAHA! Did ya see that rotation?! That's elite high-flying stunt work right there!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB5B' time 3500 flag 1
+        wait 3500
+    end
+
+    if
+        0@ == 2
+    then
+        0ADF: add_text_label "Y_SB5C" text "~b~Shion: ~s~\"My stomach did two backflips, Jo'on... please don't do that again.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB5C' time 3500 flag 1
+        wait 3500
+    end
+
+    if
+        0@ == 3
+    then
+        0ADF: add_text_label "Y_SB5D" text "~y~Jo'on: ~s~\"Stuck the landin'! Ten outta ten! AHAHAHA!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB5D' time 3000 flag 1
+        wait 3000
+    end
+
+    if
+        0@ == 4
+    then
+        0ADF: add_text_label "Y_SB5E" text "~b~Shion: ~s~\"I think our side mirror flew off into a palm tree, Jo'on...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB5E' time 3200 flag 1
+        wait 3200
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB5F" text "~y~Jo'on: ~s~\"Mirrors are for lookin' back! High-rollers only look forward!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB5F' time 3500 flag 1
+        wait 3500
+    end
+
+    if
+        0@ == 5
+    then
+        0ADF: add_text_label "Y_SB5G" text "~b~Shion: ~s~\"I saw my past life flash before my eyes... it was mostly grilled miso.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB5G' time 3500 flag 1
+        wait 3500
+    end
+
+    if
+        0@ == 6
+    then
+        0ADF: add_text_label "Y_SB5H" text "~b~Shion: ~s~\"The whole skyline spun upside down for two seconds... I think I blacked out.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB5H' time 3000 flag 1
+        wait 3000
+    end
+
+    if
+        0@ == 7
+    then
+        0ADF: add_text_label "Y_SB5I" text "~y~Jo'on: ~s~\"That's high-grade suspension at work! Landed smooth as silk! AHAHAHA!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB5I' time 3500 flag 1
+        wait 3500
+    end
+
+    goto @Finish_Sandbox_Dialogue
+end
+
+// Event: Punching Innocent Civilian
+if
+    12@ == 6
+then
+    12@ = 0
+
+    // Brief pause to let the punch impact breathe before she reacts
+    wait 800
+    gosub @Check_Sandbox_Alive
+    if
+        13@ == 1
+    then
+        return
+    end
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+
+    0209: 0@ = random_int_in_ranges 0 8
+
+    // Variant 0: Drawing Attention
+    if
+        0@ == 0
+    then
+        0ADF: add_text_label "Y_SB6A" text "~b~Shion: ~s~\"He was just walking past, Jo'on... now people on the street are staring.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB6A' time 3200 flag 1
+        wait 3200
+    end
+
+    // Variant 1: Plain Disbelief
+    if
+        0@ == 1
+    then
+        0ADF: add_text_label "Y_SB6B" text "~b~Shion: ~s~\"...Did you really have to hit him that hard, Jo'on?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB6B' time 3000 flag 1
+        wait 3000
+    end
+
+    // Variant 2: Memory of Porch Violence
+    if
+        0@ == 2
+    then
+        0ADF: add_text_label "Y_SB6C" text "~b~Shion: ~s~\"Ow... that looked like it hurt. Reminds me of getting kicked off porches...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB6C' time 3200 flag 1
+        wait 3200
+    end
+
+    // Variant 3: Preemptive Defense
+    if
+        0@ == 3
+    then
+        0ADF: add_text_label "Y_SB6D" text "~b~Shion: ~s~\"Why did you just punch that guy, Jo'on? He didn't even say anything.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB6D' time 3200 flag 1
+        wait 3200
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB6E" text "~y~Jo'on: ~s~\"Preemptive defense! He was eyin' my purse!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB6E' time 3000 flag 1
+        wait 3000
+    end
+
+    // Variant 4: Business on the Pavement
+    if
+        0@ == 4
+    then
+        0ADF: add_text_label "Y_SB6F" text "~b~Shion: ~s~\"That guy was just minding his own business, Jo'on...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB6F' time 3000 flag 1
+        wait 3000
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB6G" text "~y~Jo'on: ~s~\"Well, now his business is on the pavement! Keep walkin'!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB6G' time 3200 flag 1
+        wait 3200
+    end
+
+    // Variant 5: Extortioner of the 80's Toll
+    if
+        0@ == 5
+    then
+        0ADF: add_text_label "Y_SB6H" text "~b~Shion: ~s~\"You can't just go around punching strangers, Jo'on... cops have radios.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB6H' time 3200 flag 1
+        wait 3200
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB6I" text "~y~Jo'on: ~s~\"He was blockin' my sidewalk! Grab his loose change!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB6I' time 3500 flag 1
+        wait 3500
+    end
+
+    // Variant 6: The Bad Haircut
+    if
+        0@ == 6
+    then
+        0ADF: add_text_label "Y_SB6J" text "~b~Shion: ~s~\"Did you just knock that guy out for no reason, Jo'on?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB6J' time 3000 flag 1
+        wait 3000
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB6K" text "~y~Jo'on: ~s~\"That haircut was an eyesore! He practically begged for a beatdown!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB6K' time 3400 flag 1
+        wait 3400
+    end
+
+    // Variant 7: Broke Peons
+    if
+        0@ == 7
+    then
+        0ADF: add_text_label "Y_SB6L" text "~b~Shion: ~s~\"...I don't think he had any money in his pockets anyway, sis.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB6L' time 3000 flag 1
+        wait 3000
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB6M" text "~y~Jo'on: ~s~\"Then he deserved it! Broke peons need to stay outta my personal space!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB6M' time 3400 flag 1
+        wait 3400
+    end
+
+    goto @Finish_Sandbox_Dialogue
+end
+
+// Event: Hydraulics Bounce Spam
+if
+    12@ == 7
+then
+    12@ = 0
+
+    // Hitodama Spirit Form Variants
+    if
+        11@ == 1
+    then
+        0209: 0@ = random_int_in_ranges 0 3
+
+        if
+            0@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_7SH0A" text "~b~Shion: ~s~\"Jo'on, this bouncing is making me sick... stop hitting the switches.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_7SH0A' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_7SH0B" text "~y~Jo'on: ~s~\"You're a ghost orb, Shion! You don't even have intestines to complain about!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_7SH0B' time 3600 flag 1
+            wait 3600
+        end
+
+        if
+            0@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_7SH1A" text "~b~Shion: ~s~\"Every time you hit the switch, I get flattened against the glass, Jo'on...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_7SH1A' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_7SH1B" text "~y~Jo'on: ~s~\"Then hover higher! You're lucky ya can't get whiplash in that form!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_7SH1B' time 3500 flag 1
+            wait 3500
+        end
+
+        if
+            0@ == 2
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_7SH2A" text "~b~Shion: ~s~\"You're bouncing so hard I'm getting thrown all over the roof, Jo'on...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_7SH2A' time 3500 flag 1
+            wait 3500
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_7SH2B" text "~y~Jo'on: ~s~\"Quit whinin'! Lowriders were born to hop! Keep rhythm with the beat!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_7SH2B' time 3500 flag 1
+            wait 3500
+        end
+
+        goto @Finish_Sandbox_Dialogue
+    end
+
+    // Physical Ped Form Variants
+    0209: 0@ = random_int_in_ranges 0 3
+
+    if
+        0@ == 0
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB7A" text "~b~Shion: ~s~\"...I think I'm gonna be sick.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB7A' time 3000 flag 1
+        wait 3000
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB7B" text "~y~Jo'on: ~s~\"Don't you dare throw up on my genuine leather seats! Swallow it down!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB7B' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB7C" text "~b~Shion: ~s~\"Then stop bouncing the car up and down... it feels like a carnival ride.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB7C' time 3400 flag 1
+        wait 3400
+    end
+
+    if
+        0@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB7D" text "~b~Shion: ~s~\"I'm getting dizzy, Jo'on... my head keeps hitting the sun visor.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB7D' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB7E" text "~y~Jo'on: ~s~\"That's the authentic lowrider bounce! Feel the rhythm of the streets!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB7E' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB7F" text "~b~Shion: ~s~\"All I feel is motion sickness and whiplash...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB7F' time 3200 flag 1
+        wait 3200
+    end
+
+    if
+        0@ == 2
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB7G" text "~b~Shion: ~s~\"Urrk... if we bounce one more time, my meager breakfast is making a comeback...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB7G' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB7H" text "~y~Jo'on: ~s~\"Lean your head out the window! Not on the floor mats!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB7H' time 3200 flag 1
+        wait 3200
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB7I" text "~b~Shion: ~s~\"I can't even reach the window crank, Jo'on... everything's spinning...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB7I' time 3500 flag 1
+        wait 3500
+    end
+
+    goto @Finish_Sandbox_Dialogue
+end
+
+// Event: Car Destroyed / Wrecked (References MEM_CARS_WRECKED)
+if
+    12@ == 8
+then
+    12@ = 0
+
+    // Brief pause to let the explosion or impact settle
+    wait 8000
+    gosub @Check_Sandbox_Alive
+    if
+        13@ == 1
+    then
+        return
+    end
+
+    // Hitodama Spirit Form Variants
+    if
+        11@ == 1
+    then
+        0209: 0@ = random_int_in_ranges 0 6
+
+        // Variant 0: Solo Shion - No Flesh to Scorch
+        if
+            0@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_8SH0" text "~b~Shion: ~s~\"The engine just exploded into scrap metal... good thing I don't have flesh to scorch.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_8SH0' time 3600 flag 1
+            wait 3600
+        end
+
+        // Variant 1: Solo Shion - Misfortune Overtime
+        if
+            0@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_8SH1" text "~b~Shion: ~s~\"Another car turned into a bonfire... my misfortune aura is working overtime today.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_8SH1' time 3600 flag 1
+            wait 3600
+        end
+
+        // Variant 2: Solo Shion - Melted Rims
+        if
+            0@ == 2
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_8SH2" text "~b~Shion: ~s~\"The tires melted right off the rims... we're walking now, aren't we?\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_8SH2' time 3400 flag 1
+            wait 3400
+        end
+
+        // Variant 3: Two-Line - Lost Pride & Cops
+        if
+            0@ == 3
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_8SH3A" text "~b~Shion: ~s~\"We didn't pay for that ride anyway, Jo'on... so nothing of value was lost.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_8SH3A' time 3500 flag 1
+            wait 3500
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_8SH3B" text "~y~Jo'on: ~s~\"MY PRIDE WAS LOST! Shut your trap and float ahead before the cops swarm us!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_8SH3B' time 3600 flag 1
+            wait 3600
+        end
+
+        // Variant 4: Two-Line - Flame Matches Gasoline
+        if
+            0@ == 4
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_8SH4A" text "~b~Shion: ~s~\"That fire's spreading fast, Jo'on... want me to go scout us another ride?\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_8SH4A' time 3500 flag 1
+            wait 3500
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_8SH4B" text "~y~Jo'on: ~s~\"Quit floatin' around and find us a clean four-door right now!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_8SH4B' time 3300 flag 1
+            wait 3300
+        end
+
+        // Variant 5: Two-Line - Work of Art
+        if
+            0@ == 5
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_8SH5A" text "~b~Shion: ~s~\"The gas tank popped like a firecracker, Jo'on... sounded expensive.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_8SH5A' time 3400 flag 1
+            wait 3400
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_8SH5B" text "~y~Jo'on: ~s~\"EXPENSIVE?! That ride was a work of art! Don't just hover there, MOVE!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_8SH5B' time 3500 flag 1
+            wait 3500
+        end
+
+        goto @Finish_Sandbox_Dialogue
+    end
+
+    // Physical Ped Form Variants
+    0209: 0@ = random_int_in_ranges 0 8
+
+    // Variant 0: Solo Shion - Dashboard Blowout
+    if
+        0@ == 0
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB8A" text "~b~Shion: ~s~\"Cough-! The dashboard blew straight through the windshield... my ears are ringing.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB8A' time 3500 flag 1
+        wait 3500
+    end
+
+    // Variant 1: Solo Shion - Burnt Motor Oil
+    if
+        0@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB8B" text "~b~Shion: ~s~\"That's another vehicle reduced to smoking charcoal... my hoodie smells like burnt motor oil.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB8B' time 3700 flag 1
+        wait 3700
+    end
+
+    // Variant 2: Solo Shion - Warming Cold Hands
+    if
+        0@ == 2
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB8C" text "~b~Shion: ~s~\"At least the burning wreck warmed up my cold hands for a second...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB8C' time 3300 flag 1
+        wait 3300
+    end
+
+    // Variant 3: Solo Shion - Crushed Soda Can
+    if
+        0@ == 3
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB8D" text "~b~Shion: ~s~\"The frame twisted like a crushed soda can... good thing gods don't burn.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB8D' time 3400 flag 1
+        wait 3400
+    end
+
+    // Variant 4: Two-Line - Insurance Info
+    if
+        0@ == 4
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB8EA" text "~b~Shion: ~s~\"Are we supposed to leave the burning wreck here, Jo'on?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB8EA' time 3200 flag 1
+        wait 3200
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB8EB" text "~y~Jo'on: ~s~\"You wanna stick around and exchange insurance info with the asphalt?! MOVE!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB8EB' time 3500 flag 1
+        wait 3500
+    end
+
+    // Variant 5: Two-Line - Concrete Barriers
+    if
+        0@ == 5
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB8FA" text "~b~Shion: ~s~\"You crashed it into three concrete barriers, Jo'on... what did you expect?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB8FA' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB8FB" text "~y~Jo'on: ~s~\"I expected the barriers to break first! Quit lecturin' me and haul ass!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB8FB' time 3500 flag 1
+        wait 3500
+    end
+
+    // Variant 6: Two-Line - Driver's License
+    if
+        0@ == 6
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB8GA" text "~b~Shion: ~s~\"I don't think either of us has a driver's license anyway, sis...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB8GA' time 3300 flag 1
+        wait 3300
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB8GB" text "~y~Jo'on: ~s~\"Licenses are for chumps! Hustlers take what they need! Keep runnin'!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB8GB' time 3400 flag 1
+        wait 3400
+    end
+
+    // Variant 7: Two-Line - Stolen Ten Minutes Ago
+    if
+        0@ == 7
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB8HA" text "~b~Shion: ~s~\"That car had full coverage, right? ...Please tell me you didn't buy it on credit.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB8HA' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB8HB" text "~y~Jo'on: ~s~\"I stole it from a parkin' lot ten minutes ago! Run before the owner spots us!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB8HB' time 3500 flag 1
+        wait 3500
+    end
+
+    goto @Finish_Sandbox_Dialogue
+end
+
+
+// Event: Car Smasher Fiery Punch Detonation (Petroleum Combustion)
+if
+    12@ == 9
+then
+    12@ = 0
+
+    // Brief pause to let the explosion fireball and shockwave settle
+    wait 900
+    gosub @Check_Sandbox_Alive
+    if
+        13@ == 1
+    then
+        return
+    end
+
+    // Hitodama Spirit Form Variants
+    if
+        11@ == 1
+    then
+        0209: 0@ = random_int_in_ranges 0 3
+
+        // Variant: Spirit Petroleum Observation
+        if
+            0@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_9SH0A" text "~b~Shion: ~s~\"Cars are packed with petroleum, but detonating one with a bare fist is ridiculous...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_9SH0A' time 3500 flag 1
+            wait 3500
+        end
+
+        // Variant: Adrenaline & Spirit Shaking
+        if
+            0@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_9SH1A" text "~b~Shion: ~s~\"You set off the gas tank with your knuckles, Jo'on... aren't you going a little crazy?\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_9SH1A' time 3500 flag 1
+            wait 3500
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_9SH1B" text "~y~Jo'on: ~s~\"AHAHAHA! Did ya see that!? That cheap petroleum detonates like fireworks!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_9SH1B' time 3400 flag 1
+            wait 3400
+        end
+
+        // Variant: Oil Incident Callback
+        if
+            0@ == 2
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_9SH2A" text "~b~Shion: ~s~\"Just like Former Hell... your hot-headed fists keep igniting every drop of fuel in town.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_9SH2A' time 3600 flag 1
+            wait 3600
+        end
+
+        goto @Finish_Sandbox_Dialogue
+    end
+
+    // Physical Ped Form Variants
+    0209: 0@ = random_int_in_ranges 0 5
+
+    // Variant: Petroleum Lore Explanation
+    if
+        0@ == 0
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB9A" text "~b~Shion: ~s~\"Cars are full of petroleum... blowing them up with your fists is way too easy for you.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB9A' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB9B" text "~y~Jo'on: ~s~\"One spark to the fuel line and KABOOM! Fireproof perks, baby! AHAHAHA!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB9B' time 3300 flag 1
+        wait 3300
+    end
+
+    // Variant: Knuckle Check
+    if
+        0@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB9C" text "~b~Shion: ~s~\"Don't your knuckles hurt from doing that at all?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB9C' time 2900 flag 1
+        wait 2900
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB9D" text "~y~Jo'on: ~s~\"Hurt?! Adrenaline's pumpin', the gas is burnin', and I feel like a million bucks!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB9D' time 3400 flag 1
+        wait 3400
+    end
+
+    // Variant: Soot on the Face (Solo Shion)
+    if
+        0@ == 2
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB9E" text "~b~Shion: ~s~\"You punched straight into the gas tank... I almost got black soot all over my face.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB9E' time 3500 flag 1
+        wait 3500
+    end
+
+    // Variant: Traffic Clearance Laugh
+    if
+        0@ == 3
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB9F" text "~b~Shion: ~s~\"The whole chassis blew apart, Jo'on... what did that sedan ever do to you?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB9F' time 3300 flag 1
+        wait 3300
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB9G" text "~y~Jo'on: ~s~\"It was blockin' my lane! Outta my way, peons!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB9G' time 3000 flag 1
+        wait 3000
+    end
+
+    // Variant: Fireproof Reality Check (Solo Shion)
+    if
+        0@ == 4
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB9H" text "~b~Shion: ~s~\"Another car turned into a bonfire... at least neither of us can catch fire.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB9H' time 3400 flag 1
+        wait 3400
+    end
+
+    goto @Finish_Sandbox_Dialogue
+end
+
+
+// Event: Running Over Innocent Civilian
+if
+    12@ == 10
+then
+    12@ = 0
+
+    // Brief pause to let the vehicular impact register
+    wait 700
+    gosub @Check_Sandbox_Alive
+    if
+        13@ == 1
+    then
+        return
+    end
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+
+    // Hitodama Spirit Form Variants
+    if
+        11@ == 1
+    then
+        0209: 0@ = random_int_in_ranges 0 4
+
+        // Variant: Solo Shion - Crossing
+        if
+            0@ == 0
+        then
+            0ADF: add_text_label "Y_10S0" text "~b~Shion: ~s~\"Did you feel that thump, Jo'on? Someone was crossing the street...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_10S0' time 3200 flag 1
+            wait 3200
+        end
+
+        // Variant: Solo Shion - Sack of Turnips
+        if
+            0@ == 1
+        then
+            0ADF: add_text_label "Y_10S1" text "~b~Shion: ~s~\"They bounced off the hood like a sack of turnips, sis...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_10S1' time 3000 flag 1
+            wait 3000
+        end
+
+        // Variant: Two-Line - Sidewalk Shortcut
+        if
+            0@ == 2
+        then
+            0ADF: add_text_label "Y_10S2A" text "~b~Shion: ~s~\"You drove right over the curb, Jo'on... and someone's legs.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_10S2A' time 3200 flag 1
+            wait 3200
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_10S2B" text "~y~Jo'on: ~s~\"I'm avoidin' traffic! Tell 'em to stop scuffin' my undercarriage!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_10S2B' time 3400 flag 1
+            wait 3400
+        end
+
+        // Variant: Two-Line - Hit-and-Run Protocol
+        if
+            0@ == 3
+        then
+            0ADF: add_text_label "Y_10S3A" text "~b~Shion: ~s~\"You didn't even tap the brakes, Jo'on... that poor guy went flying.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_10S3A' time 3300 flag 1
+            wait 3300
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_10S3B" text "~y~Jo'on: ~s~\"Tap the brakes?! And get caught at the scene?! Like hell!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_10S3B' time 3400 flag 1
+            wait 3400
+        end
+
+        goto @Finish_Sandbox_Dialogue
+    end
+
+    // Physical Ped Form Variants
+    0209: 0@ = random_int_in_ranges 0 6
+
+    // Variant: Solo Shion - Dry Branches
+    if
+        0@ == 0
+    then
+        0ADF: add_text_label "Y_SB10A" text "~b~Shion: ~s~\"...That sounded like running over dry branches. My stomach hurts.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB10A' time 3200 flag 1
+        wait 3200
+    end
+
+    // Variant: Solo Shion - Spilled Takeout
+    if
+        0@ == 1
+    then
+        0ADF: add_text_label "Y_SB10B" text "~b~Shion: ~s~\"They dropped a whole bucket of fried chicken on the pavement... what a waste.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB10B' time 3400 flag 1
+        wait 3400
+    end
+
+    // Variant: Solo Shion - Guy in a Suit
+    if
+        0@ == 2
+    then
+        0ADF: add_text_label "Y_SB10C" text "~b~Shion: ~s~\"That wasn't a speed bump, Jo'on...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB10C' time 3100 flag 1
+        wait 3100
+    end
+
+    // Variant: Solo Shion - Spilled Groceries
+    if
+        0@ == 3
+    then
+        0ADF: add_text_label "Y_SB10D" text "~b~Shion: ~s~\"There are groceries rolling all over the asphalt, sis...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB10D' time 3000 flag 1
+        wait 3000
+    end
+
+    // Variant: Two-Line - Chrome Hood Dent
+    if
+        0@ == 4
+    then
+        0ADF: add_text_label "Y_SB10E" text "~b~Shion: ~s~\"You sent that pedestrian flying into the newsstand, Jo'on...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB10E' time 3200 flag 1
+        wait 3200
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB10F" text "~y~Jo'on: ~s~\"Look at my hood! They put a dent near the emblem! The nerve!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB10F' time 3300 flag 1
+        wait 3300
+    end
+
+    // Variant: Two-Line - Briefcase / Cash
+    if
+        0@ == 5
+    then
+        0ADF: add_text_label "Y_SB10G" text "~b~Shion: ~s~\"His briefcase is stuck under the tire... are you going to stop?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB10G' time 3000 flag 1
+        wait 3000
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB10H" text "~y~Jo'on: ~s~\"Unless bills are flyin' out of it, I'm keepin' my foot on the gas!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB10H' time 3200 flag 1
+        wait 3200
+    end
+
+    goto @Finish_Sandbox_Dialogue
+end
+
+// Event: Jo'on Flexing Cash (Didier Sachs Flex)
+if
+    12@ == 11
+then
+    12@ = 0
+
+    // Brief pause to let the cash flutter
+    wait 700
+    gosub @Check_Sandbox_Alive
+    if
+        13@ == 1
+    then
+        return
+    end
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+
+    // Hitodama Spirit Form Variants
+    if
+        11@ == 1
+    then
+        0209: 0@ = random_int_in_ranges 0 4
+
+        // Variant: Grocery Money Argument
+        if
+            0@ == 0
+        then
+            0ADF: add_text_label "Y_FLX0A" text "~b~Shion: ~s~\"You just threw a stack of bills into the wind, Jo'on... that was grocery money.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_FLX0A' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_FLX0B" text "~y~Jo'on: ~s~\"High-rollers don't hoard grocery money! We flex to show this city who runs it!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_FLX0B' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_FLX0C" text "~b~Shion: ~s~\"I'm hungry, Jo'on. Watching you toss bills makes my empty stomach hurt.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_FLX0C' time 3400 flag 1
+            wait 3400
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_FLX0D" text "~y~Jo'on: ~s~\"AHAHAHA! Stop whinin'! You gotta spend big to make people fear ya!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_FLX0D' time 3300 flag 1
+            wait 3300
+        end
+
+        // Variant: Street Peons Scramble
+        if
+            0@ == 1
+        then
+            0ADF: add_text_label "Y_FLX1A" text "~b~Shion: ~s~\"All those green bills floating down the gutter... what a complete waste.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_FLX1A' time 3500 flag 1
+            wait 3500
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_FLX1B" text "~y~Jo'on: ~s~\"It ain't waste, it's marketin'! People see cash flyin', they know I'm VIP!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_FLX1B' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_FLX1C" text "~b~Shion: ~s~\"People just think you're crazy, Jo'on... and now they're scooping it up.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_FLX1C' time 3500 flag 1
+            wait 3500
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_FLX1D" text "~y~Jo'on: ~s~\"Let the street peons scramble! Jo'on Yorigami's got cash to burn! AHAHAHA!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_FLX1D' time 3500 flag 1
+            wait 3500
+        end
+
+        // Variant: Burn For Fuel
+        if
+            0@ == 2
+        then
+            0ADF: add_text_label "Y_FLX2A" text "~b~Shion: ~s~\"If you're just gonna throw money away, let me burn it for fuel next time.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_FLX2A' time 3500 flag 1
+            wait 3500
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                return
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_FLX2B" text "~y~Jo'on: ~s~\"Burn it?! No way! Flexin' is about style! Ya can't flex with ashes, dummy!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_FLX2B' time 3600 flag 1
+            wait 3600
+        end
+
+        // Variant: Solo Shion - Ten Thousand Buns
+        if
+            0@ == 3
+        then
+            0ADF: add_text_label "Y_FLX3" text "~b~Shion: ~s~\"There goes ten thousand dollars into thin air... I could've bought ten thousand buns.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_FLX3' time 3700 flag 1
+            wait 3700
+        end
+
+        goto @Finish_Sandbox_Dialogue
+    end
+
+    // Physical Ped Form Variants
+    0209: 0@ = random_int_in_ranges 0 6
+
+    // Variant: Beggar Cup Tossing
+    if
+        0@ == 0
+    then
+        0ADF: add_text_label "Y_SBF0A" text "~b~Shion: ~s~\"Wait, don't throw it! At least throw some into my beggar's cup!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF0A' time 3300 flag 1
+        wait 3300
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SBF0B" text "~y~Jo'on: ~s~\"No handouts! High-society flexin' is for the streets, not your dirty cup!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF0B' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SBF0C" text "~b~Shion: ~s~\"My cup is clean, Jo'on... and I haven't eaten since yesterday.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF0C' time 3300 flag 1
+        wait 3300
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SBF0D" text "~y~Jo'on: ~s~\"Then scramble on the asphalt with the rest of 'em! AHAHAHA!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF0D' time 3200 flag 1
+        wait 3200
+    end
+
+    // Variant: Shaking Hands & Past Due Notices
+    if
+        0@ == 1
+    then
+        0ADF: add_text_label "Y_SBF1A" text "~b~Shion: ~s~\"My hands are shaking, Jo'on... you just tossed three months of rent into the street.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF1A' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SBF1B" text "~y~Jo'on: ~s~\"Rent?! High-rollers don't pay rent, we take what we want! Look at the bling!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF1B' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SBF1C" text "~b~Shion: ~s~\"Landlords still send notices, Jo'on... they are glued to my sleeves.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF1C' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SBF1D" text "~y~Jo'on: ~s~\"Rip 'em off and enjoy the shower! We're livin' large today!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF1D' time 3200 flag 1
+        wait 3200
+    end
+
+    // Variant: Storm Drain Crawl
+    if
+        0@ == 2
+    then
+        0ADF: add_text_label "Y_SBF2A" text "~b~Shion: ~s~\"Hey, stop! Some of those bills landed right in the storm drain!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF2A' time 3400 flag 1
+        wait 3400
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SBF2B" text "~y~Jo'on: ~s~\"Let the sewer rats have a taste! Jo'on's got enough paper to pave the road!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF2B' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SBF2C" text "~b~Shion: ~s~\"I'm going into the sewer after them, Jo'on... don't try to stop me.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF2C' time 3500 flag 1
+        wait 3500
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SBF2D" text "~y~Jo'on: ~s~\"Don't ya dare crawl in that drain! You're gonna stink up my ride!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF2D' time 3300 flag 1
+        wait 3300
+    end
+
+    // Variant: Pocket Lint vs Confetti
+    if
+        0@ == 3
+    then
+        0ADF: add_text_label "Y_SBF3A" text "~b~Shion: ~s~\"You're tossing cash like confetti, and I'm down here picking lint out of my pockets...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF3A' time 3600 flag 1
+        wait 3600
+        gosub @Check_Sandbox_Alive
+        if
+            13@ == 1
+        then
+            return
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SBF3B" text "~y~Jo'on: ~s~\"That's 'cause you got poverty mindset! Stand tall and soak in the fame!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF3B' time 3500 flag 1
+        wait 3500
+    end
+
+    // Variant: Solo Shion - Slipped on Asphalt
+    if
+        0@ == 4
+    then
+        0ADF: add_text_label "Y_SBF4" text "~b~Shion: ~s~\"I tried catching one of those bills and slipped on the pavement... typical.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF4' time 3500 flag 1
+        wait 3500
+    end
+
+    // Variant: Solo Shion - Visible Ribs
+    if
+        0@ == 5
+    then
+        0ADF: add_text_label "Y_SBF5" text "~b~Shion: ~s~\"Watching you throw stacks around while my ribs are showing is agony, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBF5' time 3700 flag 1
+        wait 3700
+    end
+
+    goto @Finish_Sandbox_Dialogue
+end
+
+
+:Finish_Sandbox_Dialogue
+03EB: clear_small_messages_only
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 29@ == 3
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+return
+
+// =========================================================================
+// SUBROUTINE: SAFETY WATCHDOG
+// =========================================================================
+:Check_Sandbox_Alive
+13@ = 0
+
+if or
+    8256: not is_player_playing $PLAYER_CHAR
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+then
+    03EB: clear_small_messages_only
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        0039: 29@ == 3
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
+    13@ = 1
+    return
+end
+
+// Check if Shion died or was dismissed while in dialogue
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+if
+    10@ == 0
+then
+    03EB: clear_small_messages_only
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        0039: 29@ == 3
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
+    13@ = 1
+    return
+end
+
+if
+    10@ > 0
+then
+    if or
+        856D: not actor 10@ defined
+        0118: actor 10@ dead
+    then
+        03EB: clear_small_messages_only
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+        if
+            0039: 29@ == 3
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+        end
+        13@ = 1
+        return
+    end
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0029: 29@ >= 4 // Interrupted by Tier 4 Theater (Sister Talk / Diner)
+then
+    13@ = 1
+end
+return

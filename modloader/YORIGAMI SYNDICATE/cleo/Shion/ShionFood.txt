@@ -1,0 +1,1386 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+{$USE ini}
+
+0000: NOP
+script_name "Sh_Food"
+
+// 0@ = Shion Actor Handle passed from SpawnShion.cs on boot
+0085: 10@ = 0@
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED TO ACTIVE SCRIPT OFFSETS)
+// =========================================================================
+const
+    MEM_PRIORITY_LOCK = 20
+    MEM_SHION_HANDLE = 116
+    MEM_LAST_FED_HOURS = 228
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+wait 1500
+
+0@ = 0    // Food Prompt Display Latch (0 = Ready to show once, 1 = Already shown)
+1@ = 0    // RAM Heap Memory Pointer for food cache
+2@ = 0    // Cached Food Stop Count for active interior
+3@ = -999 // Last Tracked Interior ID (-999 forces initial load)
+8@ = 0    // TAB Hold Timer (ms) for on-foot
+11@ = 0   // Dedicated Player Vehicle Handle
+12@ = 0   // Needs Food Boolean Flag (Relocated from 31@)
+13@ = 48  // HungerIntervalHours (default 48h)
+14@ = 0   // Elapsed Hours Since Last Fed (Relocated from 30@)
+15@ = 0   // Diner Active State: 0 = Idle/Monitoring, 1 = Diner Active
+19@ = 0   // Near Food Location Boolean Flag (1 = Near, 0 = Not Near)
+22@ = 0   // Shion Health Tracker (Integer)
+23@ = 0   // FoodReasonFlag to pass: 1 = Hungry, 2 = Wounded, 3 = Mild Hurt
+28@ = 0   // Current Active Interior ID
+29@ = 0   // Current Total In-Game Hours
+
+// Allocate 8 KB RAM Cache once on boot (Holds up to 500 custom food locations)
+0AC8: 1@ = allocate_memory_size 8000
+
+:ShionFood_Loop
+wait 250
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @ShionFood_Loop
+end
+
+// Read Live Handle from Shared Memory
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+// If dismissed or inactive (0), sleep cleanly without terminating (Prevents heap memory leaks!)
+if
+    10@ == 0
+then
+    0@ = 0
+    8@ = 0
+    wait 500
+    goto @ShionFood_Loop
+end
+
+// If in Hitodama Form (-1), sleep and stay alive! (Spirits do not eat, but thread remains active!)
+if
+    10@ == -1
+then
+    0@ = 0 // Clear prompt latch
+    8@ = 0 // Clear TAB timer
+    wait 250
+    goto @ShionFood_Loop
+end
+
+// If Solid Ped (> 0), wait cleanly if dead or undefined (Matches persistent engines!)
+if or
+    856D: not actor 10@ defined
+    0118: actor 10@ dead
+then
+    0@ = 0
+    8@ = 0
+    wait 250
+    goto @ShionFood_Loop
+end
+
+// Reload RAM Cache only when crossing doors / changing interiors
+077E: get_active_interior_to 28@
+if
+    803B: not 28@ == 3@
+then
+    0@ = 0 // Reset prompt latch on interior change
+    8@ = 0 // Reset TAB hold timer
+    03EB: clear_small_messages_only // Wipe subtitles only without killing style 5 prompts
+    gosub @Reload_Food_Cache
+end
+
+// -------------------------------------------------------------------------
+// IN-GAME "ADDFOOD" REGISTRATION TOOL
+// -------------------------------------------------------------------------
+if
+    0ADC: test_cheat "ADDFOOD"
+then
+    077E: get_active_interior_to 28@
+    00A0: store_actor $PLAYER_ACTOR position_to 16@ 17@ 18@
+    0AD3: 4@v = string_format "Interior_%d" 28@
+
+    0AF0: 9@ = read_int_from_ini_file "cleo\savedata\ShionFood.ini" section 4@v key "Count"
+    if or
+        9@ < 0
+        9@ > 500
+    then
+        9@ = 0
+    end
+    0008: 9@ += 1
+
+    0AF1: write_int 9@ to_ini_file "cleo\savedata\ShionFood.ini" section 4@v key "Count"
+
+    0AD3: 24@v = string_format "Food_%d_X" 9@
+    0AF3: write_float 16@ to_ini_file "cleo\savedata\ShionFood.ini" section 4@v key 24@v
+
+    0AD3: 24@v = string_format "Food_%d_Y" 9@
+    0AF3: write_float 17@ to_ini_file "cleo\savedata\ShionFood.ini" section 4@v key 24@v
+
+    0AD3: 24@v = string_format "Food_%d_Z" 9@
+    0AF3: write_float 18@ to_ini_file "cleo\savedata\ShionFood.ini" section 4@v key 24@v
+
+    gosub @Reload_Food_Cache
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0AD1: show_formatted_text_highpriority "~g~Food stop registered to Interior %d! (Entry #%d)~n~~w~Saved to ShionFood.ini & RAM!" time 3500 28@ 2@
+end
+
+// Read Master Toggle from INI
+0AF0: 9@ = read_int_from_ini_file "cleo\Shion.ini" section "FoodRun" key "EnableFoodRuns"
+if
+    9@ == 0
+then
+    // Keep hunger timestamp synchronized while food runs are disabled
+    0652: 29@ = integer_stat 134
+    0012: 29@ *= 24
+    00BF: 9@ = current_time_hours, 27@ = current_time_minutes
+    005A: 29@ += 9@
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_LAST_FED_HOURS
+    0A8C: write_memory 30@ size 4 value 29@ virtual_protect 0
+
+    goto @ShionFood_Loop
+end
+
+// -------------------------------------------------------------------------
+// RECALCULATE IN-GAME TIME CLEANLY (Native Stat Opcode 0652)
+// -------------------------------------------------------------------------
+0652: 29@ = integer_stat 134 // In-Game Days Passed
+0012: 29@ *= 24
+00BF: 9@ = current_time_hours, 27@ = current_time_minutes // 9@ = Current Hour, 27@ = Current Minute (Preserves 28@!)
+005A: 29@ += 9@                                           // 29@ = Current Total In-Game Hours
+
+// Read LastFedTotalHours from RAM Cache
+0085: 30@ = 31@
+000A: 30@ += MEM_LAST_FED_HOURS
+0A8D: 9@ = read_memory 30@ size 4 virtual_protect 0
+
+// Time-warp auto-correction
+if
+    001D: 9@ > 29@
+then
+    0085: 9@ = 29@
+    0062: 9@ -= 13@
+    if
+        9@ < 0
+    then
+        9@ = 0
+    end
+    0085: 30@ = 31@
+    000A: 30@ += MEM_LAST_FED_HOURS
+    0A8C: write_memory 30@ size 4 value 9@ virtual_protect 0
+end
+
+if
+    9@ == 0
+then
+    0085: 9@ = 29@
+    0062: 9@ -= 13@
+    if
+        9@ < 0
+    then
+        9@ = 0
+    end
+    0085: 30@ = 31@
+    000A: 30@ += MEM_LAST_FED_HOURS
+    0A8C: write_memory 30@ size 4 value 9@ virtual_protect 0
+end
+
+// Calculate Elapsed Hours directly into 14@
+0085: 14@ = 29@
+0062: 14@ -= 9@
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+if or
+    10@ <= 0 // Inactive or in Hitodama Form (-1) -> Spirits do not starve!
+    856D: not actor 10@ defined
+    0118: actor 10@ dead
+then
+    wait 250
+    goto @ShionFood_Loop
+end
+
+0226: 22@ = actor 10@ health // 100% safe to read!
+
+// Debug Cheats: TYPE "HUNGRY", "FOOD", OR "INJURED"
+12@ = 0
+if
+    0ADC: test_cheat "HUNGRY"
+then
+    12@ = 1
+end
+if
+    0ADC: test_cheat "FOOD"
+then
+    12@ = 1
+end
+
+if
+    12@ == 1
+then
+    23@ = 1 // Reason: Hunger
+
+    0085: 9@ = 29@
+    0062: 9@ -= 13@
+    if
+        9@ < 0
+    then
+        9@ = 0
+    end
+    0085: 30@ = 31@
+    000A: 30@ += MEM_LAST_FED_HOURS
+    0A8C: write_memory 30@ size 4 value 9@ virtual_protect 0
+
+    0085: 14@ = 29@
+    0062: 14@ -= 9@
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+
+    010B: 9@ = player $PLAYER_CHAR money
+    if
+        9@ > 0
+    then
+        0ADF: add_text_label "Y_HF0" text "~b~Shion: ~s~\"My stomach's digesting itself, Jo'on... buy me something to eat before I collapse.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HF0' time 3600 flag 1
+    else
+        0ADF: add_text_label "Y_HF1" text "~b~Shion: ~s~\"I'm starving, Jo'on... but our pockets are empty. I'll just go check the dumpsters.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HF1' time 3600 flag 1
+    end
+end
+
+// Debug Cheat: TYPE "INJURED" (Drops Shion to Critical HP)
+if
+    0ADC: test_cheat "INJURED"
+then
+    if and
+        10@ > 0
+        056D: actor 10@ defined
+        8118: not actor 10@ dead
+    then
+        0223: set_actor 10@ health 200
+        035F: actor 10@ armour += -5000
+        22@ = 200
+        23@ = 2 // Reason: Wounded
+        12@ = 1 // Flag Needs Food
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_CW0" text "~b~Shion: ~s~\"Jo'on... I'm bleeding everywhere. Buy me a burger before my legs give out...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CW0' time 3800 flag 1
+    end
+end
+
+// -------------------------------------------------------------------------
+// DETERMINE IF SHION ACTUALLY NEEDS FOOD (Hungry or Hurt)
+// -------------------------------------------------------------------------
+12@ = 0 // 1 = Needs Food, 0 = Full & Healthy
+
+if
+    002D: 14@ >= 13@ // 48+ hours passed
+then
+    12@ = 1
+end
+
+if
+    22@ < 950 // Damaged / Hurt (out of 1000 HP)
+then
+    12@ = 1
+end
+
+// -------------------------------------------------------------------------
+// 1. NATURAL EVALUATION IN CAR (Spoken Line Trigger)
+// -------------------------------------------------------------------------
+if and
+    15@ == 0 // Not in Diner
+    12@ == 1 // Needs Food
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8D: 9@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        9@ < 4 // Do not interrupt Tier 4 Master Theater (Sister Talk / Reunion)
+    then
+        01C0: 9@ = player $PLAYER_CHAR wanted_level
+        if and
+            9@ == 0
+            816B: not fading
+            8E25: not is_on_cutscene
+        then
+            // Case A: Critical Injury (< 50% HP / 500)
+            if
+                22@ < 500
+            then
+                if
+                    8039: not 23@ == 2
+                then
+                    23@ = 2 // Reason: Wounded
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_CW0" text "~b~Shion: ~s~\"Jo'on... I took bad hits. I need something warm in my stomach to heal...\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_CW0' time 3800 flag 1
+                end
+            else
+                // Case B: 48 In-Game Hours Passed
+                if
+                    002D: 14@ >= 13@
+                then
+                    if
+                        8039: not 23@ == 1
+                    then
+                        23@ = 1 // Reason: Hunger
+                        018C: play_sound 1058 at 0.0 0.0 0.0
+                        03EB: clear_small_messages_only
+
+                        010B: 9@ = player $PLAYER_CHAR money
+                        if
+                            9@ > 0
+                        then
+                            0ADF: add_text_label "Y_HF0" text "~b~Shion: ~s~\"My stomach's digesting itself, Jo'on... buy me something to eat before I collapse.\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_HF0' time 3600 flag 1
+                        else
+                            0ADF: add_text_label "Y_HF1" text "~b~Shion: ~s~\"I'm starving, Jo'on... but our pockets are empty. I'll just go check the dumpsters.\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_HF1' time 3600 flag 1
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+// -------------------------------------------------------------------------
+// MANUAL Y + Z TRIGGER IN CAR (Checked anytime player presses it)
+// -------------------------------------------------------------------------
+if and
+    15@ == 0
+    00DF: actor $PLAYER_ACTOR driving
+then
+    03C0: 11@ = actor $PLAYER_ACTOR car
+    if and
+        00DB: actor 10@ in_car 11@
+        01C1: car 11@ stopped
+    then
+        if and
+            0AB0: is_key_pressed 89 // Y Key
+            0AB0: is_key_pressed 90 // Z Key
+        then
+            :Wait_Manual_YZ_Rel
+            wait 50
+            if or
+                0AB0: is_key_pressed 89
+                0AB0: is_key_pressed 90
+            then
+                goto @Wait_Manual_YZ_Rel
+            end
+
+            gosub @Check_Near_Food_Location
+            if
+                19@ == 1
+            then
+                0226: 22@ = actor 10@ health
+                if or
+                    22@ < 950
+                    002D: 14@ >= 13@
+                then
+                    // Check if player can afford to send Shion to eat
+                    010B: 21@ = player $PLAYER_CHAR money
+                    if
+                        21@ > 0
+                    then
+                        if
+                            22@ < 950
+                        then
+                            23@ = 3 // Reason: Mild Hurt
+                            018C: play_sound 1058 at 0.0 0.0 0.0
+                            03EB: clear_small_messages_only
+                            0ADF: add_text_label "Y_MN0" text "~y~Jo'on: ~s~\"Ugh, you're bleedin' all over! Shovel some grease down before you ruin my upholstery!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_MN0' time 3200 flag 1
+                            wait 3200
+                            gosub @Launch_Diner_Thread
+                        else
+                            23@ = 1 // Reason: Hungry
+                            018C: play_sound 1058 at 0.0 0.0 0.0
+                            03EB: clear_small_messages_only
+                            0ADF: add_text_label "Y_MN1" text "~y~Jo'on: ~s~\"Your stomach's louder than the engine, Shion! Go grab some takeout and shut it up!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_MN1' time 3200 flag 1
+                            wait 3200
+                            gosub @Launch_Diner_Thread
+                        end
+                    else
+                        // Player is broke: play error chime and contextual broke line
+                        018C: play_sound 1057 at 0.0 0.0 0.0
+                        03EB: clear_small_messages_only
+                        if
+                            22@ < 950
+                        then
+                            0ADF: add_text_label "Y_MNBK0" text "~y~Jo'on: ~s~\"Quit droolin', Shion, we're bone-dry! Starin' at the menu ain't gonna make cash appear!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_MNBK0' time 3400 flag 1
+                        else
+                            0ADF: add_text_label "Y_MNBK1" text "~y~Jo'on: ~s~\"Takeout with what cash?! We ain't got a single red cent, so quit lookin' at the drive-thru!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_MNBK1' time 3400 flag 1
+                        end
+                    end
+                else
+                    03EB: clear_small_messages_only
+                    0AD1: show_formatted_text_highpriority "~b~Shion: ~s~\"My stomach's actually full for once, Jo'on... don't waste your cash.\"" time 2500
+                end
+            else
+                03EB: clear_small_messages_only
+                0AD1: show_formatted_text_highpriority "There's nowhere to buy food here. Park near a diner or cart." time 2500
+            end
+        end
+    end
+end
+
+// -------------------------------------------------------------------------
+// VEHICLE FOOD STOP INTERACTION GATE (Drive-Thru / Vans - LATCHED)
+// -------------------------------------------------------------------------
+if and
+    15@ == 0
+    12@ == 1                          // ONLY WHEN SHE ACTUALLY NEEDS FOOD!
+    00DF: actor $PLAYER_ACTOR driving // MUST BE DRIVING!
+    816B: not fading
+then
+    03C0: 11@ = actor $PLAYER_ACTOR car
+    if and
+        00DB: actor 10@ in_car 11@
+        01C1: car 11@ stopped
+    then
+        gosub @Check_Near_Food_Location
+        if
+            19@ == 1
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8D: 9@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                9@ < 4 // Can prompt and override any chat except Tier 4 Sister Talk!
+            then
+                // Check wallet: Only display prompt if player has money!
+                010B: 21@ = player $PLAYER_CHAR money
+                if
+                    21@ > 0
+                then
+                    // Display prompt ONCE upon stopping (Latched with 0@!)
+                    if
+                        0@ == 0
+                    then
+                        0@ = 1
+                        0ADF: add_text_label "Y_FDRV" text "~y~DRIVE-THRU~n~~w~PRESS [TAB] FOR MENU"
+                        00BA: show_text_styled GXT 'Y_FDRV' time 3500 style 5
+                    end
+                end
+
+                if or
+                    0AB0: is_key_pressed 9 // TAB Key
+                    00E1: player 0 pressed_key 4
+                then
+                    010B: 21@ = player $PLAYER_CHAR money
+                    if
+                        21@ > 0
+                    then
+                        if
+                            23@ == 0
+                        then
+                            0226: 22@ = actor 10@ health
+                            if
+                                22@ < 950
+                            then
+                                23@ = 2 // Wounded
+                            else
+                                23@ = 1 // Hungry
+                            end
+                        end
+                        0@ = 0 // Clear latch on buy
+                        8@ = 0
+                        gosub @Launch_Diner_Thread
+                    else
+                        // Holding Tab while broke triggers verbal feedback
+                        000A: 8@ += 250
+                        if
+                            8@ >= 1000 // Held for 1 second
+                        then
+                            8@ = 0
+                            gosub @Show_Broke_Food_Message
+                        end
+                    end
+                else
+                    8@ = 0
+                end
+            else
+                8@ = 0
+            end
+        else
+            0@ = 0 // Car stopped, but not near food location -> Unlatch!
+            8@ = 0
+        end
+    else
+        0@ = 0 // Car moving / driving -> Unlatch!
+        8@ = 0
+    end
+end
+
+// -------------------------------------------------------------------------
+// ON-FOOT FOOD INTERACTION GATE (STRICTLY INDOORS - LATCHED)
+// -------------------------------------------------------------------------
+077E: get_active_interior_to 28@
+if and
+    28@ > 0                               // MUST BE STRICTLY INDOORS!
+    15@ == 0                              // Not already in diner
+    12@ == 1                              // ONLY WHEN SHE NEEDS FOOD!
+    80DF: not actor $PLAYER_ACTOR driving // On foot
+    816B: not fading
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8D: 9@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        9@ < 4 // Can prompt and override any chat except Tier 4 Sister Talk!
+    then
+        00A0: store_actor $PLAYER_ACTOR position_to 16@ 17@ 18@
+        if
+            0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 6.0
+        then
+            gosub @Check_Near_Food_Location
+            if
+                19@ == 1
+            then
+                // Check wallet: Only display prompt if player has money!
+                010B: 21@ = player $PLAYER_CHAR money
+                if
+                    21@ > 0
+                then
+                    // Display prompt ONCE upon reaching counter (Latched with 0@!)
+                    if
+                        0@ == 0
+                    then
+                        0@ = 1
+                        0ADF: add_text_label "Y_FIND" text "~y~FOOD COUNTER~n~~w~HOLD [TAB] TO BUY"
+                        00BA: show_text_styled GXT 'Y_FIND' time 3500 style 5
+                    end
+                end
+
+                if or
+                    0AB0: is_key_pressed 9 // TAB Key
+                    00E1: player 0 pressed_key 4
+                then
+                    000A: 8@ += 250
+                    if
+                        8@ >= 1200
+                    then
+                        8@ = 0
+                        010B: 21@ = player $PLAYER_CHAR money
+                        if
+                            21@ > 0
+                        then
+                            0226: 22@ = actor 10@ health
+                            if
+                                22@ < 950
+                            then
+                                23@ = 2 // Reason: Wounded
+                            else
+                                23@ = 1 // Reason: Hungry
+                            end
+
+                            0@ = 0
+                            gosub @Launch_Diner_Thread
+                        else
+                            gosub @Show_Broke_Food_Message
+                        end
+                    end
+                else
+                    8@ = 0
+                end
+            else
+                0@ = 0
+                8@ = 0
+            end
+        else
+            0@ = 0
+            8@ = 0
+        end
+    else
+        8@ = 0
+    end
+else
+    8@ = 0
+end
+
+// Monitor Diner Thread Completion
+if
+    15@ == 1
+then
+    0AAA: 9@ = get_script_struct_named 'Sh_Dine'
+    if
+        9@ == 0 // Thread has cleanly terminated!
+    then
+        15@ = 0 // Diner completed!
+        23@ = 0
+        0@ = 0  // Reset prompt latch!
+    end
+end
+
+goto @ShionFood_Loop
+
+
+// =========================================================================
+// SUBROUTINE: LAUNCH DINER THEATER THREAD
+// =========================================================================
+:Launch_Diner_Thread
+// Instantly kill any active ambient chatter or wanted lines so Diner takes full focus
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Star"
+
+03EB: clear_small_messages_only
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 4 virtual_protect 0 // Claim Tier 4 Master Theater!
+
+if
+    00DF: actor $PLAYER_ACTOR driving
+then
+    0A92: create_custom_thread "Shion\Food\foodDiner.c" 0 23@ // Context 0 = Car
+else
+    0A92: create_custom_thread "Shion\Food\foodDiner.c" 1 23@ // Context 1 = Foot
+end
+
+15@ = 1
+return
+
+// =========================================================================
+// SUBROUTINE: FOOD LOCATION DETECTOR (Strict Indoor vs Outdoor Gate)
+// =========================================================================
+:Check_Near_Food_Location
+19@ = 0
+077E: get_active_interior_to 28@ // Re-synchronize exact interior state
+00A0: store_actor $PLAYER_ACTOR position_to 16@ 17@ 18@
+
+// =========================================================================
+// BRANCH 1: INDOORS (28@ > 0) — Strictly Verified Restaurants & Counters
+// =========================================================================
+if
+    28@ > 0
+then
+    // 1. Well Stacked Pizza Co. & Diner 1 (Interior 5)
+    if
+        28@ == 5
+    then
+        if or
+            0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 377.7758 -126.2766 1001.4920 radius 25.0 // Pizza dining area
+            0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 371.5000 -121.5000 1001.5000 radius 15.0 // Pizza counter
+            0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 448.7435 -110.0457 1000.0772 radius 25.0 // Diner 1
+        then
+            19@ = 1
+            return
+        end
+    end
+
+    // 2. Cluckin' Bell (Interior 9)
+    if
+        28@ == 9
+    then
+        if or
+            0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 365.6700 -11.6100 1002.0000 radius 25.0 // Cluckin' dining area
+            0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 365.6260 -8.5661 1001.8500 radius 15.0  // Cluckin' counter
+        then
+            19@ = 1
+            return
+        end
+    end
+
+    // 3. Burger Shot (Interior 10)
+    if
+        28@ == 10
+    then
+        if or
+            0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 366.4220 -73.4700 1001.5080 radius 25.0 // Burger Shot dining area
+            0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 376.5000 -67.5000 1001.5000 radius 15.0 // Burger Shot counter
+        then
+            19@ = 1
+            return
+        end
+    end
+
+    // 4. Rusty Brown's Ring Donuts (Interior 17)
+    if
+        28@ == 17
+    then
+        if
+            0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 377.0030 -192.5070 1000.6330 radius 25.0 // Rusty Brown's
+        then
+            19@ = 1
+            return
+        end
+    end
+
+    // 5. Diner 2 (Interior 4)
+    if
+        28@ == 4
+    then
+        if
+            0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 460.0000 -88.4300 999.6200 radius 25.0 // Diner 2
+        then
+            19@ = 1
+            return
+        end
+    end
+
+    // 6. Steakhouse / Italian Date Restaurants (Interior 1 & Interior 6)
+    if
+        28@ == 1
+    then
+        if
+            0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 446.6941 -9.7977 1000.7340 radius 25.0 // Restaurant 1
+        then
+            19@ = 1
+            return
+        end
+    end
+
+    if
+        28@ == 6
+    then
+        if
+            0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 443.9810 -65.2190 1050.0000 radius 25.0 // Restaurant 2
+        then
+            19@ = 1
+            return
+        end
+    end
+
+    // 7. Check Custom Registered Food Stops from RAM Cache for this Interior
+    if
+        2@ > 0
+    then
+        9@ = 1
+        :Check_Custom_Indoor_Food_Loop
+        if
+            801D: not 9@ > 2@
+        then
+            0085: 20@ = 9@
+            000E: 20@ -= 1
+            0012: 20@ *= 12
+            005A: 20@ += 1@
+
+            0A8D: 24@ = read_memory 20@ size 4 virtual_protect 0 // X
+            000A: 20@ += 4
+            0A8D: 25@ = read_memory 20@ size 4 virtual_protect 0 // Y
+            000A: 20@ += 4
+            0A8D: 26@ = read_memory 20@ size 4 virtual_protect 0 // Z
+
+            050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 24@ 25@ 26@
+            if
+                27@ <= 8.0 // Tight custom counter radius indoors
+            then
+                19@ = 1
+                return
+            end
+
+            0008: 9@ += 1
+            goto @Check_Custom_Indoor_Food_Loop
+        end
+    end
+
+    // Strictly indoors: do not scan outdoor props or vehicles!
+    return
+end
+
+
+// =========================================================================
+// BRANCH 2: OUTDOORS (28@ == 0) — Drive-Thrus, Food Carts & Vans
+// =========================================================================
+
+// 1. Street Hot Dog Vans (Vehicle 588)
+9@ = 0
+
+:Food_Car_Scan_Loop
+0AE2: 20@ = random_vehicle_near_point 16@ 17@ 18@ in_radius 25.0 find_next 9@ pass_wrecked 1
+if
+    20@ > 0
+then
+    9@ = 1
+    if and
+        056E: car 20@ defined
+        803B: not 20@ == 11@
+    then
+        0441: 25@ = car 20@ model
+        if
+            25@ == 588
+        then
+            19@ = 1
+            return
+        end
+    end
+    goto @Food_Car_Scan_Loop
+end
+
+// 2. Exterior Food Carts, Signs & Outdoor Vending Machines
+9@ = 0
+
+:Food_Obj_Scan_Loop
+0AE3: 20@ = random_object_near_point 16@ 17@ 18@ in_radius 25.0 find_next 9@
+if
+    20@ > 0
+then
+    9@ = 1
+    0984: 25@ = object 20@ model
+
+    if or
+        25@ == 6257
+        25@ == 2642
+        25@ == 2643
+        25@ == 7037
+        25@ == 2456
+        25@ == 7943
+        25@ == 7944
+        25@ == 2641
+    then
+        19@ = 1
+        return
+    end
+
+    if or
+        25@ == 6907
+        25@ == 5168
+        25@ == 10606
+        25@ == 16767
+        25@ == 17534
+        25@ == 2766
+        25@ == 19137
+    then
+        19@ = 1
+        return
+    end
+
+    if or
+        25@ == 5732
+        25@ == 9528
+        25@ == 18232
+        25@ == 9898
+        25@ == 9193
+        25@ == 9192
+        25@ == 6010
+        25@ == 7391
+    then
+        19@ = 1
+        return
+    end
+
+    // Food Carts (Chili, Ice Cream, Noodles)
+    if or
+        25@ == 1340
+        25@ == 1341
+        25@ == 1342
+        25@ == 7390
+        25@ == 7389
+        25@ == 7387
+        25@ == 8689
+        25@ == 13361
+    then
+        19@ = 1
+        return
+    end
+
+    // Outdoor Vending Machines
+    if or
+        25@ == 955
+        25@ == 956
+        25@ == 1209
+        25@ == 1302
+        25@ == 1775
+        25@ == 1776
+        25@ == 1977
+    then
+        19@ = 1
+        return
+    end
+
+    if or
+        25@ == 1676
+        25@ == 1686
+        25@ == 9169
+        25@ == 3465
+        25@ == 19877
+        25@ == 7972
+        25@ == 7973
+        25@ == 9527
+    then
+        19@ = 1
+        return
+    end
+
+    goto @Food_Obj_Scan_Loop
+end
+
+// 3. Scan Custom Registered Outdoor Food Stops from RAM Cache (Interior_0)
+if
+    2@ > 0
+then
+    9@ = 1
+    :Check_Custom_Outdoor_Food_Loop
+    if
+        801D: not 9@ > 2@
+    then
+        0085: 20@ = 9@
+        000E: 20@ -= 1
+        0012: 20@ *= 12
+        005A: 20@ += 1@
+
+        0A8D: 24@ = read_memory 20@ size 4 virtual_protect 0 // X
+        000A: 20@ += 4
+        0A8D: 25@ = read_memory 20@ size 4 virtual_protect 0 // Y
+        000A: 20@ += 4
+        0A8D: 26@ = read_memory 20@ size 4 virtual_protect 0 // Z
+
+        050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 24@ 25@ 26@
+        if
+            27@ <= 25.0
+        then
+            19@ = 1
+            return
+        end
+
+        0008: 9@ += 1
+        goto @Check_Custom_Outdoor_Food_Loop
+    end
+end
+
+// 4. Fast-Food Drive-Thru Exterior Fallbacks (Outdoors Only)
+gosub @Check_Fast_Food_Coords_Fallback
+return
+
+// =========================================================================
+// SUBROUTINE: ICONIC DRIVE-THRU & RESTAURANT COORDINATE FALLBACKS
+// =========================================================================
+:Check_Fast_Food_Coords_Fallback
+
+// -------------------------------------------------------------------------
+// 1. WELL STACKED PIZZA PARLORS
+// -------------------------------------------------------------------------
+// Idlewood (Los Santos)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 2105.3 -1806.5 13.5
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Financial / Esplanade (San Fierro)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ -1805.7 943.2 24.8
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Esplanade East (San Fierro)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ -1719.1 1359.4 8.6
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Creek (Las Venturas)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 2750.9 2470.9 11.0
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Redsands East North (Las Venturas)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 2351.8 2529.0 10.8
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Old Venturas Strip / Starfish (Las Venturas)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 2635.5 1847.4 11.0
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Redsands East South (Las Venturas)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 2083.4 2221.0 11.0
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Palomino Creek (Red County)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 2330.2 75.2 31.0
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Blueberry (Red County)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 203.2 -200.4 6.5
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Montgomery (Red County)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 1367.2 248.3 31.0
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+
+// -------------------------------------------------------------------------
+// 2. BURGER SHOT RESTAURANTS
+// -------------------------------------------------------------------------
+// Marina (Los Santos)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 812.9 -1616.1 13.6
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Temple (Los Santos)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 1199.1 -924.0 43.3
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Garcia (San Fierro)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ -2335.6 -165.6 39.5
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Downtown (San Fierro)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ -1913.3 826.2 36.9
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Juniper Hollow (San Fierro)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ -2356.0 1009.0 49.0
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Redsands East 1 (Las Venturas)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 2362.2 2069.9 10.8
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Redsands East 2 (Las Venturas)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 2469.5 2033.8 10.8
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Spinybed / Prickle Pine (Las Venturas)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 2172.9 2795.7 10.8
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Whitewood Estates 1 (Las Venturas)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 1875.3 2072.0 10.8
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Whitewood Estates 2 / Pilson (Las Venturas)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 1161.5 2072.0 10.8
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+
+// -------------------------------------------------------------------------
+// 3. CLUCKIN' BELL RESTAURANTS
+// -------------------------------------------------------------------------
+// Willowfield / Ocean Docks (Los Santos)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 2397.8 -1895.6 13.7
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// East Los Santos (Los Santos)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 2421.6 -1509.6 24.1
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Market / Willowfield Border (Los Santos)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 932.0 -1353.0 14.0
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Ocean Flats (San Fierro)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ -2671.6 257.4 4.6
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Downtown / Financial (San Fierro)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ -1816.2 620.8 37.5
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Angel Pine (Whetstone)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ -2154.0 -2461.2 30.8
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Fort Carson (Bone County)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 172.7 1176.8 13.7
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Tierra Robada / Bayside (Tierra Robada)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ -1216.0 1831.4 45.3
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Redsands East North (Las Venturas)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 2392.4 2046.5 10.8
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Creek / Pilgrim (Las Venturas)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 2844.5 2401.1 11.0
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Old Venturas Strip (Las Venturas)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 2635.5 1674.3 11.0
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+// Redsands East South (Las Venturas)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 2105.7 2228.7 11.0
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+
+// -------------------------------------------------------------------------
+// 4. SPECIALTY DINERS & DONUTS
+// -------------------------------------------------------------------------
+// Market Rusty Brown's Ring Donuts (Los Santos)
+050A: 27@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 1039.2 -1339.4 13.7
+if
+    27@ <= 28.0
+then
+    19@ = 1
+    return
+end
+
+return
+
+// =========================================================================
+// SUBROUTINE: BROKE NOTIFICATION WHEN ATTEMPTING TO BUY FOOD
+// =========================================================================
+:Show_Broke_Food_Message
+018C: play_sound 1057 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+
+0209: 26@ = random_int_in_ranges 0 2
+if
+    26@ == 0
+then
+    0ADF: add_text_label "Y_FBK0" text "~y~Jo'on: ~s~\"We're flat broke, Shion! I ain't even got a nickel to chuck at the counter!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_FBK0' time 3200 flag 1
+end
+
+if
+    26@ == 1
+then
+    0ADF: add_text_label "Y_FBK1" text "~y~Jo'on: ~s~\"Our wallet's bone-dry! Nobody in this city hands out freebies, so forget about it!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_FBK1' time 3200 flag 1
+end
+return
+
+// =========================================================================
+// SUBROUTINE: RELOAD FOOD CACHE (Using isolated 4@v and 24@v buffers)
+// =========================================================================
+:Reload_Food_Cache
+0085: 3@ = 28@
+
+0AD3: 4@v = string_format "Interior_%d" 3@
+0AF0: 2@ = read_int_from_ini_file "cleo\savedata\ShionFood.ini" section 4@v key "Count"
+if or
+    2@ < 0
+    2@ > 500
+then
+    2@ = 0
+end
+
+if
+    2@ > 0
+then
+    9@ = 1
+    :Food_Cache_Read_Loop
+    if
+        801D: not 9@ > 2@
+    then
+        0085: 20@ = 9@
+        000E: 20@ -= 1
+        0012: 20@ *= 12
+        005A: 20@ += 1@
+
+        // Read X from INI -> Write to RAM
+        0AD3: 24@v = string_format "Food_%d_X" 9@
+        0AF2: 21@ = read_float_from_ini_file "cleo\savedata\ShionFood.ini" section 4@v key 24@v
+        0A8C: write_memory 20@ size 4 value 21@ virtual_protect 0
+
+        // Read Y from INI -> Write to RAM
+        000A: 20@ += 4
+        0AD3: 24@v = string_format "Food_%d_Y" 9@
+        0AF2: 21@ = read_float_from_ini_file "cleo\savedata\ShionFood.ini" section 4@v key 24@v
+        0A8C: write_memory 20@ size 4 value 21@ virtual_protect 0
+
+        // Read Z from INI -> Write to RAM
+        000A: 20@ += 4
+        0AD3: 24@v = string_format "Food_%d_Z" 9@
+        0AF2: 21@ = read_float_from_ini_file "cleo\savedata\ShionFood.ini" section 4@v key 24@v
+        0A8C: write_memory 20@ size 4 value 21@ virtual_protect 0
+
+        0008: 9@ += 1
+        goto @Food_Cache_Read_Loop
+    end
+end
+return

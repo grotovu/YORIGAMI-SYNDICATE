@@ -1,0 +1,860 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+script_name "Y_Shake"
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY - PRUNED FOR Y_SHAKE
+// =========================================================================
+const
+    MEM_SAVE_SLOT = 0
+    MEM_ALLOC_SHAKEDOWN = 52
+    MEM_SHION_HANDLE = 116
+    MEM_LAST_EXTORTED_PED = 204
+    MEM_ACTIVE_MARK = 344
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ holds master shared memory pointer
+
+1@ = -999
+16@ = 0  // Marked bounty target handle
+17@ = 0  // Marked bounty cash payout
+18@ = -1 // Last extorted ped handle
+19@ = 0  // Archetype flag: 0 = civil, 1 = gang, 2 = dealer, 3 = criminal
+TIMERB = 0
+
+:YShakedown_StartupWait
+wait 250
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @YShakedown_StartupWait
+end
+
+:YShakedown_Loop
+wait 50
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @YShakedown_Loop
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
+// Check if Save Slot Changed
+0085: 30@ = 31@
+000A: 30@ += MEM_SAVE_SLOT
+0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+if
+    803B: not 0@ == 1@
+then
+    gosub @YShakedown_ReloadSettings
+end
+
+// Read Live Allocated Perks from Shared Memory
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_SHAKEDOWN
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0 // Alloc_Shakedown
+
+// =========================================================================
+// BOUNTY MONITOR (Hunt down resisting targets)
+// =========================================================================
+if
+    0019: 16@ > 0
+then
+    if
+        056D: actor 16@ defined
+    then
+        if
+            0118: actor 16@ dead
+        then
+            00A0: store_actor 16@ position_to 21@ 22@ 23@
+            000B: 23@ += 0.2
+
+            0085: 26@ = 17@
+            0016: 26@ /= 2
+            0109: player $PLAYER_CHAR money += 26@
+            if
+                08B7: test 3@ bit 2 // PlayShakedownSound
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+            end
+
+            0085: 27@ = 26@
+            0016: 27@ /= 2
+
+            0087: 24@ = 21@
+            000B: 24@ += 0.5
+            02E1: 0@ = create_cash_pickup 27@ at 24@ 22@ 23@ permanence_flag 0
+
+            0087: 24@ = 21@
+            000F: 24@ -= 0.5
+            02E1: 0@ = create_cash_pickup 27@ at 24@ 22@ 23@ permanence_flag 0
+
+            if
+                08B7: test 3@ bit 5 // Isolated Bounty Gang Flag (Bit 5 of 3@)
+            then
+                0998: add_respect 15@
+
+                if and
+                    08B7: test 3@ bit 1 // ShowShakedownMessage
+                    88B7: not test 3@ bit 7 // Suppress if target was active Mark
+                then
+                    0ADF: add_text_label "Y_BGANG" text "~y~BOUNTY CLAIMED~n~~g~+$~1~ ~b~(+~1~ RESPECT)"
+                    036D: show_text_2numbers_styled GXT 'Y_BGANG' numbers 17@ 15@ time 3000 style 5
+                end
+            else
+                if and
+                    08B7: test 3@ bit 1
+                    88B7: not test 3@ bit 7 // Suppress if target was active Mark
+                then
+                    0ADF: add_text_label "Y_BOUNT" text "~y~BOUNTY CLAIMED~n~~g~+$~1~"
+                    01E3: show_text_1number_styled GXT 'Y_BOUNT' number 17@ time 3000 style 5
+                end
+            end
+
+            16@ = 0
+            17@ = 0
+            08C0: clear 3@ bit 5 // Clear Gang Bounty Flag
+            08C0: clear 3@ bit 7 // Clear Mark Bounty Flag
+        else
+            00A0: store_actor $PLAYER_ACTOR position_to 21@ 22@ 23@
+            00A0: store_actor 16@ position_to 24@ 25@ 26@
+            050A: 27@ = distance_between_XYZ 21@ 22@ 23@ and_XYZ 24@ 25@ 26@
+            if
+                0021: 27@ > 75.0
+            then
+                16@ = 0
+                17@ = 0
+                08C0: clear 3@ bit 5 // Clear Gang Bounty Flag
+                08C0: clear 3@ bit 7 // Clear Mark Bounty Flag
+            end
+        end
+    else
+        16@ = 0
+        17@ = 0
+        08C0: clear 3@ bit 5 // Clear Gang Bounty Flag
+        08C0: clear 3@ bit 7 // Clear Mark Bounty Flag
+    end
+end
+
+// =========================================================================
+// SHAKEDOWN INTERACTION (Active if Alloc_Shakedown > 0)
+// =========================================================================
+if and
+    0019: 2@ > 0                          // Has points in Shakedown
+    044B: actor $PLAYER_ACTOR on_foot     // Strictly on foot
+    TIMERB > 1500                         // Cooldown
+    816B: not fading
+then
+    if
+        0AD2: 29@ = player $PLAYER_CHAR targeted_actor
+    then
+        if and
+            056D: actor 29@ defined
+            8118: not actor 29@ dead
+            044B: actor 29@ on_foot       // Strictly on foot
+            87D6: not 29@ == $PLAYER_ACTOR
+            803B: not 29@ == 18@
+        then
+            // Get Ped Model
+            0665: get_actor 29@ model_to 27@
+
+            // Read Shion Handle
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_HANDLE
+            0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+
+            25@ = 1 // 1 = Valid to shake down
+
+            // Block Special Actors (Models 290 to 299: Shion, Tenpenny, Smoke, etc.)
+            if and
+                04B5: 27@ >= 290
+                04B7: 299 >= 27@
+            then
+                25@ = 0 // Blocked
+            end
+
+            // Block Shion by Handle
+            if
+                003B: 29@ == 0@
+            then
+                25@ = 0 // Blocked
+            end
+
+            if
+                0039: 25@ == 1
+            then
+                07AF: 25@ = player $PLAYER_CHAR group
+                if
+                    86EE: not actor 29@ in_group 25@
+                then
+                    089F: get_actor 29@ pedtype_to 25@
+                    if and
+                        8039: not 25@ == 6
+                        8039: not 25@ == 0
+                    then
+                        00A0: store_actor $PLAYER_ACTOR position_to 21@ 22@ 23@
+                        00A0: store_actor 29@ position_to 24@ 25@ 26@
+                        050A: 27@ = distance_between_XYZ 21@ 22@ 23@ and_XYZ 24@ 25@ 26@
+
+                        if
+                            0033: 2.8 >= 27@
+                        then
+                            if
+                                0AB0: is_key_pressed 20@ // MainKey (Y)
+                            then
+                                TIMERB = 0
+                                0085: 18@ = 29@
+
+                                // Check if target is the active High-Roller Mark
+                                08C0: clear 3@ bit 6
+                                0085: 30@ = 31@
+                                000A: 30@ += MEM_ACTIVE_MARK
+                                0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+                                if and
+                                    0019: 25@ > 0
+                                    003B: 29@ == 25@
+                                then
+                                    08BD: set 3@ bit 6 // Mark shakedown active
+                                end
+
+                                // Freeze ambient tasks and request animation immediately
+                                0687: clear_actor 29@ task
+                                0687: clear_actor $PLAYER_ACTOR task
+                                04ED: load_animation "SHOP"
+
+                                // Orient both actors directly towards each other instantly
+                                00A0: store_actor $PLAYER_ACTOR position_to 21@ 22@ 23@
+                                00A0: store_actor 29@ position_to 24@ 25@ 26@
+
+                                // Ped faces Player
+                                0E27: get_angle_from_two_coords 24@ 25@ and 21@ 22@ to 27@
+                                0173: set_actor 29@ Z_angle_to 27@
+
+                                // Player faces Ped
+                                0E27: get_angle_from_two_coords 21@ 22@ and 24@ 25@ to 27@
+                                0173: set_actor $PLAYER_ACTOR Z_angle_to 27@
+
+                                // Lock ped in place so ambient AI cannot turn away while animation loads
+                                05B9: AS_actor 29@ stay_idle 1500 ms
+
+                                :YShakedown_AnimWait
+                                wait 0
+                                if or
+                                    8256: not is_player_playing $PLAYER_CHAR
+                                    856D: not actor 29@ defined
+                                    0118: actor 29@ dead
+                                then
+                                    04EF: release_animation "SHOP"
+                                    goto @YShakedown_Loop
+                                end
+
+                                if
+                                    84EE: not animation "SHOP" loaded
+                                then
+                                    goto @YShakedown_AnimWait
+                                end
+
+                                // Base loot calculation
+                                0209: 28@ = random_int_in_range 4@ 5@
+
+                                // Alloc_Shakedown scaling
+                                0085: 26@ = 2@
+                                006A: 26@ *= 6@ // Points * BonusPerPoint
+                                005A: 28@ += 26@
+
+                                19@ = 0 // Archetype: 0=Civil, 1=Gang, 2=Dealer, 3=Criminal
+
+                                0665: get_actor 29@ model_to 27@
+                                if or
+                                    27@ == 29
+                                    27@ == 30
+                                then
+                                    005A: 28@ += 7@ // Dealer Bonus
+                                    19@ = 2
+                                end
+
+                                if
+                                    0039: 19@ == 0
+                                then
+                                    gosub @Check_If_Rich_Ped
+                                    if
+                                        0039: 25@ == 1
+                                    then
+                                        005A: 28@ += 8@ // Rich Ped Bonus
+                                    end
+                                end
+
+                                if
+                                    0039: 19@ == 0
+                                then
+                                    gosub @Check_If_Criminal_Ped
+                                    089F: get_actor 29@ pedtype_to 26@
+                                    if or
+                                        0039: 25@ == 1
+                                        0039: 26@ == 20
+                                    then
+                                        005A: 28@ += 9@ // Criminal Bonus
+                                        19@ = 3
+                                    end
+                                end
+
+                                if
+                                    0039: 19@ == 0
+                                then
+                                    089F: get_actor 29@ pedtype_to 25@
+                                    if and
+                                        04B5: 25@ >= 7
+                                        04B7: 16 >= 25@
+                                        8039: not 25@ == 8
+                                    then
+                                        19@ = 1
+                                    end
+                                end
+
+                                // Resistance roll calculation
+                                24@ = 0 // Default: Target folds
+
+                                if
+                                    0039: 19@ == 1
+                                then
+                                    0085: 25@ = 2@
+                                    0016: 25@ /= 2
+                                    0085: 26@ = 10@
+                                    0062: 26@ -= 25@ // Current resist chance
+                                    0085: 25@ = 26@
+
+                                    if
+                                        001D: 11@ > 25@
+                                    then
+                                        0085: 25@ = 11@ // Clamp to GangMinResistPercent
+                                    end
+
+                                    0209: 26@ = random_int_in_range 1 101
+                                    if
+                                        002D: 25@ >= 26@
+                                    then
+                                        24@ = 1 // Target resists
+                                    end
+                                end
+
+                                if
+                                    0039: 19@ == 2
+                                then
+                                    0209: 26@ = random_int_in_range 1 101
+                                    if
+                                        002D: 14@ >= 26@
+                                    then
+                                        24@ = 1 // Target resists
+                                    end
+                                end
+
+                                if
+                                    0039: 19@ == 3
+                                then
+                                    0085: 25@ = 2@
+                                    0016: 25@ /= 2
+                                    0085: 26@ = 12@
+                                    0062: 26@ -= 25@ // Current resist chance
+                                    0085: 25@ = 26@
+
+                                    if
+                                        001D: 13@ > 25@
+                                    then
+                                        0085: 25@ = 13@ // Clamp to CriminalMinResistPercent
+                                    end
+
+                                    0209: 26@ = random_int_in_range 1 101
+                                    if
+                                        002D: 25@ >= 26@
+                                    then
+                                        24@ = 1 // Target resists
+                                    end
+                                end
+
+                                // Branch A: Target Resists
+                                if
+                                    0039: 24@ == 1
+                                then
+                                    04EF: release_animation "SHOP"
+                                    0085: 16@ = 29@
+                                    0085: 17@ = 28@
+
+                                    if
+                                        0039: 19@ == 1
+                                    then
+                                        08BD: set 3@ bit 5 // Store Gang Archetype on bit 5 safely
+                                    else
+                                        08C0: clear 3@ bit 5
+                                    end
+
+                                    // Latch whether target was an active Mark onto bit 7 for bounty monitor
+                                    if
+                                        08B7: test 3@ bit 6
+                                    then
+                                        08BD: set 3@ bit 7
+                                    else
+                                        08C0: clear 3@ bit 7
+                                    end
+
+                                    0687: clear_actor 29@ task
+                                    05E2: AS_actor 29@ kill_actor $PLAYER_ACTOR
+                                    0687: clear_actor $PLAYER_ACTOR task
+
+                                    if
+                                        08B7: test 3@ bit 2
+                                    then
+                                        018C: play_sound 1057 at 0.0 0.0 0.0
+                                    end
+                                    if
+                                        08B7: test 3@ bit 1
+                                    then
+                                        0ADF: add_text_label "Y_RESST" text "~r~TARGET RESISTED~n~~w~BOUNTY ISSUED"
+                                        00BA: show_text_styled GXT 'Y_RESST' time 2500 style 5
+                                    end
+
+                                    08C0: clear 3@ bit 6
+                                else
+                                    // Branch B: Target Folds
+                                    if
+                                        0039: 19@ == 2
+                                    then
+                                        0851: set_actor 29@ decrease_health_by 1 affect_armour 0
+                                        0687: clear_actor 29@ task
+                                    end
+
+                                    // Lock root motion so ped cannot walk away during animation
+                                    0605: actor $PLAYER_ACTOR perform_animation "ROB_Loop_Threat" IFP "SHOP" framedelta 4.0 loop 0 lockX 0 lockY 0 lockF 1 time 2000
+                                    0605: actor 29@ perform_animation "SHP_Rob_React" IFP "SHOP" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 1 time 2000
+
+                                    // Spawn cash burst at victim chest
+                                    04C4: store_coords_to 21@ 22@ 23@ from_actor 29@ with_offset 0.0 0.1 0.2
+                                    064B: 25@ = create_particle "explosion_tiny" at 21@ 22@ 23@ type 1
+                                    064C: make_particle 25@ visible
+                                    064F: remove_references_to_particle 25@
+
+                                    0085: 26@ = 28@
+                                    0016: 26@ /= 2
+                                    0109: player $PLAYER_CHAR money += 26@
+                                    if
+                                        08B7: test 3@ bit 2
+                                    then
+                                        018C: play_sound 1058 at 0.0 0.0 0.0
+                                    end
+
+                                    0085: 27@ = 26@
+                                    0016: 27@ /= 2
+
+                                    00A0: store_actor 29@ position_to 21@ 22@ 23@
+                                    000B: 23@ += 0.2
+
+                                    0087: 24@ = 21@
+                                    000B: 24@ += 0.4
+                                    02E1: 0@ = create_cash_pickup 27@ at 24@ 22@ 23@ permanence_flag 0
+
+                                    0087: 24@ = 21@
+                                    000F: 24@ -= 0.4
+                                    02E1: 0@ = create_cash_pickup 27@ at 24@ 22@ 23@ permanence_flag 0
+
+                                    if
+                                        0039: 19@ == 1 // Rival Gang Member
+                                    then
+                                        0998: add_respect 15@
+
+                                        // Query Gang Member Inventory Slots using opcode 04B8
+                                        25@ = 0 // Found Model ID
+                                        26@ = 0 // Found Weapon ID
+
+                                        // Check Slot 4 (SMG / Tec-9 / Micro-SMG)
+                                        04B8: get_weapon_data_from_actor 29@ slot 4 weapon 26@ ammo 27@ model 25@
+
+                                        // Check Slot 5 (Rifle / AK-47 / M4) if no SMG found
+                                        if
+                                            8019: not 26@ > 1
+                                        then
+                                            04B8: get_weapon_data_from_actor 29@ slot 5 weapon 26@ ammo 27@ model 25@
+                                        end
+
+                                        // Check Slot 3 (Shotgun / Chrome / Sawn-off) if no Rifle found
+                                        if
+                                            8019: not 26@ > 1
+                                        then
+                                            04B8: get_weapon_data_from_actor 29@ slot 3 weapon 26@ ammo 27@ model 25@
+                                        end
+
+                                        // Check Slot 2 (Pistol) if no Shotgun found
+                                        if
+                                            8019: not 26@ > 1
+                                        then
+                                            04B8: get_weapon_data_from_actor 29@ slot 2 weapon 26@ ammo 27@ model 25@
+                                        end
+
+                                        // Check Slot 1 (Melee / Knife / Bat) as last fallback
+                                        if
+                                            8019: not 26@ > 1
+                                        then
+                                            04B8: get_weapon_data_from_actor 29@ slot 1 weapon 26@ ammo 27@ model 25@
+                                        end
+
+                                        // If a weapon was found in their inventory
+                                        if
+                                            0019: 26@ > 1
+                                        then
+                                            if
+                                                08B7: test 3@ bit 4
+                                            then
+                                                if
+                                                    0019: 25@ > 0
+                                                then
+                                                    00A0: store_actor 29@ position_to 21@ 22@ 23@
+                                                    000B: 23@ += 0.3
+                                                    0213: 0@ = create_pickup 25@ type 4 at 21@ 22@ 23@
+                                                end
+                                            end
+                                        end
+
+                                        // Wipe all weapons so they cannot retaliate with weapons
+                                        048F: actor 29@ remove_weapons
+
+                                        if and
+                                            08B7: test 3@ bit 1
+                                            88B7: not test 3@ bit 6
+                                        then
+                                            0ADF: add_text_label "Y_EGANG" text "~y~GANG EXTORTED~n~~g~+$~1~ ~b~(+~1~ RESPECT)"
+                                            036D: show_text_2numbers_styled GXT 'Y_EGANG' numbers 28@ 15@ time 2500 style 5
+                                        end
+                                    else
+                                        if and
+                                            08B7: test 3@ bit 1
+                                            88B7: not test 3@ bit 6
+                                        then
+                                            0ADF: add_text_label "Y_EXTOR" text "~y~EXTORTED~n~~g~+$~1~"
+                                            01E3: show_text_1number_styled GXT 'Y_EXTOR' number 28@ time 2500 style 5
+                                        end
+                                    end
+
+                                    wait 2000
+
+                                    // Release animation safely after actors processed it
+                                    04EF: release_animation "SHOP"
+
+                                    if
+                                        8256: not is_player_playing $PLAYER_CHAR
+                                    then
+                                        goto @YShakedown_Loop
+                                    end
+
+                                    0687: clear_actor $PLAYER_ACTOR task
+
+                                    if and
+                                        056D: actor 29@ defined
+                                        8118: not actor 29@ dead
+                                    then
+                                        0687: clear_actor 29@ task
+                                        05DD: AS_actor 29@ flee_from_actor $PLAYER_ACTOR from_origin_radius 40.0 timelimit 12000
+
+                                        // If this was an active Mark, release script hold now that ped is fleeing
+                                        if
+                                            08B7: test 3@ bit 6
+                                        then
+                                            01C2: remove_references_to_actor 29@
+                                        end
+                                    end
+
+                                    // Sync last extorted ped in master heap now that shakedown finished
+                                    0085: 30@ = 31@
+                                    000A: 30@ += MEM_LAST_EXTORTED_PED
+                                    0A8C: write_memory 30@ size 4 value 18@ virtual_protect 0
+
+                                    00A0: store_actor $PLAYER_ACTOR position_to 21@ 22@ 23@
+                                    24@ = 0
+
+                                    :Witness_Scan_Loop
+                                    if
+                                        0AE1: 0@ = random_char_near_point 21@ 22@ 23@ in_radius 18.0 find_next 24@ pass_deads 1
+                                    then
+                                        24@ = 1
+                                        if and
+                                            056D: actor 0@ defined
+                                            8118: not actor 0@ dead
+                                            87D6: not 0@ == $PLAYER_ACTOR
+                                            803B: not 0@ == 29@
+                                        then
+                                            089F: get_actor 0@ pedtype_to 25@
+                                            if
+                                                0039: 25@ == 6
+                                            then
+                                                01C0: 25@ = player $PLAYER_CHAR wanted_level
+                                                if
+                                                    0039: 25@ == 0
+                                                then
+                                                    010D: set_player $PLAYER_CHAR wanted_level_to 1
+                                                    0ADF: add_text_label "Y_CWIT" text "~r~WITNESS ALERT~n~~w~CRIME REPORTED"
+                                                    00BA: show_text_styled GXT 'Y_CWIT' time 2000 style 5
+                                                    goto @Witness_Scan_End
+                                                end
+                                            end
+                                        end
+                                        goto @Witness_Scan_Loop
+                                    end
+                                    :Witness_Scan_End
+
+                                    TIMERB = 0 // Reset cooldown upon full completion
+                                    08C0: clear 3@ bit 6
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+goto @YShakedown_Loop
+
+// =========================================================================
+// SUBROUTINES
+// =========================================================================
+
+:YShakedown_ReloadSettings
+0085: 1@ = 0@
+
+// Preserve Bit 5 (Bounty Gang Flag) and Bit 7 (Bounty Mark Flag) across INI reload
+24@ = 0
+if
+    08B7: test 3@ bit 5
+then
+    08BD: set 24@ bit 5
+end
+
+if
+    08B7: test 3@ bit 7
+then
+    08BD: set 24@ bit 7
+end
+
+3@ = 0
+if
+    08B7: test 24@ bit 5
+then
+    08BD: set 3@ bit 5
+end
+
+if
+    08B7: test 24@ bit 7
+then
+    08BD: set 3@ bit 7
+end
+
+0AF0: 24@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "ShowShakedownMessage"
+if
+    0039: 24@ == 1
+then
+    08BD: set 3@ bit 1
+end
+
+0AF0: 24@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "PlayShakedownSound"
+if
+    0039: 24@ == 1
+then
+    08BD: set 3@ bit 2
+end
+
+0AF0: 24@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "EnableDisarmDrops"
+if
+    0039: 24@ == 1
+then
+    08BD: set 3@ bit 4
+end
+
+0AF0: 4@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "BaseCashMin"
+if
+    0039: 4@ == 0
+then
+    4@ = 150
+end
+
+0AF0: 5@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "BaseCashMax"
+if
+    0039: 5@ == 0
+then
+    5@ = 400
+end
+
+0AF0: 6@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "BonusPerPoint"
+if
+    0039: 6@ == 0
+then
+    6@ = 25
+end
+
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "DealerBonus"
+if
+    0039: 7@ == 0
+then
+    7@ = 2000
+end
+
+0AF0: 8@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "RichPedBonus"
+if
+    0039: 8@ == 0
+then
+    8@ = 1200
+end
+
+0AF0: 9@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "CriminalBonus"
+if
+    0039: 9@ == 0
+then
+    9@ = 800
+end
+
+0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "GangBaseResistPercent"
+if
+    0039: 10@ == 0
+then
+    10@ = 75
+end
+
+0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "GangMinResistPercent"
+if
+    0039: 11@ == 0
+then
+    11@ = 25
+end
+
+0AF0: 12@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "CriminalBaseResistPercent"
+if
+    0039: 12@ == 0
+then
+    12@ = 60
+end
+
+0AF0: 13@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "CriminalMinResistPercent"
+if
+    0039: 13@ == 0
+then
+    13@ = 20
+end
+
+0AF0: 14@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "DealerResistPercent"
+if
+    0039: 14@ == 0
+then
+    14@ = 40
+end
+
+0AF0: 15@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "GangRespectBonus"
+if
+    0039: 15@ == 0
+then
+    15@ = 15
+end
+
+0AF0: 20@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "MainKey"
+if
+    0039: 20@ == 0
+then
+    20@ = 89
+end
+return
+
+:Check_If_Rich_Ped
+25@ = 0
+if or
+    27@ == 12
+    27@ == 17
+    27@ == 20
+    27@ == 36
+    27@ == 37
+    27@ == 40
+    27@ == 46
+    27@ == 55
+then
+    25@ = 1
+    return
+end
+
+if or
+    27@ == 59
+    27@ == 91
+    27@ == 98
+    27@ == 141
+    27@ == 147
+    27@ == 148
+    27@ == 150
+    27@ == 169
+then
+    25@ = 1
+    return
+end
+
+if or
+    27@ == 11
+    27@ == 171
+    27@ == 172
+    27@ == 185
+    27@ == 186
+    27@ == 187
+    27@ == 216
+    27@ == 219
+then
+    25@ = 1
+    return
+end
+
+if or
+    27@ == 227
+    27@ == 240
+    27@ == 189
+    27@ == 252
+then
+    25@ = 1
+    return
+end
+return
+
+:Check_If_Criminal_Ped
+25@ = 0
+if or
+    27@ == 21
+    27@ == 47
+    27@ == 143
+    27@ == 144
+    27@ == 188
+    27@ == 230
+    27@ == 253
+    27@ == 254
+then
+    25@ = 1
+    return
+end
+
+if or
+    27@ == 255
+    27@ == 256
+    27@ == 257
+    27@ == 258
+then
+    25@ = 1
+    return
+end
+return

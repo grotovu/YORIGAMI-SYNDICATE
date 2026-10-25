@@ -1,0 +1,862 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+{$USE ini}
+
+0000: NOP
+script_name "Sh_Menu"
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED FOR SH_MENU)
+// =========================================================================
+const
+    MEM_PRIORITY_LOCK = 20
+    MEM_LORE_MENU_SIGNAL = 24
+    MEM_DURGASTRA_FLAG = 72
+    MEM_SHION_HANDLE = 116
+    MEM_COMBAT_RES_MODE = 132
+    MEM_CMBT_HITODAMA_FX = 156
+    MEM_SAFEHOUSE_DOOR_ID = 340
+end
+
+// 0@ = Shion Actor Handle passed on boot
+0085: 10@ = 0@
+
+wait 1000
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+0@ = 0   // Safehouse Visit Prompt Latch (0 = Ready to show, 1 = Shown for this visit)
+1@ = -1  // Native Menu Panel Handle (-1 = closed)
+8@ = 0   // TAB Hold Accumulator Timer (ms)
+11@ = 0  // Active Menu Page: 0 = Overview & Arsenal, 1 = Lifestyle & Settings
+14@ = -1 // Audio tick previous row tracker
+15@ = 0  // Active Menu Row Index (0 to 7)
+18@ = 0  // Inside Safehouse Boolean Flag (1 = Yes, 0 = No)
+
+// Read initial config from Shion.ini into RAM
+gosub @Reload_Menu_Settings
+
+:ShionMenu_Loop
+wait 50
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @ShionMenu_Loop
+end
+
+// Read Live Handle from Shared Memory
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    10@ == 0
+then
+    0A93: terminate_this_custom_script
+end
+
+if
+    10@ > 0
+then
+    if or
+        856D: not actor 10@ defined
+        0118: actor 10@ dead
+    then
+        0A93: terminate_this_custom_script
+    end
+end
+
+// Don't evaluate during screen fades or game cutscenes
+if or
+    016B: fading
+    0E25: is_on_cutscene
+then
+    goto @ShionMenu_Loop
+end
+
+// =========================================================================
+// SAFEHOUSE PROXIMITY & ENTRANCE LATCH MONITOR
+// =========================================================================
+gosub @Check_Inside_Safehouse
+
+if
+    18@ == 1 // Player is confirmed inside a Safehouse!
+then
+    // Only prompt if not currently in a vehicle, fully controllable, and channel is not Tier 4 locked
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8D: 26@ = read_memory 30@ size 4 virtual_protect 0
+    if and
+        816B: not fading
+        03EE: player $PLAYER_CHAR controllable
+        80DF: not actor $PLAYER_ACTOR driving
+        26@ < 4
+    then
+        // Show Style 5 prompt once upon entering this safehouse
+        if
+            0@ == 0
+        then
+            0@ = 1
+            0ADF: add_text_label "Y_SHOM" text "~y~SAFEHOUSE~n~~w~HOLD [TAB] FOR SHION MENU"
+            09C1: add_next_text_to_brief_history 1
+            00BA: show_text_styled GXT 'Y_SHOM' time 3500 style 5
+        end
+
+        // Listen for holding TAB (Key 9 or Pad Key 4)
+        if or
+            0AB0: is_key_pressed 9 // TAB Key
+            00E1: player 0 pressed_key 4
+        then
+            000A: 8@ += 50
+            if
+                8@ >= 800 // Held for 800ms
+            then
+                8@ = 0
+                gosub @Open_Shion_Menu
+            end
+        else
+            8@ = 0
+        end
+    else
+        8@ = 0
+    end
+else
+    // Reset entrance latch when player exits the safehouse!
+    0@ = 0
+    8@ = 0
+end
+
+goto @ShionMenu_Loop
+
+
+// =========================================================================
+// SUBROUTINE: OPEN & PROCESS SHION SAFEHOUSE MENU
+// =========================================================================
+:Open_Shion_Menu
+// Lock player controls and claim Tier 4 Master Theater priority
+01B4: set_player $PLAYER_CHAR can_move 0
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Star"
+03EB: clear_small_messages_only
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 4 virtual_protect 0 // Master lock freezes background chatter!
+018C: play_sound 1058 at 0.0 0.0 0.0
+
+// Create Native Interactive Panel immediately on-screen
+0ADF: add_text_label "SH_TIT" text "SHION SETTINGS"
+
+08D4: 1@ = create_panel_with_title 'SH_TIT' position 29.0 145.0 width 310.0 columns 1 interactive 1 background 1 alignment 0
+
+11@ = 0  // Start on Page 0 (Overview & Arsenal)
+15@ = 0  // Start at Row 0
+14@ = -1
+gosub @Refresh_Shion_Menu_Text
+
+:Shion_Menu_Interactive_Loop
+wait 0
+
+if or
+    8256: not is_player_playing $PLAYER_CHAR
+    016B: fading
+then
+    goto @Close_Shion_Menu
+end
+
+// Read highlighted row directly from native menu manager
+08D7: 15@ = panel 1@ active_row
+
+// Audio tick on row navigation
+if
+    803B: not 15@ == 14@
+then
+    0085: 14@ = 15@
+end
+
+// Display Current Page instruction subtitle
+0085: 24@ = 11@
+000A: 24@ += 1 // 1-based page index for display
+0AD1: show_formatted_text_highpriority "~y~Shion Menu ~w~[Page %d/2] ~s~[Q/E: Page  |  SPACE: Select/Toggle  |  ENTER: Close]" time 100 24@
+
+// -------------------------------------------------------------------------
+// PAGINATION HOTKEYS: Q (Key 81 = Prev) & E (Key 69 = Next)
+// -------------------------------------------------------------------------
+// Next Page (E Key)
+if
+    0AB0: is_key_pressed 69 // E Key
+then
+    :Wait_Menu_E_Rel
+    wait 50
+    if
+        0AB0: is_key_pressed 69
+    then
+        goto @Wait_Menu_E_Rel
+    end
+
+    if
+        11@ == 0
+    then
+        11@ = 1
+        15@ = 0
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        gosub @Refresh_Shion_Menu_Text
+    end
+end
+
+// Prev Page (Q Key)
+if
+    0AB0: is_key_pressed 81 // Q Key
+then
+    :Wait_Menu_Q_Rel
+    wait 50
+    if
+        0AB0: is_key_pressed 81
+    then
+        goto @Wait_Menu_Q_Rel
+    end
+
+    if
+        11@ == 1
+    then
+        11@ = 0
+        15@ = 0
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        gosub @Refresh_Shion_Menu_Text
+    end
+end
+
+// -------------------------------------------------------------------------
+// TOGGLE / ACTION: SPACE KEY, SPRINT KEY, OR A / D KEYS
+// (TAB is strictly excluded!)
+// -------------------------------------------------------------------------
+if or
+    0AB0: is_key_pressed 32       // Space
+    00E1: player 0 pressed_key 16 // Sprint Key
+    0AB0: is_key_pressed 68       // D Key
+    0AB0: is_key_pressed 65       // A Key
+then
+    :Wait_Option_Toggle_Rel
+    wait 50
+    if or
+        0AB0: is_key_pressed 32
+        00E1: player 0 pressed_key 16
+        0AB0: is_key_pressed 68
+        0AB0: is_key_pressed 65
+    then
+        goto @Wait_Option_Toggle_Rel
+    end
+
+    // =====================================================================
+    // PAGE 0 TOGGLES & ACTIONS (OVERVIEW & ARSENAL)
+    // =====================================================================
+    if
+        11@ == 0
+    then
+        // Row 0: Performance Review (Triggers ShionMem.c in Safehouse)
+        if
+            15@ == 0
+        then
+            // Remove the menu panel
+            if
+                1@ >= 0
+            then
+                08DA: remove_panel 1@
+                1@ = -1
+            end
+
+            // Restore player movement so you can walk around during the evaluation
+            01B4: set_player $PLAYER_CHAR can_move 1
+            03EB: clear_small_messages_only
+
+            // Release Tier 4 Priority Lock before launching Evaluation Theater
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+            // Launch Dedicated Evaluation Theater Script
+            0A92: create_custom_thread "Shion\ShionMem.c" 10@
+            return
+        end
+
+        // Row 1: Combat Resource Mode (Wallet Drain <-> Gear Swap)
+        if
+            15@ == 1
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_COMBAT_RES_MODE
+            0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                21@ == 1
+            then
+                21@ = 0 // Switch to Wallet Drain
+            else
+                21@ = 1 // Switch to Gear Swap
+
+                // Automatically seal Durgastra! (Gear Swap uses physical ammo, not infinite debt)
+                0085: 30@ = 31@
+                000A: 30@ += MEM_DURGASTRA_FLAG
+                0A8D: 22@ = read_memory 30@ size 4 virtual_protect 0
+                if
+                    22@ == 1
+                then
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_DURGASTRA_FLAG
+                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                end
+            end
+            0085: 30@ = 31@
+            000A: 30@ += MEM_COMBAT_RES_MODE
+            0A8C: write_memory 30@ size 4 value 21@ virtual_protect 0
+            0AF1: write_int 21@ to_ini_file "cleo\Shion.ini" section "Companion" key "CombatResourceMode"
+            gosub @Refresh_Shion_Menu_Text
+        end
+
+        // Row 2: Durgastra Protocol (Limitless Debt On <-> Off)
+        if
+            15@ == 2
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_DURGASTRA_FLAG
+            0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                21@ == 1
+            then
+                21@ = 0
+                018C: play_sound 1057 at 0.0 0.0 0.0 // Deactivate buzzer
+            else
+                21@ = 1
+                // Automatically enforce Wallet Drain when turning on Durgastra!
+                0085: 30@ = 31@
+                000A: 30@ += MEM_COMBAT_RES_MODE
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                0AF1: write_int 0 to_ini_file "cleo\Shion.ini" section "Companion" key "CombatResourceMode"
+            end
+            0085: 30@ = 31@
+            000A: 30@ += MEM_DURGASTRA_FLAG
+            0A8C: write_memory 30@ size 4 value 21@ virtual_protect 0
+            gosub @Refresh_Shion_Menu_Text
+        end
+
+        // Row 3: Combat Hitodama FX (On <-> Off)
+        if
+            15@ == 3
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_CMBT_HITODAMA_FX
+            0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                21@ == 1
+            then
+                21@ = 0
+            else
+                21@ = 1
+            end
+            0085: 30@ = 31@
+            000A: 30@ += MEM_CMBT_HITODAMA_FX
+            0A8C: write_memory 30@ size 4 value 21@ virtual_protect 0
+            0AF1: write_int 21@ to_ini_file "cleo\Shion.ini" section "Companion" key "EnableCombatHitodamaFX"
+            gosub @Refresh_Shion_Menu_Text
+        end
+
+        // Row 4: Shot Cash Chimes (On <-> Off)
+        if
+            15@ == 4
+        then
+            0AF0: 21@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "PlayShotCashSound"
+            if
+                21@ == 1
+            then
+                21@ = 0
+            else
+                21@ = 1
+            end
+            0AF1: write_int 21@ to_ini_file "cleo\Shion.ini" section "Companion" key "PlayShotCashSound"
+            gosub @Refresh_Shion_Menu_Text
+        end
+
+        // Row 5: Bankrupt Alert Banner (On <-> Off)
+        if
+            15@ == 5
+        then
+            0AF0: 21@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "ShowBankruptAlert"
+            if
+                21@ == 1
+            then
+                21@ = 0
+            else
+                21@ = 1
+            end
+            0AF1: write_int 21@ to_ini_file "cleo\Shion.ini" section "Companion" key "ShowBankruptAlert"
+            gosub @Refresh_Shion_Menu_Text
+        end
+
+        // Row 6: Next Page -> (E)
+        if
+            15@ == 6
+        then
+            11@ = 1
+            15@ = 0
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            gosub @Refresh_Shion_Menu_Text
+        end
+
+        // Row 7: Exit Menu
+        if
+            15@ == 7
+        then
+            goto @Close_Shion_Menu
+        end
+    end
+
+    // =====================================================================
+    // PAGE 1 TOGGLES & ACTIONS (LIFESTYLE & SETTINGS)
+    // =====================================================================
+    if
+        11@ == 1
+    then
+        // Row 0: Hunger & Food Runs (On <-> Off)
+        if
+            15@ == 0
+        then
+            0AF0: 21@ = read_int_from_ini_file "cleo\Shion.ini" section "FoodRun" key "EnableFoodRuns"
+            if
+                21@ == 1
+            then
+                21@ = 0
+            else
+                21@ = 1
+            end
+            0AF1: write_int 21@ to_ini_file "cleo\Shion.ini" section "FoodRun" key "EnableFoodRuns"
+            gosub @Refresh_Shion_Menu_Text
+        end
+
+        // Row 1: Sister Talk Lore Episodes (On <-> Off)
+        if
+            15@ == 1
+        then
+            0AF0: 21@ = read_int_from_ini_file "cleo\Shion.ini" section "LoreSettings" key "EnableLore"
+            if
+                21@ == 1
+            then
+                21@ = 0
+            else
+                21@ = 1
+            end
+            0AF1: write_int 21@ to_ini_file "cleo\Shion.ini" section "LoreSettings" key "EnableLore"
+            gosub @Refresh_Shion_Menu_Text
+        end
+
+        // Row 2: Sister Talk Archive (Open Lore Menu)
+        if
+            15@ == 2
+        then
+            if
+                1@ >= 0
+            then
+                08DA: remove_panel 1@
+                1@ = -1
+            end
+
+            01B4: set_player $PLAYER_CHAR can_move 1
+            03EB: clear_small_messages_only
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LORE_MENU_SIGNAL
+            0A8C: write_memory 30@ size 4 value 1 virtual_protect 0 // Signal loreMenu.c to open
+            return
+        end
+
+        // Row 3: Startup Character Mode (Cycle: 0 = CJ, 1 = Jo'on, 2 = Shion)
+        if
+            15@ == 3
+        then
+            0AF0: 21@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "StartupPlayerCharacter"
+            if
+                21@ == 1
+            then
+                21@ = 2
+            else
+                if
+                    21@ == 2
+                then
+                    21@ = 0
+                else
+                    21@ = 1
+                end
+            end
+            0AF1: write_int 21@ to_ini_file "cleo\Shion.ini" section "Companion" key "StartupPlayerCharacter"
+            gosub @Refresh_Shion_Menu_Text
+        end
+
+        // Row 4: Jo'on Idle Smoking (On <-> Off)
+        if
+            15@ == 4
+        then
+            0AF0: 21@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "EnableJoonSmoking"
+            if
+                21@ == 1
+            then
+                21@ = 0
+            else
+                21@ = 1
+            end
+            0AF1: write_int 21@ to_ini_file "cleo\Shion.ini" section "Companion" key "EnableJoonSmoking"
+            gosub @Refresh_Shion_Menu_Text
+        end
+
+        // Row 5: <- Prev Page (Q)
+        if
+            15@ == 5
+        then
+            11@ = 0
+            15@ = 0
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            gosub @Refresh_Shion_Menu_Text
+        end
+
+        // Row 6: Exit Menu
+        if
+            15@ == 6
+        then
+            goto @Close_Shion_Menu
+        end
+    end
+end
+
+// CANCEL / CLOSE: ENTER, ESC, BACKSPACE, F
+if or
+    00E1: player 0 pressed_key 15
+    0AB0: is_key_pressed 13
+    0AB0: is_key_pressed 27
+    0AB0: is_key_pressed 8
+then
+    :Wait_Menu_Close_Rel
+    wait 50
+    if or
+        00E1: player 0 pressed_key 15
+        0AB0: is_key_pressed 13
+        0AB0: is_key_pressed 27
+        0AB0: is_key_pressed 8
+    then
+        goto @Wait_Menu_Close_Rel
+    end
+    goto @Close_Shion_Menu
+end
+
+goto @Shion_Menu_Interactive_Loop
+
+:Close_Shion_Menu
+if
+    1@ >= 0
+then
+    08DA: remove_panel 1@
+    1@ = -1
+end
+
+01B4: set_player $PLAYER_CHAR can_move 1
+03EB: clear_small_messages_only
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0 // Release Tier 4 Lock!
+018C: play_sound 1057 at 0.0 0.0 0.0
+return
+
+
+// =========================================================================
+// SUBROUTINE: REFRESH MENU ROW TEXT & LIVE STATE
+// =========================================================================
+:Refresh_Shion_Menu_Text
+
+// =========================================================================
+// PAGE 0: OVERVIEW & ARSENAL
+// =========================================================================
+if
+    11@ == 0
+then
+    0ADF: add_text_label "SH_COL" text "OVERVIEW & ARSENAL"
+
+    // Row 0: Performance Review
+    0ADF: add_text_label "SH_R0" text "Performance Review: ~y~[Select]"
+
+    // Row 1: Resource Mode
+    0085: 30@ = 31@
+    000A: 30@ += MEM_COMBAT_RES_MODE
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        21@ == 1
+    then
+        0ADF: add_text_label "SH_R1" text "Resource Mode: ~g~Gear Swap (Y+R)"
+    else
+        0ADF: add_text_label "SH_R1" text "Resource Mode: ~y~Wallet Drain"
+    end
+
+    // Row 2: Durgastra Protocol
+    0085: 30@ = 31@
+    000A: 30@ += MEM_DURGASTRA_FLAG
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        21@ == 1
+    then
+        0ADF: add_text_label "SH_R2" text "Durgastra Protocol: ~p~UNLEASHED"
+    else
+        0ADF: add_text_label "SH_R2" text "Durgastra Protocol: ~s~SEALED"
+    end
+
+    // Row 3: Combat Hitodama FX
+    0085: 30@ = 31@
+    000A: 30@ += MEM_CMBT_HITODAMA_FX
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        21@ == 1
+    then
+        0ADF: add_text_label "SH_R3" text "Combat Hitodama FX: ~g~ENABLED"
+    else
+        0ADF: add_text_label "SH_R3" text "Combat Hitodama FX: ~r~DISABLED"
+    end
+
+    // Row 4: Shot Cash Chimes
+    0AF0: 21@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "PlayShotCashSound"
+    if
+        21@ == 1
+    then
+        0ADF: add_text_label "SH_R4" text "Bullet Cash Chimes: ~g~ENABLED"
+    else
+        0ADF: add_text_label "SH_R4" text "Bullet Cash Chimes: ~r~DISABLED"
+    end
+
+    // Row 5: Bankrupt Alert Banner
+    0AF0: 21@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "ShowBankruptAlert"
+    if
+        21@ == 1
+    then
+        0ADF: add_text_label "SH_R5" text "Card Declined Alert: ~g~ENABLED"
+    else
+        0ADF: add_text_label "SH_R5" text "Card Declined Alert: ~r~DISABLED"
+    end
+
+    // Row 6: Next Page
+    0ADF: add_text_label "SH_R6" text "Next Page -> [Press E]"
+
+    // Row 7: Exit Menu
+    0ADF: add_text_label "SH_EXIT" text "Exit Menu"
+
+    // Load Column 0 (Exact 12 data entries)
+    08DB: set_panel 1@ column 0 header 'SH_COL' data 'SH_R0' 'SH_R1' 'SH_R2' 'SH_R3' 'SH_R4' 'SH_R5' 'SH_R6' 'SH_EXIT' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY'
+    08D9: set_panel 1@ row 7 enable 1
+    090E: set_panel 1@ active_row 15@
+end
+
+// =========================================================================
+// PAGE 1: LIFESTYLE & SETTINGS
+// =========================================================================
+if
+    11@ == 1
+then
+    0ADF: add_text_label "SH_COL" text "LIFESTYLE & SETTINGS"
+
+    // Row 0: Hunger & Food Runs
+    0AF0: 21@ = read_int_from_ini_file "cleo\Shion.ini" section "FoodRun" key "EnableFoodRuns"
+    if
+        21@ == 1
+    then
+        0ADF: add_text_label "SH_P0" text "Hunger & Food Stops: ~g~ENABLED"
+    else
+        0ADF: add_text_label "SH_P0" text "Hunger & Food Stops: ~r~DISABLED"
+    end
+
+    // Row 1: Sister Talk Lore Episodes
+    0AF0: 21@ = read_int_from_ini_file "cleo\Shion.ini" section "LoreSettings" key "EnableLore"
+    if
+        21@ == 1
+    then
+        0ADF: add_text_label "SH_P1" text "Sister Talk Episodes: ~g~ENABLED"
+    else
+        0ADF: add_text_label "SH_P1" text "Sister Talk Episodes: ~r~DISABLED"
+    end
+
+    // Row 2: Sister Talk Archive
+    0ADF: add_text_label "SH_P2" text "Sister Talk Archive: ~y~[Select]"
+
+    // Row 3: Startup Character Display
+    0AF0: 21@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "StartupPlayerCharacter"
+    if
+        21@ == 1
+    then
+        0ADF: add_text_label "SH_P3" text "Startup Form: ~y~Jo'on Yorigami"
+    else
+        if
+            21@ == 2
+        then
+            0ADF: add_text_label "SH_P3" text "Startup Form: ~b~Shion Yorigami"
+        else
+            0ADF: add_text_label "SH_P3" text "Startup Form: ~w~Carl Johnson (CJ)"
+        end
+    end
+
+    // Row 4: Jo'on Idle Smoking
+    0AF0: 21@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "EnableJoonSmoking"
+    if
+        21@ == 1
+    then
+        0ADF: add_text_label "SH_P4" text "Jo'on Idle Smoking: ~g~ENABLED"
+    else
+        0ADF: add_text_label "SH_P4" text "Jo'on Idle Smoking: ~r~DISABLED"
+    end
+
+    // Row 5: Prev Page
+    0ADF: add_text_label "SH_P5" text "<- Prev Page [Press Q]"
+
+    // Row 6: Exit Menu
+    0ADF: add_text_label "SH_EXIT" text "Exit Menu"
+
+    // Load Column 0 (Exact 12 data entries)
+    08DB: set_panel 1@ column 0 header 'SH_COL' data 'SH_P0' 'SH_P1' 'SH_P2' 'SH_P3' 'SH_P4' 'SH_P5' 'SH_EXIT' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY'
+    08D9: set_panel 1@ row 7 enable 0
+    090E: set_panel 1@ active_row 15@
+end
+return
+
+
+// =========================================================================
+// SUBROUTINE: EXACT 3D COORDINATE SAFEHOUSE MATCHER
+// =========================================================================
+:Check_Inside_Safehouse
+18@ = 0 // Default: Not in safehouse
+077E: get_active_interior_to 28@
+
+// Check open-air safehouse (Verdant Meadows AC Tower is Interior 0)
+if
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 419.61 2536.60 10.00 radius 25.0
+then
+    18@ = 1
+    return
+end
+
+// Must be strictly inside an interior (> 0) for all other safehouses
+if
+    28@ == 0
+then
+    return
+end
+
+// Ensure player has physically warped into the interior world (Z > 500.0)
+// Prevents premature detection while CJ is still outside walking into the doorway
+00A0: store_actor $PLAYER_ACTOR position_to 2@ 3@ 4@
+if
+    4@ < 500.0
+then
+    return
+end
+
+// Check: EnEx Doorway Tracking (Shared Var 340 set by ShionFollow.c)
+0085: 30@ = 31@
+000A: 30@ += MEM_SAFEHOUSE_DOOR_ID
+0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+if and
+    21@ >= 1
+    21@ <= 32
+then
+    18@ = 1
+    return
+end
+
+// Fallbacks: Active when loading save directly indoors
+
+// --- BATCH A: STORY SAFEHOUSES, AIRSTRIP & MANSIONS (6 LOCATIONS) ---
+if or
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2496.05 -1693.93 1014.74 radius 35.0 // Johnson House (Int 3)
+    //0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 1262.15 -785.33 1091.91 radius 45.0  // Madd Dogg's Mansion (Int 5)
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 0.34 -0.51 999.43 radius 20.0        // Angel Pine Trailer (Int 2)
+    //0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2525.04 -1679.12 1015.50 radius 25.0 // Sweet's House (Int 1)
+    //0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2464.21 -1697.95 1013.51 radius 25.0 // Ryder's House (Int 2)
+then
+    18@ = 1
+    return
+end
+
+// --- BATCH B: GENERIC SAFEHOUSES 1 TO 5 (6 LOCATIONS) ---
+if or
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2262.83 -1137.71 1050.63 radius 25.0 // Safe House 1 (Int 10)
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2264.52 -1210.52 1049.02 radius 25.0 // Hashbury Safe House (Int 10)
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2365.24 -1134.30 1050.88 radius 25.0 // Safe House 2 (Int 8)
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2333.03 -1073.96 1049.02 radius 25.0 // Safe House 3 (Int 6)
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2216.54 -1076.29 1050.48 radius 25.0 // Safe House 4 (Int 1)
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2194.29 -1204.02 1049.02 radius 25.0 // Safe House 5 (Int 6)
+then
+    18@ = 1
+    return
+end
+
+// --- BATCH C: GENERIC SAFEHOUSES 6, 7, 17, PRICKLE PINE & REGIONAL HOUSES (7 LOCATIONS) ---
+if or
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2308.87 -1210.72 1049.02 radius 25.0 // Safe House 6 (Int 6)
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2324.38 -1148.48 1050.71 radius 25.0 // Safe House 7 (Int 12)
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2324.50 -1147.07 1050.71 radius 25.0 // Modern Safe House (Int 12)
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2237.59 -1080.87 1049.02 radius 25.0 // Safe House 17 (Int 2)
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2253.17 -1139.01 1050.63 radius 25.0 // Unknown Safe House (Int 9)
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2319.13 -1023.96 1050.21 radius 35.0 // Prickle Pine Safehouse (Int 9)
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2282.98 -1140.29 1050.90 radius 25.0 // Los Santos Safe House (Int 11)
+then
+    18@ = 1
+    return
+end
+
+// --- BATCH D: MOTEL ROOMS & SUITES (5 LOCATIONS) ---
+if or
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2232.82 -1110.02 1050.88 radius 25.0 // Vank Hoff Hotel (Int 5)
+    //0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2217.63 -1150.66 1025.80 radius 25.0 // Jefferson Motel (Int 15)
+    0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 444.65 508.24 1001.42 radius 25.0    // Budget Inn Motel (Int 12)
+then
+    18@ = 1
+    return
+end
+return
+
+// =========================================================================
+// SUBROUTINE: RELOAD MENU SETTINGS
+// =========================================================================
+:Reload_Menu_Settings
+0AF0: 21@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "CombatResourceMode"
+if
+    21@ < 0
+then
+    21@ = 1
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_COMBAT_RES_MODE
+0A8C: write_memory 30@ size 4 value 21@ virtual_protect 0
+
+0AF0: 21@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "EnableCombatHitodamaFX"
+if
+    21@ < 0
+then
+    21@ = 1
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_CMBT_HITODAMA_FX
+0A8C: write_memory 30@ size 4 value 21@ virtual_protect 0
+return

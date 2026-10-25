@@ -1,0 +1,422 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+{$USE bitwise}
+
+0000: NOP
+script_name 'Sh_RedM'
+
+0006: 10@ = -1 // 10@ = Best Target Handle (-1 = None)
+13@ = 0        // 13@ = Target Type (1 = Car, 2 = Ped)
+17@ = 0        // 17@ = HadTarget Combat State Flag (0 = Idle, 1 = Engaged)
+18@ = 0        // 18@ = Last Tracked Player Driving State (0 = Foot, 1 = Driving)
+TIMERB = 0
+
+:TGT_MRK_CONNECT
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0
+then
+    goto @TGT_MRK_CONNECT
+end
+000A: 31@ += 0x3C
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0
+if
+    31@ == 0
+then
+    goto @TGT_MRK_CONNECT
+end
+
+:TGT_MRK_LOOP
+wait 200
+
+if
+    8256: not is_player_playing $PLAYER_CHAR 
+then
+    goto @TGT_MRK_LOOP
+end
+
+// Read Shion's handle and stance from master heap
+0085: 30@ = 31@
+000A: 30@ += 116 // MEM_SHION_HANDLE
+0A8D: 11@ = read_memory 30@ size 4 virtual_protect 0
+
+// Self-termination: Kill thread if Shion is dismissed (0) or in Hitodama form (-1)
+if
+    11@ <= 0
+then
+    0A93: terminate_this_custom_script
+end
+
+if or
+    856D: not actor 11@ defined
+    0118: actor 11@ dead
+then
+    0A93: terminate_this_custom_script
+end
+
+0085: 30@ = 31@
+000A: 30@ += 120 // MEM_SHION_STANCE
+0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+
+// Verify Shion is actively in Jo'on's group
+07AF: 12@ = player $PLAYER_CHAR group 
+if
+    86EE: not actor 11@ in_group 12@
+then
+    goto @TGT_MRK_RESET
+end
+
+// Instant Transition Detector: Did Jo'on just enter or exit a vehicle?
+19@ = 0
+if
+    00DF: actor $PLAYER_ACTOR driving
+then
+    19@ = 1
+end
+
+if
+    803B: not 19@ == 18@
+then
+    0085: 18@ = 19@
+    TIMERB = 1201 // Force immediate task update on vehicle transition!
+end
+
+// Check if currently locked target is still valid, alive, and within 100m
+if
+    8039: not 10@ == -1
+then
+    // Target is a Car
+    if
+        13@ == 1
+    then
+        if and
+            056E: car 10@ defined
+            8119: not car 10@ wrecked
+            0EE5: locate_char_distance_to_car $PLAYER_ACTOR 10@ 100.0
+        then
+            if
+                TIMERB > 1200
+            then
+                TIMERB = 0
+                goto @TGT_MRK_FIND_CLOSEST
+            end
+            goto @TGT_MRK_LOOP
+        else
+            10@ = -1
+            13@ = 0
+        end
+    end
+
+    // Target is a Ped
+    if
+        13@ == 2
+    then
+        if and
+            056D: actor 10@ defined 
+            8118: not actor 10@ dead 
+            0EE4: locate_char_distance_to_char $PLAYER_ACTOR 10@ 100.0
+        then
+            if
+                TIMERB > 1200
+            then
+                TIMERB = 0
+                goto @TGT_MRK_FIND_CLOSEST
+            end
+            goto @TGT_MRK_LOOP
+        else
+            10@ = -1
+            13@ = 0
+        end
+    end
+end
+
+:TGT_MRK_FIND_CLOSEST
+// Store player coordinates
+00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
+
+// Search parameters
+23@ = 100.0 // 23@ = Minimum Distance Tracker (Only targets within 100m)
+10@ = -1    // Reset target handle
+13@ = 0     // Reset target type
+3@ = 0      // Blip loop index (0 to 174)
+
+:TGT_MRK_SCAN_BLIPS
+0085: 4@ = 3@
+0012: 4@ *= 40
+000A: 4@ += 0xBA86F0 // 4@ = Blip Entry Base Address (0xBA86F0)
+
+// 1. Check m_bInUse at offset +0x25 (Bit 1)
+0085: 5@ = 4@
+000A: 5@ += 0x25
+0A8D: 6@ = read_memory 5@ size 1 virtual_protect 0 
+if
+    88B7: not test 6@ bit 1
+then
+    goto @TGT_MRK_NEXT_BLIP
+end
+
+// 2. Filter out Friendlies (Offset +0x25, Bit 3 = m_bFriendly)
+if
+    08B7: test 6@ bit 3
+then
+    goto @TGT_MRK_NEXT_BLIP
+end
+
+// 3. Check m_nBlipType at offset +0x26 (1 = Car, 2 = Ped)
+0085: 5@ = 4@
+000A: 5@ += 0x26
+0A8D: 6@ = read_memory 5@ size 1 virtual_protect 0 
+0016: 6@ /= 4
+0B17: 6@ &= 0x0F
+
+if and
+    8039: not 6@ == 1 // Car
+    8039: not 6@ == 2 // Ped
+then
+    goto @TGT_MRK_NEXT_BLIP
+end
+
+// 4. Check color at offset +0x00 (Must be RED: 0, 5, or 7)
+0A8D: 24@ = read_memory 4@ size 4 virtual_protect 0
+if and
+    8039: not 24@ == 0
+    8039: not 24@ == 5
+    8039: not 24@ == 7
+then
+    goto @TGT_MRK_NEXT_BLIP
+end
+
+// 5. Read Entity Handle from offset +0x04
+0085: 7@ = 4@
+000A: 7@ += 0x04
+0A8D: 8@ = read_memory 7@ size 4 virtual_protect 0
+
+if
+    8019: not 8@ > 0
+then
+    goto @TGT_MRK_NEXT_BLIP
+end
+
+// --- EVALUATE CAR CANDIDATE (6@ == 1) ---
+if
+    6@ == 1
+then
+    if and
+        056E: car 8@ defined
+        8119: not car 8@ wrecked
+    then
+        00AA: store_car 8@ position_to 14@ 15@ 16@
+        050A: 26@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 14@ 15@ 16@
+        if
+            0021: 23@ > 26@ // Closer than current best target!
+        then
+            0087: 23@ = 26@
+            0085: 10@ = 8@
+            13@ = 1 // Type = Car
+        end
+    end
+end
+
+// --- EVALUATE PED CANDIDATE (6@ == 2) ---
+if
+    6@ == 2
+then
+    if and
+        056D: actor 8@ defined 
+        8118: not actor 8@ dead 
+        87D6: not 8@ == $PLAYER_ACTOR
+        803B: not 8@ == 11@
+        86EE: not actor 8@ in_group 12@ 
+    then
+        00A0: store_actor 8@ position_to 14@ 15@ 16@
+        050A: 26@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 14@ 15@ 16@
+        if
+            0021: 23@ > 26@ // Closer than current best target!
+        then
+            0087: 23@ = 26@
+            0085: 10@ = 8@
+            13@ = 2 // Type = Ped
+        end
+    end
+end
+
+:TGT_MRK_NEXT_BLIP
+000A: 3@ += 1 
+if
+    3@ < 175 
+then
+    goto @TGT_MRK_SCAN_BLIPS
+end
+
+// =========================================================================
+// ASSIGN TASKS TO CLOSEST TARGET (SHION EXCLUSIVE)
+// =========================================================================
+if
+    10@ == -1
+then
+    17@ = 0
+    goto @TGT_MRK_LOOP
+end
+
+17@ = 1 // Set engaged combat flag
+TIMERB = 0
+
+// Strip non-player immunity so Shion can deal real damage
+if
+    13@ == 1 // Car
+then
+    02AA: set_car 10@ immune_to_nonplayer 0
+    03F5: set_car 10@ apply_damage_rules 1
+end
+
+if
+    13@ == 2 // Ped
+then
+    0770: set_actor 10@ target_priority 1
+    02A9: set_actor 10@ immune_to_nonplayer 0
+end
+
+// =========================================================================
+// TASK SHION EXCLUSIVELY (11@ = Shion)
+// =========================================================================
+02E2: set_actor 11@ weapon_accuracy_to 85
+
+// =========================================================================
+// CASE A: SHION IS INSIDE A VEHICLE (PASSENGER)
+// =========================================================================
+if
+    00DF: actor 11@ driving
+then
+    // Jo'on stepped out onto the street -> Shion exits vehicle
+    if
+        80DF: not actor $PLAYER_ACTOR driving
+    then
+        if
+            8E4A: not is_char_exiting_any_car 11@
+        then
+            0633: AS_actor 11@ exit_car
+        end
+    else
+        // Jo'on is driving -> Driveby ONLY if in Hostile Mode (0@ == 1)
+        if
+            0@ == 1
+        then
+            if
+                13@ == 1 // Shoot Car
+            then
+                0713: actor 11@ driveby_actor -1 car 10@ point 0.0 0.0 0.0 radius 100.0 8 0 firing_rate 100
+            end
+
+            if
+                13@ == 2 // Shoot Ped
+            then
+                0713: actor 11@ driveby_actor 10@ car -1 point 0.0 0.0 0.0 radius 100.0 8 0 firing_rate 100
+            end
+        end
+    end
+else
+    // =====================================================================
+    // CASE B: SHION IS ON FOOT
+    // =====================================================================
+    // Check if Jo'on is in a vehicle (Bike, Car, etc.)
+    if
+        00DF: actor $PLAYER_ACTOR driving
+    then
+        03C0: 28@ = actor $PLAYER_ACTOR car 
+        01EA: 27@ = car 28@ max_passengers 
+        01E9: 26@ = car 28@ num_passengers 
+
+        if
+            001D: 27@ > 26@ // Passenger seats available!
+        then
+            // Find first free passenger seat (Seat 0 on bikes/cars, up to 3)
+            25@ = -1
+            if
+                0431: car 28@ passenger_seat_free 0
+            then
+                25@ = 0
+            else
+                if
+                    0431: car 28@ passenger_seat_free 1
+                then
+                    25@ = 1
+                else
+                    if
+                        0431: car 28@ passenger_seat_free 2
+                    then
+                        25@ = 2
+                    else
+                        if
+                            0431: car 28@ passenger_seat_free 3
+                        then
+                            25@ = 3
+                        end
+                    end
+                end
+            end
+
+            if
+                8039: not 25@ == -1
+            then
+                // PRIORITIZE boarding Jo'on's vehicle! (Runs in both Peaceful & Hostile)
+                if
+                    8E49: not is_char_entering_any_car 11@
+                then
+                    05CA: AS_actor 11@ enter_car 28@ passenger_seat 25@ time 10000
+                end
+            end
+        else
+            // Vehicle full -> Fight on foot ONLY if in Hostile Mode (0@ == 1)
+            if
+                0@ == 1
+            then
+                if
+                    8E4A: not is_char_exiting_any_car 11@
+                then
+                    if
+                        13@ == 1 // Attack Car
+                    then
+                        0672: AS_actor 11@ attack_car 10@
+                    end
+
+                    if
+                        13@ == 2 // Kill Ped
+                    then
+                        05E2: AS_actor 11@ kill_actor 10@
+                    end
+                end
+            end
+        end
+    else
+        // Both on foot -> Combat ONLY if in Hostile Mode (0@ == 1)
+        if
+            0@ == 1
+        then
+            if
+                8E4A: not is_char_exiting_any_car 11@
+            then
+                if
+                    13@ == 1 // Attack Car
+                then
+                    0672: AS_actor 11@ attack_car 10@
+                end
+
+                if
+                    13@ == 2 // Kill Ped
+                then
+                    05E2: AS_actor 11@ kill_actor 10@
+                end
+            end
+        end
+    end
+end
+
+goto @TGT_MRK_LOOP
+
+:TGT_MRK_RESET
+10@ = -1
+13@ = 0
+17@ = 0
+goto @TGT_MRK_LOOP

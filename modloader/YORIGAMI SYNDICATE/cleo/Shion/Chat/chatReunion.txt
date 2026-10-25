@@ -1,0 +1,349 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+03A4: script_name 'Sh_Reun'
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED FOR REUNION CHAT)
+// =========================================================================
+const
+    MEM_PRIORITY_LOCK = 20
+    MEM_REUNION_SIGNAL = 208
+end
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER SAFELY.
+
+// 0@ = Shion Actor Handle passed from SpawnShion.cs
+0085: 10@ = 0@
+
+0050: gosub @Check_Reunion_Alive_Or_Exit
+
+// Preempt any running lower-tier chats and claim Tier 4 Priority!
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Zone'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Mny'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Idle'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Snip'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Int'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Veh'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Rad'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Sub'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Star'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Wthr'
+03EB: clear_small_messages_only
+
+// Absolute Tier 4 Theater Priority!
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 4 virtual_protect 0
+
+// 6 Randomized Reunion Exchanges (0 to 5)
+0209: 29@ = random_int_in_ranges 0 6
+
+// =========================================================================
+// REUNION 0: SCOLDING & SCHEMING
+// =========================================================================
+if
+    0039: 29@ == 0
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN0A" text "~y~Jo'on: ~s~\"Ugh, Shion! What're you doin' glued to that greasy wall?! Step away before people think we're related!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN0A' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN0B" text "~y~Jo'on: ~s~\"I found a whole strip of walkin' ATMs just beggin' to get fleeced! We're rakin' it in today!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN0B' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN0C" text "~b~Shion: ~s~\"Oh... it's you. Hold on, let me stuff this dry bread into my pocket before we leave.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN0C' time 3500 flag 1
+    0001: wait 3500 ms
+    0002: jump @Finish_Reunion_Chat
+end
+
+// =========================================================================
+// REUNION 1: LUXURY RESCUE & BURGERS
+// =========================================================================
+if
+    0039: 29@ == 1
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN1A" text "~y~Jo'on: ~s~\"Finally! Look at that hoodie! Did you wipe that grease trap with your back?! Get away from me!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN1A' time 3500 flag 1
+    0001: wait 3500 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN1B" text "~y~Jo'on: ~s~\"Shake the dust off! We're hittin' the high-roller spots before that grime gets on my coat!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN1B' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN1C" text "~b~Shion: ~s~\"I haven't eaten all day, Jo'on... my stomach's eating itself. You're buying me greasy burgers.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN1C' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN1D" text "~y~Jo'on: ~s~\"Greasy drive-thru junk? Think bigger! But fine, whatever, I'm payin', so move your legs!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN1D' time 3100 flag 1
+    0001: wait 3100 ms
+    0002: jump @Finish_Reunion_Chat
+end
+
+// =========================================================================
+// REUNION 2: THE WALKING JINX
+// =========================================================================
+if
+    0039: 29@ == 2
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN2A" text "~y~Jo'on: ~s~\"About time, Shion! I just spotted three fat banks and a strip of flashy casinos loaded with cash!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN2A' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN2B" text "~y~Jo'on: ~s~\"Time to go to work! You're gonna drag every rich sucker in this district straight down to zero!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN2B' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN2C" text "~b~Shion: ~s~\"Banks sound exhausting... but I'll make their wallets rot if you keep me fed.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN2C' time 3500 flag 1
+    0001: wait 3500 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN2D" text "~y~Jo'on: ~s~\"AHAHAHA! Deal! Let's go bleed these clueless chumps completely bone-dry!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN2D' time 3400 flag 1
+    0001: wait 3400 ms
+    0002: jump @Finish_Reunion_Chat
+end
+
+// =========================================================================
+// REUNION 3: THE COIN AT HER FEET
+// =========================================================================
+if
+    0039: 29@ == 3
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN3A" text "~y~Jo'on: ~s~\"Don't just slump against the brick lookin' pathetic, Shion! You're killin' my VIP vibe!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN3A' time 3500 flag 1
+    0001: wait 3500 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN3B" text "~b~Shion: ~s~\"Someone threw a nickel at my bare feet earlier... they thought I was a pile of trash, Jo'on.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN3B' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN3C" text "~y~Jo'on: ~s~\"A nickel?! The nerve of these peasants! Move it before they start chuckin' rotten fruit!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN3C' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN3D" text "~b~Shion: ~s~\"I'm dragging my feet as fast as I can... don't walk so fast.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN3D' time 2800 flag 1
+    0001: wait 2800 ms
+    0002: jump @Finish_Reunion_Chat
+end
+
+// =========================================================================
+// REUNION 4: CARDBOARD BEDS & HEATED SEATS
+// =========================================================================
+if
+    0039: 29@ == 4
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN4A" text "~y~Jo'on: ~s~\"Gross! Are you leanin' on that filthy wall standin' barefoot on a pizza box?! Move it!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN4A' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN4B" text "~b~Shion: ~s~\"The sidewalk's freezing, Jo'on... cardboard keeps my bare feet off the cold ground.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN4B' time 3500 flag 1
+    0001: wait 3500 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN4C" text "~y~Jo'on: ~s~\"Cardboard is for losers! I just boosted a sweet ride with heated leather seats. Get in!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN4C' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN4D" text "~b~Shion: ~s~\"Heated seats... yeah. My feet are completely numb. Move over.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN4D' time 3100 flag 1
+    0001: wait 3100 ms
+    0002: jump @Finish_Reunion_Chat
+end
+
+// =========================================================================
+// REUNION 5: THE BEGGAR'S CUP & EXPENSIVE TASTE
+// =========================================================================
+if
+    0039: 29@ == 5
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN5A" text "~y~Jo'on: ~s~\"Ditch that embarrassin' cup, Shion! We don't beg for pocket change, we take everything!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN5A' time 3800 flag 1
+    0001: wait 3800 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN5B" text "~b~Shion: ~s~\"I've got eighty-five cents here, Jo'on... that's almost enough for stale vending machine tea.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN5B' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN5C" text "~y~Jo'on: ~s~\"Chuck it in the gutter! Tonight we're feastin' like queens on someone else's tab! Keep up!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN5C' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Reunion_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_RN5D" text "~b~Shion: ~s~\"I'm keeping the coins in my sleeve... but if you're buying hot food, lead the way.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RN5D' time 3500 flag 1
+    0001: wait 3500 ms
+    0002: jump @Finish_Reunion_Chat
+end
+
+:Finish_Reunion_Chat
+03EB: clear_small_messages_only
+// Signal SpawnShion.cs that the dialogue is complete!
+0085: 30@ = 31@
+000A: 30@ += MEM_REUNION_SIGNAL
+0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+// Release Priority Lock!
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0A93: terminate_this_custom_script
+
+// =========================================================================
+// SUBROUTINE: SAFETY BAILOUT
+// =========================================================================
+:Check_Reunion_Alive_Or_Exit
+if or
+    8256: not player $PLAYER_CHAR defined
+    8019: not 10@ > 0
+    0E25: is_on_cutscene
+    0EB7: is_on_scripted_cutscene
+then
+    0050: gosub @Abort_Reunion_And_Terminate
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+if or
+    0118: actor $PLAYER_ACTOR dead
+    0741: actor $PLAYER_ACTOR busted
+then
+    0050: gosub @Abort_Reunion_And_Terminate
+end
+
+if
+    856D: not actor 10@ defined
+then
+    0050: gosub @Abort_Reunion_And_Terminate
+end
+
+if
+    0118: actor 10@ dead
+then
+    0050: gosub @Abort_Reunion_And_Terminate
+end
+0051: return
+
+:Abort_Reunion_And_Terminate
+03EB: clear_small_messages_only
+0085: 30@ = 31@
+000A: 30@ += MEM_REUNION_SIGNAL
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 16@ == 4
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+0A93: terminate_this_custom_script

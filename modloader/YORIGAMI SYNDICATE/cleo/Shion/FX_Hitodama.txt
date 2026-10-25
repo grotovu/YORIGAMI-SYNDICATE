@@ -1,0 +1,555 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+script_name "Sh_Hito"
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED)
+// =========================================================================
+const
+    MEM_CMBT_HITODAMA_FX = 156    // Formerly 734
+end
+
+// Capture Shion Actor Handle passed from SpawnShion.cs immediately
+0085: 10@ = 0@
+
+if or
+    8256: not player $PLAYER_CHAR defined
+    8019: not 10@ > 0
+    856D: not actor 10@ defined
+then
+    0A93: terminate_this_custom_script
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// --- INDEPENDENT ORBITAL ANGLES & MASTER CONTINUOUS OSCILLATOR ---
+0@ = 0.0    // Cluster 1 Orbital Angle (float)
+1@ = 120.0  // Cluster 2 Orbital Angle (float)
+12@ = 240.0 // Cluster 3 Orbital Angle (float)
+16@ = 0.0   // Master Harmonic Wave Oscillator (0.0 to 360.0, float)
+
+17@ = 0.0   // Current Fade Multiplier (0.0 = Hidden, 1.0 = Full Size)
+18@ = 0.0   // Target Fade Multiplier
+
+TIMERB = 10000 // Combat Activity Timer (starts expired at 10s)
+
+// Baseline Health & Armour Trackers
+0226: 27@ = actor $PLAYER_ACTOR health
+04DD: 28@ = actor $PLAYER_ACTOR armour
+0226: 29@ = actor 10@ health
+
+:Hitodama_Loop
+wait 0 // 0ms wait for silky smooth 60 FPS animation!
+
+if or
+    8256: not player $PLAYER_CHAR defined
+    8019: not 10@ > 0
+    856D: not actor 10@ defined
+then
+    0A93: terminate_this_custom_script
+end
+
+if or
+    0118: actor 10@ dead
+    0118: actor $PLAYER_ACTOR dead
+then
+    0A93: terminate_this_custom_script
+end
+
+if or
+    016B: fading
+    0E25: is_on_cutscene
+then
+    wait 250
+    0002: jump @Hitodama_Loop
+end
+
+// =========================================================================
+// 1. ACTIVE COMBAT & DAMAGE DETECTOR
+// =========================================================================
+// A. Check for Incoming Damage on Jo'on
+0226: 20@ = actor $PLAYER_ACTOR health
+04DD: 21@ = actor $PLAYER_ACTOR armour
+if
+    001D: 27@ > 20@
+then
+    TIMERB = 0
+end
+if
+    001D: 28@ > 21@
+then
+    TIMERB = 0
+end
+0085: 27@ = 20@
+0085: 28@ = 21@
+
+// B. Check for Incoming Damage on Shion
+0226: 22@ = actor 10@ health
+if
+    001D: 29@ > 22@
+then
+    TIMERB = 0
+end
+0085: 29@ = 22@
+
+// C. Check if Shion is Actively Shooting / Fighting
+if or
+    02E0: actor 10@ firing_weapon
+    0E47: is_char_fighting 10@
+    0E46: is_char_using_gun 10@
+then
+    TIMERB = 0
+end
+
+// D. Check if Jo'on is Actively Shooting / Fighting
+if or
+    02E0: actor $PLAYER_ACTOR firing_weapon
+    0E47: is_char_fighting $PLAYER_ACTOR
+    0E46: is_char_using_gun $PLAYER_ACTOR
+then
+    TIMERB = 0
+end
+
+// Read Live Combat Hitodama FX Toggle (1 = ON, 0 = OFF)
+0085: 30@ = 31@
+000A: 30@ += MEM_CMBT_HITODAMA_FX
+0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+
+// Combat Engagement Envelope: Active for 6s after last combat action
+if and
+    25@ == 1 // Only ignite if enabled in Shion Menu / INI!
+    6000 > TIMERB
+then
+    18@ = 1.0
+else
+    18@ = 0.0
+end
+
+// Hide if inside vehicle (unless either Jo'on or Shion is actively exiting)
+if
+    0449: actor 10@ in_a_car
+then
+    if and
+        8E4A: not is_char_exiting_any_car $PLAYER_ACTOR
+        8E4A: not is_char_exiting_any_car 10@
+    then
+        18@ = 0.0
+    end
+end
+
+// Read CTimer::ms_fTimeStep (float) and normalize to 30 FPS baseline
+0A8D: 8@ = read_memory 0xB7CB5C size 4 virtual_protect 0
+0013: 8@ *= 0.6
+
+// Smooth Interpolation (~350ms Fade Transition, frame-rate independent)
+0087: 9@ = 8@
+0013: 9@ *= 0.06
+
+if
+    0025: 18@ > 17@
+then
+    005B: 17@ += 9@
+    if
+        0021: 17@ > 1.0
+    then
+        17@ = 1.0
+    end
+end
+
+if
+    0025: 17@ > 18@
+then
+    0063: 17@ -= 9@
+    if
+        0023: 0.0 > 17@
+    then
+        17@ = 0.0
+    end
+end
+
+if
+    0023: 0.01 > 17@
+then
+    wait 50
+    0002: jump @Hitodama_Loop
+end
+
+
+// =========================================================================
+// 2. MASTER HARMONIC CLOCK & DENSE TEARDROP RADII
+// =========================================================================
+0087: 9@ = 8@
+0013: 9@ *= 0.85
+005B: 16@ += 9@ // Master erratic wander clock scaled by framerate
+if
+    0031: 16@ >= 360.0
+then
+    000F: 16@ -= 360.0
+end
+
+// Base Position (Root bone / Pelvis level)
+00A0: store_actor 10@ position_to 2@ 3@ 4@
+000B: 4@ += 0.10 // Torso level
+
+// Scaled Teardrop Radii (Collision-free: 11@, 13@, 14@, 15@, 26@)
+0087: 11@ = 17@
+0013: 11@ *= 0.19 // Base Radius (Wide)
+
+0087: 13@ = 17@
+0013: 13@ *= 0.17 // Belly Radius (Plump)
+
+0087: 14@ = 17@
+0013: 14@ *= 0.13 // Neck Radius
+
+0087: 15@ = 17@
+0013: 15@ *= 0.08 // Tip Radius
+
+0087: 26@ = 17@
+0013: 26@ *= 0.06 // Diamond Core Radius
+
+
+// =========================================================================
+// 3. CLUSTER 1: ERRATIC WANDERING BLUE FLAME
+// =========================================================================
+// Non-linear speed modulation scaled by framerate
+02F6: 24@ = sine 16@
+0013: 24@ *= 0.50
+000B: 24@ += 0.90
+006B: 24@ *= 8@
+005B: 0@ += 24@
+if
+    0031: 0@ >= 360.0
+then
+    000F: 0@ -= 360.0
+end
+
+// Dynamic breathing radius (0.48m to 0.84m)
+02F7: 19@ = cosine 16@
+0013: 19@ *= 0.18
+000B: 19@ += 0.66
+
+// Wide organic vertical sweep (-0.15m to +0.35m)
+0087: 23@ = 16@
+0013: 23@ *= 2.0
+if
+    0031: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+02F6: 22@ = sine 23@
+0013: 22@ *= 0.25
+000B: 22@ += 0.10 // Cluster 1 Center Z
+
+// --- Orb 1: Base Anchor ---
+02F6: 20@ = sine 0@
+02F7: 21@ = cosine 0@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000F: 24@ -= 0.04
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+
+// --- Orb 2: Belly ---
+0087: 25@ = 0@
+000B: 25@ += 1.0 // Tiny angle offset
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// --- Orb 3: Neck ---
+0087: 25@ = 0@
+000F: 25@ -= 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.035
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// --- Orb 4: Flickering Tip ---
+0087: 25@ = 0@
+000B: 25@ += 1.5
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.075
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+
+
+// =========================================================================
+// 4. CLUSTER 2: ASYNCHRONOUS DRIFTING FLAME (+120 deg harmonic)
+// =========================================================================
+0087: 23@ = 16@
+000B: 23@ += 120.0
+if
+    0031: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+
+// Independent speed modulation scaled by framerate
+02F6: 24@ = sine 23@
+0013: 24@ *= 0.55
+000B: 24@ += 0.85
+006B: 24@ *= 8@
+005B: 1@ += 24@
+if
+    0031: 1@ >= 360.0
+then
+    000F: 1@ -= 360.0
+end
+
+// Independent breathing radius (0.42m to 0.82m)
+02F7: 19@ = cosine 23@
+0013: 19@ *= 0.20
+000B: 19@ += 0.62
+
+// Independent vertical sweep (-0.25m to +0.25m)
+0087: 25@ = 23@
+0013: 25@ *= 2.0
+if
+    0031: 25@ >= 360.0
+then
+    000F: 25@ -= 360.0
+end
+02F6: 22@ = sine 25@
+0013: 22@ *= 0.25 // Cluster 2 Center Z
+
+// --- Orb 1: Base ---
+02F6: 20@ = sine 1@
+02F7: 21@ = cosine 1@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000F: 24@ -= 0.04
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+
+// --- Orb 2: Belly ---
+0087: 25@ = 1@
+000B: 25@ += 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// --- Orb 3: Neck ---
+0087: 25@ = 1@
+000F: 25@ -= 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.035
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// --- Orb 4: Tip ---
+0087: 25@ = 1@
+000B: 25@ += 1.5
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.075
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+
+
+// =========================================================================
+// 5. CLUSTER 3: LANGUID SWIRL FLAME (+240 deg harmonic)
+// =========================================================================
+0087: 23@ = 16@
+000B: 23@ += 240.0
+if
+    0031: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+
+// Independent speed modulation scaled by framerate
+02F7: 24@ = cosine 23@
+0013: 24@ *= 0.50
+000B: 24@ += 0.75
+006B: 24@ *= 8@
+005B: 12@ += 24@ // 12@ is strictly reserved for Cluster 3 angle!
+if
+    0031: 12@ >= 360.0
+then
+    000F: 12@ -= 360.0
+end
+
+// Independent breathing radius (0.50m to 0.86m)
+02F6: 19@ = sine 23@
+0013: 19@ *= 0.18
+000B: 19@ += 0.68
+
+// Independent vertical sweep (-0.30m to +0.15m)
+0087: 25@ = 23@
+0013: 25@ *= 2.0
+if
+    0031: 25@ >= 360.0
+then
+    000F: 25@ -= 360.0
+end
+02F7: 22@ = cosine 25@
+0013: 22@ *= 0.22
+000F: 22@ -= 0.08 // Cluster 3 Center Z
+
+// --- Orb 1: Base ---
+02F6: 20@ = sine 12@
+02F7: 21@ = cosine 12@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000F: 24@ -= 0.04
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+
+// --- Orb 2: Belly ---
+0087: 25@ = 12@
+000B: 25@ += 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// --- Orb 3: Neck ---
+0087: 25@ = 12@
+000F: 25@ -= 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.035
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// --- Orb 4: Tip ---
+0087: 25@ = 12@
+000B: 25@ += 1.5
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.075
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+
+0002: jump @Hitodama_Loop

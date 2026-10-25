@@ -1,0 +1,402 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+
+script_name "Sh_Pity"
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED)
+// =========================================================================
+const
+    MEM_PRIORITY_LOCK = 20
+    MEM_SHION_HANDLE = 116
+    MEM_LORE_PROGRESS_BIT = 244
+end
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+
+// 0@ = Shion Entity Handle (-1 = Hitodama Spirit Form, >0 = Solid Ped)
+0085: 10@ = 0@
+
+if
+    0039: 10@ == 0
+then
+    0002: jump @Finalize_Ambient_Chat
+end
+
+// Lock Check: Banter is locked until Sister Talk Bit 16 ("The Aura Beneath the Rags") is completed
+0085: 30@ = 31@
+000A: 30@ += MEM_LORE_PROGRESS_BIT
+0A8D: 15@ = read_memory 30@ size 4 virtual_protect 0
+if
+    88B7: not test 15@ bit 16
+then
+    0002: jump @Finalize_Ambient_Chat
+end
+
+0050: gosub @Check_Alive_Or_Exit
+
+// Wait for Grim Pity godmode shield and knockdown to completely expire (6000ms)
+0001: wait 6000 ms
+0050: gosub @Check_Alive_Or_Exit
+
+23@ = 0 // Sustained calm timer (ms)
+24@ = 0 // Total search timeout counter (ms)
+
+// =========================================================================
+// POST-COMBAT CALM DETECTOR
+// =========================================================================
+:GrimPity_WaitCombatEnd_Loop
+0001: wait 250 ms
+0050: gosub @Check_Alive_Or_Exit
+
+000A: 24@ += 250
+if
+    24@ >= 90000 // 90-second failsafe expiration
+then
+    0002: jump @Finalize_Ambient_Chat
+end
+
+01F5: 20@ = get_player_actor $PLAYER_CHAR
+
+// Check 1: Is player aiming, shooting, or in melee?
+25@ = 0
+if or
+    02E0: actor 20@ firing_weapon
+    0E67: is_aim_button_pressed 0
+    0E47: is_char_fighting 20@
+then
+    25@ = 1
+end
+
+// Check 2: Did player take damage last frame?
+if
+    25@ == 0
+then
+    0EB5: get_char_damage_last_frame 20@ damager 18@ type 17@ part 19@ intensity 26@
+    if
+        26@ > 0.0
+    then
+        25@ = 1
+    end
+end
+
+// Check 3: If Shion is on foot, is she still actively in combat?
+if and
+    25@ == 0
+    10@ > 0
+then
+    if and
+        056D: actor 10@ defined
+        8118: not actor 10@ dead
+    then
+        if or
+            02E0: actor 10@ firing_weapon
+            0E47: is_char_fighting 10@
+        then
+            25@ = 1
+        end
+    end
+end
+
+// Check 4: If wanted level > 0, are police within 25 meters?
+if
+    25@ == 0
+then
+    01C0: 21@ = player $PLAYER_CHAR wanted_level
+    if
+        21@ > 0
+    then
+        0EA5: get_closest_cop_near_char 20@ radius 25.0 alive 1 in_car 1 on_foot 1 seen_in_front 0 store_to 18@
+        if
+            18@ > 0
+        then
+            25@ = 1
+        end
+    end
+end
+
+// If combat is detected, reset calm accumulation; otherwise add time
+if
+    25@ == 1
+then
+    23@ = 0
+else
+    000A: 23@ += 250
+end
+
+// Require 3.5 continuous seconds of uninterrupted calm
+if
+    23@ < 3500
+then
+    0002: jump @GrimPity_WaitCombatEnd_Loop
+end
+
+// =========================================================================
+// CLAIM TIER 2 AMBIENT LOCK (Terminate if busy or blocked)
+// =========================================================================
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    16@ >= 2
+then
+    0A93: terminate_this_custom_script
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+
+// =========================================================================
+// POST-COMBAT SURVIVAL BANTER VARIANTS
+// =========================================================================
+0209: 27@ = random_int_in_ranges 0 6
+
+// Variant 0: Misery Won't Let You Die
+if
+    0039: 27@ == 0
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP0A" text "~b~Shion: ~s~\"You're totally broke, Jo'on. My misery won't let you die when you're this pathetic.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP0A' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP0B" text "~y~Jo'on: ~s~\"Shut your face! I ain't pathetic, I'm just cash-flow challenged! We're still standin'!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP0B' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP0C" text "~b~Shion: ~s~\"Whatever you say... Just buy me a hot bowl of ramen when we're done bleeding.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP0C' time 3500 flag 1
+    0001: wait 3500 ms
+    0002: jump @Finalize_Ambient_Chat
+end
+
+// Variant 1: The Only Meal Ticket
+if
+    0039: 27@ == 1
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP1A" text "~y~Jo'on: ~s~\"Gah! That almost took my freakin' head off! What good is your bad luck if I'm gettin' clipped?!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP1A' time 3800 flag 1
+    0001: wait 3800 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP1B" text "~b~Shion: ~s~\"I just pulled you out of the dirt, sis. You're my only meal ticket, so don't you dare die.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP1B' time 3800 flag 1
+    0001: wait 3800 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP1C" text "~y~Jo'on: ~s~\"H-Hey! Have some dignity! Fine, you're gettin' a five-star feast, but only after we fleece the next sucker!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP1C' time 3900 flag 1
+    0001: wait 3900 ms
+    0002: jump @Finalize_Ambient_Chat
+end
+
+// Variant 2: Cost of Living at Rock Bottom
+if
+    0039: 27@ == 2
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP2A" text "~b~Shion: ~s~\"Looks like shooting stopped... Being dead broke is the only reason we're still breathing.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP2A' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP2B" text "~y~Jo'on: ~s~\"Quit callin' me broke! I'm just tempo-rar-ily depleted! We wiped 'em out, didn't we?!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP2B' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP2C" text "~b~Shion: ~s~\"Yeah, and you owe me a hot meal for dragging your broke carcass back from the grave.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP2C' time 3600 flag 1
+    0001: wait 3600 ms
+    0002: jump @Finalize_Ambient_Chat
+end
+
+// Variant 3: Gunsmoke & Starvation
+if
+    0039: 27@ == 3
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP3A" text "~b~Shion: ~s~\"I think that was the last of them... My head is ringing, my knees hurt, and I'm starving.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP3A' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP3B" text "~y~Jo'on: ~s~\"Quit whinin'! We took their best shots and walked away! We're practically untouchable!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP3B' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP3C" text "~b~Shion: ~s~\"We're only untouchable because nobody wants to touch garbage, Jo'on...\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP3C' time 3300 flag 1
+    0001: wait 3300 ms
+    0002: jump @Finalize_Ambient_Chat
+end
+
+// Variant 4: Damaged Designer Clothes
+if
+    0039: 27@ == 4
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP4A" text "~y~Jo'on: ~s~\"Phew! That was way too close. My designer jacket's got gunpowder all over the sleeves!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP4A' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP4B" text "~b~Shion: ~s~\"Your heart literally stopped, Jo'on. Who cares about the jacket? You're buying me noodles.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP4B' time 3800 flag 1
+    0001: wait 3800 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP4C" text "~y~Jo'on: ~s~\"I care! Image is everythin'! Fine, we're gettin' deluxe ramen with extra pork! We'll just skip the bill!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP4C' time 3800 flag 1
+    0001: wait 3800 ms
+    0002: jump @Finalize_Ambient_Chat
+end
+
+// Variant 5: Flatlined Ten Seconds Ago
+if
+    0039: 27@ == 5
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP5A" text "~y~Jo'on: ~s~\"AHAHAHA! See that?! You can't take down Jo'on Yorigami! Nobody clips the boss!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP5A' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP5B" text "~b~Shion: ~s~\"You were literally flatlined ten seconds ago, Jo'on. Stop playing with our lives.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP5B' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_GP5C" text "~y~Jo'on: ~s~\"Quit naggin'! A win's a win! Now let's go shake down someone with actual money!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_GP5C' time 3500 flag 1
+    0001: wait 3500 ms
+    0002: jump @Finalize_Ambient_Chat
+end
+
+// =========================================================================
+// SUBROUTINE: SAFETY BAILOUT
+// =========================================================================
+:Check_Alive_Or_Exit
+if or
+    8256: not player $PLAYER_CHAR defined
+    0E25: is_on_cutscene
+    0EB7: is_on_scripted_cutscene
+then
+    03EB: clear_small_messages_only
+    0050: gosub @Release_Tier2_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+if or
+    0118: actor $PLAYER_ACTOR dead
+    0741: actor $PLAYER_ACTOR busted
+then
+    03EB: clear_small_messages_only
+    0050: gosub @Release_Tier2_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+// If Shion is in physical ped form (>0), ensure she is defined, alive, and within range
+if
+    10@ > 0
+then
+    if or
+        856D: not actor 10@ defined
+        0118: actor 10@ dead
+        8EE4: not locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 30.0
+    then
+        03EB: clear_small_messages_only
+        0050: gosub @Release_Tier2_Lock_Safely
+        0A93: terminate_this_custom_script
+    end
+end
+0051: return
+
+:Release_Tier2_Lock_Safely
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 19@ == 2
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+0051: return
+
+:Finalize_Ambient_Chat
+03EB: clear_small_messages_only
+0050: gosub @Release_Tier2_Lock_Safely
+0A93: terminate_this_custom_script

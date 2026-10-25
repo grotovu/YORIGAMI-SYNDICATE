@@ -1,0 +1,1430 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+{$USE ini}
+
+0000: NOP
+script_name "Sh_Wthr"
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED)
+// =========================================================================
+const
+    MEM_PRIORITY_LOCK = 20
+    MEM_SHION_HANDLE = 116
+    MEM_LAST_WEATHER_TIME = 212
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ holds the master pointer
+
+// Check if any higher priority tier is already holding the channel (Tier 3 Action or Tier 4 Theater)
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    16@ >= 3
+then
+    0A93: terminate_this_custom_script
+end
+
+// Claim Tier 2 Ambient Lock!
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+
+// 0@ = Shion Actor Handle passed from ShionChat.c
+0085: 10@ = 0@
+
+// Validate player state
+if or
+    8256: not player $PLAYER_CHAR defined
+    0E25: is_on_cutscene
+    0EB7: is_on_scripted_cutscene
+then
+    0002: jump @Finalize_Ambient_Chat
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
+if or
+    0118: actor $PLAYER_ACTOR dead
+    0741: actor $PLAYER_ACTOR busted
+then
+    0002: jump @Finalize_Ambient_Chat
+end
+
+// -------------------------------------------------------------------------
+// MUST BE STRICTLY OUTDOORS
+// -------------------------------------------------------------------------
+077E: get_active_interior_to 28@
+if
+    28@ > 0
+then
+    goto @Finalize_Ambient_Chat
+end
+
+// Check Form Mode: 0 = Physical Ped, 1 = Hitodama Spirit
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+if
+    10@ == -1
+then
+    11@ = 1 // Hitodama Form
+else
+    11@ = 0 // Physical Ped Form
+end
+
+// -------------------------------------------------------------------------
+// CONTEXT SENSOR: ON FOOT (0), ENCLOSED (1), OR ROOFLESS (2)
+// -------------------------------------------------------------------------
+if
+    8449: not actor $PLAYER_ACTOR in_a_car
+then
+    26@ = 0 // Context 0: On Foot Outdoors
+else
+    03C0: 24@ = actor $PLAYER_ACTOR car
+    0441: 25@ = car 24@ model
+
+    // Disallow weather chat on bicycles (BMX 481, Bike 509, Mountain Bike 510)
+    if or
+        25@ == 481
+        25@ == 509
+        25@ == 510
+    then
+        goto @Finalize_Ambient_Chat
+    end
+
+    // Must be in the same vehicle together if physical
+    if and
+        11@ == 0
+        10@ > 0
+        056D: actor 10@ defined
+    then
+        if
+            80DB: not actor 10@ in_car 24@
+        then
+            goto @Finalize_Ambient_Chat
+        end
+    end
+
+    26@ = 1 // Default: Context 1 (Enclosed Cabin with Roof)
+
+    // Check A: Motorcycles & Bikes
+    if
+        047A: actor $PLAYER_ACTOR driving_bike
+    then
+        26@ = 2
+    end
+
+    // Check B: Data-Driven INI Lookup by Vehicle Model Name
+    if
+        26@ == 1
+    then
+        0ADB: 16@v = vehicle_model 25@ name
+        0AF0: 22@ = read_int_from_ini_file "cleo\savedata\ShionVehicles.ini" section "VehicleRoofTypes" key 16@v
+
+        // Mode 1: Always Open-Top
+        if
+            22@ == 1
+        then
+            26@ = 2
+        end
+
+        // Mode 2: Modular Lowrider Roof (Stock is open, check Tuning Slot 7)
+        if
+            22@ == 2
+        then
+            096D: get_car 24@ component_on_slot 7 model_to 23@
+            if
+                8019: not 23@ > 0
+            then
+                26@ = 2 // No roof upgrade attached; treat as roofless open-top
+            end
+        end
+    end
+
+    // Check C: Native Convertibles (Windsor, Stallion, Feltzer, Comet)
+    if
+        26@ == 1
+    then
+        if and
+            0EFB: is_car_convertible 24@
+            8039: not 25@ == 603 // Exclude Phoenix
+        then
+            26@ = 2 // Context 2: Roofless Open-Top
+        end
+    end
+end
+
+// -------------------------------------------------------------------------
+// TIME OF DAY & WEATHER CLASSIFICATION
+// -------------------------------------------------------------------------
+// Retrieve live in-game time
+00BF: 21@ = current_time_hours, 22@ = current_time_minutes
+
+// Classify Day vs Night (Night = 21:00 to 05:59)
+20@ = 0
+if or
+    21@ >= 21
+    001B: 6 > 21@
+then
+    20@ = 1
+end
+
+// Timecyc weather ID check
+0D59: 23@ = current_weather
+27@ = 0
+
+// Group: Rain & Thunderstorm (8 = RAINY_SF, 16 = RAINY_COUNTRYSIDE)
+if or
+    23@ == 8
+    23@ == 16
+then
+    27@ = 1
+end
+
+// Group: Clear Skies / Blistering Heatwave (0 = LA, 11 = Vegas, 13 = Countryside, 17/18 = Desert)
+if or
+    23@ == 0
+    23@ == 11
+    23@ == 13
+    23@ == 17
+    23@ == 18
+then
+    27@ = 2
+end
+
+// Group: Desert Sandstorm (19 = SANDSTORM_DESERT)
+if
+    23@ == 19
+then
+    27@ = 3
+end
+
+// Group: Dense Maritime Fog (9 = FOGGY_SF)
+if
+    23@ == 9
+then
+    27@ = 4
+end
+
+// Group: Heavy City Smog (2 = EXTRASUNNY_SMOG_LA, 3 = SUNNY_SMOG_LA)
+if or
+    23@ == 2
+    23@ == 3
+then
+    27@ = 5
+end
+
+// Terminate cleanly if weather is mild or unlisted
+if
+    27@ == 0
+then
+    goto @Finalize_Ambient_Chat
+end
+
+// -------------------------------------------------------------------------
+// ANTI-REPETITION FILTER
+// -------------------------------------------------------------------------
+// Formula: BaseKey = (WeatherGroup * 10) + ContextID
+0085: 18@ = 27@
+0012: 18@ *= 10
+005A: 18@ += 26@
+
+// Offset key by 100 during nighttime to keep day and night dialogue separate
+if
+    20@ == 1
+then
+    000A: 18@ += 100
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_LAST_WEATHER_TIME
+0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+if
+    003B: 18@ == 29@
+then
+    goto @Finalize_Ambient_Chat
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_LAST_WEATHER_TIME
+0A8C: write_memory 30@ size 4 value 18@ virtual_protect 0
+
+// =========================================================================
+// DIALOGUE DISPATCHER
+// =========================================================================
+
+// =========================================================================
+// WEATHER GROUP: RAIN & THUNDERSTORMS (IDs 8, 16)
+// =========================================================================
+if
+    27@ == 1
+then
+    if
+        26@ == 0
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_W1F0H" text "~b~Shion: ~s~\"The rain passes right through me, Jo'on... at least I'm not getting soaked.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W1F0H' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W1F1H" text "~y~Jo'on: ~s~\"Must be nice! My drills are dyin'! Float over my head and block this rain, NOW!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W1F1H' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W1F2H" text "~b~Shion: ~s~\"Your expensive coat's soaking up gutter water... at least I don't have to worry about that.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W1F2H' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W1F3H" text "~y~Jo'on: ~s~\"Shut up before I smack ya with my purse! Drop lower and shield my hair from this crap!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W1F3H' time 3700 flag 1
+            0001: wait 3700 ms
+        else
+            0ADF: add_text_label "Y_W1F0" text "~b~Shion: ~s~\"The storm drains are overflowing... at least the puddle water washes my bare feet.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W1F0' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W1F1" text "~y~Jo'on: ~s~\"This rain's ruinin' my drills! It's an insult to my look! Get us under an awning, NOW!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W1F1' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W1F2" text "~b~Shion: ~s~\"I hope lightning doesn't hit your earrings... you're wearing so much metal.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W1F2' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W1F3" text "~y~Jo'on: ~s~\"IT'S SOLID GOLD! And back off, your bad luck's pullin' lightnin' right outta the clouds!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W1F3' time 3700 flag 1
+            0001: wait 3700 ms
+        end
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    if
+        26@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_W1C0" text "~y~Jo'on: ~s~\"Listen to the rain on the roof! Look at those soaked chumps on the sidewalk! AHAHAHA!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_W1C0' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_W1C1" text "~b~Shion: ~s~\"The squeak of the wipers... it's so repetitive, Jo'on. Makes me wanna take a nap.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_W1C1' time 3500 flag 1
+        0001: wait 3500 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_W1C2" text "~y~Jo'on: ~s~\"I'm aimin' for that giant gutter puddle near the sidewalk! Watch the wave I make!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_W1C2' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    if
+        26@ == 2
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_W1R0" text "~y~Jo'on: ~s~\"WHY DID I JACK A CONVERTIBLE IN A DAMN DOWNPOUR?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_W1R0' time 3500 flag 1
+        0001: wait 3500 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_W1R1H" text "~b~Shion: ~s~\"The rain splashes right through me without touching me... you look drenched, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W1R1H' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W1R2H" text "~y~Jo'on: ~s~\"I'M DRENCHED! The leather seats are ruined! I'm outrunnin' this cloud!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W1R2H' time 3600 flag 1
+        else
+            0ADF: add_text_label "Y_W1R1" text "~b~Shion: ~s~\"At fifty miles an hour, the raindrops feel like needles hitting my face, sis...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W1R1' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W1R2" text "~y~Jo'on: ~s~\"The seats are soakin' up water like sponges! I'm floorin' it! Outrun the rain!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W1R2' time 3600 flag 1
+        end
+        0001: wait 3600 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// WEATHER GROUP: CLEAR SKIES (DAY HEATWAVE VS NIGHT COLD DESERT)
+// =========================================================================
+if
+    27@ == 2
+then
+    // Daytime clear weather
+    if
+        20@ == 0
+    then
+        if
+            26@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_W2F0H" text "~b~Shion: ~s~\"Floating over hot pavement is so much easier... at least my bare feet aren't burning today.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2F0H' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2F1H" text "~y~Jo'on: ~s~\"Must be nice! My makeup's meltin'! Drift closer, your cold ghost aura helps!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2F1H' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2F2H" text "~b~Shion: ~s~\"I'm a personal air conditioner now? That'll cost you three burgers, sis.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2F2H' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2F3H" text "~y~Jo'on: ~s~\"I'll buy ya the whole diner if ya keep that cold spirit breeze on my neck!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2F3H' time 3600 flag 1
+                0001: wait 3600 ms
+            else
+                0ADF: add_text_label "Y_W2F0" text "~b~Shion: ~s~\"Ow... Jo'on, the street tar's so hot... my bare feet are sticking to the asphalt.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2F0' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2F1" text "~y~Jo'on: ~s~\"Don't stop movin'! My makeup's slidin' straight into my collar!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2F1' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2F2" text "~b~Shion: ~s~\"If I sit on the sidewalk... maybe someone'll mistake me for roadkill and throw some scraps at me.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2F2' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2F3" text "~y~Jo'on: ~s~\"Nobody's tossin' scraps to a curb bum! Drag your ass under that awning before we bake!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2F3' time 3600 flag 1
+                0001: wait 3600 ms
+            end
+            0002: jump @Finalize_Ambient_Chat
+        end
+
+        if
+            26@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_W2C0H" text "~b~Shion: ~s~\"Between the AC vents and my aura, this cabin's basically an icebox, Jo'on...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2C0H' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2C1H" text "~y~Jo'on: ~s~\"Look at those sweaty chumps fryin' on the pavement! Blast the AC! AHAHAHA! VIP luxury, baby!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2C1H' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2C2H" text "~b~Shion: ~s~\"My spirit chill's freezing the inside of the glass, sis...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2C2H' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2C3H" text "~y~Jo'on: ~s~\"Turn the defroster on, idiot! I need to see the road ahead!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2C3H' time 3200 flag 1
+                0001: wait 3200 ms
+            else
+                0ADF: add_text_label "Y_W2C0" text "~b~Shion: ~s~\"Cold air blowing out of the dashboard... how's this cheap car even doing that?\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2C0' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2C1" text "~y~Jo'on: ~s~\"It's called air conditionin', Shion! Cranked all the way to max! Deluxe VIP luxury!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2C1' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2C2" text "~b~Shion: ~s~\"I'm pressing my cheek against the plastic... leave the dial alone, I'm not moving.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2C2' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2C3" text "~y~Jo'on: ~s~\"Quit droolin' on the dashboard! Put your sunglasses on and act like ya got class!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2C3' time 3600 flag 1
+                0001: wait 3600 ms
+            end
+            0002: jump @Finalize_Ambient_Chat
+        end
+
+        if
+            26@ == 2
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_W2R0H" text "~b~Shion: ~s~\"The hot desert wind blows right through me... doesn't feel warm at all, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2R0H' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2R1H" text "~y~Jo'on: ~s~\"The steerin' wheel's blazin' hot! Hover over the rim and cool down my grip!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2R1H' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2R2H" text "~b~Shion: ~s~\"Fine, fine... stop yelling, I'm chilling the leather now... and you owe me a cold soda.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2R2H' time 3200 flag 1
+            else
+                0ADF: add_text_label "Y_W2R0" text "~b~Shion: ~s~\"Driving in this heat feels like sticking your head straight into an oven, Jo'on...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2R0' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2R1" text "~y~Jo'on: ~s~\"The wheel's blazin' hot! I'm steerin' with two fingertips so I don't burn my nails!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2R1' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2R2" text "~b~Shion: ~s~\"The wind's burning my eyes... feels like we're driving straight into a bonfire, sis.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2R2' time 3600 flag 1
+            end
+            0001: wait 3600 ms
+            0002: jump @Finalize_Ambient_Chat
+        end
+    else
+        // Nighttime clear weather
+        if
+            26@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_W2N0H" text "~b~Shion: ~s~\"Clear night sky... but the temperature dropped like a stone, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2N0H' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2N1H" text "~y~Jo'on: ~s~\"Desert nights are freezin'! Back off, Shion, your blue flame's makin' me colder!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2N1H' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+				03EB: clear_small_messages_only
+				0ADF: add_text_label "Y_W2N2H" text "~b~Shion: ~s~\"I'm freezing out here, Jo'on... can't we find a dry cardboard box or a steam grate?\""
+				09C1: add_next_text_to_brief_history 1
+				00BC: show_text_highpriority GXT 'Y_W2N2H' time 3400 flag 1
+				0001: wait 3400 ms
+				0050: gosub @Check_Alive_Or_Exit
+	
+				018C: play_sound 1058 at 0.0 0.0 0.0
+				03EB: clear_small_messages_only
+				0ADF: add_text_label "Y_W2N3H" text "~y~Jo'on: ~s~\"I ain't sleepin' on a sidewalk grate! Move your ass, find us an unlocked hotel lobby!\""
+				09C1: add_next_text_to_brief_history 1
+				00BC: show_text_highpriority GXT 'Y_W2N3H' time 3500 flag 1
+				0001: wait 3500 ms
+            else
+                0ADF: add_text_label "Y_W2N0" text "~b~Shion: ~s~\"The night wind's freezing, Jo'on... my bare feet are completely numb on the road.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2N0' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2N1" text "~y~Jo'on: ~s~\"Bakin' all day, and now an icebox! Pull your hood tight and walk faster!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2N1' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2N2" text "~b~Shion: ~s~\"At least the asphalt kept a little warmth from the day...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2N2' time 3400 flag 1
+                0001: wait 3400 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2N3" text "~y~Jo'on: ~s~\"Don't sit on the curb! Keep movin' before my lips crack!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2N3' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+            0002: jump @Finalize_Ambient_Chat
+        end
+
+        if
+            26@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_2NC0H" text "~b~Shion: ~s~\"Empty county highway at midnight... if this car breaks down, we're sleeping in the dirt, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_2NC0H' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_2NC1H" text "~y~Jo'on: ~s~\"Shut up with the jinxes! No cops and no traffic means I'm floorin' it straight to the strip!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_2NC1H' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_2NC2H" text "~b~Shion: ~s~\"The heater vents are blowing warm air... feels really comfortable, sis.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_2NC2H' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_2NC3H" text "~y~Jo'on: ~s~\"Point 'em toward me! I ain't catchin' a chill in my silk coat!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_2NC3H' time 3500 flag 1
+                0001: wait 3500 ms
+            else
+                0ADF: add_text_label "Y_W2NC0" text "~b~Shion: ~s~\"Not a single gas station in miles... you didn't even check the fuel gauge, did you?\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2NC0' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2NC1" text "~y~Jo'on: ~s~\"The needle's barely below E! Stop naggin' from the passenger seat and let me floor it!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2NC1' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2NC2" text "~b~Shion: ~s~\"Can we turn the dashboard heater up? My toes are frozen, sis.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2NC2' time 3400 flag 1
+                0001: wait 3400 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2NC3" text "~y~Jo'on: ~s~\"Fine, turn the dial. Just don't fog up the windshield with your breathin'!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2NC3' time 3600 flag 1
+                0001: wait 3600 ms
+            end
+            0002: jump @Finalize_Ambient_Chat
+        end
+
+        if
+            26@ == 2
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_2NR0H" text "~b~Shion: ~s~\"Riding with no roof at midnight feels like jumping into cold water, Jo'on...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_2NR0H' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_2NR1H" text "~y~Jo'on: ~s~\"Brrr! The night wind's cuttin' right through my silk sleeves! Blast the heat on high!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_2NR1H' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_2NR2H" text "~b~Shion: ~s~\"Convertibles look stylish, but you're shivering behind the wheel, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_2NR2H' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_2NR3H" text "~y~Jo'on: ~s~\"Shut your mouth! High-class means sufferin' for fashion! Just keep quiet and let me floor it!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_2NR3H' time 3600 flag 1
+            else
+                0ADF: add_text_label "Y_W2NR0" text "~b~Shion: ~s~\"Freezing wind at seventy miles an hour... my ears are completely numb, sis...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2NR0' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2NR1" text "~y~Jo'on: ~s~\"Brrr! Why did I jack a convertible in the desert at night?! I'm freezin'!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2NR1' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2NR2" text "~b~Shion: ~s~\"You're the one who wanted to feel the night breeze like a real VIP, sis...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2NR2' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W2NR3" text "~y~Jo'on: ~s~\"I changed my mind! I'm steppin' on the gas, you find us a motel with a heater!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W2NR3' time 3500 flag 1
+            end
+            0001: wait 3500 ms
+            0002: jump @Finalize_Ambient_Chat
+        end
+    end
+end
+
+// =========================================================================
+// WEATHER GROUP: DESERT SANDSTORM (ID 19)
+// =========================================================================
+if
+    27@ == 3
+then
+    if
+        26@ == 0
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_W3F0" text "~y~Jo'on: ~s~\"COUGH! I got sand in my lipstick! This stupid dust's scratchin' up my designer coat!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_W3F0' time 3500 flag 1
+        0001: wait 3500 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_W3F1H" text "~b~Shion: ~s~\"The sand's flying right through me... doesn't bother me at all, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W3F1H' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W3F2H" text "~y~Jo'on: ~s~\"Stop braggin' about bein' a ghost and find shelter before my clothes tear!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W3F2H' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W3F3H" text "~b~Shion: ~s~\"Dust doesn't hurt when you're just floating... you look like you're choking on dirt, sis.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W3F3H' time 3700 flag 1
+        else
+            0ADF: add_text_label "Y_W3F1" text "~b~Shion: ~s~\"Keep your mouth shut, Jo'on... desert sand's got a nice, crunchy texture.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W3F1' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W3F2" text "~y~Jo'on: ~s~\"STOP CHEWIN' ON DIRT! We ain't lizards! Get us under a roof before I choke!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W3F2' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W3F3" text "~b~Shion: ~s~\"The blowing sand gives a full-body scrub... feels almost like a bath, sis.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W3F3' time 3500 flag 1
+        end
+        0001: wait 3500 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    if
+        26@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_W3C0" text "~y~Jo'on: ~s~\"Listen to the grit on the glass! It's strippin' the clear coat off my ride!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_W3C0' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_W3C1" text "~b~Shion: ~s~\"The windshield wipers are just smearing yellow mud... can't see the asphalt at all.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_W3C1' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_W3C2" text "~y~Jo'on: ~s~\"I'm talkin' about resale value! If this glass cracks, you're payin' for every scratch!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_W3C2' time 3700 flag 1
+        0001: wait 3700 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    if
+        26@ == 2
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_W3R0" text "~y~Jo'on: ~s~\"WE'RE IN A DUST BLENDER! I'M PULLIN' OVER! MY EYES ARE PACKED WITH DIRT!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_W3R0' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_W3R1H" text "~b~Shion: ~s~\"All that flying sand goes right through me... can't see anything out there, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W3R1H' time 3700 flag 1
+        else
+            0ADF: add_text_label "Y_W3R1" text "~b~Shion: ~s~\"I can't see the road, Jo'on! I think you just clipped a wooden fence!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W3R1' time 3500 flag 1
+        end
+        0001: wait 3500 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_W3R2" text "~y~Jo'on: ~s~\"Next time I jack a ride in the desert, remind me to check for a solid roof!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_W3R2' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// WEATHER GROUP: DENSE MARITIME FOG (ID 9)
+// =========================================================================
+if
+    27@ == 4
+then
+    if
+        26@ == 0
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_W4F0" text "~y~Jo'on: ~s~\"I can't see ten feet ahead! What's the point of rockin' high-end fashion if the whole city's blind?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_W4F0' time 3800 flag 1
+        0001: wait 3800 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_W4F1H" text "~b~Shion: ~s~\"If you want me floating ahead to scout through this mist, you're buying me a hot meal.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4F1H' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W4F2H" text "~y~Jo'on: ~s~\"Shut up and float! You'll get stale fries once we find our way to Didier Sachs!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4F2H' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W4F3H" text "~b~Shion: ~s~\"If debt collectors spot us in this fog, they'll just think you're being haunted anyway.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4F3H' time 3800 flag 1
+        else
+            0ADF: add_text_label "Y_W4F1" text "~b~Shion: ~s~\"Fog's nice, Jo'on... landlords and debt collectors walk right past us in the mist.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4F1' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W4F2" text "~y~Jo'on: ~s~\"It's damp, cold, and spooky! Feels like walkin' around in the Netherworld!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4F2' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W4F3" text "~b~Shion: ~s~\"Thick fog's great... restaurant managers can't spot you digging through their dumpsters.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4F3' time 3600 flag 1
+        end
+        0001: wait 3600 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    if
+        26@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_W4C0H" text "~b~Shion: ~s~\"You're driving completely blind in this soup, Jo'on... slow down before we crash.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4C0H' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W4C1H" text "~y~Jo'on: ~s~\"Then shove your head through the glass and scout! Call out guardrails before I smash 'em!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4C1H' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W4C2H" text "~b~Shion: ~s~\"I'm not sticking my face in oncoming traffic unless you're buying me dinner first...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4C2H' time 3000 flag 1
+        else
+            0ADF: add_text_label "Y_W4C0" text "~b~Shion: ~s~\"Jo'on, slow down! All I can see through the glass are red tail lights!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4C0' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W4C1" text "~y~Jo'on: ~s~\"I'm drivin' on raw instinct! Outta my way, peons! Clear the road!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4C1' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W4C2" text "~b~Shion: ~s~\"Your raw instinct just took off someone's side mirror, sis...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4C2' time 3000 flag 1
+        end
+        0001: wait 3000 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    if
+        26@ == 2
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_W4R0H" text "~b~Shion: ~s~\"The sea mist goes right through me... but your hair's getting really flat, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4R0H' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W4R1H" text "~y~Jo'on: ~s~\"MY DRILLS ARE FLATTENIN'?! I'M FLOORIN' IT! I refuse to look like a wet poodle!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4R1H' time 3600 flag 1
+        else
+            0ADF: add_text_label "Y_W4R0" text "~b~Shion: ~s~\"The cold mist's soaking straight through my clothes... I'm freezing out here, sis...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4R0' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W4R1" text "~y~Jo'on: ~s~\"My hair's soakin' up damp air! I look like I fell in a ditch! UNACCEPTABLE!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4R1' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W4R2" text "~b~Shion: ~s~\"If we hit a pole in this fog at top speed, at least we won't see it coming...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4R2' time 3600 flag 1
+        end
+        0001: wait 3600 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// WEATHER GROUP: HEAVY CITY SMOG (DAYTIME YELLOW HAZE VS NIGHT DARK HAZE)
+// =========================================================================
+if
+    27@ == 5
+then
+    // Daytime smog
+    if
+        20@ == 0
+    then
+        if
+            26@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W5F0" text "~y~Jo'on: ~s~\"Look at that yellow haze over the city... that's the smell of marks clockin' overtime!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W5F0' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_W5F1H" text "~b~Shion: ~s~\"Yellow smog over the skyline... at least spirits don't have to breathe soot.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5F1H' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W5F2H" text "~y~Jo'on: ~s~\"That's factory smoke makin' real cash, Shion! Suckers workin' overtime so I can spend it!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5F2H' time 3700 flag 1
+            else
+                0ADF: add_text_label "Y_W5F1" text "~b~Shion: ~s~\"It burns my throat, Jo'on... smells like thousands of tailpipes and old trash.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5F1' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W5F2" text "~y~Jo'on: ~s~\"You've got the taste of an alley cat, Shion! That's the scent of people makin' bank!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5F2' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W5F3" text "~b~Shion: ~s~\"All that soot's coating my lungs... feels like I'm swallowing exhaust fumes for dinner, sis.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5F3' time 3600 flag 1
+            end
+            0001: wait 3600 ms
+            0002: jump @Finalize_Ambient_Chat
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W5C0" text "~b~Shion: ~s~\"The air out there looks like greasy dishwater, Jo'on... can't even see the sun.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W5C0' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W5C1" text "~y~Jo'on: ~s~\"Shut the dashboard vents, Shion! Let the peons choke, our cabin air's strictly VIP!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W5C1' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_W5C2H" text "~b~Shion: ~s~\"There's no filters in this junker... you can barely see the dashboard in this haze, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5C2H' time 3700 flag 1
+            else
+                0ADF: add_text_label "Y_W5C2" text "~b~Shion: ~s~\"I don't think this car has filters, sis... it just smells like burnt motor oil.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5C2' time 3500 flag 1
+            end
+            0001: wait 3500 ms
+            0002: jump @Finalize_Ambient_Chat
+        end
+    else
+        // Nighttime smog
+        if
+            26@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_W5N0H" text "~y~Jo'on: ~s~\"Nasty city smog... but look how the neon hits these rings! Heavy bling, baby!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5N0H' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W5N1H" text "~b~Shion: ~s~\"Even in the dark, the air tastes like exhaust and burnt rubber, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5N1H' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W5N2H" text "~y~Jo'on: ~s~\"Industrial exhaust! That means factories are pumpin' out stuff for me to buy!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5N2H' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W5N3H" text "~b~Shion: ~s~\"It's so dark and filthy... feels just like the alleys landlords kicked me out of.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5N3H' time 3500 flag 1
+            else
+                0ADF: add_text_label "Y_W5N0" text "~b~Shion: ~s~\"The city smog trapped all the road dust tonight... my chest feels heavy, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5N0' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W5N1" text "~y~Jo'on: ~s~\"Breathe through your collar! The night air's packed with traffic soot!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5N1' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W5N2" text "~b~Shion: ~s~\"The streetlamps are so dim I can't even see the broken bottles on the curb...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5N2' time 3400 flag 1
+                0001: wait 3400 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W5N3" text "~y~Jo'on: ~s~\"Dim lamps mean we blend right into the dark! Perfect cover for shakin' down marks!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5N3' time 3500 flag 1
+            end
+            0001: wait 3500 ms
+            0002: jump @Finalize_Ambient_Chat
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_5NC0H" text "~b~Shion: ~s~\"You can't even see twenty feet in this filthy haze... you're gonna rear-end a bus, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_5NC0H' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_5NC1H" text "~y~Jo'on: ~s~\"I'm hittin' the high beams! I ain't slowin' down for nighttime soot!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_5NC1H' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_5NC2H" text "~b~Shion: ~s~\"At least traffic slowed down... nobody can see where they're driving.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_5NC2H' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_5NC3H" text "~y~Jo'on: ~s~\"Then I'm passin' 'em all on the shoulder! Steppin' on the throttle!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_5NC3H' time 3400 flag 1
+            else
+                0ADF: add_text_label "Y_W5NC0" text "~b~Shion: ~s~\"I can't see past the bumper in this muck, Jo'on... slow down before you put us in a ditch.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5NC0' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W5NC1" text "~y~Jo'on: ~s~\"I'm turnin' on the fog lights! We've got business across town and I ain't crawlin' at twenty!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5NC1' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W5NC2" text "~b~Shion: ~s~\"It smells like burnt fuel even with the windows rolled up, sis...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5NC2' time 3400 flag 1
+                0001: wait 3400 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_W5NC3" text "~y~Jo'on: ~s~\"That's the perfume of big-city nightlife, baby! Stop complainin' and watch the lane!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5NC3' time 3600 flag 1
+            end
+            0001: wait 3600 ms
+            0002: jump @Finalize_Ambient_Chat
+        end
+    end
+end
+
+goto @Finalize_Ambient_Chat
+
+// =========================================================================
+// SUBROUTINE: SAFETY BAILOUT
+// =========================================================================
+:Check_Alive_Or_Exit
+if or
+    8256: not player $PLAYER_CHAR defined
+    0E25: is_on_cutscene
+    0EB7: is_on_scripted_cutscene
+then
+    03EB: clear_small_messages_only
+    0002: jump @Finalize_Ambient_Chat
+end
+
+if or
+    0118: actor $PLAYER_ACTOR dead
+    0741: actor $PLAYER_ACTOR busted
+then
+    03EB: clear_small_messages_only
+    0002: jump @Finalize_Ambient_Chat
+end
+
+// Check if another Tier 2+ script took over the priority lock while we waited!
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
+if
+    8039: not 19@ == 2
+then
+    0A93: terminate_this_custom_script
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    2@ == 0 // Inactive or dismissed
+then
+    03EB: clear_small_messages_only
+    0002: jump @Finalize_Ambient_Chat
+end
+
+if
+    2@ > 0 // Only check actor handle if in Solid Ped form
+then
+    if or
+        856D: not actor 2@ defined
+        0118: actor 2@ dead
+    then
+        03EB: clear_small_messages_only
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    // If on foot, abort if separated by more than 35 meters
+    if
+        26@ == 0
+    then
+        if
+            8EE4: not locate_char_distance_to_char $PLAYER_ACTOR char 2@ radius 35.0
+        then
+            03EB: clear_small_messages_only
+            0002: jump @Finalize_Ambient_Chat
+        end
+    end
+end
+return
+
+:Finalize_Ambient_Chat
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
+if
+    19@ == 2 // Only wipe prints and release if we still own the channel
+then
+    03EB: clear_small_messages_only
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+0A93: terminate_this_custom_script

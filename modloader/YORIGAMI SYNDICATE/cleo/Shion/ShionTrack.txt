@@ -1,0 +1,631 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+script_name "Sh_Trac"
+
+wait 1000
+
+// =========================================================================
+// PRUNED HEAP DICTIONARY (SHION TRACKER TELEMETRY)
+// =========================================================================
+const
+    // --- SHION ENTITY HANDLE ---
+    MEM_SHION_HANDLE = 116
+
+    // --- SESSION STATE ---
+    MEM_SPOKEN_TOPICS_BIT = 224
+
+    // --- SHIONMEMORIES.INI TELEMETRY (THE LEDGER) ---
+    MEM_LAST_FED_HOURS = 228
+    MEM_TIME_TOGETHER_MIN = 232
+    MEM_SHION_KILLS = 236
+    MEM_PIMPING_LEVEL = 240
+    MEM_LORE_PROGRESS_BIT = 244
+    MEM_TIMES_TREATED = 248
+    MEM_TOTAL_CASH_GIVEN = 252
+    MEM_CASINO_LOSSES = 256
+    MEM_BURGLARIES = 264
+    MEM_CARS_WRECKED = 268
+    MEM_GRIMPITY_SAVES = 272
+    MEM_PARAMEDIC_SAVES = 280
+    MEM_MOD_CASH_SPENT = 284
+    MEM_JOON_KILLS_W_SHION = 296
+    MEM_TIMES_WASTED = 300
+    MEM_TIMES_BUSTED = 304
+    MEM_TIMES_DUMPSTER = 308
+    MEM_FAV_CAR_MODEL = 312
+    MEM_FAV_CAR_MINUTES = 316
+    MEM_CARS_MODDED = 320
+    MEM_BRIBES_PAID = 324
+    MEM_TIME_BROKE_MIN = 328
+    MEM_FIREFIGHT_EXTING = 260
+    MEM_VIGILANTE_KILLS = 352
+    MEM_TAXI_FARES = 356
+    MEM_DANMAKU_CASH_SPENT = 368
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    31@ == 0
+then
+    jump @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE VALID MASTER POINTER.
+
+1@ = -999 // Last Tracked Save Slot (-999 forces initial load)
+2@ = 0    // Minute Millisecond Accumulator
+3@ = 0    // Broke Minute Millisecond Accumulator
+
+// Launch Specialized Sub-Tracker Threads
+0A92: create_custom_thread "Shion\ShionTrack_World.c"
+0A92: create_custom_thread "Shion\ShionTrack_Missions.c"
+
+// Register Save Confirmation callback for slot flushing
+// Note: 13@ is reserved by 0ED1 as the event receiver!
+0ED1: set_script_event_save_confirmation 1 @OnTrackSaved 13@
+
+:ShionTrack_Loop
+wait 250
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    jump @ShionTrack_Loop
+end
+
+// -------------------------------------------------------------------------
+// SAVE SLOT CHANGE DETECTOR (Load slot data into Shared Memory)
+// -------------------------------------------------------------------------
+0E2C: 0@ = get_current_save_slot
+if
+    0@ < 0
+then
+    0@ = 0
+end
+
+if
+    803B: not 0@ == 1@
+then
+    gosub @ShionTrack_LoadSlotData
+end
+
+// -------------------------------------------------------------------------
+// PLAYTIME ACCUMULATOR (+1 Minute Together in Ped OR Hitodama Form)
+// -------------------------------------------------------------------------
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0 // Read Live Shion Handle
+
+// Check if Shion is active in either Physical (>0) or Hitodama (-1) form
+28@ = 0
+if
+    10@ == -1 // Floating with Jo'on as Hitodama!
+then
+    28@ = 1
+else
+    if
+        10@ > 0
+    then
+        if and
+            056D: actor 10@ defined
+            8118: not actor 10@ dead
+        then
+            28@ = 1
+        end
+    end
+end
+
+if
+    28@ == 1
+then
+    // Total Playtime Together
+    000A: 2@ += 250
+    if
+        2@ >= 60000
+    then
+        2@ = 0
+        0085: 30@ = 31@
+        000A: 30@ += MEM_TIME_TOGETHER_MIN
+        0A8D: 4@ = read_memory 30@ size 4 virtual_protect 0
+        0008: 4@ += 1
+        0085: 30@ = 31@
+        000A: 30@ += MEM_TIME_TOGETHER_MIN
+        0A8C: write_memory 30@ size 4 value 4@ virtual_protect 0
+    end
+
+    // Broke Playtime Together (Wallet <= $0 or in debt)
+    010B: 29@ = player $PLAYER_CHAR money
+    if
+        29@ <= 0
+    then
+        000A: 3@ += 250
+        if
+            3@ >= 60000
+        then
+            3@ = 0
+            0085: 30@ = 31@
+            000A: 30@ += MEM_TIME_BROKE_MIN
+            0A8D: 4@ = read_memory 30@ size 4 virtual_protect 0
+            0008: 4@ += 1
+            0085: 30@ = 31@
+            000A: 30@ += MEM_TIME_BROKE_MIN
+            0A8C: write_memory 30@ size 4 value 4@ virtual_protect 0
+        end
+    end
+else
+    2@ = 0
+    3@ = 0
+end
+
+jump @ShionTrack_Loop
+
+
+// =========================================================================
+// SUBROUTINES: LOAD & SAVE ALL MEMORY VARIABLES TO SHIONMEMORIES.INI
+// =========================================================================
+:ShionTrack_LoadSlotData
+// Reset Live Session Evaluation Memory (Unlatches all 6 topics for the new session!)
+0085: 30@ = 31@
+000A: 30@ += MEM_SPOKEN_TOPICS_BIT
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 1@ = 0@
+0AD3: 20@v = string_format "Slot_%d" 1@
+
+// --- COMPANIONSHIP & LORE ---
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimeTogetherMinutes"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_TIME_TOGETHER_MIN
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimeBrokeTogetherMinutes"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_TIME_BROKE_MIN
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "LoreProgress"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_LORE_PROGRESS_BIT
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+// --- COMBAT & SURVIVAL (WITH SHION ONLY) ---
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "JoonKillsWithShion"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_JOON_KILLS_W_SHION
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "ShionKills"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_KILLS
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimesWastedWithShion"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_TIMES_WASTED
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimesBustedWithShion"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_TIMES_BUSTED
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "GrimPitySaves"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_GRIMPITY_SAVES
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+// --- SUSTENANCE & CARE ---
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimesTreated"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_TIMES_TREATED
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimesDumpsterScavenged"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_TIMES_DUMPSTER
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TotalCashGiven"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_TOTAL_CASH_GIVEN
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "LastFedTotalHours"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_LAST_FED_HOURS
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+// --- DRIVING & VEHICLES ---
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "FavoriteCarModel"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_FAV_CAR_MODEL
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "FavoriteCarMinutes"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_FAV_CAR_MINUTES
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "CarsModdedWithShion"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_CARS_MODDED
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "ModCashSpentWithShion"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_MOD_CASH_SPENT
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "CarsWreckedWithShion"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_CARS_WRECKED
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+// --- FINANCES & ACTIVITIES ---
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "CasinoLossesWithShion"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_CASINO_LOSSES
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "BribesPaidWithShion"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_BRIBES_PAID
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "PimpingLevelPassed"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_PIMPING_LEVEL
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "ParamedicWithShion"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_PARAMEDIC_SAVES
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "BurglariesWithShion"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_BURGLARIES
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "FiresExtinguishedWithShion"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_FIREFIGHT_EXTING
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "VigilanteKillsWithShion"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_VIGILANTE_KILLS
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TaxiFaresWithShion"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_TAXI_FARES
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "DanmakuCashSpent"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_DANMAKU_CASH_SPENT
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+return
+
+:OnTrackSaved
+0085: 11@ = 13@
+if
+    11@ >= 0
+then
+    0085: 1@ = 11@
+else
+    0E2C: 11@ = get_current_save_slot
+    if
+        11@ >= 0
+    then
+        0085: 1@ = 11@
+    end
+end
+
+if
+    1@ < 0
+then
+    1@ = 0
+end
+
+0AD3: 20@v = string_format "Slot_%d" 1@
+
+// --- FLUSH ALL MEMORIES TO SHIONMEMORIES.INI ---
+0085: 27@ = 31@
+000A: 27@ += MEM_TIME_TOGETHER_MIN
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimeTogetherMinutes"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_TIME_BROKE_MIN
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimeBrokeTogetherMinutes"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_LORE_PROGRESS_BIT
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "LoreProgress"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_JOON_KILLS_W_SHION
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "JoonKillsWithShion"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_SHION_KILLS
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "ShionKills"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_TIMES_WASTED
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimesWastedWithShion"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_TIMES_BUSTED
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimesBustedWithShion"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_GRIMPITY_SAVES
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "GrimPitySaves"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_TIMES_TREATED
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimesTreated"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_TIMES_DUMPSTER
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimesDumpsterScavenged"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_TOTAL_CASH_GIVEN
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TotalCashGiven"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_LAST_FED_HOURS
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "LastFedTotalHours"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_FAV_CAR_MODEL
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "FavoriteCarModel"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_FAV_CAR_MINUTES
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "FavoriteCarMinutes"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_CARS_MODDED
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "CarsModdedWithShion"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_MOD_CASH_SPENT
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "ModCashSpentWithShion"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_CARS_WRECKED
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "CarsWreckedWithShion"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_CASINO_LOSSES
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "CasinoLossesWithShion"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_BRIBES_PAID
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "BribesPaidWithShion"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_PIMPING_LEVEL
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "PimpingLevelPassed"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_PARAMEDIC_SAVES
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "ParamedicWithShion"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_BURGLARIES
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "BurglariesWithShion"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_FIREFIGHT_EXTING
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "FiresExtinguishedWithShion"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_VIGILANTE_KILLS
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "VigilanteKillsWithShion"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_TAXI_FARES
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TaxiFaresWithShion"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_DANMAKU_CASH_SPENT
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "DanmakuCashSpent"
+
+// Safehouse heal for Shion (Capped at 500 max armor)
+0085: 27@ = 31@
+000A: 27@ += MEM_SHION_HANDLE
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+if
+    12@ > 0
+then
+    if and
+        056D: actor 12@ defined
+        8118: not actor 12@ dead
+    then
+        0223: set_actor 12@ health_to 1000
+        04DD: 24@ = actor 12@ armour
+        if
+            24@ < 500
+        then
+            25@ = 500
+            0062: 25@ -= 24@
+            035F: actor 12@ armour += 25@
+        end
+    end
+end
+
+0ED0: return_script_event

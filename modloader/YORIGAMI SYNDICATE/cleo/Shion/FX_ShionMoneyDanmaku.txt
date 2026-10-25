@@ -1,0 +1,392 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+script_name "Sh_FXDn"
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED TO DEPENDENCIES)
+// =========================================================================
+const
+    MEM_PLAYER_FORM = 12
+    MEM_ALLOC_DANMAKU = 64
+    MEM_DANMAKU_TOGGLE = 76
+    MEM_SHION_HANDLE = 116
+    MEM_HITODAMA_X = 144
+    MEM_HITODAMA_Y = 148
+    MEM_HITODAMA_Z = 152
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    0039: 31@ == 0
+then
+    goto @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// Orbital Angles (0 deg, 120 deg, 240 deg)
+0@ = 0.0    // Orb 1 Orbital Angle (float)
+1@ = 120.0  // Orb 2 Orbital Angle (float)
+12@ = 240.0 // Orb 3 Orbital Angle (float)
+
+10@ = 0.0   // Master Harmonic Wave Oscillator (float)
+17@ = 0.0   // Live Fade Multiplier (0.0 = Hidden, 1.0 = Full)
+18@ = 0.0   // Target Fade Multiplier
+
+:ShionDanmaku_FX_Loop
+wait 0 // Silky smooth 60 FPS animation
+
+if or
+    8256: not is_player_playing $PLAYER_CHAR
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+then
+    18@ = 0.0
+    17@ = 0.0
+    wait 250
+    goto @ShionDanmaku_FX_Loop
+end
+
+// =========================================================================
+// VISIBILITY DETECTOR
+// =========================================================================
+18@ = 0.0 // Default target: Inactive
+
+// Read Live Player Form
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+
+// Read Money Danmaku Allocated Points & Active Toggle
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_DANMAKU
+0A8D: 11@ = read_memory 30@ size 4 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_DANMAKU_TOGGLE
+0A8D: 13@ = read_memory 30@ size 4 virtual_protect 0
+
+// Read Live Shion Companion State (0 = Absent, >0 = Ped, -1 = Hitodama)
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 9@ = read_memory 30@ size 4 virtual_protect 0
+
+if and
+    11@ > 0
+    13@ == 1
+then
+    // Case A: Player is currently controlling Shion (Mode 2)
+    if
+        27@ == 2
+    then
+        18@ = 1.0
+        
+        // Hide if inside an enclosed vehicle
+        if
+            0449: actor $PLAYER_ACTOR in_a_car
+        then
+            if
+                8E4A: not is_char_exiting_any_car $PLAYER_ACTOR
+            then
+                18@ = 0.0
+            end
+        end
+    else
+        // Case B: Player is Jo'on/CJ, Shion is a physical companion ped
+        if
+            9@ > 0
+        then
+            if and
+                056D: actor 9@ defined
+                8118: not actor 9@ dead
+            then
+                18@ = 1.0
+                
+                // Hide if inside an enclosed vehicle
+                if
+                    0449: actor 9@ in_a_car
+                then
+                    if
+                        8E4A: not is_char_exiting_any_car 9@
+                    then
+                        18@ = 0.0
+                    end
+                end
+            end
+        end
+
+        // Case C: Player is Jo'on/CJ, Shion is a Hitodama spirit
+        if
+            9@ == -1
+        then
+            18@ = 1.0
+        end
+    end
+end
+
+// Read CTimer::ms_fTimeStep (float) and normalize to 30 FPS baseline
+0A8D: 14@ = read_memory 0xB7CB5C size 4 virtual_protect 0
+0013: 14@ *= 0.6
+
+// Smooth Fade-In Interpolation
+0087: 16@ = 14@
+0013: 16@ *= 0.08
+
+if
+    0025: 18@ > 17@
+then
+    005B: 17@ += 16@
+    if
+        0021: 17@ > 1.0
+    then
+        17@ = 1.0
+    end
+end
+
+// Smooth Fade-Out Interpolation
+0087: 16@ = 14@
+0013: 16@ *= 0.06
+
+if
+    0025: 17@ > 18@
+then
+    0063: 17@ -= 16@
+    if
+        0023: 0.0 > 17@
+    then
+        17@ = 0.0
+    end
+end
+
+// Sleep when fully faded out and inactive
+if and
+    0043: 18@ == 0.0
+    0023: 0.01 > 17@
+then
+    17@ = 0.0
+    wait 50
+    goto @ShionDanmaku_FX_Loop
+end
+
+
+// =========================================================================
+// FETCH BASE COORDINATES FOR SHION (PLAYER, PED, OR SPIRIT)
+// =========================================================================
+if
+    27@ == 2 // Player is Shion
+then
+    00A0: store_actor $PLAYER_ACTOR position_to 2@ 3@ 4@
+    000B: 4@ += 0.05
+else
+    if
+        9@ > 0 // Companion Ped Form
+    then
+        0085: 8@ = 9@
+        00A0: store_actor 8@ position_to 2@ 3@ 4@
+        000B: 4@ += 0.05
+    else
+        // Hitodama Spirit Form (Floating behind Jo'on)
+        0085: 30@ = 31@
+        000A: 30@ += MEM_HITODAMA_X
+        0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_HITODAMA_Y
+        0A8D: 3@ = read_memory 30@ size 4 virtual_protect 0
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_HITODAMA_Z
+        0A8D: 4@ = read_memory 30@ size 4 virtual_protect 0
+    end
+end
+
+
+// =========================================================================
+// ADVANCE HARMONIC CLOCKS & RADIUS CALCULATIONS
+// =========================================================================
+0087: 16@ = 14@
+0013: 16@ *= 0.75
+005B: 10@ += 16@ // Master wave clock
+if
+    0031: 10@ >= 360.0
+then
+    000F: 10@ -= 360.0
+end
+
+// Size Pulse for Tiny Satellite Orbs
+02F6: 22@ = sine 10@
+0013: 22@ *= 0.015
+000B: 22@ += 0.010
+
+0087: 20@ = 22@
+000B: 20@ += 0.11
+006B: 20@ *= 17@ // Outer Gold Halo: ~0.10m to 0.13m
+
+0087: 21@ = 22@
+0013: 21@ *= 0.35
+000B: 21@ += 0.04
+006B: 21@ *= 17@ // Inner Bright Core: ~0.04m to 0.05m
+
+
+// =========================================================================
+// RENDER ORB 1
+// =========================================================================
+02F6: 24@ = sine 10@
+0013: 24@ *= 0.45
+000B: 24@ += 0.90
+006B: 24@ *= 14@
+005B: 0@ += 24@
+if
+    0031: 0@ >= 360.0
+then
+    000F: 0@ -= 360.0
+end
+
+// Dynamic Orbit Radius: 0.52m to 0.72m
+02F7: 19@ = cosine 10@
+0013: 19@ *= 0.10
+000B: 19@ += 0.62
+
+02F6: 24@ = sine 0@
+02F7: 25@ = cosine 0@
+0087: 5@ = 2@
+006B: 25@ *= 19@
+005B: 5@ += 25@
+0087: 6@ = 3@
+006B: 24@ *= 19@
+005B: 6@ += 24@
+
+0087: 23@ = 10@
+0013: 23@ *= 2.0
+if
+    0031: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+02F6: 24@ = sine 23@
+0013: 24@ *= 0.18
+0087: 7@ = 4@
+005B: 7@ += 24@
+
+04D5: create_corona_at 5@ 6@ 7@ radius 20@ type 0 flare 0 RGB 255 210 20
+04D5: create_corona_at 5@ 6@ 7@ radius 21@ type 0 flare 0 RGB 255 255 220
+
+
+// =========================================================================
+// RENDER ORB 2 (+120 deg harmonic)
+// =========================================================================
+0087: 23@ = 10@
+000B: 23@ += 120.0
+if
+    0031: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+
+02F6: 24@ = sine 23@
+0013: 24@ *= 0.50
+000B: 24@ += 0.85
+006B: 24@ *= 14@
+005B: 1@ += 24@
+if
+    0031: 1@ >= 360.0
+then
+    000F: 1@ -= 360.0
+end
+
+02F7: 19@ = cosine 23@
+0013: 19@ *= 0.10
+000B: 19@ += 0.60
+
+02F6: 24@ = sine 1@
+02F7: 25@ = cosine 1@
+0087: 5@ = 2@
+006B: 25@ *= 19@
+005B: 5@ += 25@
+0087: 6@ = 3@
+006B: 24@ *= 19@
+005B: 6@ += 24@
+
+0087: 23@ = 10@
+0013: 23@ *= 2.0
+000B: 23@ += 120.0
+if
+    0031: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+02F6: 24@ = sine 23@
+0013: 24@ *= 0.18
+0087: 7@ = 4@
+005B: 7@ += 24@
+
+04D5: create_corona_at 5@ 6@ 7@ radius 20@ type 0 flare 0 RGB 255 210 20
+04D5: create_corona_at 5@ 6@ 7@ radius 21@ type 0 flare 0 RGB 255 255 220
+
+
+// =========================================================================
+// RENDER ORB 3 (+240 deg harmonic)
+// =========================================================================
+0087: 23@ = 10@
+000B: 23@ += 240.0
+if
+    0031: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+
+02F7: 24@ = cosine 23@
+0013: 24@ *= 0.45
+000B: 24@ += 0.80
+006B: 24@ *= 14@
+005B: 12@ += 24@
+if
+    0031: 12@ >= 360.0
+then
+    000F: 12@ -= 360.0
+end
+
+02F6: 19@ = sine 23@
+0013: 19@ *= 0.10
+000B: 19@ += 0.64
+
+02F6: 24@ = sine 12@
+02F7: 25@ = cosine 12@
+0087: 5@ = 2@
+006B: 25@ *= 19@
+005B: 5@ += 25@
+0087: 6@ = 3@
+006B: 24@ *= 19@
+005B: 6@ += 24@
+
+0087: 23@ = 10@
+0013: 23@ *= 2.0
+000B: 23@ += 240.0
+if
+    0031: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+02F7: 24@ = cosine 23@
+0013: 24@ *= 0.18
+0087: 7@ = 4@
+005B: 7@ += 24@
+
+04D5: create_corona_at 5@ 6@ 7@ radius 20@ type 0 flare 0 RGB 255 210 20
+04D5: create_corona_at 5@ 6@ 7@ radius 21@ type 0 flare 0 RGB 255 255 220
+
+goto @ShionDanmaku_FX_Loop

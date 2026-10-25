@@ -1,0 +1,418 @@
+{$CLEO .cs}
+
+script_name 'FLYING'
+
+// --- INITIALIZATION ---
+// Load required animations immediately on game load
+request_animation "PARACHUTE"
+
+:FLYING_LOAD_ANIM
+wait 0
+if
+  not has_animation_loaded "PARACHUTE"
+goto_if_false @FLYING_READY
+wait 0
+goto @FLYING_LOAD_ANIM
+
+:FLYING_READY
+// Script is now always active and waiting for flight trigger
+:FLYING_151
+wait 0
+if
+  is_player_playing 0
+goto_if_false @FLYING_151
+
+0@ = get_char_height_above_ground $scplayer
+if and
+  0@ > 1.4
+  is_button_pressed PadId.Pad1 {buttonId} Button.LeftShoulder1
+  not is_char_sitting_in_any_car $scplayer
+  is_char_in_air $scplayer
+goto_if_false @FLYING_151
+
+:FLYING_314
+if 
+  $onmission == 0
+goto_if_false @FLYING_343
+load_mission_text 'FTRAIN'
+
+:FLYING_343
+30@ = get_ped_pointer $scplayer
+30@ += 66
+31@ = read_memory 30@ {size} 1 {vp} False
+task_play_anim_non_interruptable $scplayer {animationName} "FLYING2" {animationFile} "PARACHUTE" {blendSpeed} 1.0 {loop} True {lockX} False {lockY} False {keepLastFrame} False {time} -1
+set_char_velocity $scplayer {x} 0.0 {y} 0.0 {z} 50.0
+10@ = 5.0
+shut_char_up $scplayer {state} True
+12@ = get_char_heading $scplayer
+
+:FLYING_455
+TIMERB = 0
+wait 0
+cset_lvar_float_to_lvar_int 13@ =# TIMERB
+13@ *= 0.001
+cset_lvar_float_to_lvar_int 14@ =# TIMERB
+14@ /= 51.0
+set_char_proofs $scplayer {bulletProof} True {fireProof} True {explosionProof} True {collisionProof} True {meleeProof} True
+if 
+  10@ > 30.0
+goto_if_false @FLYING_652
+if and
+  not is_char_playing_anim $scplayer {animationName} "FLYING"
+  not is_char_playing_anim $scplayer {animationName} "WEAPON_START_THROW"
+  not is_char_playing_anim $scplayer {animationName} "WEAPON_THROW"
+goto_if_false @FLYING_645
+task_play_anim_non_interruptable $scplayer {animationName} "FLYING" {animationFile} "PARACHUTE" {blendSpeed} 1.0 {loop} True {lockX} False {lockY} False {keepLastFrame} False {time} -1
+
+:FLYING_645
+goto @FLYING_761
+
+:FLYING_652
+if and
+  not is_char_playing_anim $scplayer {animationName} "FLYING2"
+  not is_char_playing_anim $scplayer {animationName} "WEAPON_START_THROW"
+  not is_char_playing_anim $scplayer {animationName} "WEAPON_THROW"
+goto_if_false @FLYING_761
+task_play_anim_non_interruptable $scplayer {animationName} "FLYING2" {animationFile} "PARACHUTE" {blendSpeed} 1.0 {loop} True {lockX} False {lockY} False {keepLastFrame} False {time} -1
+
+:FLYING_761
+0@ = get_char_height_above_ground $scplayer
+if and
+  2.0 > 0@
+  10@ == 0.0
+goto_if_false @FLYING_871
+clear_onscreen_counter $flag_player_on_oddjob
+2@ = get_char_heading $scplayer
+clear_char_tasks $scplayer
+wait 0
+set_char_heading $scplayer {heading} 2@
+shut_char_up $scplayer {state} False
+30@ = get_ped_pointer $scplayer
+30@ += 66
+write_memory 30@ {size} 1 {value} 31@ {vp} False
+goto @FLYING_151
+
+:FLYING_871
+if 
+  is_button_pressed PadId.Pad1 {buttonId} Button.Triangle
+goto_if_false @FLYING_1214
+clear_onscreen_counter $flag_player_on_oddjob
+2@ = get_char_heading $scplayer
+clear_char_tasks $scplayer
+wait 0
+set_char_heading $scplayer {heading} 2@
+
+:FLYING_918
+if 
+  not is_char_in_air $scplayer
+goto_if_false @FLYING_1096
+if and
+  not is_char_playing_anim $scplayer {animationName} "FALL_LAND"
+  not is_char_playing_anim $scplayer {animationName} "FALL_COLLAPSE"
+goto_if_false @FLYING_1089
+if 
+  40.0 > 10@
+goto_if_false @FLYING_1045
+task_play_anim_non_interruptable $scplayer {animationName} "FALL_LAND" {animationFile} "PED" {blendSpeed} 4.0 {loop} False {lockX} True {lockY} True {keepLastFrame} False {time} -1
+goto @FLYING_1085
+
+:FLYING_1045
+task_play_anim_non_interruptable $scplayer {animationName} "FALL_COLLAPSE" {animationFile} "PED" {blendSpeed} 4.0 {loop} False {lockX} True {lockY} True {keepLastFrame} False {time} -1
+
+:FLYING_1085
+wait 0
+
+:FLYING_1089
+goto @FLYING_1173
+
+:FLYING_1096
+if 
+  is_button_pressed PadId.Pad1 {buttonId} Button.LeftShoulder1
+goto_if_false @FLYING_1147
+30@ = get_ped_pointer $scplayer
+30@ += 66
+write_memory 30@ {size} 1 {value} 31@ {vp} False
+goto @FLYING_151
+
+:FLYING_1147
+wait 0
+set_char_proofs $scplayer {bulletProof} True {fireProof} True {explosionProof} True {collisionProof} True {meleeProof} True
+goto @FLYING_918
+
+:FLYING_1173
+30@ = get_ped_pointer $scplayer
+30@ += 66
+write_memory 30@ {size} 1 {value} 31@ {vp} False
+shut_char_up $scplayer {state} False
+goto @FLYING_151
+
+:FLYING_1214
+if 
+  TIMERA > 35
+goto_if_false @FLYING_1511
+if 
+  is_button_pressed PadId.Pad1 {buttonId} Button.Cross
+goto_if_false @FLYING_1332
+if 
+  10@ > 30.0
+goto_if_false @FLYING_1285
+add_float_lvar_to_float_lvar 10@ += 14@
+goto @FLYING_1301
+
+:FLYING_1285
+add_float_lvar_to_float_lvar 10@ += 14@
+add_float_lvar_to_float_lvar 10@ += 14@
+
+:FLYING_1301
+if 
+  10@ > 84.0
+goto_if_false @FLYING_1332
+10@ = 84.0
+
+:FLYING_1332
+if 
+  is_button_pressed PadId.Pad1 {buttonId} Button.Square
+goto_if_false @FLYING_1377
+14@ *= -1.0
+add_float_lvar_to_float_lvar 10@ += 14@
+14@ *= -1.0
+
+:FLYING_1377
+if 
+  is_button_pressed PadId.Pad1 {buttonId} Button.RightShoulder1
+goto_if_false @FLYING_1422
+14@ *= -2.0
+add_float_lvar_to_float_lvar 10@ += 14@
+14@ *= -0.5
+
+:FLYING_1422
+if and
+  is_button_pressed PadId.Pad1 {buttonId} Button.RightShoulder1
+  is_button_pressed PadId.Pad1 {buttonId} Button.Square
+goto_if_false @FLYING_1473
+14@ *= -3.0
+add_float_lvar_to_float_lvar 10@ += 14@
+14@ /= -3.0
+
+:FLYING_1473
+if 
+  0.0 > 10@
+goto_if_false @FLYING_1504
+10@ = 0.0
+
+:FLYING_1504
+TIMERA = 0
+
+:FLYING_1511
+0@, 1@, 2@, 2@ = get_position_of_analogue_sticks PadId.Pad1
+cset_lvar_float_to_lvar_int 0@ =# 0@
+cset_lvar_float_to_lvar_int 1@ =# 1@
+mult_float_lvar_by_float_lvar 0@ *= 14@
+mult_float_lvar_by_float_lvar 1@ *= 14@
+if or
+  is_button_pressed PadId.Pad1 {buttonId} Button.RightShoulder1
+  10@ <= 20.0
+goto_if_false @FLYING_1639
+0@ /= -16.0
+1@ /= 32.0
+2@ = get_char_heading $scplayer
+add_float_lvar_to_float_lvar 2@ += 0@
+0@ *= -1.0
+goto @FLYING_1685
+
+:FLYING_1639
+0@ /= -32.0
+1@ /= 32.0
+2@ = get_char_heading $scplayer
+add_float_lvar_to_float_lvar 2@ += 0@
+0@ *= -2.0
+
+:FLYING_1685
+set_lvar_float_to_lvar_float 7@ = 12@
+sub_float_lvar_from_float_lvar 7@ -= 2@
+if and
+  7@ > 10.0
+  350.0 > 7@
+goto_if_false @FLYING_1747
+set_lvar_float_to_lvar_float 2@ = 12@
+goto @FLYING_1755
+
+:FLYING_1747
+set_lvar_float_to_lvar_float 12@ = 2@
+
+:FLYING_1755
+if 
+  0@ <> 0.0
+goto_if_false @FLYING_1860
+add_float_lvar_to_float_lvar 11@ += 0@
+if 
+  -40.0 > 11@
+goto_if_false @FLYING_1822
+11@ = -40.0
+goto @FLYING_1853
+
+:FLYING_1822
+if 
+  11@ > 40.0
+goto_if_false @FLYING_1853
+11@ = 40.0
+
+:FLYING_1853
+goto @FLYING_1978
+
+:FLYING_1860
+if 
+  -2.0 >= 11@
+goto_if_false @FLYING_1914
+set_lvar_float_to_lvar_float 20@ = 14@
+20@ *= 2.0
+add_float_lvar_to_float_lvar 11@ += 20@
+goto @FLYING_1978
+
+:FLYING_1914
+if 
+  11@ >= 2.0
+goto_if_false @FLYING_1968
+set_lvar_float_to_lvar_float 20@ = 14@
+20@ *= -2.0
+add_float_lvar_to_float_lvar 11@ += 20@
+goto @FLYING_1978
+
+:FLYING_1968
+11@ = 0.0
+
+:FLYING_1978
+if 
+  1@ == 0.0
+goto_if_false @FLYING_2124
+if 
+  3@ >= 1.0
+goto_if_false @FLYING_2053
+set_lvar_float_to_lvar_float 20@ = 14@
+20@ *= 1.5
+sub_float_lvar_from_float_lvar 3@ -= 20@
+goto @FLYING_2117
+
+:FLYING_2053
+if 
+  -1.0 >= 3@
+goto_if_false @FLYING_2107
+set_lvar_float_to_lvar_float 20@ = 14@
+20@ *= 1.5
+add_float_lvar_to_float_lvar 3@ += 20@
+goto @FLYING_2117
+
+:FLYING_2107
+3@ = 0.0
+
+:FLYING_2117
+goto @FLYING_2201
+
+:FLYING_2124
+add_float_lvar_to_float_lvar 3@ += 1@
+if 
+  3@ > 80.0
+goto_if_false @FLYING_2170
+3@ = 80.0
+goto @FLYING_2201
+
+:FLYING_2170
+if 
+  -85.0 > 3@
+goto_if_false @FLYING_2201
+3@ = -85.0
+
+:FLYING_2201
+set_char_rotation $scplayer {x} 3@ {y} 11@ {z} 2@
+4@, 5@, 6@ = get_offset_from_char_in_world_coords $scplayer {xOffset} 0.0 {yOffset} 10@ {zOffset} 0.0
+7@, 8@, 9@ = get_char_coordinates $scplayer
+sub_float_lvar_from_float_lvar 4@ -= 7@
+sub_float_lvar_from_float_lvar 5@ -= 8@
+sub_float_lvar_from_float_lvar 6@ -= 9@
+if and
+  10@ == 0.0
+  is_button_pressed PadId.Pad1 {buttonId} Button.Square
+goto_if_false @FLYING_2324
+6@ -= 7.0
+goto @FLYING_2360
+
+:FLYING_2324
+cset_lvar_float_to_lvar_int 14@ =# TIMERB
+14@ /= 40.0
+14@ *= 0.8
+add_float_lvar_to_float_lvar 6@ += 14@
+
+:FLYING_2360
+7@ = get_char_height_above_ground $scplayer
+if 
+  1.5 > 7@
+goto_if_false @FLYING_2399
+6@ += 20.0
+
+:FLYING_2399
+set_char_velocity $scplayer {x} 0.0 {y} 0.0 {z} 0.0
+set_char_velocity $scplayer {x} 4@ {y} 5@ {z} 0.0
+30@ = get_ped_pointer $scplayer
+30@ += 20
+30@ = read_memory 30@ {size} 4 {vp} False
+30@ += 56
+4@ = read_memory 30@ {size} 4 {vp} False
+mult_float_lvar_by_float_lvar 6@ *= 13@
+add_float_lvar_to_float_lvar 6@ += 4@
+20@, 21@, 4@ = get_char_coordinates $scplayer
+if 
+  is_line_of_sight_clear 20@ {fromY} 21@ {fromZ} 4@ {toX} 20@ {toY} 21@ {toZ} 6@ {buildings} True {cars} True {chars} False {objects} True {particles} False
+goto_if_false @FLYING_2564
+write_memory 30@ {size} 4 {value} 6@ {vp} False
+
+:FLYING_2564
+7@ = 0.0
+if and
+  not is_char_playing_anim $scplayer {animationName} "WEAPON_START_THROW"
+  not is_char_playing_anim $scplayer {animationName} "WEAPON_THROW"
+goto_if_false @FLYING_2794
+7@ = 90.0
+set_lvar_float_to_lvar_float 8@ = 10@
+8@ *= 2.0
+sub_float_lvar_from_float_lvar 7@ -= 8@
+if 
+  0.0 > 7@
+goto_if_false @FLYING_2696
+7@ = 0.0
+
+:FLYING_2696
+add_float_lvar_to_float_lvar 7@ += 3@
+if 
+  7@ > 80.0
+goto_if_false @FLYING_2742
+7@ = 88.0
+goto @FLYING_2794
+
+:FLYING_2742
+if 
+  10@ <= 30.0
+goto_if_false @FLYING_2794
+if 
+  0.0 > 7@
+goto_if_false @FLYING_2794
+7@ = 0.0
+
+:FLYING_2794
+set_char_heading $scplayer {heading} 2@
+if 
+  10@ > 30.0
+goto_if_false @FLYING_2844
+set_char_rotation $scplayer {x} 7@ {y} 11@ {z} 2@
+goto @FLYING_2860
+
+:FLYING_2844
+set_char_rotation $scplayer {x} 7@ {y} 0.0 {z} 2@
+
+:FLYING_2860
+set_lvar_float_to_lvar_float 7@ = 10@
+7@ *= 3.6
+7@ += 0.5
+cset_lvar_int_to_lvar_float 7@ =# 7@
+set_var_int_to_lvar_int $flag_player_on_oddjob = 7@
+display_nth_onscreen_counter_with_string $flag_player_on_oddjob {display} CounterDisplay.Number {slot} 1 {text} 'FREI_11'
+goto @FLYING_455

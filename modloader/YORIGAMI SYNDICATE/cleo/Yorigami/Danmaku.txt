@@ -1,0 +1,498 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+script_name "Y_Danm"
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI HEAP DICTIONARY (SKINNED TO SCRIPT DEPENDENCIES)
+// =========================================================================
+const
+    MEM_SAVE_SLOT = 0
+    MEM_ALLOC_DANMAKU = 64
+    MEM_DANMAKU_TOGGLE = 76
+    MEM_SHION_HANDLE = 116
+    MEM_DANMAKU_CASH_SPENT = 368
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+1@ = -999
+10@ = 0 // Danmaku Toggle State (0 = OFF, 1 = ON)
+15@ = 0 // Damage Callback Recursion Lock Flag
+
+// Clear Danmaku toggle flag in master heap on startup
+0085: 30@ = 31@
+000A: 30@ += MEM_DANMAKU_TOGGLE
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+// Register Damage Callback specifically for Firearms
+0EDE: set_script_event_char_damage 1 @OnCharDanmaku 16@
+0EDF: set_script_event_car_weapon_damage 1 @OnCarDanmaku 29@
+
+:YDanmaku_StartupWait
+wait 250
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    jump @YDanmaku_StartupWait
+end
+
+:YDanmaku_Loop
+wait 100
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    jump @YDanmaku_Loop
+end
+
+// Check if Save Slot Changed
+0085: 30@ = 31@
+000A: 30@ += MEM_SAVE_SLOT
+0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+if
+    803B: not 0@ == 1@
+then
+    gosub @YDanmaku_ReloadSettings
+end
+
+// Read Live Allocated Points in Money Danmaku (Jo'on Perk)
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_DANMAKU
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+
+// -------------------------------------------------------------------------
+// TOGGLE LISTENER (Press Y + G to toggle Danmaku mode)
+// -------------------------------------------------------------------------
+01F5: 20@ = get_player_actor $PLAYER_CHAR
+if and
+    2@ > 0                                // Has points in Money Danmaku
+    816B: not fading
+then
+    if and
+        0AB0: is_key_pressed 3@ // MainKey (Y)
+        0AB0: is_key_pressed 4@ // DanmakuKey (G)
+    then
+        :Danmaku_WaitRelease
+        wait 50
+        if or
+            0AB0: is_key_pressed 3@
+            0AB0: is_key_pressed 4@
+        then
+            jump @Danmaku_WaitRelease
+        end
+
+        // Invert Toggle State (0 <-> 1)
+        if
+            10@ == 1
+        then
+            10@ = 0
+            0085: 30@ = 31@
+            000A: 30@ += MEM_DANMAKU_TOGGLE
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0 // Inform Jo'on Flames
+            018C: play_sound 1057 at 0.0 0.0 0.0
+
+            if
+                9@ == 1
+            then
+                0ADF: add_text_label "Y_DNOFF" text "~s~MONEY DANMAKU~n~~r~DEACTIVATED"
+                00BA: show_text_styled GXT 'Y_DNOFF' time 2000 style 5
+            end
+        else
+            10@ = 1
+            0085: 30@ = 31@
+            000A: 30@ += MEM_DANMAKU_TOGGLE
+            0A8C: write_memory 30@ size 4 value 1 virtual_protect 0 // Inform Jo'on Flames
+            018C: play_sound 1058 at 0.0 0.0 0.0
+
+            if
+                9@ == 1
+            then
+                0ADF: add_text_label "Y_DNON" text "~y~MONEY DANMAKU~n~~g~ACTIVATED ~w~(-$~1~/HIT)"
+                01E3: show_text_1number_styled GXT 'Y_DNON' number 5@ time 2500 style 5
+            end
+
+            // Read Shion's handle and trigger the new banter
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_HANDLE
+            0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                21@ > 0
+            then
+                0A92: create_custom_thread "Shion\Chat\chatDanmaku.c" 21@
+            end
+        end
+    end
+end
+
+jump @YDanmaku_Loop
+
+
+// =========================================================================
+// SUBROUTINES
+// =========================================================================
+
+:YDanmaku_ReloadSettings
+0085: 1@ = 0@
+
+// Read Keybinds
+0AF0: 3@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "MainKey"
+if
+    3@ == 0
+then
+    3@ = 89 // Y
+end
+
+0AF0: 4@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "DanmakuKey"
+if
+    4@ == 0
+then
+    4@ = 71 // G
+end
+
+// Read Danmaku Balancing Knobs
+0AF0: 5@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MoneyDanmaku" key "CashCostPerBullet"
+if
+    002B: 0 >= 5@
+then
+    5@ = 100
+end
+
+0AF0: 6@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MoneyDanmaku" key "BonusDamagePerPoint"
+if
+    002B: 0 >= 6@
+then
+    6@ = 2
+end
+
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MoneyDanmaku" key "MaxDamageCap"
+if
+    002B: 0 >= 7@
+then
+    7@ = 80
+end
+
+0AF0: 8@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MoneyDanmaku" key "VaporizeArmorOnHit"
+if
+    001B: 0 > 8@
+then
+    8@ = 1
+end
+
+0AF0: 9@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MoneyDanmaku" key "ShowToggleMessage"
+if
+    001B: 0 > 9@
+then
+    9@ = 1
+end
+
+0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MoneyDanmaku" key "PlayHitSound"
+if
+    001B: 0 > 11@
+then
+    11@ = 1
+end
+
+0AF0: 12@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MoneyDanmaku" key "SpawnHitSparks"
+if
+    001B: 0 > 12@
+then
+    12@ = 1
+end
+
+0AF0: 13@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MoneyDanmaku" key "CarDamageMultiplier"
+if
+    002B: 0 >= 13@
+then
+    13@ = 4 // Default 4x damage against vehicles
+end
+return
+
+// =========================================================================
+// DAMAGE CALLBACK (0EDE: Intercept Gunshot Hits & Infuse with Gold)
+// =========================================================================
+:OnCharDanmaku
+if
+    15@ == 1
+then
+    0ED0: return_script_event
+end
+
+if and
+    2@ > 0   // Alloc_MoneyDanmaku > 0
+    10@ == 1 // Danmaku Mode is ON
+    056D: actor 16@ defined
+    8118: not actor 16@ dead
+then
+    // Read Shion's Handle safely without clobbering main loop 30@
+    0085: 17@ = 31@
+    000A: 17@ += MEM_SHION_HANDLE
+    0A8D: 14@ = read_memory 17@ size 4 virtual_protect 0
+
+    // Ensure victim is not Shion
+    if
+        803B: not 16@ == 14@
+    then
+        07AF: 25@ = player $PLAYER_CHAR group
+        if
+            86EE: not actor 16@ in_group 25@
+        then
+            0EB5: get_char_damage_last_frame 16@ damager 26@ type 27@ part 28@ intensity 18@
+            01F5: 20@ = get_player_actor $PLAYER_CHAR
+            0A96: 28@ = ped 20@ struct
+
+            // Check if Damager was CJ or Shion
+            24@ = 0 // 1 = Valid Danmaku Shooter
+            if
+                003B: 26@ == 28@ // CJ fired the shot
+            then
+                24@ = 1
+            end
+
+            if and
+                24@ == 0
+                14@ > 0
+            then
+                if and
+                    056D: actor 14@ defined
+                    8118: not actor 14@ dead
+                then
+                    0A96: 23@ = ped 14@ struct
+                    if
+                        003B: 26@ == 23@ // Shion fired the shot!
+                    then
+                        24@ = 1
+                    end
+                end
+            end
+
+            if
+                24@ == 1
+            then
+                // Check if weapon is a Firearm (Weapon IDs 22 to 38, excluding flamethrower)
+                if and
+                    27@ >= 22
+                    002B: 38 >= 27@
+                    8039: not 27@ == 37
+                then
+                    010B: 19@ = player $PLAYER_CHAR money
+
+                    // Check if player has enough cash to pay for the bullet
+                    if
+                        002D: 19@ >= 5@
+                    then
+                        // Deduct cash cost per bullet
+						0085: 19@ = 5@
+						0012: 19@ *= -1
+						0109: player $PLAYER_CHAR money += 19@
+		
+						// Track total cash spent on Danmaku
+						0085: 30@ = 31@
+						000A: 30@ += MEM_DANMAKU_CASH_SPENT
+						0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+						005A: 20@ += 5@ // Add the positive cost of the bullet
+						0085: 30@ = 31@
+						000A: 30@ += MEM_DANMAKU_CASH_SPENT
+						0A8C: write_memory 30@ size 4 value 20@ virtual_protect 0
+
+                        // Calculate Bonus Damage: Points * BonusDamagePerPoint
+                        0085: 18@ = 2@
+                        006A: 18@ *= 6@
+                        if
+                            001D: 18@ > 7@
+                        then
+                            0085: 18@ = 7@ // Clamp to MaxDamageCap
+                        end
+
+                        // Vaporize Enemy Body Armor cleanly without underflow
+                        if
+                            8@ == 1
+                        then
+                            04DD: 22@ = actor 16@ armour
+                            if
+                                22@ > 0
+                            then
+                                0012: 22@ *= -1
+                                035F: actor 16@ armour += 22@
+                            end
+                        end
+
+                        // Deduct Bonus Damage cleanly via native damage engine with recursion lock
+                        15@ = 1
+                        0851: set_actor 16@ decrease_health_by 18@ affect_armour 0
+                        15@ = 0
+
+                        // Visual: Golden sparks attached to ped's chest
+                        if
+                            12@ == 1
+                        then
+                            0669: 21@ = attach_particle "joon_gold" to_actor 16@ with_offset 0.0 0.0 0.2 type 1
+                            064C: make_particle 21@ visible
+                            064F: remove_references_to_particle 21@
+                        end
+
+                        // Audio: Metallic cash register chime on hit
+                        if
+                            11@ == 1
+                        then
+                            018C: play_sound 1058 at 0.0 0.0 0.0
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+0ED0: return_script_event
+
+// =========================================================================
+// VEHICLE DAMAGE CALLBACK (0EDF: Danmaku Shreds Vehicles)
+// =========================================================================
+:OnCarDanmaku
+if
+    15@ == 1
+then
+    0ED0: return_script_event
+end
+
+if and
+    2@ > 0   // Alloc_MoneyDanmaku > 0
+    10@ == 1 // Danmaku Mode is ON
+    056E: car 29@ defined
+    8119: not car 29@ wrecked
+then
+    0EB6: get_car_weapon_damage_last_frame 29@ char 26@ type 27@ intensity 17@
+    01F5: 25@ = get_player_actor $PLAYER_CHAR
+
+    // Check if Damager was CJ (ignore if CJ is inside the target car during drive-by)
+    24@ = 0 // 1 = Valid Danmaku Shooter
+    if
+        003B: 26@ == 25@
+    then
+        if
+            80DB: not actor 25@ in_car 29@
+        then
+            24@ = 1
+        end
+    end
+
+    // Read Shion's Handle safely without clobbering main loop 30@
+    0085: 17@ = 31@
+    000A: 17@ += MEM_SHION_HANDLE
+    0A8D: 14@ = read_memory 17@ size 4 virtual_protect 0
+    if and
+        24@ == 0
+        14@ > 0
+    then
+        if and
+            056D: actor 14@ defined
+            8118: not actor 14@ dead
+        then
+            if
+                003B: 26@ == 14@ // Shion hit the car
+            then
+                // Ignore if Shion is inside the target car during drive-by
+                if
+                    80DB: not actor 14@ in_car 29@
+                then
+                    24@ = 1
+                end
+            end
+        end
+    end
+
+    if
+        24@ == 1
+    then
+        // Check if weapon is a Firearm (Weapon IDs 22 to 38, excluding flamethrower)
+        if and
+            27@ >= 22
+            002B: 38 >= 27@
+            8039: not 27@ == 37
+        then
+            010B: 19@ = player $PLAYER_CHAR money
+
+            // Check if player has enough cash to pay for the bullet
+            if
+                002D: 19@ >= 5@
+            then
+                // Deduct cash cost per bullet
+                0085: 19@ = 5@
+                0012: 19@ *= -1
+                0109: player $PLAYER_CHAR money += 19@
+
+                // Track total cash spent on Danmaku
+                0085: 30@ = 31@
+                000A: 30@ += MEM_DANMAKU_CASH_SPENT
+                0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+                005A: 20@ += 5@ // Add the positive cost of the bullet
+                0085: 30@ = 31@
+                000A: 30@ += MEM_DANMAKU_CASH_SPENT
+                0A8C: write_memory 30@ size 4 value 20@ virtual_protect 0
+
+                // Calculate Bonus Damage: Points * BonusDamagePerPoint
+                0085: 18@ = 2@
+                006A: 18@ *= 6@
+                if
+                    001D: 18@ > 7@
+                then
+                    0085: 18@ = 7@ // Clamp to MaxDamageCap
+                end
+
+                // Apply Vehicle Multiplier
+                006A: 18@ *= 13@
+
+                // Deduct Bonus Damage from Vehicle Health
+                0227: 28@ = car 29@ health
+                0062: 28@ -= 18@
+
+                15@ = 1
+                if
+                    002B: 0 >= 28@
+                then
+                    // Setting health to 0 lets the native weapon engine detonate the vehicle
+                    // on return from the callback without crashing the call stack
+                    0224: set_car 29@ health_to 0
+                else
+                    0224: set_car 29@ health_to 28@
+                end
+                15@ = 0
+
+                // Visual: Golden sparks attached to vehicle (only if vehicle survived the shot)
+                if and
+                    12@ == 1
+                    0019: 28@ > 0
+                    056E: car 29@ defined
+                    8119: not car 29@ wrecked
+                then
+                    066B: 23@ = attach_particle "joon_gold" to_car 29@ with_offset 0.0 0.0 0.5 type 1
+                    064C: make_particle 23@ visible
+                    064F: remove_references_to_particle 23@
+                end
+
+                // Audio: Metallic cash register chime on hit
+                if
+                    11@ == 1
+                then
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                end
+            end
+        end
+    end
+end
+0ED0: return_script_event

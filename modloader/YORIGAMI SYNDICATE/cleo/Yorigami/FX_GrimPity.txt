@@ -1,0 +1,516 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+{$USE ini}
+
+0000: NOP
+script_name "Y_FXG"
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED FOR FX_GRIMPITY)
+// =========================================================================
+const
+    MEM_ALLOC_DEBTDET = 100
+    MEM_ALLOC_GRIMPITY = 104
+    MEM_GRIMPITY_BURST = 112
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    0039: 31@ == 0
+then
+    goto @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// --- INNER RING: AMBIENT LOW-HP DANGER WARD (Clockwise) ---
+0@ = 0.0    // Inner Orb 1 Angle (float)
+1@ = 120.0  // Inner Orb 2 Angle (float)
+12@ = 240.0 // Inner Orb 3 Angle (float)
+
+// --- OUTER RING: GRIM PITY RESURRECTION STORM (Counter-Clockwise) ---
+7@ = 60.0   // Outer Orb 4 Angle (float)
+8@ = 180.0  // Outer Orb 5 Angle (float)
+9@ = 300.0  // Outer Orb 6 Angle (float)
+
+10@ = 0.0   // Master Harmonic Wave Oscillator (float)
+
+13@ = 0     // Cached INI Health Threshold (int)
+17@ = 0.0   // Inner Ring Fade Multiplier (0.0 = Hidden, 1.0 = Full)
+18@ = 0.0   // Outer Ring Fade Multiplier (0.0 = Hidden, 1.0 = Full)
+
+:GrimPity_FX_Loop
+wait 0 // 0ms wait for silky smooth 60 FPS animation!
+
+if or
+    8256: not is_player_playing $PLAYER_CHAR
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+then
+    wait 250
+    goto @GrimPity_FX_Loop
+end
+
+// =========================================================================
+// LAYER 1: AMBIENT LOW-HP DANGER WARD CONTROLLER (Inner 3 Flames)
+// =========================================================================
+22@ = 0.0 // Target Inner Fade (Default: Hidden)
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_GRIMPITY
+0A8D: 15@ = read_memory 30@ size 4 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_DEBTDET
+0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+
+if or
+    0019: 15@ > 0
+    0019: 25@ > 0
+then
+    010B: 29@ = player $PLAYER_CHAR money
+    if
+        002B: 0 >= 29@ // Broke or in debt!
+    then
+        // Calculate Current Health %
+        0226: 26@ = actor $PLAYER_ACTOR health
+        0653: 27@ = float_stat 24
+        0017: 27@ /= 5.69
+        0092: 28@ = float 27@ to_integer
+        if
+            002B: 0 >= 28@
+        then
+            28@ = 100
+        end
+
+        0085: 27@ = 26@
+        0012: 27@ *= 100
+        0072: 27@ /= 28@ // 27@ = Current Health %
+
+        // Read Threshold from INI (Cached to prevent 60 FPS disk thrashing)
+        if
+            0039: 13@ == 0
+        then
+            0AF0: 13@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "HealthPercentThreshold"
+            if
+                002B: 0 >= 13@
+            then
+                13@ = 50
+            end
+        end
+
+        if and
+            0019: 26@ > 0
+            002D: 13@ >= 27@ // Current HP% <= Threshold!
+        then
+            22@ = 1.0 // Target Inner Fade In
+        end
+    end
+end
+
+// Vehicle Check for Inner Ring
+if and
+    0449: actor $PLAYER_ACTOR in_a_car
+    8E4A: not is_char_exiting_any_car $PLAYER_ACTOR
+then
+    22@ = 0.0
+end
+
+// Read CTimer::ms_fTimeStep (float) and normalize to 30 FPS baseline
+0A8D: 14@ = read_memory 0xB7CB5C size 4 virtual_protect 0
+0013: 14@ *= 0.6
+
+// Interpolate Inner Ring Fade (17@)
+0087: 16@ = 14@
+0013: 16@ *= 0.06
+
+if
+    0025: 22@ > 17@
+then
+    005B: 17@ += 16@
+    if
+        0021: 17@ > 1.0
+    then
+        17@ = 1.0
+    end
+end
+
+if
+    0025: 17@ > 22@
+then
+    0063: 17@ -= 16@
+    if
+        0023: 0.0 > 17@
+    then
+        17@ = 0.0
+    end
+end
+
+// =========================================================================
+// LAYER 2: GRIM PITY RESURRECTION BURST CONTROLLER (Outer 3 Flames)
+// =========================================================================
+0085: 30@ = 31@
+000A: 30@ += MEM_GRIMPITY_BURST
+0A8D: 15@ = read_memory 30@ size 4 virtual_protect 0 // 1 when Grim Pity procs, 0 when expired!
+
+22@ = 0.0
+if
+    0039: 15@ == 1
+then
+    22@ = 1.0 // Target Outer Fade In!
+end
+
+// Vehicle Check for Outer Ring
+if and
+    0449: actor $PLAYER_ACTOR in_a_car
+    8E4A: not is_char_exiting_any_car $PLAYER_ACTOR
+then
+    22@ = 0.0
+end
+
+// Interpolate Outer Ring Fade (18@)
+0087: 16@ = 14@
+0013: 16@ *= 0.10
+
+if
+    0025: 22@ > 18@
+then
+    005B: 18@ += 16@ // Burst Fades IN smoothly
+    if
+        0021: 18@ > 1.0
+    then
+        18@ = 1.0
+    end
+end
+
+0087: 16@ = 14@
+0013: 16@ *= 0.06
+
+if
+    0025: 18@ > 22@
+then
+    0063: 18@ -= 16@ // Fades OUT smoothly
+    if
+        0023: 0.0 > 18@
+    then
+        18@ = 0.0
+    end
+end
+
+// If both rings are completely invisible, sleep briefly
+if and
+    0023: 0.01 > 17@
+    0023: 0.01 > 18@
+then
+    wait 50
+    goto @GrimPity_FX_Loop
+end
+
+
+// =========================================================================
+// ADVANCE HARMONIC CLOCKS & BASE COORDINATES
+// =========================================================================
+0087: 16@ = 14@
+0013: 16@ *= 0.65
+005B: 10@ += 16@ // Master slow wave scaled by framerate
+if
+    0031: 10@ >= 360.0
+then
+    000F: 10@ -= 360.0
+end
+
+// Base Position (Jo'on's Center of Mass)
+00A0: store_actor $PLAYER_ACTOR position_to 2@ 3@ 4@
+000B: 4@ += 0.10 // Mid-torso level
+
+
+// =========================================================================
+// RENDER INNER RING (Orbs 1, 2, 3 - Clockwise Ambient Ward)
+// =========================================================================
+if
+    0021: 17@ > 0.01
+then
+    // Size Pulse
+    02F6: 22@ = sine 10@
+    0013: 22@ *= 0.020
+    000B: 22@ += 0.015
+
+    0087: 20@ = 22@
+    000B: 20@ += 0.13
+    006B: 20@ *= 17@ // Outer Halo: 0.13m to 0.165m
+
+    0087: 21@ = 22@
+    0013: 21@ *= 0.40
+    000B: 21@ += 0.05
+    006B: 21@ *= 17@ // Inner Core: 0.05m to 0.065m
+
+    // --- INNER ORB 1 ---
+    02F6: 24@ = sine 10@
+    0013: 24@ *= 0.50
+    000B: 24@ += 0.85
+    006B: 24@ *= 14@
+    005B: 0@ += 24@
+    if
+        0031: 0@ >= 360.0
+    then
+        000F: 0@ -= 360.0
+    end
+
+    02F7: 19@ = cosine 10@
+    0013: 19@ *= 0.18
+    000B: 19@ += 0.66 // Radius: 0.48m to 0.84m
+
+    02F6: 24@ = sine 0@
+    02F7: 25@ = cosine 0@
+    0087: 5@ = 2@
+    006B: 25@ *= 19@
+    005B: 5@ += 25@
+    0087: 6@ = 3@
+    006B: 24@ *= 19@
+    005B: 6@ += 24@
+
+    0087: 23@ = 10@
+    0013: 23@ *= 2.0
+    if
+        0031: 23@ >= 360.0
+    then
+        000F: 23@ -= 360.0
+    end
+    02F6: 24@ = sine 23@
+    0013: 24@ *= 0.50
+    0087: 11@ = 4@
+    005B: 11@ += 24@
+
+    04D5: create_corona_at 5@ 6@ 11@ radius 20@ type 0 flare 0 RGB 0 110 255
+    04D5: create_corona_at 5@ 6@ 11@ radius 21@ type 0 flare 0 RGB 220 245 255
+
+    // --- INNER ORB 2 ---
+    0087: 23@ = 10@
+    000B: 23@ += 120.0
+    if
+        0031: 23@ >= 360.0
+    then
+        000F: 23@ -= 360.0
+    end
+    02F6: 24@ = sine 23@
+    0013: 24@ *= 0.55
+    000B: 24@ += 0.85
+    006B: 24@ *= 14@
+    005B: 1@ += 24@
+    if
+        0031: 1@ >= 360.0
+    then
+        000F: 1@ -= 360.0
+    end
+
+    02F7: 19@ = cosine 23@
+    0013: 19@ *= 0.20
+    000B: 19@ += 0.62
+
+    02F6: 24@ = sine 1@
+    02F7: 25@ = cosine 1@
+    0087: 5@ = 2@
+    006B: 25@ *= 19@
+    005B: 5@ += 25@
+    0087: 6@ = 3@
+    006B: 24@ *= 19@
+    005B: 6@ += 24@
+
+    0087: 23@ = 10@
+    0013: 23@ *= 2.0
+    000B: 23@ += 120.0
+    if
+        0031: 23@ >= 360.0
+    then
+        000F: 23@ -= 360.0
+    end
+    02F6: 24@ = sine 23@
+    0013: 24@ *= 0.52
+    0087: 11@ = 4@
+    005B: 11@ += 24@
+
+    04D5: create_corona_at 5@ 6@ 11@ radius 20@ type 0 flare 0 RGB 0 110 255
+    04D5: create_corona_at 5@ 6@ 11@ radius 21@ type 0 flare 0 RGB 220 245 255
+
+    // --- INNER ORB 3 ---
+    0087: 23@ = 10@
+    000B: 23@ += 240.0
+    if
+        0031: 23@ >= 360.0
+    then
+        000F: 23@ -= 360.0
+    end
+    02F7: 24@ = cosine 23@
+    0013: 24@ *= 0.50
+    000B: 24@ += 0.75
+    006B: 24@ *= 14@
+    005B: 12@ += 24@
+    if
+        0031: 12@ >= 360.0
+    then
+        000F: 12@ -= 360.0
+    end
+
+    02F6: 19@ = sine 23@
+    0013: 19@ *= 0.18
+    000B: 19@ += 0.68
+
+    02F6: 24@ = sine 12@
+    02F7: 25@ = cosine 12@
+    0087: 5@ = 2@
+    006B: 25@ *= 19@
+    005B: 5@ += 25@
+    0087: 6@ = 3@
+    006B: 24@ *= 19@
+    005B: 6@ += 24@
+
+    0087: 23@ = 10@
+    0013: 23@ *= 2.0
+    000B: 23@ += 240.0
+    if
+        0031: 23@ >= 360.0
+    then
+        000F: 23@ -= 360.0
+    end
+    02F7: 24@ = cosine 23@
+    0013: 24@ *= 0.45
+    0087: 11@ = 4@
+    005B: 11@ += 24@
+
+    04D5: create_corona_at 5@ 6@ 11@ radius 20@ type 0 flare 0 RGB 0 110 255
+    04D5: create_corona_at 5@ 6@ 11@ radius 21@ type 0 flare 0 RGB 220 245 255
+end
+
+
+// =========================================================================
+// RENDER OUTER RING (Orbs 4, 5, 6 - Counter-Clockwise Resurrection Storm)
+// =========================================================================
+if
+    0021: 18@ > 0.01
+then
+    // Larger Radii for the Resurrection Storm
+    0087: 20@ = 18@
+    0013: 20@ *= 0.17 // Outer Blue: 0.17m max
+
+    0087: 21@ = 18@
+    0013: 21@ *= 0.07 // Inner Core: 0.07m max
+
+    19@ = 1.02 // Wide Outer Orbit Radius: 1.02m
+
+    // Orbit step scaled by framerate
+    0087: 16@ = 14@
+    0013: 16@ *= 1.35
+
+    // --- OUTER ORB 4 (Spins Counter-Clockwise) ---
+    0063: 7@ -= 16@
+    if
+        0023: 0.0 > 7@
+    then
+        000B: 7@ += 360.0
+    end
+
+    02F6: 24@ = sine 7@
+    02F7: 25@ = cosine 7@
+    0087: 5@ = 2@
+    006B: 25@ *= 19@
+    005B: 5@ += 25@
+    0087: 6@ = 3@
+    006B: 24@ *= 19@
+    005B: 6@ += 24@
+
+    0087: 23@ = 10@
+    0013: 23@ *= 2.0
+    if
+        0031: 23@ >= 360.0
+    then
+        000F: 23@ -= 360.0
+    end
+    02F6: 24@ = sine 23@
+    0013: 24@ *= 0.58
+    0087: 11@ = 4@
+    005B: 11@ += 24@
+
+    // Deep Spiritual Indigo/Cyan Burst
+    04D5: create_corona_at 5@ 6@ 11@ radius 20@ type 0 flare 0 RGB 40 80 255
+    04D5: create_corona_at 5@ 6@ 11@ radius 21@ type 0 flare 0 RGB 190 255 255
+
+    // --- OUTER ORB 5 ---
+    0063: 8@ -= 16@
+    if
+        0023: 0.0 > 8@
+    then
+        000B: 8@ += 360.0
+    end
+
+    02F6: 24@ = sine 8@
+    02F7: 25@ = cosine 8@
+    0087: 5@ = 2@
+    006B: 25@ *= 19@
+    005B: 5@ += 25@
+    0087: 6@ = 3@
+    006B: 24@ *= 19@
+    005B: 6@ += 24@
+
+    0087: 23@ = 10@
+    0013: 23@ *= 2.0
+    000B: 23@ += 120.0
+    if
+        0031: 23@ >= 360.0
+    then
+        000F: 23@ -= 360.0
+    end
+    02F6: 24@ = sine 23@
+    0013: 24@ *= 0.58
+    0087: 11@ = 4@
+    005B: 11@ += 24@
+
+    04D5: create_corona_at 5@ 6@ 11@ radius 20@ type 0 flare 0 RGB 40 80 255
+    04D5: create_corona_at 5@ 6@ 11@ radius 21@ type 0 flare 0 RGB 190 255 255
+
+    // --- OUTER ORB 6 ---
+    0063: 9@ -= 16@
+    if
+        0023: 0.0 > 9@
+    then
+        000B: 9@ += 360.0
+    end
+
+    02F6: 24@ = sine 9@
+    02F7: 25@ = cosine 9@
+    0087: 5@ = 2@
+    006B: 25@ *= 19@
+    005B: 5@ += 25@
+    0087: 6@ = 3@
+    006B: 24@ *= 19@
+    005B: 6@ += 24@
+
+    0087: 23@ = 10@
+    0013: 23@ *= 2.0
+    000B: 23@ += 240.0
+    if
+        0031: 23@ >= 360.0
+    then
+        000F: 23@ -= 360.0
+    end
+    02F6: 24@ = sine 23@
+    0013: 24@ *= 0.58
+    0087: 11@ = 4@
+    005B: 11@ += 24@
+
+    04D5: create_corona_at 5@ 6@ 11@ radius 20@ type 0 flare 0 RGB 40 80 255
+    04D5: create_corona_at 5@ 6@ 11@ radius 21@ type 0 flare 0 RGB 190 255 255
+end
+
+goto @GrimPity_FX_Loop

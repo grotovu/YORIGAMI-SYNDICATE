@@ -1,0 +1,165 @@
+{$CLEO .cs}
+{$USE CLEO+}
+{$USE ini}
+{$USE NewOpcodes}
+
+nop 
+script_name "CallTaxi"
+
+wait 500
+
+// --- Load Keybinds from INI ---
+0AF0: 14@ = read_int_from_ini_file "cleo\CallTaxi.ini" section "Keys" key "Key1"
+if
+    14@ <= 0
+then
+    14@ = 76 // Default: 'L'
+end
+
+0AF0: 15@ = read_int_from_ini_file "cleo\CallTaxi.ini" section "Keys" key "Key2"
+if
+    15@ <= 0
+then
+    15@ = 105 // Default: 'Numpad 9' (Change to 57 for standard 9)
+end
+
+:CallTaxi_Loop
+wait 150
+
+if and
+    0256: is_player_playing $PLAYER_CHAR
+    80DF: not is_char_in_any_car $PLAYER_ACTOR
+    82BF: not is_char_in_water $PLAYER_ACTOR
+    0AB0: is_key_pressed 14@
+    0AB0: is_key_pressed 15@
+then
+    // Do not call during cutscenes
+    if or
+        0E25: is_on_cutscene
+        0EB7: is_on_scripted_cutscene
+    then
+        goto @CallTaxi_Loop
+    end
+    goto @CallTaxi_WaitRelease
+end
+
+goto @CallTaxi_Loop
+
+:CallTaxi_WaitRelease
+wait 50
+
+if or
+    0AB0: is_key_pressed 14@
+    0AB0: is_key_pressed 15@
+then
+    goto @CallTaxi_WaitRelease
+end
+
+// --- 1. CJ MAKES THE PHONE CALL ---
+0ACD: print_string_now "Ordering a taxi..." 2000
+0729: AS_actor $PLAYER_ACTOR use_mobile_phone 1
+wait 2000
+
+// --- 2. FADE TO BLACK ---
+01B4: set_player_control $PLAYER_CHAR 0
+016A: fade 0 500
+
+:CallTaxi_FadeOutLoop
+wait 0
+if
+    816B: not fading
+then
+    goto @CallTaxi_FadeOutLoop
+end
+
+wait 800
+
+// --- 3. STREAM MODELS RELIABLY ---
+:CallTaxi_LoadModels
+wait 0
+0247: request_model 420 // #TAXI
+0247: request_model 262 // #TAXIDRIVER
+038B: load_requested_models
+
+if and
+    0248: has_model_loaded 420
+    0248: has_model_loaded 262
+then
+    // Models loaded, continue
+else
+    goto @CallTaxi_LoadModels
+end
+
+// Get player position
+04C4: store_coords_to 0@ 1@ 2@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.0
+
+// Reset target coordinate registers
+3@ = 0.0
+4@ = 0.0
+5@ = 0.0
+6@ = 0.0
+
+// Find closest street node & road heading
+03D3: 3@ 4@ 5@ 6@ = get_closest_car_node_with_heading 0@ 1@ 2@
+
+// Fallback: If no street node nearby (within 80m), spawn 6.5m in front of CJ
+050A: 10@ = distance_between_coords_3d 0@ 1@ 2@ and_coords_3d 3@ 4@ 5@
+if or
+    3@ == 0.0
+    10@ > 80.0
+then
+    04C4: store_coords_to 3@ 4@ 5@ from_actor $PLAYER_ACTOR with_offset 0.0 6.5 0.0
+    0172: 6@ = actor $PLAYER_ACTOR Z_angle
+    6@ += 90.0 // Rotate 90 degrees to sit perpendicular/horizontal to CJ
+end
+
+// Create Taxi + Driver
+00A5: 7@ = create_car 420 at 3@ 4@ 5@
+0175: set_car 7@ Z_angle_to 6@
+0129: 8@ = create_actor_pedtype 21 model 262 in_car 7@
+
+// --- LOCK TAXI & DRIVER IN PLACE ---
+0216: set_taxi_lights 7@ 1             // Turn on taxi roof light
+00AD: set_car_cruise_speed 7@ 0.0      // Cruise speed 0.0
+0477: set_car 7@ action 1 time 60000   // Force braking action
+0638: task_stay_in_same_place 8@ 1     // Forbid driver from moving
+
+// --- 4. FADE BACK IN ---
+0729: AS_actor $PLAYER_ACTOR use_mobile_phone 0
+016A: fade 1 500
+
+:CallTaxi_FadeInLoop
+wait 0
+if
+    816B: not fading
+then
+    goto @CallTaxi_FadeInLoop
+end
+
+01B4: set_player_control $PLAYER_CHAR 1
+0ACD: print_string_now "Your taxi has arrived!" 2500
+
+// --- 5. WAIT UNTIL CJ REACHES THE TAXI BEFORE RELEASING AI ---
+TIMERA = 0
+
+:CallTaxi_WaitForPlayerArrival
+wait 150
+if or
+    00DF: is_char_in_any_car $PLAYER_ACTOR
+    0EE5: locate_char_distance_to_car $PLAYER_ACTOR 7@ 4.0
+    TIMERA > 25000 // 25 second safety timeout
+then
+    // Player arrived or timed out, release
+else
+    goto @CallTaxi_WaitForPlayerArrival
+end
+
+// Release handles now that player is at the door
+01C3: remove_references_to_car 7@
+01C2: remove_references_to_actor 8@
+0249: mark_model_as_no_longer_needed 420
+0249: mark_model_as_no_longer_needed 262
+
+// Short cooldown before next call
+wait 3000
+goto @CallTaxi_Loop

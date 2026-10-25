@@ -1,0 +1,470 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+script_name 'Y_Pursuit'
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED TO ACTIVE FILE USAGE)
+// =========================================================================
+const
+    // --- CORE SYSTEM & STATE TRACKERS ---
+    MEM_SAVE_SLOT = 0
+
+    // --- PRESTIGE & PERKS (SHION) ---
+    MEM_ALLOC_TRAFFICHEX = 92
+    MEM_ALLOC_AVIATION = 96
+
+    // --- SHION ENTITY & INVENTORY DATA ---
+    MEM_SHION_HANDLE = 116
+
+    // --- SHIONMEMORIES.INI TELEMETRY (THE LEDGER) ---
+    MEM_BRIBES_PAID = 324
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    31@ == 0
+then
+    goto @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+0006: 1@ = -999
+0006: 7@ = 0  // Traffic Hex Timer (ms)
+0006: 10@ = 0 // Aviation Scan Timer (ms)
+0006: 18@ = 0 // Traffic Hex Audio Limiter
+
+:YPursuit_StartupWait
+wait 250
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    goto @YPursuit_StartupWait
+end
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
+:YPursuit_Loop
+wait 100
+
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    goto @YPursuit_Loop
+end
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
+// Check if Save Slot Changed
+0085: 30@ = 31@
+000A: 30@ += MEM_SAVE_SLOT
+0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+if
+    803B: not 0@ == 1@
+then
+    gosub @YPursuit_ReloadSettings
+end
+
+// Read Live Allocated Perks from Master Heap
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_TRAFFICHEX
+0A8D: 8@ = read_memory 30@ size 4 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_AVIATION
+0A8D: 12@ = read_memory 30@ size 4 virtual_protect 0
+
+// -------------------------------------------------------------------------
+// 1. POLICE BRIBE (Type "BRIBE")
+// -------------------------------------------------------------------------
+if
+    0ADC: test_cheat "BRIBE"
+then
+    01C0: 26@ = player $PLAYER_CHAR wanted_level
+    if
+        26@ > 0
+    then
+        0085: 27@ = 4@
+        000E: 27@ -= 1
+        if
+            010A: player $PLAYER_CHAR money > 27@
+        then
+            0085: 27@ = 4@
+            0012: 27@ *= -1
+            0109: player $PLAYER_CHAR money += 27@
+            000E: 26@ -= 1
+            010D: set_player $PLAYER_CHAR wanted_level_to 26@
+
+            // Increment Bribes Paid With Shion (Physical >0 OR Hitodama -1)
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_HANDLE
+            0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                8039: not 25@ == 0
+            then
+                0085: 30@ = 31@
+                000A: 30@ += MEM_BRIBES_PAID
+                0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+                000A: 20@ += 1
+                0A8C: write_memory 30@ size 4 value 20@ virtual_protect 0
+            end
+
+            if
+                13@ == 1
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+            end
+
+            if
+                5@ == 1
+            then
+                0AD1: print_formatted_now "~y~Bribe Paid: -$%d! (1 Star Removed)" 2500 4@
+            end
+        else
+            if
+                5@ == 1
+            then
+                0AD1: print_formatted_now "~r~Too broke to bribe the cops! ($%d required)" 2000 4@
+            end
+        end
+    else
+        if
+            5@ == 1
+        then
+            0ACD: print_string_now "~s~No wanted level to clear." 1500
+        end
+    end
+end
+
+// -------------------------------------------------------------------------
+// 2. TRAFFIC HEX (Active if Alloc_TrafficHex > 0)
+// -------------------------------------------------------------------------
+if and
+    8@ > 0 // Has points in Traffic Hex
+    010F: player $PLAYER_CHAR wanted_level > 1 // 2+ Stars
+then
+    000A: 7@ += 100
+    if
+        7@ >= 2500
+    then
+        0006: 7@ = 0
+        0006: 18@ = 0
+
+        // Calculate & clamp stall chance
+        0085: 26@ = 8@
+        006A: 26@ *= 17@ // Points * StallChancePerPoint
+        if
+            001D: 26@ > 19@ // Compare to MaxStallPercent
+        then
+            0085: 26@ = 19@
+        end
+
+        04C4: store_coords_to 21@ 22@ 23@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.0
+        0006: 3@ = 0
+
+        :Traffic_Scan_Loop
+        0AE2: 9@ = get_random_car_in_sphere_no_save_recursive 21@ 22@ 23@ radius 45.0 find_next 3@ pass_wrecked 1
+        if
+            9@ > 0
+        then
+            0006: 3@ = 1
+            if and
+                056E: car 9@ defined
+                8119: not car 9@ wrecked
+            then
+                // Verify CJ is not inside the vehicle as driver or passenger
+                if
+                    80DB: not actor $PLAYER_ACTOR in_car 9@
+                then
+                    046C: 2@ = car 9@ driver
+                    if
+                        2@ > 0
+                    then
+                        if and
+                            056D: actor 2@ defined
+                            8118: not actor 2@ dead
+                        then
+                            0441: 25@ = car 9@ model
+                            02E3: 24@ = car 9@ speed
+                            if
+                                0021: 24@ > 2.0
+                            then
+                                // Check 4-wheel police cruisers first
+                                if or
+                                    25@ == 596 // #COPCARLA
+                                    25@ == 597 // #COPCARSF
+                                    25@ == 598 // #COPCARVG
+                                    25@ == 599 // #COPCARRU
+                                    25@ == 427 // #ENFORCER
+                                    25@ == 490 // #FBIRANCH
+                                    25@ == 528 // #FBITRUCK
+                                then
+                                    0209: 25@ = random_int_in_ranges 1 101
+                                    if
+                                        002D: 26@ >= 25@
+                                    then
+                                        // Repeatedly stall cruiser
+                                        0477: set_car 9@ action 1 time 3500
+
+                                        // Only pop tires if not already flat
+                                        if
+                                            8496: not tire 1 on_car 9@ deflated
+                                        then
+                                            04FE: deflate_tire 1 on_car 9@
+                                            04FE: deflate_tire 2 on_car 9@
+                                        end
+                                        
+                                        if and
+                                            15@ == 1
+                                            18@ == 0
+                                        then
+                                            018C: play_sound 1147 at 0.0 0.0 0.0
+                                            0006: 18@ = 1
+                                        end
+                                        
+                                        if
+                                            6@ == 1
+                                        then
+                                            0ACF: show_formatted_styled_text "~r~TRAFFIC HEX~n~~w~CRUISER STALLED" time 2500 style 5
+                                        end
+                                    end
+                                else
+                                    // Safe handling for Cop Bike (Stall only, no car tire opcodes)
+                                    if
+                                        25@ == 523 // #COPBIKE
+                                    then
+                                        0209: 25@ = random_int_in_ranges 1 101
+                                        if
+                                            002D: 26@ >= 25@
+                                        then
+                                            0477: set_car 9@ action 1 time 3500
+                                            
+                                            if and
+                                                15@ == 1
+                                                18@ == 0
+                                            then
+                                                018C: play_sound 1147 at 0.0 0.0 0.0
+                                                0006: 18@ = 1
+                                            end
+                                            
+                                            if
+                                                6@ == 1
+                                            then
+                                                0ACF: show_formatted_styled_text "~r~TRAFFIC HEX~n~~w~COP BIKE STALLED" time 2500 style 5
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            goto @Traffic_Scan_Loop
+        end
+    end
+end
+
+// -------------------------------------------------------------------------
+// 3. AVIATION CALAMITY
+// -------------------------------------------------------------------------
+if and
+    12@ > 0 // Unlocked from Rank 1!
+    010F: player $PLAYER_CHAR wanted_level > 2 // 3+ Stars
+then
+    000A: 10@ += 100
+    if
+        002D: 10@ >= 11@
+    then
+        0006: 10@ = 0
+
+        // Calculate & clamp aviation chance
+        0085: 24@ = 12@
+        006A: 24@ *= 28@ // Points * ChancePerPoint
+        if
+            001D: 24@ > 29@ // Compare to MaxAviationChance
+        then
+            0085: 24@ = 29@
+        end
+
+        // Pre-cache coordinates, group handle, and Shion handle once before scanning
+        04C4: store_coords_to 21@ 22@ 23@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.0
+        07AF: 26@ = player $PLAYER_CHAR group
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_HANDLE
+        0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
+        0006: 27@ = -1
+        0006: 3@ = 0
+
+        :Aviation_Scan_Loop
+        0AE2: 9@ = get_random_car_in_sphere_no_save_recursive 21@ 22@ 23@ radius 300.0 find_next 3@ pass_wrecked 1
+        if
+            9@ > 0
+        then
+            0006: 3@ = 1
+            if and
+                056E: car 9@ defined
+                8119: not car 9@ wrecked
+            then
+                0441: 25@ = car 9@ model
+                if or
+                    25@ == 497 // #POLMAV
+                    25@ == 520 // #HYDRA
+                then
+                    // Must not be an aircraft CJ is inside (Pilot OR Passenger!)
+                    if
+                        80DB: not actor $PLAYER_ACTOR in_car 9@
+                    then
+                        // Protect Shion if she is in physical form
+                        2@ = 0
+                        if
+                            20@ > 0
+                        then
+                            if
+                                00DB: actor 20@ in_car 9@
+                            then
+                                2@ = 1
+                            end
+                        end
+
+                        if
+                            2@ == 0
+                        then
+                            // Must be active and in flight (Ignores parked tarmac aircraft)
+                            02E3: 25@ = car 9@ speed
+                            if or
+                                01F3: car 9@ in_air
+                                0021: 25@ > 3.0
+                            then
+                                // Check if there is a pilot ped (Friendly check for homies/mods)
+                                046C: 2@ = car 9@ driver
+                                25@ = 0
+                                if
+                                    2@ > 0
+                                then
+                                    if or
+                                        07D6: 2@ == $PLAYER_ACTOR
+                                        06EE: actor 2@ in_group 26@
+                                        003B: 2@ == 20@
+                                    then
+                                        25@ = 1 // Pilot is friendly, do not target
+                                    end
+                                end
+
+                                if
+                                    25@ == 0
+                                then
+                                    0227: 25@ = car 9@ health
+                                    if
+                                        25@ > 250
+                                    then
+                                        0085: 27@ = 9@
+                                        goto @Aviation_Evaluate_Target
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            goto @Aviation_Scan_Loop
+        end
+
+        :Aviation_Evaluate_Target
+        if and
+            27@ > 0
+            056E: car 27@ defined
+            8119: not car 27@ wrecked
+        then
+            // Use 25@ for random roll to preserve iterator 3@
+            0209: 25@ = random_int_in_ranges 1 101
+            if
+                002D: 24@ >= 25@
+            then
+                020B: explode_car 27@
+                0003: shake_camera 30
+                if
+                    16@ == 1
+                then
+                    018C: play_sound 1057 at 0.0 0.0 0.0
+                end
+                if
+                    14@ == 1
+                then
+                    0ACF: show_formatted_styled_text "~r~AVIATION CALAMITY~n~~w~AIRCRAFT EXPLODED" time 2500 style 5
+                end
+            end
+        end
+    end
+end
+
+goto @YPursuit_Loop
+
+
+// =========================================================================
+// SUBROUTINES
+// =========================================================================
+
+:YPursuit_ReloadSettings
+0085: 1@ = 0@
+
+0AF0: 4@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "PoliceBribe" key "BribeCostPerStar"
+if
+    4@ == 0
+then
+    0006: 4@ = 20000
+end
+0AF0: 5@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "PoliceBribe" key "ShowBribeMessage"
+0AF0: 13@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "PoliceBribe" key "PlayBribeSound"
+
+0AF0: 6@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "TrafficHex" key "ShowStallMessage"
+0AF0: 15@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "TrafficHex" key "PlayStallSound"
+0AF0: 17@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "TrafficHex" key "StallChancePerPoint"
+if
+    17@ == 0
+then
+    0006: 17@ = 1
+end
+0AF0: 19@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "TrafficHex" key "MaxStallPercent"
+if
+    19@ == 0
+then
+    0006: 19@ = 20
+end
+0AF0: 28@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "AviationMisfortune" key "ChancePerPoint"
+if
+    28@ == 0
+then
+    0006: 28@ = 1
+end
+0AF0: 29@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "AviationMisfortune" key "MaxAviationChance"
+if
+    29@ == 0
+then
+    0006: 29@ = 15
+end
+
+0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "AviationMisfortune" key "ScanIntervalSeconds"
+if
+    11@ == 0
+then
+    0006: 11@ = 4
+end
+0012: 11@ *= 1000
+
+0AF0: 14@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "AviationMisfortune" key "ShowAviationMessage"
+0AF0: 16@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "AviationMisfortune" key "PlayAviationSound"
+return

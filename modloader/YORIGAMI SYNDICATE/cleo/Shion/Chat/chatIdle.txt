@@ -1,0 +1,870 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+03A4: script_name 'Sh_Idle'
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (SKINNED FOR CHATIDLE)
+// =========================================================================
+const
+    MEM_PRIORITY_LOCK = 20
+    MEM_SHION_HANDLE = 116
+end
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0 
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// Check if any higher priority tier is already holding the channel (Tier 3 Action or Tier 4 Theater)
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    04B5: 16@ >= 3
+then
+    0A93: terminate_this_custom_script
+end
+
+// Claim Tier 2 Ambient Lock!
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+
+0050: gosub @Check_Alive_Or_Exit
+
+// Strict on-foot only guard
+if
+    00DF: actor $PLAYER_ACTOR driving
+then
+    0002: jump @Finalize_Idle_Chat
+end
+
+// Check Form Mode: 0 = Physical Ped, 1 = Hitodama Spirit
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 9@ = read_memory 30@ size 4 virtual_protect 0
+if
+    9@ == -1
+then
+    0006: 11@ = 1 // Hitodama Form
+else
+    0006: 11@ = 0 // Physical Ped Form
+end
+
+// =========================================================================
+// JETPACK FLIGHT BANTER (0A0C Intercept)
+// =========================================================================
+if
+    0A0C: player $PLAYER_CHAR on_jetpack
+then
+    0209: 29@ = random_int_in_ranges 0 3
+
+    // Variant: Outside World Mortals Cheating Gravity
+    if
+        29@ == 0
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_JP0A" text "~y~Jo'on: ~s~\"Mortals here got too much common sense to float, so they blew sixty million bucks on a flying backpack!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_JP0A' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_JP0BH" text "~b~Shion: ~s~\"They spent sixty million on jet fuel just to do what I do for zero dollars... mortals are so stubborn, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JP0BH' time 3700 flag 1
+        else
+            0ADF: add_text_label "Y_JP0BP" text "~b~Shion: ~s~\"They built rockets because they can't float... and now your sixty-million-dollar exhaust is scorching my face, sis.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JP0BP' time 3700 flag 1
+        end
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_JP0C" text "~y~Jo'on: ~s~\"It clashes with my silk coat, but sixty million is sixty million! That's high-tech luxury! AHAHAHA!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_JP0C' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Idle_Chat
+    end
+
+    // Variant: Jet Thruster Barbecue
+    if
+        29@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_JP1AH" text "~b~Shion: ~s~\"If I had my hands right now, I'd hold a hot dog over that rocket flame... we could have a hot meal, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JP1AH' time 3700 flag 1
+        else
+            0ADF: add_text_label "Y_JP1AP" text "~b~Shion: ~s~\"Hey, Jo'on... can we hold a hot dog over that thruster? We could have a hot meal for once.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JP1AP' time 3700 flag 1
+        end
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_JP1B" text "~y~Jo'on: ~s~\"Are ya crazy?! I ain't turnin' experimental military hardware into a barbecue grill!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_JP1B' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_JP1C" text "~b~Shion: ~s~\"You're just wasting fuel anyway... sharing a little heat wouldn't hurt, sis.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_JP1C' time 3500 flag 1
+        0001: wait 3500 ms
+        0002: jump @Finalize_Idle_Chat
+    end
+
+    // Variant: Penthouse Balcony Grand Entrance
+    if
+        29@ == 2
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_JP2A" text "~y~Jo'on: ~s~\"With this rocket, I don't gotta ride the elevator to the top floor with peasants!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_JP2A' time 3000 flag 1
+        0001: wait 3000 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_JP2BH" text "~b~Shion: ~s~\"You're still gonna buy penthouses anyway, Jo'on... even though our pockets are bone-dry.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JP2BH' time 3700 flag 1
+        else
+            0ADF: add_text_label "Y_JP2BP" text "~b~Shion: ~s~\"Don't fly up there, Jo'on! If you land on that high balcony, I'm stuck on the sidewalk by myself!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JP2BP' time 3700 flag 1
+        end
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_JP2C" text "~y~Jo'on: ~s~\"Then take the stairs, slowpoke! When I buy out the top floor, I'm makin' a grand entrance! AHAHAHA!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_JP2C' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Idle_Chat
+    end
+end
+
+// =========================================================================
+// INTERIOR ENVIRONMENT SENSOR & PACING ROLL
+// Limits roll to universal topics when indoors; expands to street topics outdoors
+// =========================================================================
+077E: get_active_interior_to 28@
+if
+    28@ > 0
+then
+    // Indoors: roll from universal topics only (Variants 0 to 3)
+    0209: 27@ = random_int_in_ranges 0 4
+else
+    // Outdoors: roll from full topic archive including street and gutter topics (Variants 0 to 9)
+    0209: 27@ = random_int_in_ranges 0 10
+end
+
+// =========================================================================
+// WEAPONIZING MISFORTUNE (Universal: Indoors & Outdoors)
+// =========================================================================
+if
+    0039: 27@ == 0
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_TX0" text "~b~Shion: ~s~\"Jo'on... aren't you worried my bad luck's gonna ruin all your big plans in this city?\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_TX0' time 3500 flag 1
+    0001: wait 3500 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_TX1" text "~y~Jo'on: ~s~\"Ruin 'em?! Shion, your bad luck is the perfect weapon! You make 'em losers and I take the cash!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_TX1' time 3500 flag 1
+    0001: wait 3500 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_TX2" text "~b~Shion: ~s~\"...That's the closest thing to a compliment you've ever given me, Jo'on.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_TX2' time 3500 flag 1
+    0001: wait 3500 ms
+    0002: jump @Finalize_Idle_Chat
+end
+
+// =========================================================================
+// FORTUNE SLIP #90 & #91 (Universal: Indoors & Outdoors)
+// =========================================================================
+if
+    27@ == 1
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_FS0" text "~b~Shion: ~s~\"The shrine fortune slip said my fate is 'Super Misfortune' and I'll disappear without happiness...\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_FS0' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_FS1" text "~y~Jo'on: ~s~\"Hakurei fortune slips are written by a broke maiden with mothballs in her donation box! Ignore it!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_FS1' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_FS2" text "~b~Shion: ~s~\"...Yours said 'Very Great Misfortune' too, Jo'on. It said you'll go into debt and end up ruined.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_FS2' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_FS3" text "~y~Jo'on: ~s~\"Lies and slander! Livin' beyond my means and blowin' stacks is an art form, not a misfortune!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_FS3' time 3600 flag 1
+    0001: wait 3600 ms
+    0002: jump @Finalize_Idle_Chat
+end
+
+// =========================================================================
+// THE LOST SHINE OF GEMS & HYPOCRISY (Universal: Indoors & Outdoors)
+// =========================================================================
+if
+    27@ == 2
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_IDL5A" text "~b~Shion: ~s~\"Jo'on... after Reimu beat us, you swore money and gems lost their shine to you.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_IDL5A' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_IDL5B" text "~y~Jo'on: ~s~\"They did! Temple trainin' opened my eyes! True wealth is spiritual!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_IDL5B' time 3400 flag 1
+    0001: wait 3400 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_IDL5C" text "~b~Shion: ~s~\"Then why are you wearing solid gold rings on every single finger?\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_IDL5C' time 3400 flag 1
+    0001: wait 3400 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_IDL5D" text "~y~Jo'on: ~s~\"'Cause mortals are shallow, Shion! It's all about VIP status!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_IDL5D' time 3200 flag 1
+    0001: wait 3200 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_IDL5E" text "~y~Jo'on: ~s~\"I don't give a damn about the ruby! I just love the sickening envy in their eyes when they look at it! AHAHAHA!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_IDL5E' time 3800 flag 1
+    0001: wait 3800 ms
+    0002: jump @Finalize_Idle_Chat
+end
+
+// =========================================================================
+// THE ANNIHILATION BOMB (Universal: Indoors & Outdoors)
+// =========================================================================
+if
+    27@ == 3
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_IDL6A" text "~b~Shion: ~s~\"Jo'on... sometimes I worry that the annihilation bomb Hijiri put in your head might actually be real.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_IDL6A' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_IDL6B" text "~y~Jo'on: ~s~\"Don't be an idiot, Shion! That bum monk was bluffin' to keep me in check! It's extortion!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_IDL6B' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_IDL6C" text "~b~Shion: ~s~\"But she's a holy monk... would she really lie about blowing up your brain?\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_IDL6C' time 3500 flag 1
+    0001: wait 3500 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_ID6D1" text "~y~Jo'on: ~s~\"That's exactly why she's a genius!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_ID6D1' time 2500 flag 1
+    0001: wait 2500 ms
+    0050: gosub @Check_Alive_Or_Exit
+    
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_ID6D2" text "~y~Jo'on: ~s~\"She uses that holy reputation as a shield to keep everyone under her thumb!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_ID6D2' time 3500 flag 1
+    0001: wait 3500 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_IDL6E" text "~y~Jo'on: ~s~\"I've got so much respect for that woman! If she wasn't runnin' a temple, we could've taken over the world!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_IDL6E' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_IDL6F" text "~b~Shion: ~s~\"...You're the only person who could find a way to admire a monk for being corrupt, sis.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_IDL6F' time 3600 flag 1
+    0001: wait 3600 ms
+    0002: jump @Finalize_Idle_Chat
+end
+
+// =========================================================================
+// THE GOLD TOOTH / GUTTER TREASURE (Outdoors Only)
+// =========================================================================
+if
+    27@ == 4
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    if
+        11@ == 1
+    then
+        0ADF: add_text_label "Y_SH0H" text "~b~Shion: ~s~\"Look, Jo'on. A gold tooth on the curb. Too bad I don't have hands right now... that's a whole meal.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SH0H' time 3600 flag 1
+    else
+        0ADF: add_text_label "Y_SH0" text "~b~Shion: ~s~\"Hey, Jo'on... there's a gold tooth on the sidewalk. You think anyone's gonna miss it?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SH0' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_JO0" text "~y~Jo'on: ~s~\"A TOOTH?! What are ya, an alley rat?! Drop that bloody scrap before ya get stranger spit on my silk!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_JO0' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH1" text "~b~Shion: ~s~\"Gold is gold, Jo'on... a little stranger spit won't kill anybody if it buys lunch.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH1' time 3400 flag 1
+    0001: wait 3400 ms
+    0002: jump @Finalize_Idle_Chat
+end
+
+// =========================================================================
+// THE MINIMALIST TEMPLE DETOX (Outdoors Only)
+// =========================================================================
+if
+    0039: 27@ == 5
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_BX0" text "~y~Jo'on: ~s~\"Hittin' the pavement out here is a million times better than sweepin' that dusty temple!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_BX0' time 3500 flag 1
+    0001: wait 3500 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_BX1" text "~b~Shion: ~s~\"You told me you only stayed an extra week 'cause being broke was trendy with rich hipsters.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_BX1' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_BX2" text "~y~Jo'on: ~s~\"It was a fabulous spiritual detox!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_BX2' time 2500 flag 1
+    0001: wait 2500 ms
+    0050: gosub @Check_Alive_Or_Exit
+    
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_BX22" text "~y~Jo'on: ~s~\"Besides, what's the point of inner peace if there's nobody around to be jealous of it?!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_BX22' time 3500 flag 1
+    0001: wait 3500 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_BX3" text "~b~Shion: ~s~\"...So you only learned enlightenment so you could rub it in people's faces.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_BX3' time 3500 flag 1
+    0001: wait 3500 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_BX4" text "~y~Jo'on: ~s~\"Presentation is EVERYTHING, Shion! Fix your posture! We're showin' off VIP perfection today!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_BX4' time 3600 flag 1
+    0001: wait 3600 ms
+    0002: jump @Finalize_Idle_Chat
+end
+
+// =========================================================================
+// THE GUTTER QUARTER & SEWER COMBAT (Outdoors Only)
+// =========================================================================
+if
+    27@ == 6
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    if
+        11@ == 1
+    then
+        0ADF: add_text_label "Y_CN0H" text "~b~Shion: ~s~\"There's a quarter in the storm drain... I tried grabbing it, but my spirit hand went right through.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CN0H' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_CN1H" text "~y~Jo'on: ~s~\"AHAHA! Even when cash is starin' ya in the face, you're literally too broke to pick it up!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CN1H' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_CN2H" text "~b~Shion: ~s~\"Reach down and grab it with your manicured nails then, sis. Twenty-five cents is twenty-five cents.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CN2H' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_CN3H" text "~y~Jo'on: ~s~\"Like hell I'm diggin' through sewage for pocket change! I've got standards, dammit!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CN3H' time 3600 flag 1
+    else
+        0ADF: add_text_label "Y_CN0" text "~b~Shion: ~s~\"There's a shiny quarter wedged in the storm drain grating... I can reach it.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CN0' time 3300 flag 1
+        0001: wait 3300 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_CN1" text "~y~Jo'on: ~s~\"Don't ya dare reach down there! You're gonna splash sewer water all over my coat!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CN1' time 3400 flag 1
+        0001: wait 3400 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_CN2" text "~b~Shion: ~s~\"Too late. ...Ow. A sewer rat bit my finger. Still got the quarter, though.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CN2' time 3500 flag 1
+        0001: wait 3500 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_CN3" text "~y~Jo'on: ~s~\"Drop the coin, chuck the rat, and don't let that sewer slime touch my boots!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CN3' time 3400 flag 1
+    end
+    0001: wait 3400 ms
+    0002: jump @Finalize_Idle_Chat
+end
+
+// =========================================================================
+// STREET INVISIBILITY & EVICTIONS (Outdoors Only)
+// =========================================================================
+if
+    27@ == 7
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    if
+        11@ == 1
+    then
+        0ADF: add_text_label "Y_IDH0A" text "~b~Shion: ~s~\"Floating around like this isn't so bad... landlords can't grab my collar to throw me out.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDH0A' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDH0B" text "~y~Jo'on: ~s~\"Stop driftin' behind my top-hat like a dead moth, Shion! You're blockin' my spotlight!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDH0B' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDH0C" text "~b~Shion: ~s~\"I'm saving you shade, Jo'on. Plus, cops can't ticket a floating ball of bad luck.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDH0C' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDH0D" text "~y~Jo'on: ~s~\"If you don't stop floatin' in my peripheral vision, I'm hirin' a five-star exorcist!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDH0D' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDH0E" text "~b~Shion: ~s~\"Go ahead and waste the cash... expensive exorcisms never stick to poverty gods anyway.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDH0E' time 3600 flag 1
+    else
+        0ADF: add_text_label "Y_IDP7A" text "~b~Shion: ~s~\"Sometimes when I walk down the street, I feel completely invisible... nobody even looks at me.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDP7A' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDP7B" text "~y~Jo'on: ~s~\"Of course they don't look! You dress like a soggy rag! Look expensive and act like you own the place!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDP7B' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDP7C" text "~b~Shion: ~s~\"At least being invisible means debt collectors walk right past my cardboard box...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDP7C' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finalize_Idle_Chat
+end
+
+// =========================================================================
+// HITODAMA RELIEF / STREET PERFORMANCE ART (Outdoors Only)
+// =========================================================================
+if
+    0039: 27@ == 8
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    if
+        0039: 11@ == 1
+    then
+        0ADF: add_text_label "Y_IDH1A" text "~b~Shion: ~s~\"Floating like this is nice, Jo'on... my bare feet don't hurt from walking on broken glass.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDH1A' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDH1B" text "~y~Jo'on: ~s~\"Enjoy it while it lasts! Once we find a mark, you're gettin' your legs back and takin' the hits!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDH1B' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDH1C" text "~b~Shion: ~s~\"I know, I know... let me enjoy having no stomach to starve in for five minutes, okay?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDH1C' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDH1D" text "~y~Jo'on: ~s~\"Fine, float quietly! You're actin' like a moody nightlight and distractin' my eye for jewelry!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDH1D' time 3700 flag 1
+    else
+        0ADF: add_text_label "Y_IDP8A" text "~b~Shion: ~s~\"A mortal just walked past and gave me a dollar because he thought I was doing street performance art.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDP8A' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDP8B" text "~y~Jo'on: ~s~\"A dollar?! Hand it over! Any show put on by my sister is billed at VIP rates!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDP8B' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDP8C" text "~b~Shion: ~s~\"I was just sitting on the curb crying, sis... but hey, a dollar is a dollar.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDP8C' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finalize_Idle_Chat
+end
+
+// =========================================================================
+// FAST-FOOD GREASE TRAP & DUMPSTER SCAVENGE (Outdoors Only)
+// =========================================================================
+if
+    27@ == 9
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    if
+        11@ == 1
+    then
+        0ADF: add_text_label "Y_IDH9A" text "~b~Shion: ~s~\"If I hover over this grease vent, the deep fryer exhaust almost smells like real food...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDH9A' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDH9B" text "~y~Jo'on: ~s~\"Get away from that vent! You're soakin' my designer coat in cheap, rancid burger grease!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDH9B' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDH9C" text "~b~Shion: ~s~\"It's free calories, sis... just let me inhale the onion rings for five seconds.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDH9C' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDH9D" text "~y~Jo'on: ~s~\"Inhale a clue! We're robbin' a jewelry boutique later, not huffin' fast-food exhaust!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDH9D' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDH9E" text "~b~Shion: ~s~\"Promise we're stopping for takeout with the stolen cash then...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDH9E' time 3300 flag 1
+    else
+        0ADF: add_text_label "Y_IDP9A" text "~b~Shion: ~s~\"Wait, Jo'on... somebody threw out half a burger behind this dumpster. It's still warm.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDP9A' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDP9B" text "~y~Jo'on: ~s~\"Leave that trash alone! You're pullin' a heist with high society, not pickin' garbage!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDP9B' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDP9C" text "~b~Shion: ~s~\"There's barely any gravel on it... and the wrapper's clean on one side.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDP9C' time 3500 flag 1
+        0001: wait 3500 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDP9D" text "~y~Jo'on: ~s~\"Drop the cold grease burger! Help me shake down the register inside and we'll eat like kings!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDP9D' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_IDP9E" text "~b~Shion: ~s~\"Fine, but if the cops show up, I'm coming back for the burger.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_IDP9E' time 3300 flag 1
+    end
+    0001: wait 3300 ms
+    0002: jump @Finalize_Idle_Chat
+end
+
+0002: jump @Finalize_Idle_Chat
+
+
+// =========================================================================
+// SUBROUTINE: SAFETY BAILOUT & WATCHDOG
+// =========================================================================
+:Check_Alive_Or_Exit
+if or
+    8256: not player $PLAYER_CHAR defined
+    0E25: is_on_cutscene
+    0EB7: is_on_scripted_cutscene
+then
+    0050: gosub @Release_Tier2_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
+// Abort if player dies, gets busted, enters water, or gets into a vehicle
+if or
+    0118: actor $PLAYER_ACTOR dead
+    0741: actor $PLAYER_ACTOR busted
+    04AD: actor $PLAYER_ACTOR in_water
+    00DF: actor $PLAYER_ACTOR driving
+then
+    0050: gosub @Release_Tier2_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+// Abort if player answered a phone call
+if
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 416
+then
+    0050: gosub @Release_Tier2_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+if or
+    0611: actor $PLAYER_ACTOR performing_animation "phone_in"
+    0611: actor $PLAYER_ACTOR performing_animation "phone_talk"
+then
+    0050: gosub @Release_Tier2_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    2@ == 0 // Inactive or dismissed
+then
+    0050: gosub @Release_Tier2_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+if
+    2@ > 0 // Only check physical actor handle if in Solid Ped form
+then
+    if
+        856D: not actor 2@ defined
+    then
+        0050: gosub @Release_Tier2_Lock_Safely
+        0A93: terminate_this_custom_script
+    end
+
+    if or
+        0118: actor 2@ dead
+        04AD: actor 2@ in_water
+    then
+        0050: gosub @Release_Tier2_Lock_Safely
+        0A93: terminate_this_custom_script
+    end
+
+    // Abort if separated by more than 35 meters on foot
+    if
+        8EE4: not locate_char_distance_to_char $PLAYER_ACTOR char 2@ radius 35.0
+    then
+        0050: gosub @Release_Tier2_Lock_Safely
+        0A93: terminate_this_custom_script
+    end
+end
+0051: return
+
+:Finalize_Idle_Chat
+0050: gosub @Release_Tier2_Lock_Safely
+0A93: terminate_this_custom_script
+
+:Release_Tier2_Lock_Safely
+03EB: clear_small_messages_only
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
+if
+    19@ == 2 // Only wipe prints and release if WE still own the channel!
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+0051: return

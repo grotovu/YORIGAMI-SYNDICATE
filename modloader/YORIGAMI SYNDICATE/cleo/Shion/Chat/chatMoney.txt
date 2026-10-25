@@ -1,0 +1,739 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+03A4: script_name 'Sh_Mny'
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED FOR CHATMONEY)
+// =========================================================================
+const
+    MEM_PRIORITY_LOCK = 20        // Formerly 765
+    MEM_SHION_HANDLE = 116        // Formerly 703
+    MEM_TOTAL_CASH_GIVEN = 252    // Formerly 767
+    MEM_CASH_MILESTONE_LCK = 276  // Formerly 773
+end
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0 
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// Check if any higher priority tier is already holding the channel (Tier 3 Action or Tier 4 Theater)
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    04B5: 16@ >= 3
+then
+    0A93: terminate_this_custom_script
+end
+
+// Claim Tier 2 Ambient Lock!
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+
+// 0@ = Shion Actor Handle passed from ShionChat.c
+0085: 10@ = 0@
+
+0050: gosub @Check_Alive_Or_Exit
+
+010B: 23@ = player $PLAYER_CHAR money
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+
+// Check Form Mode: 0 = Physical Ped, 1 = Hitodama Spirit
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 9@ = read_memory 30@ size 4 virtual_protect 0
+if
+    9@ == -1
+then
+    0006: 11@ = 1 // Hitodama Form
+else
+    0006: 11@ = 0 // Physical Ped Form
+end
+
+// =========================================================================
+// TOTAL CASH GIVEN AMBIENT MILESTONES (15% Chance to trigger)
+// Dynamically pools all unlocked tiers once past the $1,000 threshold
+// =========================================================================
+0085: 30@ = 31@
+000A: 30@ += MEM_TOTAL_CASH_GIVEN
+0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_CASH_MILESTONE_LCK
+0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0 // Anti-repetition tracker for milestone chat
+
+0209: 25@ = random_int_in_ranges 0 100
+
+if
+    25@ < 15
+then
+    if
+        24@ >= 1000
+    then
+        // Determine available tier pool size based on cumulative spending
+        0006: 27@ = 1 // Tier 1 ($1,000) unlocked
+        if
+            24@ >= 2500
+        then
+            0006: 27@ = 2 // Tier 1 and Tier 2 ($2,500) unlocked
+        end
+        if
+            24@ >= 5000
+        then
+            0006: 27@ = 3 // Tier 1, Tier 2, and Tier 3 ($5,000) unlocked
+        end
+
+        // Roll an option from 0 up to (27@ - 1)
+        0209: 28@ = random_int_in_ranges 0 27@
+
+        // If multiple options are available and matches last session roll, re-roll once
+        if and
+            27@ > 1
+            003B: 28@ == 29@
+        then
+            0209: 28@ = random_int_in_ranges 0 27@
+        end
+
+        // Store selected tier into anti-repetition memory
+        0085: 30@ = 31@
+        000A: 30@ += MEM_CASH_MILESTONE_LCK
+        0A8C: write_memory 30@ size 4 value 28@ virtual_protect 0
+
+        // =================================================================
+        // TIER 1: $1,000+ Takeout Tally
+        // =================================================================
+        if
+            0039: 28@ == 0
+        then
+            0ADF: add_text_label "Y_MTC1A" text "~y~Jo'on: ~s~\"Hold up... I just realized I've blown a whole grand treatin' you to takeout, Shion!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_MTC1A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_MTC1B" text "~b~Shion: ~s~\"A thousand dollars... that's so many combo meals. I don't care how you stole it, just keep feeding me.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_MTC1B' time 3800 flag 1
+            0001: wait 3800 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_MTC1C" text "~y~Jo'on: ~s~\"Don't ya get used to it! That's strictly a maintenance budget so you don't collapse on my watch!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_MTC1C' time 3700 flag 1
+            0001: wait 3700 ms
+            0002: jump @Finalize_Ambient_Chat
+        end
+
+        // =================================================================
+        // TIER 2: $2,500+ Gained Weight / Warmer Flame
+        // =================================================================
+        if
+            0039: 28@ == 1
+        then
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_MC2AH" text "~b~Shion: ~s~\"I actually feel warm for once, Jo'on... must've been all that fast food you bought me.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MC2AH' time 3700 flag 1
+            else
+                0ADF: add_text_label "Y_MTC2A" text "~b~Shion: ~s~\"I think I've actually gained weight, Jo'on. My hoodie feels tighter around my stomach...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MTC2A' time 3600 flag 1
+            end
+            0001: wait 3600 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_MTC2B" text "~y~Jo'on: ~s~\"Of course you have! I've dumped two and a half grand into feedin' ya!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_MTC2B' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_MTC2C" text "~b~Shion: ~s~\"It's good padding against the cold pavement. You're a wonderful provider, Jo'on. Keep it coming.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_MTC2C' time 3700 flag 1
+            0001: wait 3700 ms
+            0002: jump @Finalize_Ambient_Chat
+        end
+
+        // =================================================================
+        // TIER 3: $5,000+ Five-Grand Feast & Shameless Moocher Clause
+        // =================================================================
+        if
+            0039: 28@ == 2
+        then
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_MC3AH" text "~b~Shion: ~s~\"Five thousand dollars in food... I feel like I'll never starve again, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MC3AH' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_MC3BH" text "~y~Jo'on: ~s~\"Five grand on ghost fuel! You're a bottomless furnace! Where does all that grease even go?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MC3BH' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_MC3CH" text "~b~Shion: ~s~\"Straight into my aura. You're the best sister in the world, Jo'on. Provide for me forever.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MC3CH' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_MC3DH" text "~y~Jo'on: ~s~\"H-Hey! Quit sayin' that with a dead face! Ya shameless tick! Stop flatterin' my wallet!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MC3DH' time 3700 flag 1
+                0001: wait 3700 ms
+            else
+                0ADF: add_text_label "Y_MTC3A" text "~b~Shion: ~s~\"Five grand spent on takeout... for the first time in my life, my ribs aren't sticking out.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MTC3A' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_MTC3B" text "~y~Jo'on: ~s~\"Five thousand bucks! I could've bought an imported silk coat, and I spent it fattenin' you up!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MTC3B' time 3800 flag 1
+                0001: wait 3800 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_MTC3C" text "~b~Shion: ~s~\"I have no pride. Just an empty belly only you can fill. You're a wonderful provider, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MTC3C' time 3800 flag 1
+                0001: wait 3800 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_MTC3D" text "~y~Jo'on: ~s~\"D-Don't look at me with those dead eyes! Have some dignity! ...Fine, what're we eatin' later?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MTC3D' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+            0002: jump @Finalize_Ambient_Chat
+        end
+    end
+end
+
+// =========================================================================
+// DEEP DEBT (< -$500,000) - Catastrophic Insolvent Ruin
+// =========================================================================
+if
+    001B: -500000 > 23@
+then
+    0209: 28@ = random_int_in_ranges 0 2
+
+    // Variant 0: Super Poverty Bomb Overflow
+    if
+        0039: 28@ == 0
+    then
+        0ADF: add_text_label "Y_DD0A" text "~b~Shion: ~s~\"Drowning in red numbers... there's so much debt piling up, my aura's gonna drag this whole county down.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DD0A' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_DD0B" text "~y~Jo'on: ~s~\"That's high-roller leverage, Shion! When ya owe the bank this much, THE BANK'S got the problem!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DD0B' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_DD0C" text "~b~Shion: ~s~\"...That's what scammers say right before they get sealed under a boulder, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DD0C' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    // Variant 1: The Repo Men Tears
+    if
+        28@ == 1
+    then
+        0ADF: add_text_label "Y_DD1A" text "~y~Jo'on: ~s~\"Look at all those red minus signs! We're in the hole so deep they can't even touch us! AHAHAHA!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DD1A' time 3500 flag 1
+        wait 3500
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_DD1B" text "~b~Shion: ~s~\"The repo guys stopped calling... they're just sitting down the block, weeping into their clipboards.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DD1B' time 3600 flag 1
+        wait 3600
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_DD1C" text "~y~Jo'on: ~s~\"Let 'em cry! What're those chumps gonna repo, our curse?! Swipe that card and keep spendin'!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DD1C' time 3500 flag 1
+        wait 3500
+        jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// MILD DEBT (-$1 to -$500,000)
+// =========================================================================
+if and
+    001B: 0 > 23@
+    23@ >= -500000
+then
+    0209: 28@ = random_int_in_ranges 0 2
+
+    // Variant 0: Sprouting Dunning Notices
+    if
+        28@ == 0
+    then
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_MD0AH" text "~b~Shion: ~s~\"Our balance's negative, Jo'on... eviction notices are already manifesting around me.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_MD0AH' time 3700 flag 1
+        else
+            0ADF: add_text_label "Y_MD0A" text "~b~Shion: ~s~\"Our balance's negative, Jo'on... my sleeves are sprouting fresh eviction notices again.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_MD0A' time 3600 flag 1
+        end
+        wait 3600
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_MD0B" text "~y~Jo'on: ~s~\"Rip 'em off and ignore the phone! Debt ain't real unless ya look at the statement!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_MD0B' time 3600 flag 1
+        wait 3600
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_MD0C" text "~b~Shion: ~s~\"I'm pretty sure that's how bank fraud works in this world, sis...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_MD0C' time 3300 flag 1
+        wait 3300
+        jump @Finalize_Ambient_Chat
+    end
+
+    // Variant 1: Bank Manager Investing in Grace
+    if
+        28@ == 1
+    then
+        0ADF: add_text_label "Y_MD1A" text "~y~Jo'on: ~s~\"Some suit from the bank called demandin' minimum loan payments earlier. The nerve of that clown!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_MD1A' time 3500 flag 1
+        wait 3500
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_MD1B" text "~b~Shion: ~s~\"What did you say to him, Jo'on...?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_MD1B' time 2500 flag 1
+        wait 2500
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_MD1C" text "~y~Jo'on: ~s~\"Told that chump to write it off as a VIP consulting fee, then slammed the phone in his ear!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_MD1C' time 3600 flag 1
+        wait 3600
+        jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// FLAT ZERO ($0 - Shion Resonance & Bankruptcy)
+// =========================================================================
+if
+    23@ == 0
+then
+    0209: 28@ = random_int_in_ranges 0 2
+
+    // Variant 0: Total Rock-Bottom Peace
+    if
+        28@ == 0
+    then
+        0ADF: add_text_label "Y_FZ0A" text "~b~Shion: ~s~\"Zero dollars, flat broke again... even the cops look at us, sigh, and cross the street.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_FZ0A' time 3500 flag 1
+        wait 3500
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_FZ0B" text "~y~Jo'on: ~s~\"Don't ya sound so relieved! Havin' zero cash in my pocket's a direct insult to my reputation!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_FZ0B' time 3600 flag 1
+        wait 3600
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_FZ0C" text "~b~Shion: ~s~\"At least nobody's gonna mug us... when you've got nothing, nobody bothers you.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_FZ0C' time 3400 flag 1
+        wait 3400
+        jump @Finalize_Ambient_Chat
+    end
+
+    // Variant 1: Jo'on's Withdrawal Panic
+    if
+        28@ == 1
+    then
+        0ADF: add_text_label "Y_FZ1A" text "~y~Jo'on: ~s~\"Empty pockets?! Not a single bill?! I'm havin' shortness of breath!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_FZ1A' time 3500 flag 1
+        wait 3500
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_FZ1BH" text "~b~Shion: ~s~\"Take slow breaths, Jo'on... floating as a spirit's completely free. It doesn't cost a dime.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_FZ1BH' time 3700 flag 1
+            wait 3700
+            gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_FZ1CH" text "~y~Jo'on: ~s~\"I ain't turnin' into a ghost! We're shakin' down the next high-roller on this sidewalk!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_FZ1CH' time 3600 flag 1
+        else
+            0ADF: add_text_label "Y_FZ1B" text "~b~Shion: ~s~\"Take slow breaths, Jo'on... there's ice cubes to chew on, or we could check the dumpsters to relax.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_FZ1B' time 3600 flag 1
+            wait 3600
+            gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_FZ1C" text "~y~Jo'on: ~s~\"I ain't chewin' ice! We're shakin' down the next high-roller on this sidewalk!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_FZ1C' time 3600 flag 1
+        end
+        wait 3600
+        jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// SMALL CASH ($1 to $5,000 - Chump Change)
+// =========================================================================
+if and
+    0019: 23@ > 0
+    002B: 5000 >= 23@
+then
+    0209: 28@ = random_int_in_ranges 0 2
+
+    // Variant 0: Peasant Change vs. Shrine Income
+    if
+        0039: 28@ == 0
+    then
+        0ADF: add_text_label "Y_SC0A" text "~b~Shion: ~s~\"A few thousand crumpled bills... that's enough for warm grease and burgers all week, Jo'on...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SC0A' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SC0B" text "~y~Jo'on: ~s~\"Peasant pocket change! A few grand won't even cover sales tax at Didier Sachs!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SC0B' time 3500 flag 1
+        0001: wait 3500 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SC0C" text "~b~Shion: ~s~\"Even pocket change like this is more than Reimu's seen in her entire life... just let me eat.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SC0C' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    // Variant 1: Impulse Luxury Accessories
+    if
+        28@ == 1
+    then
+        0ADF: add_text_label "Y_SC1A" text "~y~Jo'on: ~s~\"A couple grand in the clip... I gotta buy a pair of designer sunglasses right now.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SC1A' time 3500 flag 1
+        wait 3500
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SC1B" text "~b~Shion: ~s~\"Jo'on, don't... let's buy groceries before you blow all our lunch money on tinted plastic.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SC1B' time 3600 flag 1
+        wait 3600
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SC1C" text "~y~Jo'on: ~s~\"Glamour is an essential expense, Shion! Ya got zero fashion sense!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SC1C' time 3600 flag 1
+        wait 3600
+        jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// DECENT CASH ($5,001 to $1,000,000 - Spending Spree)
+// =========================================================================
+if and
+    0019: 23@ > 5000
+    002B: 1000000 >= 23@
+then
+    0209: 28@ = random_int_in_ranges 0 2
+
+    // Variant 0: Fortune Slip #90 Burning Hole
+    if
+        0039: 28@ == 0
+    then
+        0ADF: add_text_label "Y_DC0A" text "~y~Jo'on: ~s~\"Now THIS is a healthy bankroll! All this cash burnin' a hole in my luxury handbag!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DC0A' time 3500 flag 1
+        0001: wait 3500 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_DC0B" text "~b~Shion: ~s~\"Every time we've got cash, Jo'on, your eyes get twitchy and you blow it on junk we can't eat...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DC0B' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_DC0C" text "~y~Jo'on: ~s~\"Cash is meant to be spent, Shion! What kind of loser keeps a savin's account?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DC0C' time 3500 flag 1
+        0001: wait 3500 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    // Variant 1: Pure Gold Umbrellas
+    if
+        28@ == 1
+    then
+        0ADF: add_text_label "Y_DC1A" text "~y~Jo'on: ~s~\"Look at all those zeros on our receipt! Rodeo boutiques, prepare your finest racks!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DC1A' time 3500 flag 1
+        wait 3500
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_DC1B" text "~b~Shion: ~s~\"Please tell me you won't buy another solid-gold parasol... you left the last one in a cab.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DC1B' time 3600 flag 1
+        wait 3600
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_DC1C" text "~y~Jo'on: ~s~\"Gold parasols are timeless classics! I'm buyin' two this time!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DC1C' time 3400 flag 1
+        wait 3400
+        jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// FILTHY RICH (> $1,000,000 - Sunken Fossil World Energy)
+// =========================================================================
+if
+    23@ > 1000000
+then
+    0209: 28@ = random_int_in_ranges 0 2
+
+    // Variant 0: SFW Chapter 1 Vacation Spree
+    if
+        28@ == 0
+    then
+        0ADF: add_text_label "Y_FR0A" text "~y~Jo'on: ~s~\"AHAHAHA! OVER A MILLION BUCKS! WE'RE THE OIL SISTERS WHO HAVE IT ALL!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_FR0A' time 3500 flag 1
+        wait 3500
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_FR0B" text "~b~Shion: ~s~\"I'm getting shivers, Jo'on... tonight's all-you-can-eat. Order the entire menu... twice.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_FR0B' time 3600 flag 1
+        wait 3600
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_FR0C" text "~y~Jo'on: ~s~\"Bring us their most expensive vintage wine! If they want cash, it gushes like an oil well!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_FR0C' time 3600 flag 1
+        wait 3600
+        jump @Finalize_Ambient_Chat
+    end
+
+    // Variant 1: Billionaire God Penthouse Floor
+    if
+        28@ == 1
+    then
+        0ADF: add_text_label "Y_FR1A" text "~b~Shion: ~s~\"I checked our balance... I think we've got more cash than the entire state treasury, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_FR1A' time 3600 flag 1
+        wait 3600
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_FR1B" text "~y~Jo'on: ~s~\"Course we do! We're walkin' goldmines! Tonight, I'm buyin' out the whole casino penthouse!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_FR1B' time 3600 flag 1
+        wait 3600
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_FR1C" text "~b~Shion: ~s~\"I don't even care if this blows up later... as long as you keep buying the steak dinners, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_FR1C' time 3500 flag 1
+        wait 3500
+        jump @Finalize_Ambient_Chat
+    end
+end
+
+jump @Finalize_Ambient_Chat
+
+// =========================================================================
+// SUBROUTINE: SAFETY BAILOUT
+// =========================================================================
+:Check_Alive_Or_Exit
+if or
+    8256: not player $PLAYER_CHAR defined
+    0E25: is_on_cutscene
+    0EB7: is_on_scripted_cutscene
+then
+    03EB: clear_small_messages_only
+    0002: jump @Finalize_Ambient_Chat
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
+if or
+    0118: actor $PLAYER_ACTOR dead
+    0741: actor $PLAYER_ACTOR busted
+then
+    03EB: clear_small_messages_only
+    0002: jump @Finalize_Ambient_Chat
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+
+// Shion handle is 0 (despawned/dismissed)
+if
+    2@ == 0
+then
+    03EB: clear_small_messages_only
+    0002: jump @Finalize_Ambient_Chat
+end
+
+// Physical Ped Form checks (Ignored if Hitodama spirit form 2@ == -1)
+if
+    2@ > 0
+then
+    if
+        856D: not actor 2@ defined
+    then
+        03EB: clear_small_messages_only
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    if
+        0118: actor 2@ dead
+    then
+        03EB: clear_small_messages_only
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    if
+        8EE4: not locate_char_distance_to_char $PLAYER_ACTOR char 2@ radius 35.0
+    then
+        03EB: clear_small_messages_only
+        0002: jump @Finalize_Ambient_Chat
+    end
+end
+0051: return
+
+:Finalize_Ambient_Chat
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
+if
+    19@ == 2
+then
+    03EB: clear_small_messages_only
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+0A93: terminate_this_custom_script

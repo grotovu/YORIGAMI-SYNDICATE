@@ -1,0 +1,1127 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+{$USE ini}
+
+0000: NOP
+script_name "Sh_TrkW"
+
+wait 1200
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED FOR SHIONTRACK_WORLD)
+// =========================================================================
+const
+    MEM_SHION_BUSY = 4            // Protects Shion from follow watchdog during events
+    MEM_SHION_HANDLE = 116        // Live entity handle or Hitodama state (-1)
+    MEM_CASINO_LOSSES = 256       // Net casino losses telemetry
+    MEM_CARS_WRECKED = 268        // Shared vehicle wrecks counter
+    MEM_MOD_CASH_SPENT = 284      // Mod garage tuning expenditure
+    MEM_LORE_PROGRESS_BIT = 244   // Lore completion bitmask
+    MEM_LOWRIDER_DONE = 292       // Live lowrider dance completion trigger
+    MEM_FAV_CAR_MODEL = 312       // Crowned favorite vehicle model ID
+    MEM_FAV_CAR_MINUTES = 316     // Crowned favorite vehicle minutes
+    MEM_CARS_MODDED = 320         // Vehicles modded with Shion count
+    MEM_FAV_RADIO_STAT = 332      // Crowned favorite radio station ID
+    MEM_WORST_RADIO_STAT = 336    // Crowned least favorite radio station ID
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// Allocate 4 KB RAM cache for vehicle odometer (Supports up to 500 distinct models)
+0AC8: 1@ = allocate_memory_size 4000
+2@ = 0    // Discovered Vehicle Count in RAM
+3@ = -999 // Last Tracked Save Slot (-999 forces initial load)
+8@ = 0    // Loading Screen / Reload Watchdog Latch
+
+13@ = 0 // 60-Second Millisecond Accumulator
+14@ = 0 // Lowrider Minigame Latch
+15@ = 0 // Stationary Latch (0 = Moving / Walking, 1 = Stopped / Playing)
+16@ = 0 // Stationary Starting Wallet Snapshot
+17@ = 0 // Mod Shop In-Shop Flag
+18@ = 0 // Mod Shop Starting Cash
+19@ = 0 // Last Driven Vehicle Handle
+
+// Register Safehouse Save Confirmation Callback (Reallocated from 31@ to 9@)
+0ED1: set_script_event_save_confirmation 1 @OnSaveVehicles 9@
+
+:ShionTrackWorld_Loop
+wait 250
+
+// Detect loading screens or player despawning to catch save reloads
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    8@ = 1
+    goto @ShionTrackWorld_Loop
+end
+
+// Force save slot reload 100% of the time after any load screen (even same slot)
+if
+    8@ == 1
+then
+    8@ = 0
+    3@ = -999
+end
+
+// Detect save slot change or game load to sync RAM with ShionVehicles.ini
+0E2C: get_current_save_slot 0@
+if
+    0@ < 0
+then
+    0@ = 0
+end
+
+if
+    803B: not 0@ == 3@
+then
+    gosub @Load_Vehicles_From_Ini
+    gosub @Evaluate_Radio_From_Ini
+end
+
+// Read Live Shion Handle from Master Heap
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+// If Shion is completely dismissed (0) or dead in solid form, pause session memory
+if
+    10@ == 0
+then
+    15@ = 0
+    16@ = 0
+    19@ = 0
+    14@ = 0
+    17@ = 0
+    11@ = 0
+    12@ = 0
+    13@ = 0
+    goto @ShionTrackWorld_Loop
+end
+
+if
+    10@ > 0
+then
+    if or
+        856D: not actor 10@ defined
+        0118: actor 10@ dead
+    then
+        15@ = 0
+        16@ = 0
+        19@ = 0
+        14@ = 0
+        17@ = 0
+        11@ = 0
+        12@ = 0
+        13@ = 0
+        goto @ShionTrackWorld_Loop
+    end
+end
+
+// =========================================================================
+// CASINO LOSS TRACKER (Movement-Based Stationary Settlement)
+// Tracks net gambling losses while Shion is present (Physical or Hitodama)
+// =========================================================================
+077E: get_active_interior_to 29@
+00A0: store_actor $PLAYER_ACTOR position_to 24@ 25@ 26@
+28@ = 0
+
+// Four Dragons Casino (Interior 10, Y > 900.0 excludes Safehouse 1 & Hashbury)
+if and
+    29@ == 10
+    0021: 24@ > 1500.0
+    0021: 25@ > 900.0
+then
+    28@ = 1
+end
+
+// Caligula's Casino (Interior 1, Y > 1500.0 excludes Sweet's House & Safehouse 4)
+if and
+    29@ == 1
+    0021: 24@ > 1500.0
+    0021: 25@ > 1500.0
+then
+    28@ = 1
+end
+
+// Inside Track Betting (Interior 3, exact coordinate radius excludes Johnson House)
+if
+    29@ == 3
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 826.8863 5.5091 1004.4830 radius 40.0
+    then
+        28@ = 1
+    end
+end
+
+if
+    28@ == 1
+then
+    // In Hitodama Form (-1), Shion is floating right with Jo'on
+    23@ = 0
+    if
+        10@ == -1
+    then
+        23@ = 1
+    else
+        if
+            0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 30.0
+        then
+            23@ = 1
+        end
+    end
+
+    if
+        23@ == 1
+    then
+        // Check if player is stationary on foot (seated at table, at machine, or standing still)
+        if
+            02A0: actor $PLAYER_ACTOR stopped
+        then
+            // Player just stopped / sat down to play
+            if
+                15@ == 0
+            then
+                15@ = 1 // Latch stationary state
+                010B: 16@ = player $PLAYER_CHAR money // Snapshot wallet before any chips are placed
+            end
+        else
+            // Player just started moving again / stood up from table
+            if
+                15@ == 1
+            then
+                15@ = 0 // Unlatch
+                010B: 27@ = player $PLAYER_CHAR money // Read final wallet after game concludes
+
+                if
+                    001D: 16@ > 27@ // Net loss confirmed
+                then
+                    0085: 26@ = 16@
+                    0062: 26@ -= 27@ // 26@ = True Net Loss
+
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_CASINO_LOSSES
+                    0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+
+                    005A: 25@ += 26@
+
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_CASINO_LOSSES
+                    0A8C: write_memory 30@ size 4 value 25@ virtual_protect 0
+                end
+                16@ = 0
+            end
+        end
+    else
+        // Shion drifted too far away: settle pending snapshot safely
+        if
+            15@ == 1
+        then
+            15@ = 0
+            010B: 27@ = player $PLAYER_CHAR money
+            if
+                001D: 16@ > 27@
+            then
+                0085: 26@ = 16@
+                0062: 26@ -= 27@
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_CASINO_LOSSES
+                0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+
+                005A: 25@ += 26@
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_CASINO_LOSSES
+                0A8C: write_memory 30@ size 4 value 25@ virtual_protect 0
+            end
+            16@ = 0
+        end
+    end
+else
+    // Left the casino interior: settle pending snapshot safely
+    if
+        15@ == 1
+    then
+        15@ = 0
+        010B: 27@ = player $PLAYER_CHAR money
+        if
+            001D: 16@ > 27@
+        then
+            0085: 26@ = 16@
+            0062: 26@ -= 27@
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_CASINO_LOSSES
+            0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+
+            005A: 25@ += 26@
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_CASINO_LOSSES
+            0A8C: write_memory 30@ size 4 value 25@ virtual_protect 0
+        end
+        16@ = 0
+    end
+end
+
+// =========================================================================
+// SHARED VEHICLE WRECK WATCHDOG (Hitodama & Physical)
+// Tracks vehicles destroyed or flipped while Shion is riding with Jo'on
+// =========================================================================
+if
+    00DF: actor $PLAYER_ACTOR driving
+then
+    03C0: 27@ = actor $PLAYER_ACTOR car
+    
+    // Check if riding together (Hitodama is ALWAYS riding along)
+    23@ = 0
+    if
+        10@ == -1
+    then
+        23@ = 1
+    else
+        if
+            00DB: actor 10@ in_car 27@
+        then
+            23@ = 1
+        end
+    end
+
+    if
+        23@ == 1
+    then
+        0227: 28@ = car 27@ health
+        26@ = 0
+        if
+            28@ < 250 // On fire
+        then
+            26@ = 1
+        end
+        if
+            0119: car 27@ wrecked
+        then
+            26@ = 1
+        end
+        if
+            26@ == 1
+        then
+            if
+                803B: not 27@ == 19@
+            then
+                0085: 30@ = 31@
+                000A: 30@ += MEM_CARS_WRECKED
+                0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+
+                000A: 25@ += 1
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_CARS_WRECKED
+                0A8C: write_memory 30@ size 4 value 25@ virtual_protect 0
+
+                0085: 19@ = 27@
+            end
+        else
+            if
+                003B: 27@ == 19@
+            then
+                19@ = 0
+            end
+        end
+    else
+        19@ = 0
+    end
+else
+    19@ = 0
+end
+
+// =========================================================================
+// LOWRIDER MINIGAME WATCHDOG (Distance-Latched via 14@)
+// =========================================================================
+if
+    14@ == 0
+then
+    if
+        00DF: actor $PLAYER_ACTOR driving
+    then
+        if
+            0100: actor $PLAYER_ACTOR in_sphere 1793.068 -1904.254 12.3989 radius 10.0 10.0 6.0 sphere 0 in_car
+        then
+            if or
+                83EE: not player $PLAYER_CHAR controllable
+                0E1D: is_on_mission
+            then
+                14@ = 1
+
+                if and
+                    10@ > 0
+                    056D: actor 10@ defined
+                    8118: not actor 10@ dead
+                then
+                    03C0: 27@ = actor $PLAYER_ACTOR car
+                    if
+                        00DB: actor 10@ in_car 27@
+                    then
+                        0085: 30@ = 31@
+                        000A: 30@ += MEM_SHION_BUSY
+                        0A8C: write_memory 30@ size 4 value 1 virtual_protect 0 // Shield from ShionFollow.c watchdog
+
+                        // Silence any running chatter and clear screen subtitles for the dance
+                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
+                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
+                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
+                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
+                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
+                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
+                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
+                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
+                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
+                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Star"
+                        03EB: clear_small_messages_only
+
+                        // Origin Warp FX (Dissolve from front passenger seat)
+                        00A0: store_actor 10@ position_to 20@ 21@ 22@
+                        0A92: create_custom_thread "Shion\FX_Warp.c" 0 20@ 21@ 22@
+
+                        07AF: 26@ = player $PLAYER_CHAR group
+                        06C9: remove_actor 10@ from_group
+                        0792: disembark_instantly_actor 10@
+                        
+                        01EA: 28@ = car 27@ max_passengers
+                        if
+                            28@ > 1 // Has rear seats
+                        then
+                            0430: put_actor 10@ into_car 27@ passenger_seat 1
+                        else
+                            // 2-Seater: Warp to the wall behind the car and lean
+                            00A1: put_actor 10@ at 1800.81 -1881.98 13.57
+                            0173: set_actor 10@ Z_angle_to 180.0
+                            
+                            04ED: load_animation "LOWRIDER"
+                            :Wait_Lowrider_Anim
+                            wait 0
+                            if
+                                84EE: not animation "LOWRIDER" loaded
+                            then
+                                goto @Wait_Lowrider_Anim
+                            end
+                            
+                            0605: actor 10@ perform_animation "M_SMKLEAN_LOOP" IFP "LOWRIDER" framedelta 4.0 loop 1 lockX 1 lockY 1 lockF 0 time -1
+                        end
+
+                        // Destination Warp FX (Rematerialize in rear seat or leaning on wall)
+                        0A92: create_custom_thread "Shion\FX_Warp.c" 1 10@
+                    end
+                end
+            end
+        end
+    end
+end
+
+if
+    14@ == 1
+then
+    27@ = 0
+    0AAA: 28@ = get_script_struct_named 'LOWR'
+    if
+        8039: not 28@ == 0
+    then
+        27@ = 1
+    end
+    if
+        0E1D: is_on_mission
+    then
+        27@ = 1
+    end
+
+    if
+        27@ == 1
+    then
+        14@ = 2
+    else
+        00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
+        050A: 23@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 1793.068 -1904.254 12.3989
+        if
+            0021: 23@ > 35.0
+        then
+            14@ = 0
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_BUSY
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0 // Release shield
+
+            if and
+                10@ > 0
+                056D: actor 10@ defined
+                8118: not actor 10@ dead
+            then
+                // Clean up animation if she was leaning on the wall
+                0792: clear_char_tasks_immediately 10@
+                0687: clear_actor 10@ task
+                if
+                    04EE: animation "LOWRIDER" loaded
+                then
+                    04EF: release_animation "LOWRIDER"
+                end
+
+                07AF: 26@ = player $PLAYER_CHAR group
+                0631: put_actor 10@ in_group 26@
+            end
+        end
+    end
+end
+
+if
+    14@ == 2
+then
+    27@ = 0
+    0AAA: 28@ = get_script_struct_named 'LOWR'
+    if
+        8039: not 28@ == 0
+    then
+        27@ = 1
+    end
+    if
+        0E1D: is_on_mission
+    then
+        27@ = 1
+    end
+
+    // Once minigame script and mission have concluded, and player has control
+    if
+        27@ == 0
+    then
+        if
+            03EE: player $PLAYER_CHAR controllable
+        then
+            14@ = 3
+            TIMERA = 0 // Initialize timeout watchdog
+        end
+    end
+end
+
+if
+    14@ == 3
+then
+    26@ = 1 // Assume seat is ready
+
+    if
+        00DF: actor $PLAYER_ACTOR driving
+    then
+        03C0: 24@ = actor $PLAYER_ACTOR car
+        01EA: 28@ = car 24@ max_passengers
+        if
+            28@ > 0
+        then
+            if
+                8431: not car 24@ passenger_seat_free 0
+            then
+                26@ = 0 // Seat still occupied, wait for hooker to leave
+
+                // 5-second timeout: force evict if the NPC gets stuck
+                if
+                    TIMERA > 5000
+                then
+                    0432: 25@ = get_actor_handle_from_car 24@ passenger_seat 0
+                    if
+                        056D: actor 25@ defined
+                    then
+                        0792: disembark_instantly_actor 25@
+                    end
+                    26@ = 1
+                end
+            end
+        end
+    end
+
+    // Once the seat naturally clears (or time runs out), warp Shion in!
+    if
+        26@ == 1
+    then
+        14@ = 4
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_BUSY
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0 // Release shield
+
+        if and
+            10@ > 0
+            056D: actor 10@ defined
+            8118: not actor 10@ dead
+        then
+            // Clean up animation if she was leaning on the wall
+            0792: clear_char_tasks_immediately 10@
+            0687: clear_actor 10@ task
+            if
+                04EE: animation "LOWRIDER" loaded
+            then
+                04EF: release_animation "LOWRIDER"
+            end
+
+            // Origin Warp FX (Dissolve from rear seat or wall)
+            00A0: store_actor 10@ position_to 20@ 21@ 22@
+            0A92: create_custom_thread "Shion\FX_Warp.c" 0 20@ 21@ 22@
+
+            07AF: 26@ = player $PLAYER_CHAR group
+            0631: put_actor 10@ in_group 26@
+
+            // Warp Shion to passenger side of Jo'on's lowrider so she is immediately in range
+            if
+                00DF: actor $PLAYER_ACTOR driving
+            then
+                03C0: 24@ = actor $PLAYER_ACTOR car
+                01EA: 28@ = car 24@ max_passengers
+                if
+                    28@ > 0
+                then
+                    0430: put_actor 10@ into_car 24@ passenger_seat 0
+                else
+                    0407: store_coords_to 20@ 21@ 22@ from_car 24@ with_offset 2.0 0.0 0.0
+                    02CE: 22@ = ground_z_at 20@ 21@ 22@
+                    00A1: put_actor 10@ at 20@ 21@ 22@
+                    0639: AS_actor 10@ rotate_to_actor $PLAYER_ACTOR
+                end
+
+                // Destination Warp FX (Rematerialize in front passenger seat)
+                0A92: create_custom_thread "Shion\FX_Warp.c" 1 10@
+            end
+        end
+
+        // Signal fresh dance completion if Episode 21 has not been done yet
+        0085: 30@ = 31@
+        000A: 30@ += MEM_LORE_PROGRESS_BIT
+        0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+        if
+            88B7: not test 25@ bit 21
+        then
+            if
+                00DF: actor $PLAYER_ACTOR driving
+            then
+                03C0: 24@ = actor $PLAYER_ACTOR car
+                01EA: 28@ = car 24@ max_passengers
+                if
+                    28@ > 1 // Guard: Only fire if car has rear seats (meaning Shion was inside during the dance)
+                then
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_LOWRIDER_DONE
+                    0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+                end
+            end
+        end
+    end
+end
+
+if
+    14@ == 4
+then
+    00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
+    050A: 23@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 1793.068 -1904.254 12.3989
+    if
+        0021: 23@ > 35.0
+    then
+        14@ = 0
+        0085: 30@ = 31@
+        000A: 30@ += MEM_LOWRIDER_DONE
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
+end
+
+// =========================================================================
+// MOD SHOP TUNING SPEND WATCHDOG (Hitodama & Physical)
+// Tracks dollars spent customizing vehicles while Shion is in the vehicle
+// =========================================================================
+077E: get_active_interior_to 28@
+29@ = 0
+if or
+    28@ == 1
+    28@ == 2
+    28@ == 3
+then
+    00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
+    if and
+        0021: 20@ > 550.0
+        8021: not 20@ > 700.0
+    then
+        if
+            00DF: actor $PLAYER_ACTOR driving
+        then
+            03C0: 27@ = actor $PLAYER_ACTOR car
+            23@ = 0
+            if
+                10@ == -1
+            then
+                23@ = 1
+            else
+                if and
+                    10@ > 0
+                    056D: actor 10@ defined
+                then
+                    if
+                        00DB: actor 10@ in_car 27@
+                    then
+                        23@ = 1
+                    end
+                end
+            end
+
+            if
+                23@ == 1
+            then
+                29@ = 1
+            end
+        end
+    end
+end
+
+if
+    29@ == 1
+then
+    if
+        17@ == 0
+    then
+        17@ = 1
+        010B: 18@ = player $PLAYER_CHAR money
+    end
+else
+    if
+        17@ == 1
+    then
+        17@ = 0
+        010B: 20@ = player $PLAYER_CHAR money
+        if
+            001D: 18@ > 20@
+        then
+            0085: 21@ = 18@
+            0062: 21@ -= 20@
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_MOD_CASH_SPENT
+            0A8D: 22@ = read_memory 30@ size 4 virtual_protect 0
+
+            005A: 22@ += 21@
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_MOD_CASH_SPENT
+            0A8C: write_memory 30@ size 4 value 22@ virtual_protect 0
+
+            // Increment CarsModdedWithShion
+            0085: 30@ = 31@
+            000A: 30@ += MEM_CARS_MODDED
+            0A8D: 23@ = read_memory 30@ size 4 virtual_protect 0
+
+            000A: 23@ += 1
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_CARS_MODDED
+            0A8C: write_memory 30@ size 4 value 23@ virtual_protect 0
+        end
+    end
+end
+
+// =========================================================================
+// FAVORITE CAR MODEL TELEMETRY (DYNAMIC RAM ODOMETER & INI PERSISTENCE)
+// Tracks cumulative minutes for ANY vehicle model ID driven with Shion
+// =========================================================================
+if
+    00DF: actor $PLAYER_ACTOR driving
+then
+    03C0: 27@ = actor $PLAYER_ACTOR car
+
+    // Check if riding together (Hitodama is ALWAYS riding along)
+    23@ = 0
+    if
+        10@ == -1
+    then
+        23@ = 1
+    else
+        if
+            00DB: actor 10@ in_car 27@
+        then
+            23@ = 1
+        end
+    end
+
+    if
+        23@ == 1
+    then
+        000A: 13@ += 250
+        if
+            13@ >= 60000 // 1 Minute driven together with Shion
+        then
+            13@ = 0
+            0441: 26@ = car 27@ model // Active vehicle model ID (Supports vanilla & custom IDs)
+
+            // Scan RAM cache to check if this vehicle model was already discovered
+            12@ = 0 // Match flag (0 = New Model, 1 = Found Existing)
+            if
+                2@ > 0
+            then
+                11@ = 1
+                :Search_Ram_Veh_Loop
+                if
+                    801D: not 11@ > 2@
+                then
+                    // Entry Pointer = (11@ - 1) * 8 + 1@ (Reallocated scratchpad to 29@)
+                    0085: 29@ = 11@
+                    000E: 29@ -= 1
+                    0012: 29@ *= 8
+                    005A: 29@ += 1@
+
+                    0A8D: 24@ = read_memory 29@ size 4 virtual_protect 0 // Stored Model ID
+                    if
+                        003B: 24@ == 26@
+                    then
+                        // Found existing entry: Increment cumulative minutes in RAM
+                        000A: 29@ += 4
+                        0A8D: 25@ = read_memory 29@ size 4 virtual_protect 0
+                        000A: 25@ += 1
+                        0A8C: write_memory 29@ size 4 value 25@ virtual_protect 0
+                        12@ = 1
+                        goto @Search_Ram_Veh_Done
+                    end
+
+                    000A: 11@ += 1
+                    goto @Search_Ram_Veh_Loop
+                end
+            end
+            :Search_Ram_Veh_Done
+
+            // If newly discovered model, register new entry in RAM table
+            if
+                12@ == 0
+            then
+                if
+                    2@ < 500 // Within 4 KB heap buffer ceiling
+                then
+                    000A: 2@ += 1 // Increment discovered models count
+
+                    // Destination Pointer = (2@ - 1) * 8 + 1@ (Reallocated scratchpad to 29@)
+                    0085: 29@ = 2@
+                    000E: 29@ -= 1
+                    0012: 29@ *= 8
+                    005A: 29@ += 1@
+
+                    0A8C: write_memory 29@ size 4 value 26@ virtual_protect 0 // Store Model ID
+                    000A: 29@ += 4
+                    25@ = 1
+                    0A8C: write_memory 29@ size 4 value 25@ virtual_protect 0 // Initial 1 Minute
+                end
+            end
+
+            // Compare against all-time favorite and crown the model with the highest minutes
+            0085: 30@ = 31@
+            000A: 30@ += MEM_FAV_CAR_MINUTES
+            0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0 // Current Favorite Record Minutes
+
+            if
+                001D: 25@ > 24@
+            then
+                0085: 30@ = 31@
+                000A: 30@ += MEM_FAV_CAR_MODEL
+                0A8C: write_memory 30@ size 4 value 26@ virtual_protect 0 // New All-Time Favorite Model ID
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_FAV_CAR_MINUTES
+                0A8C: write_memory 30@ size 4 value 25@ virtual_protect 0 // New All-Time Favorite Minutes
+            end
+
+            // Radio Station Telemetry
+            051E: 28@ = get_current_radio_station
+            if and
+                28@ >= 0
+                04B7: 12 >= 28@
+            then
+                0AD3: string_format 4@v "Slot_%d" 3@
+                0AD3: string_format 20@v "Station_%d" 28@
+                0AF0: 29@ = read_int_from_ini_file "cleo\savedata\ShionRadio.ini" section 4@v key 20@v
+                if
+                    29@ < 0
+                then
+                    29@ = 0
+                end
+                000A: 29@ += 1
+                0AF1: write_int 29@ to_ini_file "cleo\savedata\ShionRadio.ini" section 4@v key 20@v
+                gosub @Evaluate_Radio_From_Ini
+            end
+        end
+    else
+        13@ = 0
+    end
+else
+    13@ = 0
+end
+
+goto @ShionTrackWorld_Loop
+
+// =========================================================================
+// SUBROUTINE: LOAD VEHICLES FROM INI INTO RAM ON BOOT OR SAVE SLOT SWITCH
+// =========================================================================
+:Load_Vehicles_From_Ini
+0085: 3@ = 0@ // Update LastTrackedSlot
+
+0AD3: string_format 4@v "Slot_%d" 3@
+0AF0: 2@ = read_int_from_ini_file "cleo\savedata\ShionVehicles.ini" section 4@v key "Count"
+if or
+    2@ < 0
+    2@ > 500
+then
+    2@ = 0
+end
+
+24@ = 0 // Best Model ID
+25@ = 0 // Best Minutes
+
+if
+    2@ > 0
+then
+    11@ = 1
+    :Load_Veh_Ram_Loop
+    if
+        801D: not 11@ > 2@
+    then
+        // Entry Pointer = (11@ - 1) * 8 + 1@ (Reallocated scratchpad to 29@)
+        0085: 29@ = 11@
+        000E: 29@ -= 1
+        0012: 29@ *= 8
+        005A: 29@ += 1@
+
+        // Read Model ID from INI -> Write to RAM
+        0AD3: string_format 20@v "Model_%d" 11@
+        0AF0: 26@ = read_int_from_ini_file "cleo\savedata\ShionVehicles.ini" section 4@v key 20@v
+        0A8C: write_memory 29@ size 4 value 26@ virtual_protect 0
+
+        // Read Minutes from INI -> Write to RAM
+        000A: 29@ += 4
+        0AD3: string_format 20@v "Minutes_%d" 11@
+        0AF0: 27@ = read_int_from_ini_file "cleo\savedata\ShionVehicles.ini" section 4@v key 20@v
+        0A8C: write_memory 29@ size 4 value 27@ virtual_protect 0
+
+        // Track highest minutes model to crown as favorite
+        if
+            001D: 27@ > 25@
+        then
+            0085: 24@ = 26@
+            0085: 25@ = 27@
+        end
+
+        000A: 11@ += 1
+        goto @Load_Veh_Ram_Loop
+    end
+
+    // Broadcast crowned favorite to Master Heap
+    0085: 30@ = 31@
+    000A: 30@ += MEM_FAV_CAR_MODEL
+    0A8C: write_memory 30@ size 4 value 24@ virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_FAV_CAR_MINUTES
+    0A8C: write_memory 30@ size 4 value 25@ virtual_protect 0
+else
+    // MIGRATION FALLBACK: If ShionVehicles.ini is fresh, import existing record from memories
+    0085: 30@ = 31@
+    000A: 30@ += MEM_FAV_CAR_MODEL
+    0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_FAV_CAR_MINUTES
+    0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+
+    if and
+        24@ > 0
+        25@ > 0
+    then
+        2@ = 1
+        0A8C: write_memory 1@ size 4 value 24@ virtual_protect 0
+        0085: 29@ = 1@
+        000A: 29@ += 4
+        0A8C: write_memory 29@ size 4 value 25@ virtual_protect 0
+    else
+        // Empty slot with no previous records
+        0085: 30@ = 31@
+        000A: 30@ += MEM_FAV_CAR_MODEL
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_FAV_CAR_MINUTES
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
+end
+return
+
+// =========================================================================
+// SAVE CONFIRMATION CALLBACK: FLUSH VEHICLE ODOMETER TABLE TO INI
+// =========================================================================
+:OnSaveVehicles
+0E2C: get_current_save_slot 0@
+if
+    0@ < 0
+then
+    0@ = 0
+end
+0085: 3@ = 0@
+
+0AD3: string_format 4@v "Slot_%d" 3@
+0AF1: write_int 2@ to_ini_file "cleo\savedata\ShionVehicles.ini" section 4@v key "Count"
+
+if
+    2@ > 0
+then
+    11@ = 1
+    :Save_Veh_Ram_Loop
+    if
+        801D: not 11@ > 2@
+    then
+        // Entry Pointer = (11@ - 1) * 8 + 1@ (Reallocated scratchpad to 29@)
+        0085: 29@ = 11@
+        000E: 29@ -= 1
+        0012: 29@ *= 8
+        005A: 29@ += 1@
+
+        0A8D: 26@ = read_memory 29@ size 4 virtual_protect 0 // Model ID
+        000A: 29@ += 4
+        0A8D: 27@ = read_memory 29@ size 4 virtual_protect 0 // Minutes
+
+        // Write to INI using 16-byte buffer 20@v (Protects 10@ from overflow)
+        0AD3: string_format 20@v "Model_%d" 11@
+        0AF1: write_int 26@ to_ini_file "cleo\savedata\ShionVehicles.ini" section 4@v key 20@v
+
+        0AD3: string_format 20@v "Minutes_%d" 11@
+        0AF1: write_int 27@ to_ini_file "cleo\savedata\ShionVehicles.ini" section 4@v key 20@v
+
+        000A: 11@ += 1
+        goto @Save_Veh_Ram_Loop
+    end
+end
+0ED0: return_script_event
+
+// =========================================================================
+// SUBROUTINE: EVALUATE FAVORITE AND LEAST FAVORITE RADIO STATIONS
+// =========================================================================
+:Evaluate_Radio_From_Ini
+0085: 24@ = 3@
+0AD3: string_format 4@v "Slot_%d" 24@
+
+25@ = -1 // Best Station ID
+26@ = -1 // Best Minutes
+27@ = -1 // Worst Station ID
+28@ = 999999 // Worst Minutes
+
+// Find best station among music and talk stations (0 to 11)
+11@ = 0
+:Eval_Radio_Best_Loop
+if
+    04B7: 11 >= 11@
+then
+    0AD3: string_format 20@v "Station_%d" 11@
+    0AF0: 29@ = read_int_from_ini_file "cleo\savedata\ShionRadio.ini" section 4@v key 20@v
+    if
+        29@ < 0
+    then
+        29@ = 0
+    end
+
+    if
+        001D: 29@ > 26@
+    then
+        0085: 26@ = 29@
+        0085: 25@ = 11@
+    end
+
+    000A: 11@ += 1
+    goto @Eval_Radio_Best_Loop
+end
+
+// Check station 12 (Radio Off)
+0AF0: 29@ = read_int_from_ini_file "cleo\savedata\ShionRadio.ini" section 4@v key "Station_12"
+if
+    29@ < 0
+then
+    29@ = 0
+end
+
+// Crown Radio Off if silence minutes exceeded all radio stations
+if
+    001D: 29@ > 26@
+then
+    25@ = 12
+end
+
+// Fallback if all stations have 0 minutes logged
+if
+    8019: not 26@ > 0
+then
+    if
+        84A4: not 25@ == 12
+    then
+        if
+            00DF: actor $PLAYER_ACTOR driving
+        then
+            051E: 29@ = get_current_radio_station
+            if and
+                29@ >= 0
+                04B7: 11 >= 29@
+            then
+                0085: 25@ = 29@
+            else
+                25@ = 12
+            end
+        else
+            25@ = 12
+        end
+    end
+end
+
+// Find least favorite station among stations 0 to 11 (strictly if played before)
+if
+    26@ > 0
+then
+    11@ = 0
+    :Eval_Radio_Worst_Loop
+    if
+        04B7: 11 >= 11@
+    then
+        if
+            803B: not 11@ == 25@
+        then
+            0AD3: string_format 20@v "Station_%d" 11@
+            0AF0: 29@ = read_int_from_ini_file "cleo\savedata\ShionRadio.ini" section 4@v key 20@v
+            if
+                29@ < 0
+            then
+                29@ = 0
+            end
+
+            // Only evaluate stations that were actually played (> 0 minutes)
+            if and
+                29@ > 0
+                001D: 28@ > 29@
+            then
+                0085: 28@ = 29@
+                0085: 27@ = 11@
+            end
+        end
+
+        000A: 11@ += 1
+        goto @Eval_Radio_Worst_Loop
+    end
+else
+    27@ = -1
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_FAV_RADIO_STAT
+0A8C: write_memory 30@ size 4 value 25@ virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_WORST_RADIO_STAT
+0A8C: write_memory 30@ size 4 value 27@ virtual_protect 0
+return

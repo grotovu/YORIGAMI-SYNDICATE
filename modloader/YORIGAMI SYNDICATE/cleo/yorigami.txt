@@ -1,0 +1,883 @@
+{$CLEO .cs}
+{$USE CLEO+}
+{$USE ini}
+{$USE file}
+
+0000: NOP
+script_name "YPrestige"
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (SKIMMED TO LOCAL MODULE SCOPE)
+// =========================================================================
+const
+    // --- CORE SYSTEM & STATE TRACKERS ---
+    MEM_SAVE_SLOT = 0             // Formerly 700
+    MEM_PLAYER_FORM = 12          // Form Tracker: 0 = CJ, 1 = Jo'on, 2 = Shion
+    MEM_PRIORITY_LOCK = 20        // Formerly 765
+
+    // --- PRESTIGE & PERKS (JO'ON) ---
+    MEM_TOTAL_POINTS = 28         // Formerly 701
+    MEM_AVAIL_POINTS = 32         // Formerly 702
+    MEM_ALLOC_JOONBLING = 36      // Formerly 710
+    MEM_ALLOC_SMASHER = 40        // Formerly 711
+    MEM_ALLOC_TAXIEXT = 44        // Formerly 712
+    MEM_ALLOC_DRIPWORSHIP = 48    // Formerly 713
+    MEM_ALLOC_SHAKEDOWN = 52      // Formerly 714
+    MEM_ALLOC_MIDAS = 56          // Formerly 715
+    MEM_ALLOC_FEVER = 60          // Formerly 716
+    MEM_ALLOC_DANMAKU = 64        // Formerly 717
+    MEM_CONTRACT_ESCROW = 68      // Formerly 719
+    MEM_FLEX_SIGNAL = 376         // Cash Flex Commentary Signal (0 = Idle, 1 = Triggered)
+
+    // --- PRESTIGE & PERKS (SHION) ---
+    MEM_ALLOC_RESONANCE = 80      // Formerly 750
+    MEM_ALLOC_SCAVENGER = 84      // Formerly 751
+    MEM_ALLOC_MISFORTUNE = 88     // Formerly 752
+    MEM_ALLOC_TRAFFICHEX = 92     // Formerly 753
+    MEM_ALLOC_AVIATION = 96       // Formerly 754
+    MEM_ALLOC_DEBTDET = 100       // Formerly 755
+    MEM_ALLOC_GRIMPITY = 104      // Formerly 756
+    MEM_ALLOC_MISERY = 108        // Formerly 757
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// Register save confirmation event
+0ED1: set_script_event_save_confirmation 1 @OnGameSaved 6@
+
+// Initialize tracking registers (-1 forces immediate load on first game tick)
+6@ = -1 
+7@ = 0  // Loading Screen Flag
+8@ = 0  // Shion Bankruptcy Flag
+29@ = 0 // Save Confirmation Banner Pending Flag
+21@ = 0 // Wager Minigame Active Flag (Exploit Shield, remapped from 30@)
+
+// Clear pending contract escrow buffer
+0085: 30@ = 31@
+000A: 30@ += MEM_CONTRACT_ESCROW
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+// =========================================================================
+// LAUNCH WORKER MODULES
+// =========================================================================
+0A92: create_custom_thread "Yorigami\Menu.c"
+0A92: create_custom_thread "Yorigami\Bling.c"  
+0A92: create_custom_thread "Yorigami\DebtDet.c" 
+0A92: create_custom_thread "Yorigami\GrimPity.c"
+0A92: create_custom_thread "Yorigami\FX_GrimPity.c"
+0A92: create_custom_thread "Yorigami\Misfortune.c"
+0A92: create_custom_thread "Yorigami\Pursuit.c"
+0A92: create_custom_thread "Yorigami\Lifestyle.c"
+0A92: create_custom_thread "Yorigami\Shakedown.c"
+0A92: create_custom_thread "Yorigami\Scavenger.c"
+0A92: create_custom_thread "Yorigami\Fever.c"
+0A92: create_custom_thread "Yorigami\Entourage.c"
+0A92: create_custom_thread "Yorigami\Danmaku.c"
+0A92: create_custom_thread "Yorigami\Mark.c"
+0A92: create_custom_thread "Yorigami\Misery.c"
+0A92: create_custom_thread "Yorigami\FX_JoonFlames.c"
+0A92: create_custom_thread "Yorigami\FX_ShionFlames.c"
+0A92: create_custom_thread "Yorigami\YorigamiAimAlpha.c"
+
+// Read Keys & Configurable Threshold ($10,000 per point)
+0AF0: 9@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "MainKey"
+0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "SpendKey"
+0AF0: 25@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "CashPerPoint"
+
+if
+    9@ == 0
+then
+    9@ = 89
+end
+
+if
+    10@ == 0
+then
+    10@ = 74
+end
+
+if
+    25@ <= 0
+then
+    25@ = 10000
+end
+
+// Read Shion Bankruptcy Notification Settings
+0AF0: 23@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionResonance" key "ShowBankruptcyMessage"
+0AF0: 24@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionResonance" key "PlayBankruptcySound"
+
+:Yorigami_StartupWait
+wait 250
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @Yorigami_StartupWait
+end
+
+// Synchronize cash tracker
+010B: 1@ = player $PLAYER_CHAR money
+
+
+// =========================================================================
+// MAIN LOOP
+// =========================================================================
+:Yorigami_MainLoop
+wait 100
+
+// Detect when the game enters a loading screen (Pause Menu -> Load Game)
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    7@ = 1 // Flag: In loading screen / player despawned
+    goto @Yorigami_MainLoop
+end
+
+// If we just finished a loading screen, force an immediate slot resync!
+if
+    7@ == 1
+then
+    7@ = 0
+    6@ = -1 // Forces the slot check below to trigger 100% of the time!
+end
+
+// Check if Save Slot Changed or Loaded from Pause/Main Menu
+0E2C: get_current_save_slot 0@
+if
+    0@ < 0
+then
+    0@ = 0 // Default "New Game" to Slot 0
+end
+
+if
+    803B: not 0@ == 6@
+then
+    0085: 6@ = 0@
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SAVE_SLOT
+    0A8C: write_memory 30@ size 4 value 6@ virtual_protect 0
+
+    // Read Points and Buffer for the loaded slot!
+    0AD3: string_format 16@v "Slot_%d" 6@
+    0AF0: 4@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Total_Y_Points"
+    0AF0: 3@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Spent_Buffer"
+    0085: 20@ = 4@
+
+    // Load Perk Allocations and calculate Available Points
+    gosub @Load_Allocations_To_Shared
+
+    // Synchronize money tracker to prevent load-difference glitch
+    010B: 1@ = player $PLAYER_CHAR money
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_CONTRACT_ESCROW
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0 // Clear pending contract escrow buffer
+
+    // Show Load Banner once screen finishes fading in
+    0AF0: 2@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Notifications" key "ShowSaveLoadMessage"
+    if and
+        2@ == 1
+        816B: not fading
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_AVAIL_POINTS
+        0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+        03EB: clear_small_messages_only
+        0AD1: print_formatted_now "~g~Yorigami Loaded! ~w~Available: %d ~g~(Total: %d)" 3500 28@ 4@
+    end
+end
+
+// Pending Save Banner Trigger (Fires once screen fade clears)
+if and
+    29@ == 1
+    816B: not fading
+then
+    29@ = 0
+    0AF0: 2@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Notifications" key "ShowSaveLoadMessage"
+    if
+        2@ == 1
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_AVAIL_POINTS
+        0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+        03EB: clear_small_messages_only
+        0AD1: print_formatted_now "~g~Yorigami Saved! ~w~Available: %d ~g~(Total: %d)" 3500 28@ 4@
+    end
+end
+
+010B: 0@ = player $PLAYER_CHAR money
+
+// Check for Shion Bankruptcy ($0 or debt)
+if
+    0@ <= 0
+then
+    if
+        8@ == 0
+    then
+        8@ = 1
+        if
+            24@ == 1
+        then
+            018C: play_sound 1057 at 0.0 0.0 0.0
+        end
+        if
+            23@ == 1
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                27@ == 0 // Do not stomp on Tier 4 Sister Talk or Diner!
+            then
+                0ACD: print_string_now "~r~0 Y-Dollars: True Shion Resonance Achieved!~n~~w~Total Bankruptcy." 3500
+            end
+        end
+    end
+else
+    8@ = 0
+end
+
+// Check for External Contract Debt Escrow (from Menu.c)
+0085: 30@ = 31@
+000A: 30@ += MEM_CONTRACT_ESCROW
+0A8D: 26@ = read_memory 30@ size 4 virtual_protect 0
+if
+    26@ > 0
+then
+    if
+        21@ == 1 // Currently inside interior or minigame escrow
+    then
+        0062: 22@ -= 26@ // Deduct from starting wallet snapshot
+    end
+    0062: 1@ -= 26@      // Deduct from baseline tracker
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_TOTAL_POINTS
+    0A8D: 4@ = read_memory 30@ size 4 virtual_protect 0 // Synchronize Total Points register with contract!
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_CONTRACT_ESCROW
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+
+// =========================================================================
+// CHECK SPENT MONEY (WITH UNIVERSAL INTERIOR ESCROW SHIELD!)
+// =========================================================================
+27@ = 0
+
+// The Interior Escrow (Catches Casinos, OTB, Pool, Clothes, Mod Shops)
+077E: get_active_interior_to 28@
+if
+    28@ > 0
+then
+    27@ = 1
+end
+
+// Active Mission Escrow (Shields ALL mission wagers, including Lowrider & Stadiums)
+if
+    0038: $ONMISSION == 1
+then
+    27@ = 1
+end
+
+// Free-Roam Scripts (Fallback for non-mission outdoor minigames)
+0AAA: 26@ = get_script_struct_named 'LOWRIDE'
+if
+    8039: not 26@ == 0
+then
+    27@ = 1
+end
+
+// STATE A: CURRENTLY INSIDE A BUILDING OR MINIGAME
+if
+    27@ == 1
+then
+    if
+        21@ == 0
+    then
+        21@ = 1
+        0085: 22@ = 1@ // Snapshot starting wallet!
+    end
+    0085: 1@ = 0@
+else
+    // STATE B: JUST EXITED A BUILDING / MINIGAME!
+    if
+        21@ == 1
+    then
+        21@ = 0
+        if
+            001D: 22@ > 0@
+        then
+            0085: 2@ = 22@
+            0062: 2@ -= 0@
+            005A: 3@ += 2@
+
+            :Yorigami_CheckWagerRollover
+            if
+                002D: 3@ >= 25@
+            then
+                0085: 5@ = 3@
+                0072: 5@ /= 25@
+                005A: 4@ += 5@
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_AVAIL_POINTS
+                0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+                005A: 28@ += 5@
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_AVAIL_POINTS
+                0A8C: write_memory 30@ size 4 value 28@ virtual_protect 0
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_TOTAL_POINTS
+                0A8C: write_memory 30@ size 4 value 4@ virtual_protect 0
+
+                0085: 26@ = 5@
+                006A: 26@ *= 25@
+                0062: 3@ -= 26@
+
+                gosub @Yorigami_ShowBanner
+                goto @Yorigami_CheckWagerRollover
+            end
+        end
+        0085: 1@ = 0@
+    else
+        // STATE C: NORMAL GAMEPLAY SPENDING (Outdoors)
+        if
+            001D: 1@ > 0@
+        then
+            0085: 2@ = 1@
+            0062: 2@ -= 0@
+            005A: 3@ += 2@
+
+            :Yorigami_CheckRollover
+            if
+                002D: 3@ >= 25@
+            then
+                0085: 5@ = 3@
+                0072: 5@ /= 25@
+                005A: 4@ += 5@
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_AVAIL_POINTS
+                0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+                005A: 28@ += 5@
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_AVAIL_POINTS
+                0A8C: write_memory 30@ size 4 value 28@ virtual_protect 0
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_TOTAL_POINTS
+                0A8C: write_memory 30@ size 4 value 4@ virtual_protect 0
+
+                0085: 26@ = 5@
+                006A: 26@ *= 25@
+                0062: 3@ -= 26@
+
+                gosub @Yorigami_ShowBanner
+                goto @Yorigami_CheckRollover
+            end
+        end
+        0085: 1@ = 0@
+    end
+end
+
+
+// =========================================================================
+// THE DIDIER SACHS FLEX (Y + J)
+// =========================================================================
+if and
+    0AB0: is_key_pressed 9@  // Y
+    0AB0: is_key_pressed 10@ // J
+then
+    :Yorigami_WaitRelease
+    wait 50
+    if or
+        0AB0: is_key_pressed 9@
+        0AB0: is_key_pressed 10@
+    then
+        goto @Yorigami_WaitRelease
+    end
+
+    // Check Player Form (Shion cannot flex - only Jo'on and CJ)
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PLAYER_FORM
+    0A8D: 26@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        26@ == 2 // Shion Mode
+    then
+        018C: play_sound 1057 at 0.0 0.0 0.0
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+        if
+            27@ == 0
+        then
+            03EB: clear_small_messages_only
+            0ACD: print_string_now "~b~Shion: ~s~I can't throw money away. I need food, not pride." 2500
+        end
+        goto @Yorigami_MainLoop
+    end
+
+    0085: 26@ = 25@
+    000E: 26@ -= 1
+    if
+        010A: player $PLAYER_CHAR money > 26@
+    then
+        // Deduct Cash
+        0085: 27@ = 25@
+        0012: 27@ *= -1
+        0109: player $PLAYER_CHAR money += 27@
+        018C: play_sound 1058 at 0.0 0.0 0.0
+
+        // Prevent Escrow Double-Dipping!
+        if
+            21@ == 1
+        then
+            0062: 22@ -= 25@
+        end
+        
+        // Launch Particle Burst Micro-Thread!
+        0A92: create_custom_thread "Yorigami\FX_FLEX.c"
+
+        // If Jo'on is the active player, signal Shion Sandbox for commentary
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PLAYER_FORM
+        0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+        if
+            0039: 28@ == 1
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_FLEX_SIGNAL
+            0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+        end
+
+        010B: 1@ = player $PLAYER_CHAR money
+
+        // Directly increment points for instant response
+        0008: 4@ += 1
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_AVAIL_POINTS
+        0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+        0008: 28@ += 1
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_AVAIL_POINTS
+        0A8C: write_memory 30@ size 4 value 28@ virtual_protect 0
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_TOTAL_POINTS
+        0A8C: write_memory 30@ size 4 value 4@ virtual_protect 0
+
+        03E6: remove_text_box
+        0ACE: print_help_formatted "~y~Flexed $%d like a true Yorigami!" 25@
+
+        03EB: clear_small_messages_only
+        0AD1: print_formatted_now "~g~+1 Y-Point Awarded! Available: %d (Total: %d)" 1500 28@ 4@
+
+        if
+            80DF: not actor $PLAYER_ACTOR driving
+        then
+            04ED: load_animation "STRIP"
+            :Yorigami_AnimWait
+            wait 0
+            if
+                8256: not is_player_playing $PLAYER_CHAR
+            then
+                goto @Yorigami_MainLoop
+            end
+            if
+                04EE: animation "STRIP" loaded
+            then
+                0605: actor $PLAYER_ACTOR perform_animation "ply_cash" IFP "STRIP" framedelta 4.0 loop 0 lockX 0 lockY 0 lockF 0 time 1200
+                wait 1200
+                04EF: release_animation "STRIP"
+            else
+                goto @Yorigami_AnimWait
+            end
+        else
+            wait 250
+        end
+    else
+        03EB: clear_small_messages_only
+        0AD1: print_formatted_now "~r~Too broke to flex! ($%d required)" 2000 25@
+    end
+end
+
+goto @Yorigami_MainLoop
+
+
+// =========================================================================
+// CLEO+ SAVE EVENT CALLBACK (Safehouse Floppy Disk)
+// =========================================================================
+:OnGameSaved
+0E2C: get_current_save_slot 13@
+if
+    13@ >= 0
+then
+    0085: 6@ = 13@
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SAVE_SLOT
+0A8C: write_memory 30@ size 4 value 6@ virtual_protect 0
+
+0AD3: string_format 16@v "Slot_%d" 6@
+
+// Write Lifetime Total and Spent Buffer
+0085: 30@ = 31@
+000A: 30@ += MEM_TOTAL_POINTS
+0A8D: 4@ = read_memory 30@ size 4 virtual_protect 0 // Synchronize live total before saving!
+
+0AF1: write_int 4@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Total_Y_Points"
+0AF1: write_int 3@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Spent_Buffer"
+
+// Read live remaining Available Points
+0085: 30@ = 31@
+000A: 30@ += MEM_AVAIL_POINTS
+0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+
+0AF1: write_int 28@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Available_Y_Points"
+
+// Write all perk allocations to INI
+gosub @Save_Allocations_To_Ini
+
+if
+    001D: 4@ > 20@
+then
+    gosub @Yorigami_WriteLedger
+    0085: 20@ = 4@
+end
+
+// Mark banner as pending so it displays AFTER screen fade completes
+29@ = 1
+
+0ED0: return_script_event
+
+
+// =========================================================================
+// SUBROUTINES
+// =========================================================================
+
+:Load_Allocations_To_Shared
+0085: 30@ = 31@
+000A: 30@ += MEM_TOTAL_POINTS
+0A8C: write_memory 30@ size 4 value 4@ virtual_protect 0
+
+13@ = 0
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_JoonBling"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_JOONBLING
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_CarSmasher"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_SMASHER
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_TaxiExtortion"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_TAXIEXT
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_DripWorship"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_DRIPWORSHIP
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_Shakedown"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_SHAKEDOWN
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_MidasMagnet"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_MIDAS
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_PestilenceFever"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_FEVER
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_MoneyDanmaku"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_DANMAKU
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_ShionResonance"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_RESONANCE
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_ScavengerFeast"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_SCAVENGER
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_MisfortuneAura"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_MISFORTUNE
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_TrafficHex"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_TRAFFICHEX
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_AviationHex"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_AVIATION
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_DebtDetonation"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_DEBTDET
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_GrimPity"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_GRIMPITY
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+0AF0: 14@ = read_int_from_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_MiseryLovesCompany"
+if
+    14@ < 0
+then
+    14@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_MISERY
+0A8C: write_memory 30@ size 4 value 14@ virtual_protect 0
+005A: 13@ += 14@
+
+// Auto-correct Available Points
+0085: 15@ = 4@
+0062: 15@ -= 13@
+if
+    15@ < 0
+then
+    15@ = 0
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_AVAIL_POINTS
+0A8C: write_memory 30@ size 4 value 15@ virtual_protect 0
+return
+
+:Save_Allocations_To_Ini
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_JOONBLING
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_JoonBling"
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_SMASHER
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_CarSmasher"
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_TAXIEXT
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_TaxiExtortion"
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_DRIPWORSHIP
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_DripWorship"
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_SHAKEDOWN
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_Shakedown"
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_MIDAS
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_MidasMagnet"
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_FEVER
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_PestilenceFever"
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_DANMAKU
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_MoneyDanmaku"
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_RESONANCE
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_ShionResonance"
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_SCAVENGER
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_ScavengerFeast"
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_MISFORTUNE
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_MisfortuneAura"
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_TRAFFICHEX
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_TrafficHex"
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_AVIATION
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_AviationHex"
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_DEBTDET
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_DebtDetonation"
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_GRIMPITY
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_GrimPity"
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_MISERY
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+0AF1: write_int 14@ to_ini_file "cleo\savedata\yorigami.ini" section 16@v key "Alloc_MiseryLovesCompany"
+
+return
+
+:Yorigami_WriteLedger
+0652: 12@ = integer_stat 134
+00BF: 26@ = current_time_hours, 27@ = current_time_minutes
+010B: 2@ = player $PLAYER_CHAR money
+
+0A9A: 11@ = open_file "cleo\savedata\Yorigami_Ledger.txt" mode "at"
+if
+    8039: not 11@ == 0
+then
+    0AD9: write_formatted_text "[Slot %d | Day %d | Time %02d:%02d] Total Y-Points: %d | Wallet: $%d%c%c" in_file 11@ 6@ 12@ 26@ 27@ 4@ 2@ 13 10
+    0A9B: close_file 11@
+end
+return
+
+:Yorigami_ShowBanner
+018C: play_sound 1058 at 0.0 0.0 0.0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+if
+    27@ == 0 // Only print to subtitle slot if no dialogue is active!
+then
+    03EB: clear_small_messages_only
+    0AD1: print_formatted_now "~g~+%d Y-Points Awarded! Available: %d (Total: %d)" 1500 5@ 28@ 4@
+end
+return

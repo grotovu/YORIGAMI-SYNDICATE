@@ -1,0 +1,1107 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+{$USE ini}
+
+0000: NOP
+script_name "Sh_HitoF"
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED FOR SH_HITOF)
+// =========================================================================
+const
+    MEM_PLAYER_FORM = 12
+    MEM_PRIORITY_LOCK = 20
+    MEM_SHION_HANDLE = 116
+    MEM_HITODAMA_X = 144
+    MEM_HITODAMA_Y = 148
+    MEM_HITODAMA_Z = 152
+    MEM_SHION_PRES_HP = 160
+    MEM_JOON_BASE_HP = 168
+    MEM_JOON_BASE_ARMOUR = 172
+    MEM_HITO_DEFLECT_TMR = 176
+    MEM_HITO_SHIELD_BROKE = 180
+    MEM_DMG_RECURSION_LCK = 184
+    MEM_TIMES_WASTED = 300
+    MEM_TIMES_BUSTED = 304
+    MEM_HITO_PAIN_MUTED = 348     // Formerly unused / Spectral Shield Pain Audio Latch
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    31@ == 0
+then
+    goto @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// --- SATELLITE ORBIT ANGLES & HARMONIC CLOCKS (Floats) ---
+0@ = 0.0    // Satellite 1 Orbit Angle (float)
+1@ = 120.0  // Satellite 2 Orbit Angle (+120 deg, float)
+12@ = 240.0 // Satellite 3 Orbit Angle (+240 deg, float)
+16@ = 0.0   // Master Organic Wave Clock (float)
+
+17@ = 0.0   // Current Fade Multiplier (0.0 to 1.0, float)
+18@ = 1.0   // Target Fade Multiplier
+
+2@ = 0.0    // Live World X
+3@ = 0.0    // Live World Y
+4@ = 0.0    // Live World Z
+28@ = 0.0   // Dedicated Frame-Rate Delta Scale
+
+// Register dedicated damage intercept for Hitodama meat-shield absorption
+0EDE: set_script_event_char_damage 1 @OnHitodamaAbsorbDamage 20@
+
+// Initialize baseline health, armour, starting coordinates, and pain latch on boot
+01F5: 29@ = get_player_actor $PLAYER_CHAR
+0226: 21@ = actor 29@ health
+04DD: 22@ = actor 29@ armour
+
+0085: 30@ = 31@
+000A: 30@ += MEM_JOON_BASE_HP
+0A8C: write_memory 30@ size 4 value 21@ virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_JOON_BASE_ARMOUR
+0A8C: write_memory 30@ size 4 value 22@ virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_HITO_PAIN_MUTED
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+04C4: store_coords_to 2@ 3@ 4@ from_actor 29@ with_offset -0.65 -0.65 0.65
+
+:ShionHito_ChildLoop
+wait 0 // 60 FPS smooth tracking
+
+// Casualty & Arrest Telemetry while in Hitodama Form
+if
+    0117: player $PLAYER_CHAR wasted
+then
+    gosub @Restore_Pain_Audio_If_Configured
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_TIMES_WASTED
+    0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
+    000A: 20@ += 1
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_TIMES_WASTED
+    0A8C: write_memory 30@ size 4 value 20@ virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_HANDLE
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    0A93: terminate_this_custom_script
+end
+
+if
+    0741: actor $PLAYER_ACTOR busted
+then
+    gosub @Restore_Pain_Audio_If_Configured
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_TIMES_BUSTED
+    0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
+    000A: 20@ += 1
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_TIMES_BUSTED
+    0A8C: write_memory 30@ size 4 value 20@ virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_HANDLE
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    0A93: terminate_this_custom_script
+end
+
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    gosub @Restore_Pain_Audio_If_Configured
+    0A93: terminate_this_custom_script
+end
+
+// Safely obtain and verify live player actor handle
+01F5: 29@ = get_player_actor $PLAYER_CHAR
+if or
+    8019: not 29@ > 0
+    856D: not actor 29@ defined
+then
+    wait 250
+    goto @ShionHito_ChildLoop
+end
+
+if or
+    0118: actor 29@ dead
+    016B: fading
+    0E25: is_on_cutscene
+then
+    wait 250
+    goto @ShionHito_ChildLoop
+end
+
+// Update Jo'on's health and armour baseline each frame for reversal
+0226: 21@ = actor 29@ health
+04DD: 22@ = actor 29@ armour
+
+0085: 30@ = 31@
+000A: 30@ += MEM_JOON_BASE_HP
+0A8C: write_memory 30@ size 4 value 21@ virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_JOON_BASE_ARMOUR
+0A8C: write_memory 30@ size 4 value 22@ virtual_protect 0
+
+// Tick down deflection flash visual timer
+0085: 30@ = 31@
+000A: 30@ += MEM_HITO_DEFLECT_TMR
+0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    20@ > 0
+then
+    000E: 20@ -= 16
+    if
+        0 > 20@
+    then
+        20@ = 0
+    end
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_HITO_DEFLECT_TMR
+    0A8C: write_memory 30@ size 4 value 20@ virtual_protect 0
+end
+
+// Check if Shion's shield broke this frame
+0085: 30@ = 31@
+000A: 30@ += MEM_HITO_SHIELD_BROKE
+0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    20@ == 1
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_HITO_SHIELD_BROKE
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    018C: play_sound 1057 at 0.0 0.0 0.0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
+    if
+        4 > 20@
+    then
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SHBRK" text "~b~Shion: ~s~\"I took too many hits, Jo'on... my shield's completely broken.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SHBRK' time 3500 flag 1
+    end
+end
+
+// Check if Shion is still in Hitodama Form (Shared Var 703 == -1)
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    84A4: not 25@ == -1 // Materialized into Ped (>0) or Dismissed (0)
+then
+    18@ = 0.0 // Smooth fade out
+end
+
+// =========================================================================
+// SPECTRAL SHIELD PAIN AUDIO LATCH
+// =========================================================================
+20@ = 0 // Assume shield is inactive
+
+if and
+    25@ == -1
+    0021: 18@ > 0.0
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PLAYER_FORM
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+
+    if
+        21@ == 1 // Strictly Jo'on Mode
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_PRES_HP
+        0A8D: 22@ = read_memory 30@ size 4 virtual_protect 0
+
+        if
+            22@ > 100 // Shield has protective energy
+        then
+            04DD: 23@ = actor 29@ armour
+            if
+                0 >= 23@
+            then
+                20@ = 1 // Spectral shield active only when unarmoured
+            end
+        end
+    end
+end
+
+if
+    20@ == 1
+then
+    // Suppress hurt audio so deflecting bullets does not make Jo'on scream
+    094E: set_actor 29@ mute_pain_audio 1
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_HITO_PAIN_MUTED
+    0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+else
+    // Shield is broken, unarmoured, or inactive; restore pain audio
+    gosub @Restore_Pain_Audio_If_Configured
+end
+
+// =========================================================================
+// SMOOTH FADE INTERPOLATION (0.0 <-> 1.0, FRAME-RATE INDEPENDENT)
+// =========================================================================
+// 28@ is dedicated as the frame-rate delta scale across the entire loop
+0A8D: 28@ = read_memory 0xB7CB5C size 4 virtual_protect 0 // CTimer::ms_fTimeStep (float)
+0013: 28@ *= 0.6 // Normalize to 30 FPS baseline
+
+0087: 20@ = 28@
+0013: 20@ *= 0.06
+
+if
+    0025: 18@ > 17@
+then
+    005B: 17@ += 20@
+    if
+        0021: 17@ > 1.0
+    then
+        17@ = 1.0
+    end
+end
+
+0087: 20@ = 28@
+0013: 20@ *= 0.08
+
+if
+    0025: 17@ > 18@
+then
+    0063: 17@ -= 20@
+    if
+        0023: 0.0 > 17@
+    then
+        17@ = 0.0
+    end
+end
+
+// Once fully faded out after state switch, terminate cleanly
+if
+    0043: 18@ == 0.0
+then
+    if
+        0023: 0.01 > 17@
+    then
+        gosub @Restore_Pain_Audio_If_Configured
+        0A93: terminate_this_custom_script
+    end
+end
+
+// =========================================================================
+// TARGET ANCHOR CALCULATION & 3D SMOOTH LERP PHYSICS
+// =========================================================================
+24@ = 0 // Camera Freeze Flag (0 = Gravitate, 1 = Freeze in World Space)
+
+if
+    00DF: actor 29@ driving
+then
+    03C0: 20@ = actor 29@ car
+    0441: 25@ = car 20@ model
+
+    // Single Seater / Cockpit Handling (Rhino, Hydra, Kart, Bandito, Quad)
+    if or
+        25@ == 432 // Rhino
+        25@ == 520 // Hydra
+        25@ == 571 // Kart
+        25@ == 568 // Bandito
+        25@ == 471 // Quad
+    then
+        0407: store_coords_to 8@ 9@ 10@ from_car 20@ with_offset -0.75 0.0 0.85
+    else
+        // Standard Car: Float in front passenger space
+        0407: store_coords_to 8@ 9@ 10@ from_car 20@ with_offset 0.35 0.15 0.35
+    end
+else
+    // On Foot Anchor: Hover over Jo'on's left shoulder
+    04C4: store_coords_to 8@ 9@ 10@ from_actor 29@ with_offset -0.60 -0.55 0.65
+
+    // Check if player is holding and aiming the camera
+    0470: 25@ = actor 29@ current_weapon
+    if
+        25@ == 43
+    then
+        if or
+            0E67: is_aim_button_pressed 0
+            00E1: player 0 pressed_key 6
+            0E8D: is_any_fire_button_pressed 0
+            00E1: player 0 pressed_key 17
+        then
+            24@ = 1 // Freeze position in world space
+        end
+    end
+end
+
+// Master Harmonic Flutter Clock scaled by framerate
+0087: 20@ = 28@
+0013: 20@ *= 1.8
+005B: 16@ += 20@
+if
+    0031: 16@ >= 360.0
+then
+    000F: 16@ -= 360.0
+end
+
+// Add organic hover bobbing (+-0.07m vertical sine wave) to target
+02F6: 23@ = sine 16@
+0013: 23@ *= 0.07
+005B: 10@ += 23@
+
+// Distance to Target Anchor
+050A: 26@ = distance_between_XYZ 2@ 3@ 4@ and_XYZ 8@ 9@ 10@
+
+// Hard catch-up if player moves too far away (> 25m)
+if
+    0021: 26@ > 25.0
+then
+    0087: 2@ = 8@
+    0087: 3@ = 9@
+    0087: 4@ = 10@
+else
+    // Only gravitate when NOT aiming/firing the camera
+    if
+        24@ == 0
+    then
+        // Smooth 3D Exponential Lerp scaled by delta
+        0087: 23@ = 28@
+        0013: 23@ *= 0.12
+
+        0087: 20@ = 8@
+        0063: 20@ -= 2@
+        006B: 20@ *= 23@
+        005B: 2@ += 20@
+
+        0087: 21@ = 9@
+        0063: 21@ -= 3@
+        006B: 21@ *= 23@
+        005B: 3@ += 21@
+
+        0087: 22@ = 10@
+        0063: 22@ -= 4@
+        006B: 22@ *= 23@
+        005B: 4@ += 22@
+    end
+end
+
+// Broadcast live Mother Flame position to shared memory so Shion can be photographed here
+0085: 30@ = 31@
+000A: 30@ += MEM_HITODAMA_X
+0A8C: write_memory 30@ size 4 value 2@ virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_HITODAMA_Y
+0A8C: write_memory 30@ size 4 value 3@ virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_HITODAMA_Z
+0A8C: write_memory 30@ size 4 value 4@ virtual_protect 0
+
+// =========================================================================
+// GREATER MOTHER FLAME (Centered at 2@ 3@ 4@)
+// =========================================================================
+02F7: 25@ = cosine 16@
+0013: 25@ *= 0.06
+000B: 25@ += 1.0
+
+0087: 24@ = 17@
+006B: 24@ *= 25@ // Master Scaler = Fade * Pulse
+
+// Mother Flame Scaled Radii
+0087: 11@ = 24@
+0013: 11@ *= 0.48 // Base Root Halo
+
+0087: 13@ = 24@
+0013: 13@ *= 0.44 // Belly Halo
+
+0087: 14@ = 24@
+0013: 14@ *= 0.36 // Neck Halo
+
+0087: 15@ = 24@
+0013: 15@ *= 0.22 // Tip Radius
+
+0087: 26@ = 24@
+0013: 26@ *= 0.24 // Soft Mid Glow Radius
+
+0087: 27@ = 24@
+0013: 27@ *= 0.18 // Incandescent Core Radius
+
+// --- Mother Flame Layer 1: Base Root Anchor (Z -0.04) ---
+0087: 5@ = 2@
+0087: 6@ = 3@
+0087: 7@ = 4@
+000F: 7@ -= 0.04
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 60 210
+
+// --- Mother Flame Layer 2: Main Radiant Belly (Z 0.00) ---
+0087: 5@ = 2@
+0087: 6@ = 3@
+0087: 7@ = 4@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 100 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 100 210 255
+04D5: create_corona_at 5@ 6@ 7@ radius 27@ type 0 flare 0 RGB 235 250 255
+
+// --- Mother Flame Layer 3: Tapered Neck (Z +0.045) ---
+0087: 5@ = 2@
+0087: 6@ = 3@
+0087: 7@ = 4@
+000B: 7@ += 0.045
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 140 255
+04D5: create_corona_at 5@ 6@ 7@ radius 27@ type 0 flare 0 RGB 230 250 255
+
+// --- Mother Flame Layer 4: Flickering Tip (Z +0.10) ---
+0087: 5@ = 2@
+0087: 6@ = 3@
+0087: 7@ = 4@
+000B: 7@ += 0.10
+04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+
+// Render brief electric deflection flare when Shion absorbs a bullet
+0085: 30@ = 31@
+000A: 30@ += MEM_HITO_DEFLECT_TMR
+0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    20@ > 0
+then
+    04D5: create_corona_at 2@ 3@ 4@ radius 1.5 type 0 flare 0 RGB 120 220 255
+    04D5: create_corona_at 2@ 3@ 4@ radius 0.7 type 0 flare 0 RGB 255 255 255
+end
+
+// =========================================================================
+// SATELLITE ORBITAL RADII (Exact FX_Hitodama Teardrop Proportions)
+// =========================================================================
+0087: 11@ = 17@
+0013: 11@ *= 0.19 // Satellite Base Root Radius (Wide)
+
+0087: 13@ = 17@
+0013: 13@ *= 0.17 // Satellite Belly Radius (Plump)
+
+0087: 14@ = 17@
+0013: 14@ *= 0.13 // Satellite Neck Radius
+
+0087: 15@ = 17@
+0013: 15@ *= 0.08 // Satellite Tip Radius
+
+0087: 26@ = 17@
+0013: 26@ *= 0.06 // Satellite Diamond Core Radius
+
+// =========================================================================
+// SATELLITE 1 (Orbit Phase 0 deg - Full 4-Orb FX_Hitodama Teardrop)
+// =========================================================================
+// Sat 1 - Scaled by framerate
+02F6: 24@ = sine 16@
+0013: 24@ *= 0.50
+000B: 24@ += 0.90
+006B: 24@ *= 28@
+005B: 0@ += 24@
+if
+    0031: 0@ >= 360.0
+then
+    000F: 0@ -= 360.0
+end
+
+// Orbit radius: 0.44m to 0.68m
+02F7: 19@ = cosine 16@
+0013: 19@ *= 0.12
+000B: 19@ += 0.56
+
+0087: 23@ = 16@
+0013: 23@ *= 2.0
+if
+    0031: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+02F6: 22@ = sine 23@
+0013: 22@ *= 0.18
+
+// Sat 1 - Orb 1: Base (Z -0.04)
+02F6: 20@ = sine 0@
+02F7: 21@ = cosine 0@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000F: 24@ -= 0.04
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+
+// Sat 1 - Orb 2: Belly
+0087: 25@ = 0@
+000B: 25@ += 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// Sat 1 - Orb 3: Neck
+0087: 25@ = 0@
+000F: 25@ -= 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000B: 24@ += 0.035
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// Sat 1 - Orb 4: Flickering Tip
+0087: 25@ = 0@
+000B: 25@ += 1.5
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000B: 24@ += 0.075
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+
+// =========================================================================
+// SATELLITE 2 (Orbit Phase +120 deg - Full 4-Orb FX_Hitodama Teardrop)
+// =========================================================================
+0087: 23@ = 16@
+000B: 23@ += 120.0
+if
+    0031: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+
+// Sat 2 - Scaled by framerate
+02F6: 24@ = sine 23@
+0013: 24@ *= 0.55
+000B: 24@ += 0.85
+006B: 24@ *= 28@
+005B: 1@ += 24@
+if
+    0031: 1@ >= 360.0
+then
+    000F: 1@ -= 360.0
+end
+
+02F7: 19@ = cosine 23@
+0013: 19@ *= 0.12
+000B: 19@ += 0.52
+
+0087: 25@ = 23@
+0013: 25@ *= 2.0
+if
+    0031: 25@ >= 360.0
+then
+    000F: 25@ -= 360.0
+end
+02F6: 22@ = sine 25@
+0013: 22@ *= 0.18
+
+// Sat 2 - Orb 1: Base (Z -0.04)
+02F6: 20@ = sine 1@
+02F7: 21@ = cosine 1@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000F: 24@ -= 0.04
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+
+// Sat 2 - Orb 2: Belly
+0087: 25@ = 1@
+000B: 25@ += 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// Sat 2 - Orb 3: Neck
+0087: 25@ = 1@
+000F: 25@ -= 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000B: 24@ += 0.035
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// Sat 2 - Orb 4: Flickering Tip
+0087: 25@ = 1@
+000B: 25@ += 1.5
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000B: 24@ += 0.075
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+
+// =========================================================================
+// SATELLITE 3 (Orbit Phase +240 deg - Full 4-Orb FX_Hitodama Teardrop)
+// =========================================================================
+0087: 23@ = 16@
+000B: 23@ += 240.0
+if
+    0031: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+
+// Sat 3 - Scaled by framerate
+02F7: 24@ = cosine 23@
+0013: 24@ *= 0.50
+000B: 24@ += 0.75
+006B: 24@ *= 28@
+005B: 12@ += 24@
+if
+    0031: 12@ >= 360.0
+then
+    000F: 12@ -= 360.0
+end
+
+02F6: 19@ = sine 23@
+0013: 19@ *= 0.12
+000B: 19@ += 0.57
+
+0087: 25@ = 23@
+0013: 25@ *= 2.0
+if
+    0031: 25@ >= 360.0
+then
+    000F: 25@ -= 360.0
+end
+02F7: 22@ = cosine 25@
+0013: 22@ *= 0.18
+
+// Sat 3 - Orb 1: Base (Z -0.04)
+02F6: 20@ = sine 12@
+02F7: 21@ = cosine 12@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000F: 24@ -= 0.04
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+
+// Sat 3 - Orb 2: Belly
+0087: 25@ = 12@
+000B: 25@ += 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// Sat 3 - Orb 3: Neck
+0087: 25@ = 12@
+000F: 25@ -= 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000B: 24@ += 0.035
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// Sat 3 - Orb 4: Flickering Tip
+0087: 25@ = 12@
+000B: 25@ += 1.5
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+
+0087: 24@ = 22@
+000B: 24@ += 0.075
+
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+
+// =========================================================================
+// HITODAMA OPEN-VEHICLE SHIELD (JO'ON MODE EXCLUSIVE)
+// =========================================================================
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+
+22@ = 0 // Valid Open Vehicle Condition Flag
+
+if
+    21@ == 1 // Strictly Jo'on Mode only
+then
+    // Only active while Shion has shield energy remaining (> 100 HP)
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_PRES_HP
+    0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
+    if
+        0 >= 20@
+    then
+        20@ = 1000
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_PRES_HP
+        0A8C: write_memory 30@ size 4 value 20@ virtual_protect 0
+    end
+
+    if
+        20@ > 100
+    then
+        if
+            00DF: actor 29@ driving
+        then
+            03C0: 20@ = actor 29@ car
+            if
+                047A: actor 29@ driving_bike
+            then
+                22@ = 1
+            else
+                0441: 25@ = car 20@ model
+                if or
+                    25@ == 471 // Quad
+                    25@ == 571 // Kart
+                    25@ == 568 // Bandito
+                    25@ == 539 // Vortex
+                    25@ == 572 // Mower
+                then
+                    22@ = 1
+                end
+            end
+        end
+    end
+end
+
+if
+    22@ == 1
+then
+    // Soft Harmonic Breathing Radius: 1.05m to 1.25m
+    02F6: 23@ = sine 16@
+    0013: 23@ *= 0.10
+    000B: 23@ += 1.15
+
+    // Get coordinates directly from vehicle matrix
+    0407: store_coords_to 5@ 6@ 7@ from_car 20@ with_offset 0.0 -0.10 0.50
+
+    // Render soft translucent sapphire aura (always on while mounted with >100 HP)
+    04D5: create_corona_at 5@ 6@ 7@ radius 23@ type 0 flare 0 RGB 20 80 200
+end
+
+goto @ShionHito_ChildLoop
+
+// =========================================================================
+// DAMAGE CALLBACK: SHION HITODAMA ABLATIVE MEAT-SHIELD
+// =========================================================================
+:OnHitodamaAbsorbDamage
+// Mutex: Prevent re-entrant damage calls during health sync
+0085: 30@ = 31@
+000A: 30@ += MEM_DMG_RECURSION_LCK
+0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    21@ == 1
+then
+    0ED0: return_script_event
+end
+
+// Only intercept if victim is the player
+01F5: 21@ = get_player_actor $PLAYER_CHAR
+if
+    003B: 20@ == 21@
+then
+    // Only active while playing as Jo'on (State 1)
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PLAYER_FORM
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+
+    if
+        21@ == 1
+    then
+        // Only active while Shion is in Hitodama Form (-1)
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_HANDLE
+        0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+
+        if
+            21@ == -1
+        then
+            // Only step in if Jo'on has no armour left (Armour == 0)
+            04DD: 26@ = actor 20@ armour
+            if
+                0 >= 26@
+            then
+                // Check incoming weapon and damage intensity
+                0EB5: get_char_damage_last_frame 20@ damager 21@ type 22@ part 23@ intensity 24@
+
+                // Gunfire / bullet check: IDs 22 to 34, or Minigun 38
+                23@ = 0
+                if and
+                    22@ >= 22
+                    34 >= 22@
+                then
+                    23@ = 1
+                end
+
+                if
+                    22@ == 38
+                then
+                    23@ = 1
+                end
+
+                if
+                    23@ == 1
+                then
+                    // Read Shion's Hitodama HP from heap memory
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_SHION_PRES_HP
+                    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+
+                    if
+                        0 >= 21@
+                    then
+                        21@ = 1000
+                    end
+
+                    // Shield only absorbs while Shion's HP > 100
+                    if
+                        21@ > 100
+                    then
+                        // Convert damage intensity to integer
+                        0092: 25@ = float 24@ to_integer
+                        if
+                            0 >= 25@
+                        then
+                            25@ = 1
+                        end
+
+                        // Transfer damage to Shion
+                        0062: 21@ -= 25@
+
+                        // Clamp to 100 HP floor so Shion does not die instantly
+                        if
+                            100 >= 21@
+                        then
+                            21@ = 100
+
+                            0085: 30@ = 31@
+                            000A: 30@ += MEM_HITO_SHIELD_BROKE
+                            0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+                        end
+
+                        0085: 30@ = 31@
+                        000A: 30@ += MEM_SHION_PRES_HP
+                        0A8C: write_memory 30@ size 4 value 21@ virtual_protect 0
+
+                        // Engage recursion lock before updating actor properties
+                        0085: 30@ = 31@
+                        000A: 30@ += MEM_DMG_RECURSION_LCK
+                        0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+                        // Read current Health and Max Health
+                        0226: 21@ = actor 20@ health
+                        0D39: 23@ = actor 20@ max_health
+                        if
+                            0 >= 23@
+                        then
+                            23@ = 100
+                        end
+
+                        // Add bullet damage back to health pool
+                        005A: 21@ += 25@
+
+                        // Clamp health to max
+                        if
+                            001D: 21@ > 23@
+                        then
+                            0085: 21@ = 23@
+                        end
+
+                        // Apply restored Health safely using native opcode
+                        0223: set_actor 20@ health_to 21@
+
+                        // Release recursion lock
+                        0085: 30@ = 31@
+                        000A: 30@ += MEM_DMG_RECURSION_LCK
+                        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+                        // Trigger deflection visual and sound
+                        0085: 30@ = 31@
+                        000A: 30@ += MEM_HITO_DEFLECT_TMR
+                        0A8C: write_memory 30@ size 4 value 150 virtual_protect 0
+
+                        018C: play_sound 1052 at 0.0 0.0 0.0
+
+                        // Sparks at Jo'on's torso
+                        04C4: store_coords_to 21@ 22@ 23@ from_actor 20@ with_offset 0.0 0.0 0.2
+                        064B: 24@ = create_particle "shion_misfortune" at 21@ 22@ 23@ type 1
+                        064C: make_particle 24@ visible
+                        064F: remove_references_to_particle 24@
+                    end
+                end
+            end
+        end
+    end
+end
+0ED0: return_script_event
+
+// =========================================================================
+// SUBROUTINE: RESTORE PAIN AUDIO IF CONFIG PERMITS
+// =========================================================================
+:Restore_Pain_Audio_If_Configured
+0085: 30@ = 31@
+000A: 30@ += MEM_HITO_PAIN_MUTED
+0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    20@ == 1
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_HITO_PAIN_MUTED
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    0AF0: 20@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "MuteCharacterVoice"
+    if
+        20@ < 0
+    then
+        20@ = 1
+    end
+
+    if
+        8039: not 20@ == 1
+    then
+        if and
+            056D: actor 29@ defined
+            8118: not actor 29@ dead
+        then
+            094F: enable_actor 29@ pain_audio
+        end
+    end
+end
+return

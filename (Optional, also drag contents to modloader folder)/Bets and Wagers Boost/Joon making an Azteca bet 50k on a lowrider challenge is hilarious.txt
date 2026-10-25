@@ -1,0 +1,28 @@
+========================================================================
+BETS AND WAGERS BOOST (HIGH-ROLLER EDITION)
+By: EagleRaviOrange
+========================================================================
+
+Because waiting 5 minutes pressing the D-pad to bet pocket change 
+is an insult to high-rollers like Jo'on.
+
+[FEATURES]
+1. Lowrider Challenge (Unity Station):
+   - Raises the maximum wager cap from $1,000 to $50,000.
+   - Hold [Shift] while raising your bet to jump in $2,500 increments.
+   - Watch local street racers bet their life savings against a pestilence god.
+
+2. Inside Track Betting (Horse Betting):
+   - Hold [Shift] to apply a 10x multiplier to all 7 betting buttons.
+   - The top $10k button now bets $100,000 in a single click.
+
+3. Pool / Billiards:
+   - Sets the minimum wager to $500 and maximum wager up to $50,000.
+   - Wager steps by $500 at a time.
+
+* All values are fully customizable inside 'cleo/Y_Wagers.ini'.
+* Automatically reloads every 5 seconds so live edits apply instantly.
+
+[INSTALLATION]
+Drop the 'Bets and Wagers Boost' folder into your 'modloader' directory.
+========================================================================

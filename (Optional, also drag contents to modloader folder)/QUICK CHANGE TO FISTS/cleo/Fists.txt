@@ -1,0 +1,78 @@
+{$CLEO .cs}
+{$USE CLEO+}
+{$USE ini}
+
+0000: NOP
+script_name "Y_Fists"
+
+wait 500
+
+0@ = 89 // Key Code (Default: 89 = Y)
+1@ = 0  // Tap Counter (0, 1, 2)
+TIMERA = 0
+
+// Dynamically read ModifierKey from fists.ini
+0AF0: 0@ = read_int_from_ini_file "cleo\fists.ini" section "Controls" key "ModifierKey"
+if
+    0@ <= 0
+then
+    0@ = 89 // Fallback Default: Y Key
+end
+
+:Fists_Loop
+wait 20
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @Fists_Loop
+end
+
+// Suppress during cutscenes or screen fades
+if or
+    016B: fading
+    0E25: is_on_cutscene
+then
+    1@ = 0
+    goto @Fists_Loop
+end
+
+// Timeout Window: If more than 400ms elapses between taps, reset count!
+if
+    1@ > 0
+then
+    if
+        TIMERA > 400
+    then
+        1@ = 0
+    end
+end
+
+// Detect Rising Edge Key Press (Single frame trigger)
+if
+    0E3D: is_key_just_pressed 0@
+then
+    if
+        1@ == 0
+    then
+        1@ = 1
+        TIMERA = 0
+    else
+        if
+            1@ == 1
+        then
+            1@ = 2
+            TIMERA = 0
+        else
+            if
+                1@ == 2
+            then
+                // TRIPLE-TAP CONFIRMED: INSTANT FISTS!
+                1@ = 0
+                01B9: set_actor $PLAYER_ACTOR armed_weapon_to 0
+            end
+        end
+    end
+end
+
+goto @Fists_Loop

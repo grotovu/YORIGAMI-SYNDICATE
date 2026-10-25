@@ -1,0 +1,77 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+script_name "Y_Graze"
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    0A93: terminate_this_custom_script
+end
+
+// Enable Bulletproof Immunity on boot (BP 1)
+02AB: set_actor $PLAYER_ACTOR immunities BP 1 FP 1 EP 0 CP 0 MP 0
+
+TIMERA = 0 // Lifetime timer (2000ms)
+0@ = 0.0   // Harmonic pulse oscillator (float)
+
+:Graze_Loop
+wait 0 // 60 FPS smooth tracking
+
+if or
+    8256: not is_player_playing $PLAYER_CHAR
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+then
+    goto @Cleanup_Graze
+end
+
+// Cancel graze if entering a vehicle
+if
+    0449: actor $PLAYER_ACTOR in_a_car
+then
+    goto @Cleanup_Graze
+end
+
+// Enforce Bulletproof Immunity continuously during graze window
+02AB: set_actor $PLAYER_ACTOR immunities BP 1 FP 1 EP 0 CP 0 MP 0
+
+// Advance harmonic pulse clock
+    000B: 0@ += 6.0
+    if
+        0021: 0@ >= 360.0
+    then
+        000F: 0@ -= 360.0
+    end
+
+    // Bigger encompassing pulse radius: 1.00m to 1.20m
+    02F6: 1@ = sine 0@
+    0013: 1@ *= 0.10
+    000B: 1@ += 1.10
+
+    // Get live center-of-mass position (Torso level)
+    04C4: store_coords_to 2@ 3@ 4@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.10
+
+    // Render soft, half-opacity yellow protective orb (No bright white core)
+    04D5: create_corona_at 2@ 3@ 4@ radius 1@ type 0 flare 0 RGB 105 90 12
+
+    // Check 2-second expiration
+    if
+        TIMERA >= 2000
+    then
+        goto @Cleanup_Graze
+    end
+
+goto @Graze_Loop
+
+:Cleanup_Graze
+if
+    0256: is_player_playing $PLAYER_CHAR
+then
+    // Revert Bulletproof Immunity back to standard (BP 0)
+    02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 0 CP 0 MP 0
+end
+0A93: terminate_this_custom_script

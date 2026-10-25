@@ -1,0 +1,563 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+03A4: script_name 'Y_TROOP'
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED TO ACTIVE OFFSETS)
+// =========================================================================
+const
+    MEM_SAVE_SLOT = 0
+    MEM_INTENTIONAL_DISM = 8
+    MEM_ALLOC_DRIPWORSHIP = 48
+    MEM_SHION_HANDLE = 116
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    04A4: 31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    04A4: 31@ == 0
+then
+    goto @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE VERIFIED MASTER POINTER.
+
+1@ = -999
+14@ = 0 // Rejected Ped 1
+15@ = 0 // Rejected Ped 2
+16@ = 0 // Rejected Ped 3
+17@ = 0 // Rejection Ring Index
+
+:YTroop_StartupWait
+wait 250
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    goto @YTroop_StartupWait
+end
+
+// Permanently unlock 7-slot group capacity for Drip Worship
+08F4: set_max_group_members 7
+
+:YTroop_Loop
+wait 100
+
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    goto @YTroop_Loop
+end
+
+// Check if Save Slot Changed
+0085: 30@ = 31@
+000A: 30@ += MEM_SAVE_SLOT
+0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+if
+    803B: not 0@ == 1@
+then
+    gosub @YTroop_ReloadSettings
+end
+
+// Read Live Allocated Points in Drip Worship (Jo'on Perk #3)
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_DRIPWORSHIP
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+
+// -------------------------------------------------------------------------
+// ENTOURAGE CONTROLLER (Aim at Ped + G to Recruit | Aim + N to Dismiss)
+// -------------------------------------------------------------------------
+if and
+    04A4: 3@ == 1                          // Feature Enabled in INI
+    0019: 2@ > 0                           // Has points in Drip Worship
+    80DF: not actor $PLAYER_ACTOR driving  // On foot
+    816B: not fading
+then
+    if
+        0AD2: 29@ = player $PLAYER_CHAR targeted_actor
+    then
+        if and
+            056D: actor 29@ defined
+            8118: not actor 29@ dead
+            80DF: not actor 29@ driving
+            87D6: not 29@ == $PLAYER_ACTOR
+        then
+            07AF: 20@ = player $PLAYER_CHAR group
+
+            // =============================================================
+            // DISMISS FOLLOWER (Target + Press 'N')
+            // =============================================================
+            if
+                06EE: actor 29@ in_group 20@
+            then
+                if
+                    0AB0: is_key_pressed 78 // N Key (VK 78)
+                then
+                    :Wait_Dismiss_Release
+                    wait 50
+                    if
+                        0AB0: is_key_pressed 78
+                    then
+                        goto @Wait_Dismiss_Release
+                    end
+
+                    if and
+                        056D: actor 29@ defined
+                        8118: not actor 29@ dead
+                    then
+                        // Check if the dismissed follower is Shion!
+                        0085: 30@ = 31@
+                        000A: 30@ += MEM_SHION_HANDLE
+                        0A8D: 5@ = read_memory 30@ size 4 virtual_protect 0
+                        23@ = 0
+                        if
+                            003B: 29@ == 5@
+                        then
+                            23@ = 1
+                        end
+
+                        0665: get_actor 29@ model_to 26@
+                        if
+                            04A4: 26@ == 299
+                        then
+                            23@ = 1
+                        end
+
+                        if
+                            04A4: 23@ == 1
+                        then
+                            gosub @Execute_Dismiss_Shion
+                        else
+                            gosub @Execute_Dismiss_Follower
+                        end
+                    end
+                end
+            else
+                // =========================================================
+                // RECRUIT FOLLOWER (Target + Press 'G')
+                // =========================================================
+                // Filter: Never recruit Shion via Drip Worship (She has her own [Y] system!)
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_HANDLE
+                0A8D: 5@ = read_memory 30@ size 4 virtual_protect 0
+                23@ = 0
+                if
+                    003B: 29@ == 5@
+                then
+                    23@ = 1
+                end
+
+                0665: get_actor 29@ model_to 26@
+                if
+                    04A4: 26@ == 299
+                then
+                    23@ = 1
+                end
+
+                if
+                    04A4: 23@ == 0 // Target is NOT Shion
+                then
+                    // Only block script-controlled peds if actively on a story mission!
+                    25@ = 1
+                    if
+                        0E1D: is_on_mission
+                    then
+                        if
+                            0E0A: is_char_script_controlled 29@
+                        then
+                            25@ = 0 // Protect story cutscene actors
+                        end
+                    end
+
+                    if
+                        04A4: 25@ == 1
+                    then
+                        // Check rejection memory buffer
+                        23@ = 0
+                        if
+                            003B: 29@ == 14@
+                        then
+                            23@ = 1
+                        end
+                        if
+                            003B: 29@ == 15@
+                        then
+                            23@ = 1
+                        end
+                        if
+                            003B: 29@ == 16@
+                        then
+                            23@ = 1
+                        end
+
+                        if
+                            04A4: 23@ == 0 // Not in rejection memory
+                        then
+                            if
+                                0AB0: is_key_pressed 4@ // RecruitKey (G)
+                            then
+                                :YTroop_WaitRelease
+                                wait 50
+                                if
+                                    0AB0: is_key_pressed 4@
+                                then
+                                    goto @YTroop_WaitRelease
+                                end
+
+                                if and
+                                    056D: actor 29@ defined
+                                    8118: not actor 29@ dead
+                                then
+                                    gosub @Execute_Charm_Recruitment
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+goto @YTroop_Loop
+
+
+// =========================================================================
+// SUBROUTINES
+// =========================================================================
+
+:YTroop_ReloadSettings
+0085: 1@ = 0@
+
+0AF0: 3@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DripWorship" key "EnableCharmRecruitment"
+if
+    001B: 0 > 3@
+then
+    3@ = 1
+end
+
+0AF0: 4@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DripWorship" key "RecruitKey"
+if
+    002B: 0 >= 4@
+then
+    4@ = 71 // G Key
+end
+
+0AF0: 6@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DripWorship" key "CivilianBaseChance"
+if
+    002B: 0 >= 6@
+then
+    6@ = 50
+end
+
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DripWorship" key "CivilianMaxChanceCap"
+if
+    002B: 0 >= 7@
+then
+    7@ = 90
+end
+
+0AF0: 8@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DripWorship" key "DealerUnlockPoints"
+if
+    002B: 0 >= 8@
+then
+    8@ = 25
+end
+
+0AF0: 9@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DripWorship" key "DealerBaseChance"
+if
+    002B: 0 >= 9@
+then
+    9@ = 35
+end
+
+0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DripWorship" key "DealerMaxChanceCap"
+if
+    002B: 0 >= 10@
+then
+    10@ = 70
+end
+
+0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DripWorship" key "GangUnlockPoints"
+if
+    002B: 0 >= 11@
+then
+    11@ = 60
+end
+
+0AF0: 12@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DripWorship" key "GangBaseChance"
+if
+    002B: 0 >= 12@
+then
+    12@ = 20
+end
+
+0AF0: 13@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DripWorship" key "GangMaxChanceCap"
+if
+    002B: 0 >= 13@
+then
+    13@ = 50
+end
+return
+
+:Execute_Charm_Recruitment
+// Query Group Capacity: Leaders to 22@, Members to 21@
+07AF: 20@ = player $PLAYER_CHAR group
+07F6: get_group 20@ number_of_leaders_to 22@ number_of_members_to 21@
+if
+    0029: 21@ >= 7
+then
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_EFULL" text "~r~ENTOURAGE FULL~n~~w~MAX CAPACITY (7/7)"
+    00BA: show_text_styled GXT 'Y_EFULL' time 2500 style 5
+    return
+end
+
+// Identify Ped Archetype & Calculate Charm Probability
+089F: get_actor 29@ pedtype_to 24@
+
+// COPS (IMMUNE!)
+if
+    04A4: 24@ == 6
+then
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_ECOP" text "~r~RECRUIT FAILED~n~~w~POLICE ARE IMMUNE"
+    00BA: show_text_styled GXT 'Y_ECOP' time 2500 style 5
+    gosub @Remember_Rejected_Ped
+    return
+end
+
+18@ = 0 // Target Charm Probability %
+
+// RIVAL GANGS (Ballas, Vagos, etc.)
+if and
+    0029: 24@ >= 7
+    002B: 16 >= 24@
+    84A4: not 24@ == 8
+then
+    if
+        001D: 11@ > 2@ // Points < GangUnlockPoints (60)
+    then
+        018C: play_sound 1057 at 0.0 0.0 0.0
+        0ADF: add_text_label "Y_EGREQ" text "~r~GANG SCOFFED~n~~w~REQUIRES ~1~+ DRIP POINTS"
+        01E3: show_text_1number_styled GXT 'Y_EGREQ' number 11@ time 2500 style 5
+        gosub @Remember_Rejected_Ped
+        return
+    end
+
+    // Formula: GangBaseChance + (Points / 2)
+    0085: 18@ = 12@
+    0085: 19@ = 2@
+    0016: 19@ /= 2
+    005A: 18@ += 19@
+    if
+        001D: 18@ > 13@
+    then
+        0085: 18@ = 13@
+    end
+end
+
+// DRUG DEALERS & CRIMINALS
+if
+    04A4: 18@ == 0
+then
+    0665: get_actor 29@ model_to 26@
+    if or
+        04A4: 26@ == 29
+        04A4: 26@ == 30
+        04A4: 24@ == 20
+    then
+        if
+            001D: 8@ > 2@ // Points < DealerUnlockPoints (25)
+        then
+            018C: play_sound 1057 at 0.0 0.0 0.0
+            0ADF: add_text_label "Y_EDREQ" text "~r~STREET HARDENED~n~~w~REQUIRES ~1~+ DRIP POINTS"
+            01E3: show_text_1number_styled GXT 'Y_EDREQ' number 8@ time 2500 style 5
+            gosub @Remember_Rejected_Ped
+            return
+        end
+
+        // Formula: DealerBaseChance + (Points / 2)
+        0085: 18@ = 9@
+        0085: 19@ = 2@
+        0016: 19@ /= 2
+        005A: 18@ += 19@
+        if
+            001D: 18@ > 10@
+        then
+            0085: 18@ = 10@
+        end
+    end
+end
+
+// CIVILIANS, SPECIAL ACTORS & TOURISTS
+if
+    04A4: 18@ == 0
+then
+    // Formula: CivilianBaseChance + (Points / 2)
+    0085: 18@ = 6@
+    0085: 19@ = 2@
+    0016: 19@ /= 2
+    005A: 18@ += 19@
+    if
+        001D: 18@ > 7@
+    then
+        0085: 18@ = 7@
+    end
+end
+
+// Roll the Charm Check
+0209: 27@ = random_int_in_ranges 1 101
+
+if
+    801D: not 27@ > 18@ // SUCCESS!
+then
+    // Install Group Follower AI Brain
+    060B: set_actor 29@ decision_maker_to 65543
+
+    // Strip ambient actions & secondary tasks cleanly
+    0792: disembark_instantly_actor 29@
+    0687: clear_actor 29@ task
+    0E96: clear_char_primary_tasks 29@
+    0E97: clear_char_secondary_tasks 29@
+
+    // Set Total Loyalty to CJ (Type 0)
+    077B: clear_actor 29@ acquaintance 4 to_actors_pedtype 0
+    077B: clear_actor 29@ acquaintance 3 to_actors_pedtype 0
+    077A: set_actor 29@ acquaintance 0 to_actors_pedtype 0
+    077A: set_actor 29@ acquaintance 1 to_actors_pedtype 0
+
+    // Set Loyalty to Grove Street / Homies (Type 8)
+    077B: clear_actor 29@ acquaintance 4 to_actors_pedtype 8
+    077B: clear_actor 29@ acquaintance 3 to_actors_pedtype 8
+    077A: set_actor 29@ acquaintance 0 to_actors_pedtype 8
+    077A: set_actor 29@ acquaintance 1 to_actors_pedtype 8
+    
+    // Set Hatred towards Police (Type 6) so they return fire during pursuits
+    077B: clear_actor 29@ acquaintance 0 to_actors_pedtype 6
+    077B: clear_actor 29@ acquaintance 1 to_actors_pedtype 6
+    077A: set_actor 29@ acquaintance 4 to_actors_pedtype 6
+    077A: set_actor 29@ acquaintance 3 to_actors_pedtype 6
+
+    // Sever previous gang ties & reassign to Grove Street (Type 8)
+    if and
+        0029: 24@ >= 7
+        002B: 16 >= 24@
+        84A4: not 24@ == 8
+    then
+        077B: clear_actor 29@ acquaintance 0 to_actors_pedtype 24@
+        077B: clear_actor 29@ acquaintance 1 to_actors_pedtype 24@
+        077A: set_actor 29@ acquaintance 4 to_actors_pedtype 24@
+        077A: set_actor 29@ acquaintance 3 to_actors_pedtype 24@
+
+        0A96: 28@ = ped 29@ struct
+        000A: 28@ += 0x598
+        0A8C: write_memory 28@ size 4 value 8 virtual_protect 0
+    end
+
+    // Add cleanly to player's entourage
+    0631: put_actor 29@ in_group 20@
+    09B5: set_actor 29@ signal_after_kill 0
+
+    // Equip with 9mm pistol if unarmed (Use 22@ to avoid clobbering model in 26@)
+    0470: 22@ = actor 29@ current_weapon
+    if
+        002B: 1 >= 22@
+    then
+        0E98: request_priority_model 346 // #COLT45
+        0E99: load_all_priority_models_now
+        01B2: give_actor 29@ weapon 22 ammo 50
+        01B9: set_actor 29@ armed_weapon_to 22
+        0249: release_model 346
+    end
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_ERECL" text "~y~CHARMED BY DRIP~n~~w~JOINED ENTOURAGE"
+    00BA: show_text_styled GXT 'Y_ERECL' time 2500 style 5
+else
+    // FAILURE: Target resists
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_ERES" text "~r~CHARM FAILED~n~~w~TARGET REJECTED OFFER"
+    00BA: show_text_styled GXT 'Y_ERES' time 2500 style 5
+    gosub @Remember_Rejected_Ped
+end
+return
+
+:Execute_Dismiss_Follower
+// Remove from player's group
+06C9: remove_actor 29@ from_group
+
+// Clear tasks & assign ambient wander task
+0792: disembark_instantly_actor 29@
+0687: clear_actor 29@ task
+05DE: AS_actor 29@ walk_around_ped_path
+
+// Release script handle so engine can safely garbage-collect them
+01C2: remove_references_to_actor 29@
+
+// Audio & Notification
+018C: play_sound 1057 at 0.0 0.0 0.0
+0ADF: add_text_label "Y_EDISM" text "~y~FOLLOWER DISMISSED~n~~w~REMOVED FROM ENTOURAGE"
+00BA: show_text_styled GXT 'Y_EDISM' time 2500 style 5
+return
+
+// =========================================================================
+// SUBROUTINE: DISMISS SHION COMPANION (Safe Handoff to SpawnShion Watchdog)
+// =========================================================================
+:Execute_Dismiss_Shion
+// Set intentional dismissal flag for the watchdog
+0085: 30@ = 31@
+000A: 30@ += MEM_INTENTIONAL_DISM
+0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+// Remove from player's group
+06C9: remove_actor 29@ from_group
+
+// Clear tasks & assign ambient wander task so she steps away
+0792: disembark_instantly_actor 29@
+0687: clear_actor 29@ task
+05DE: AS_actor 29@ walk_around_ped_path
+
+// Launch dedicated dismissal conversation thread
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Dism"
+0A92: stream_custom_script "Shion\Chat\chatDismiss.c" 29@
+return
+
+:Remember_Rejected_Ped
+// Store ped handle in 3-slot ring buffer to prevent spam
+if
+    04A4: 17@ == 0
+then
+    0085: 14@ = 29@
+    17@ = 1
+    return
+end
+
+if
+    04A4: 17@ == 1
+then
+    0085: 15@ = 29@
+    17@ = 2
+    return
+end
+
+if
+    04A4: 17@ == 2
+then
+    0085: 16@ = 29@
+    17@ = 0
+    return
+end
+return

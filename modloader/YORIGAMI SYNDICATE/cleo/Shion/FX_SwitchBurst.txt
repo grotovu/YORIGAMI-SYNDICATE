@@ -1,0 +1,182 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+script_name "Sh_Swtc"
+
+// 0@ = Mode: 1 = Jo'on (Gold/Yellow), 2 = Shion (Blue Calamity)
+0085: 10@ = 0@
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    0A93: terminate_this_custom_script
+end
+
+// Hide player immediately so CJ never appears during the model swap
+01F5: 27@ = get_player_actor $PLAYER_CHAR
+0D10: set_actor 27@ alpha 0
+
+// Check accessibility flash setting
+0AF0: 20@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "EnableFlashFX"
+if
+    20@ == 0
+then
+    01F5: 27@ = get_player_actor $PLAYER_CHAR
+    0D10: set_actor 27@ alpha 255
+    0A93: terminate_this_custom_script
+end
+
+// Camera rumble based on mode
+if
+    10@ == 2
+then
+    0003: shake_camera 120 // Heavy camera shake for Shion
+else
+    0003: shake_camera 60  // Crisp rumble for Jo'on
+end
+
+TIMERA = 0
+26@ = 0 // Player Revealed Flag
+
+:SwitchBurst_Loop
+wait 0
+
+if or
+    8256: not is_player_playing $PLAYER_CHAR
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+then
+    01F5: 27@ = get_player_actor $PLAYER_CHAR
+    0D10: set_actor 27@ alpha 255
+    0A93: terminate_this_custom_script
+end
+
+// Reveal the new model at peak bloom while the coronas are blindingly bright
+if and
+    26@ == 0
+    TIMERA >= 150
+then
+    26@ = 1
+    01F5: 27@ = get_player_actor $PLAYER_CHAR
+    0D10: set_actor 27@ alpha 255
+end
+
+// Get live player torso position
+04C4: store_coords_to 2@ 3@ 4@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.15
+
+// Snapshot TIMERA into standard integer register
+0085: 29@ = TIMERA
+
+// Explosive bloom (0ms to 120ms)
+if
+    29@ < 120
+then
+    0093: 8@ = integer 29@ to_float
+    0017: 8@ /= 120.0
+
+    if
+        8@ < 0.0
+    then
+        8@ = 0.0
+    end
+    if
+        0021: 8@ > 1.0
+    then
+        8@ = 1.0
+    end
+
+    // Outer Aura
+    0087: 5@ = 8@
+    0013: 5@ *= 4.8
+
+    // Mid Flare
+    0087: 6@ = 8@
+    0013: 6@ *= 2.6
+
+    // Core Spark
+    0087: 7@ = 8@
+    0013: 7@ *= 1.2
+else
+    // Dissipate & collapse (120ms to 400ms)
+    if
+        29@ < 400
+    then
+        28@ = 400
+        0062: 28@ -= 29@
+        0093: 8@ = integer 28@ to_float
+        0017: 8@ /= 280.0
+
+        if
+            8@ < 0.0
+        then
+            8@ = 0.0
+        end
+        if
+            0021: 8@ > 1.0
+        then
+            8@ = 1.0
+        end
+
+        0087: 5@ = 8@
+        0013: 5@ *= 4.8
+
+        0087: 6@ = 8@
+        0013: 6@ *= 2.6
+
+        0087: 7@ = 8@
+        0013: 7@ *= 1.2
+    else
+        01F5: 27@ = get_player_actor $PLAYER_CHAR
+        0D10: set_actor 27@ alpha 255
+        0A93: terminate_this_custom_script
+    end
+end
+
+// Render Coronas
+if
+    10@ == 2
+then
+    // Mode 2: Shion Blue Calamity Burst (Sapphire, Cyan, Luminous White)
+    if
+        0021: 5@ > 0.01
+    then
+        04D5: create_corona_at 2@ 3@ 4@ radius 5@ type 0 flare 0 RGB 0 100 255
+    end
+
+    if
+        0021: 6@ > 0.01
+    then
+        04D5: create_corona_at 2@ 3@ 4@ radius 6@ type 0 flare 0 RGB 80 200 255
+    end
+
+    if
+        0021: 7@ > 0.01
+    then
+        04D5: create_corona_at 2@ 3@ 4@ radius 7@ type 0 flare 0 RGB 255 255 255
+    end
+else
+    // Mode 1: Jo'on Gold Extravagance Burst (Deep Gold, Sunburst Yellow, Diamond White)
+    if
+        0021: 5@ > 0.01
+    then
+        04D5: create_corona_at 2@ 3@ 4@ radius 5@ type 0 flare 0 RGB 255 190 20
+    end
+
+    if
+        0021: 6@ > 0.01
+    then
+        04D5: create_corona_at 2@ 3@ 4@ radius 6@ type 0 flare 0 RGB 255 235 60
+    end
+
+    if
+        0021: 7@ > 0.01
+    then
+        04D5: create_corona_at 2@ 3@ 4@ radius 7@ type 0 flare 0 RGB 255 255 220
+    end
+end
+
+goto @SwitchBurst_Loop

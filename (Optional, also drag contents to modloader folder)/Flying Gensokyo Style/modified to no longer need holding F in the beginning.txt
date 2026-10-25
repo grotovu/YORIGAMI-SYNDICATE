@@ -1,0 +1,28 @@
+========================================================================
+FLYING: GENSOKYO STYLE (OPTIONAL ARCADE FLIGHT)
+Original Script: Ryosuke839
+Modified by: EagleRaviOrange
+========================================================================
+
+"What's with the gravity in this dump?! Back home, you just kick the air 
+and float wherever ya want! Out here, you drop like an anvil!" 
+— Jo'on Yorigami
+
+[NOTE ON LORE & IMMERSION]
+Yes, the in-game banter and sister talk dialogue constantly complain 
+about San Andreas gravity dragging them down, crashing cars, and needing 
+parachutes or jetpacks. 
+
+Canonically in this mod, the outside world restricts them. BUT... it's a 
+Touhou mod. Playing as a Touhou girl without being able to take to the 
+skies feels incomplete, so this is here strictly as an optional "Fun Mode"!
+
+[MY MODIFICATIONS]
+- In the legendary original script by Ryosuke, you had to awkwardly hold [F] 
+  at the start to initialize flight.
+- I patched out the requirement so flight activates smoothly and naturally 
+  without clunky initial key-holding.
+
+[INSTALLATION]
+Drop the 'Flying Gensokyo Style' folder into your 'modloader' directory.
+========================================================================

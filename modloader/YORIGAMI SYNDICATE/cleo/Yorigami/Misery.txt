@@ -1,0 +1,291 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+script_name "Y_Misy"
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED FOR MISERY)
+// =========================================================================
+const
+    MEM_SAVE_SLOT = 0             // Formerly 700
+    MEM_ALLOC_MISERY = 108        // Formerly 757
+    MEM_SHION_HANDLE = 116        // Formerly 703
+    MEM_DMG_RECURSION_LCK = 184   // Formerly 745
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+1@ = -999
+
+:YMisery_StartupWait
+wait 250
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    goto @YMisery_StartupWait
+end
+
+// Initial settings load before callback activates
+0085: 30@ = 31@
+000A: 30@ += MEM_SAVE_SLOT
+0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+gosub @YMisery_ReloadSettings
+
+// Ensure recursion lock is zeroed on startup
+0085: 30@ = 31@
+000A: 30@ += MEM_DMG_RECURSION_LCK
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+// Read Live Allocated Points in Misery Loves Company (Shion Perk #8)
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_MISERY
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+
+// Register Damage Callback specifically for Voodoo Reflection
+0EDE: set_script_event_char_damage 1 @OnCharDamage 19@
+
+:YMisery_Loop
+wait 100
+
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    goto @YMisery_Loop
+end
+
+// Check if Save Slot Changed
+0085: 30@ = 31@
+000A: 30@ += MEM_SAVE_SLOT
+0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+if
+    803B: not 0@ == 1@
+then
+    gosub @YMisery_ReloadSettings
+end
+
+// Refresh Live Allocated Points in Misery Loves Company
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_MISERY
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+
+goto @YMisery_Loop
+
+
+// =========================================================================
+// SUBROUTINES
+// =========================================================================
+
+:YMisery_ReloadSettings
+0085: 1@ = 0@
+
+// Read Reflection Balancing Knobs from YorigamiPerks.ini
+0AF0: 4@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MiseryLovesCompany" key "BaseReflectionPercent"
+if
+    4@ <= 0
+then
+    4@ = 10
+end
+
+0AF0: 5@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MiseryLovesCompany" key "ReflectionPerPoint"
+if
+    5@ <= 0
+then
+    5@ = 2
+end
+
+0AF0: 6@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MiseryLovesCompany" key "MaxReflectionCap"
+if
+    6@ <= 0
+then
+    6@ = 100
+end
+
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MiseryLovesCompany" key "PlayVoodooSound"
+if
+    7@ < 0
+then
+    7@ = 1
+end
+
+0AF0: 8@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MiseryLovesCompany" key "SpawnVoodooSparks"
+if
+    8@ < 0
+then
+    8@ = 1
+end
+return
+
+// =========================================================================
+// DAMAGE CALLBACK (0EDE: Intercept Incoming Hits & Reflect Pain!)
+// =========================================================================
+:OnCharDamage
+// Safety guards to prevent null-pointer crashes if player state is invalid
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    0ED0: return_script_event
+end
+
+01F5: 15@ = get_player_actor $PLAYER_CHAR
+if
+    856D: not actor 15@ defined
+then
+    0ED0: return_script_event
+end
+
+// Check and prevent recursion loops triggered by 0851 damage (Uses dedicated 25@)
+0085: 25@ = 31@
+000A: 25@ += MEM_DMG_RECURSION_LCK
+0A8D: 13@ = read_memory 25@ size 4 virtual_protect 0
+if
+    13@ == 1
+then
+    0ED0: return_script_event
+end
+
+if and
+    0019: 2@ > 0  // Alloc_MiseryLovesCompany > 0
+    056D: actor 19@ defined
+    8118: not actor 19@ dead
+then
+    // Verify CJ was the victim
+    if
+        003B: 19@ == 15@
+    then
+        0EB5: get_char_damage_last_frame 19@ damager 26@ type 27@ part 28@ intensity 29@
+
+        // Early cutoff for zero-damage taps
+        if
+            0021: 29@ > 0.0
+        then
+            010B: 18@ = player $PLAYER_CHAR money
+            // Requires being broke or in debt!
+            if
+                18@ <= 0
+            then
+                // Must have a valid attacker pointer (ignores fall/drown damage)
+                if
+                    8039: not 26@ == 0
+                then
+                    17@ = 0
+                    0E13: get_entity 26@ type_to 16@
+
+                    // Direct Ped Attacker
+                    if
+                        16@ == 3 // ENTITY_TYPE_PED
+                    then
+                        0AEA: 17@ = ped_struct 26@ handle
+                    end
+
+                    // Vehicular / Drive-by Attacker
+                    if
+                        16@ == 2 // ENTITY_TYPE_VEHICLE
+                    then
+                        0AEB: 12@ = vehicle_struct 26@ handle
+                        if
+                            056E: car 12@ defined
+                        then
+                            046C: 17@ = car 12@ driver
+                        end
+                    end
+
+                    if
+                        17@ > 0
+                    then
+                        if and
+                            056D: actor 17@ defined
+                            803B: not 17@ == 15@ // Attacker is not CJ
+                        then
+                            // Check that attacker is not Shion
+                            0085: 25@ = 31@
+                            000A: 25@ += MEM_SHION_HANDLE
+                            0A8D: 13@ = read_memory 25@ size 4 virtual_protect 0
+                            if
+                                803B: not 17@ == 13@
+                            then
+                                if
+                                    8118: not actor 17@ dead
+                                then
+                                    // Engage recursion lock
+                                    0085: 25@ = 31@
+                                    000A: 25@ += MEM_DMG_RECURSION_LCK
+                                    0A8C: write_memory 25@ size 4 value 1 virtual_protect 0
+
+                                    // Store coordinates while attacker is guaranteed alive
+                                    04C4: store_coords_to 20@ 21@ 22@ from_actor 17@ with_offset 0.0 0.0 0.2
+
+                                    // Calculate Reflection %: Base + (Points * PerPoint)
+                                    0085: 10@ = 2@
+                                    006A: 10@ *= 5@ // Points * ReflectionPerPoint (006A)
+                                    005A: 10@ += 4@ // Base + Bonus (005A)
+
+                                    // Clamp to MaxReflectionCap
+                                    if
+                                        001D: 10@ > 6@
+                                    then
+                                        0085: 10@ = 6@
+                                    end
+
+                                    // Convert to Float Multiplier: 10@ / 100.0
+                                    0093: 11@ = integer 10@ to_float
+                                    0017: 11@ /= 100.0
+
+                                    // Calculate Reflected Damage = Intensity(float) * Multiplier
+                                    006B: 29@ *= 11@
+                                    0092: 23@ = float 29@ to_integer
+
+                                    // Ensure at least 1 damage is reflected on light hits
+                                    if
+                                        23@ <= 0
+                                    then
+                                        23@ = 1
+                                    end
+
+                                    // Apply Script Damage to Actor Handle 17@
+                                    0851: set_actor 17@ decrease_health_by 23@ affect_armour 1
+
+                                    // Audio: Dark pain sound on attacker coordinates
+                                    if
+                                        7@ == 1
+                                    then
+                                        018C: play_sound 1057 at 20@ 21@ 22@
+                                    end
+
+                                    // Visual: shion_misfortune from attacker
+                                    if
+                                        8@ == 1
+                                    then
+                                        064B: 14@ = create_particle "shion_misfortune" at 20@ 21@ 22@ type 1
+                                        064C: make_particle 14@ visible
+                                        064F: remove_references_to_particle 14@
+                                    end
+
+                                    // Release recursion lock
+                                    0085: 25@ = 31@
+                                    000A: 25@ += MEM_DMG_RECURSION_LCK
+                                    0A8C: write_memory 25@ size 4 value 0 virtual_protect 0
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+0ED0: return_script_event

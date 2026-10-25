@@ -1,0 +1,542 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+03A4: script_name 'Y_PITY'
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED FOR Y_PITY)
+// =========================================================================
+const
+    MEM_SAVE_SLOT = 0             // Formerly 700
+    MEM_ALLOC_GRIMPITY = 104      // Formerly 756
+    MEM_GRIMPITY_BURST = 112      // Formerly 758
+    MEM_SHION_HANDLE = 116        // Shion Entity Handle (-1 = Hitodama, >0 = Ped, 0 = None)
+    MEM_LORE_PROGRESS_BIT = 244
+    MEM_GRIMPITY_SAVES = 272      // Formerly 772
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    31@ == 0
+then
+    goto @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+1@ = -999 
+7@ = 0  // Grim Pity Cooldown Remaining (ms)
+3@ = 0  // Grim Pity Godmode Shield Flag (0 = inactive, 1 = active)
+19@ = 0 // Callback Recursion Lock Flag (Moved from 31@)
+
+// Initialize Burst Flag to 0 on boot
+0085: 30@ = 31@
+000A: 30@ += MEM_GRIMPITY_BURST
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+// Register Damage Callback specifically for Grim Pity lethal intercept (Receiver moved from 30@ to 18@)
+0EDE: set_script_event_char_damage 1 @OnGrimPityDamage 18@
+
+:YGrimPity_StartupWait
+wait 250
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    goto @YGrimPity_StartupWait
+end
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
+:YGrimPity_Loop
+wait 100
+
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    goto @YGrimPity_Loop
+end
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
+// Check if Save Slot Changed
+0085: 30@ = 31@
+000A: 30@ += MEM_SAVE_SLOT
+0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+if
+    803B: not 0@ == 1@
+then
+    gosub @YGrimPity_ReloadSettings
+end
+
+// Read Live Allocated Points in Grim Pity (Shion Perk)
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_GRIMPITY
+0A8D: 15@ = read_memory 30@ size 4 virtual_protect 0
+
+// Tick down Grim Pity Cooldown
+if
+    7@ > 0
+then
+    000E: 7@ -= 100
+    if
+        001B: 0 > 7@
+    then
+        7@ = 0
+    end
+end
+
+// -------------------------------------------------------------------------
+// EXPIRE GODMODE SHIELD & STRIP TEMPORARY SURVIVAL ARMOR
+// -------------------------------------------------------------------------
+if
+    3@ == 1
+then
+    if
+        TIMERA >= 5000
+    then
+        3@ = 0
+        19@ = 0 // Unlock recursion lock only after invulnerability window expires
+        0085: 30@ = 31@
+        000A: 30@ += MEM_GRIMPITY_BURST
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0 // Turn off Outer Burst Ring!
+        02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 0 CP 0 MP 0
+
+        // Strip temporary survival armor buffer down to 0
+        04DD: 8@ = actor $PLAYER_ACTOR armour
+        if
+            8@ > 0
+        then
+            0012: 8@ *= -1
+            035F: actor $PLAYER_ACTOR armour += 8@
+        end
+    end
+end
+
+// -------------------------------------------------------------------------
+// PASSIVE LOOP CHECK (Catches heavy environmental fire / explosions)
+// -------------------------------------------------------------------------
+if and
+    15@ > 0 // Has points in Grim Pity
+    7@ <= 0 // Not on cooldown
+    80DF: not actor $PLAYER_ACTOR driving
+    816B: not fading
+then
+    010B: 8@ = player $PLAYER_CHAR money
+    if
+        8@ <= 0 // Broke or in debt!
+    then
+        0226: 10@ = actor $PLAYER_ACTOR health
+        if and
+            10@ > 0
+            10@ <= 15 // Critical threshold
+        then
+            gosub @Trigger_Grim_Pity
+        end
+    end
+end
+
+goto @YGrimPity_Loop
+
+
+// =========================================================================
+// SUBROUTINES
+// =========================================================================
+
+:YGrimPity_ReloadSettings
+0085: 1@ = 0@
+return
+
+// =========================================================================
+// SUBROUTINE: TRIGGER GRIM PITY (True Resurrection Engine)
+// =========================================================================
+:Trigger_Grim_Pity
+19@ = 1 // Lock callback during resurrection sequence and shield duration
+
+// Launch Instant Ethereal Blue Flash Burst!
+0A92: stream_custom_script "Yorigami\FX_GrimBurst.c"
+
+// Instantly restore Health & Max Armour buffer (Temporary survival cushion)
+0223: set_actor $PLAYER_ACTOR health_to 100
+035F: actor $PLAYER_ACTOR armour += 100
+
+// OVERWRITE DEATH STATE IN ENGINE MEMORY (CPed + 0x530 = 1 [NORMAL])
+0A96: 8@ = ped $PLAYER_ACTOR struct
+000A: 8@ += 0x530
+0A8C: write_memory 8@ size 4 value 1 virtual_protect 0
+
+// CANCEL THE DEATH TASK (Kills TASK_SIMPLE_DIE instantly!)
+0687: clear_actor $PLAYER_ACTOR task
+0E96: clear_char_primary_tasks $PLAYER_ACTOR
+0E97: clear_char_secondary_tasks $PLAYER_ACTOR
+
+// Grant Absolute Invulnerability (Godmode Shield for 2.5s)
+02AB: set_actor $PLAYER_ACTOR immunities BP 1 FP 1 EP 1 CP 1 MP 1
+TIMERA = 0 // Reset visual timer (runs for 2,500ms)
+3@ = 1     // Hitodama Spirit Shield active flag
+
+// Signal FX_GrimPity to ignite the Outer 3 Burst Flames!
+0085: 30@ = 31@
+000A: 30@ += MEM_GRIMPITY_BURST
+0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+// Force Recovery / Stand-up Animation for CJ (On Foot Only)
+if
+    8449: not actor $PLAYER_ACTOR in_a_car
+then
+    0615: define_AS_pack_begin 6@
+    0812: AS_actor -1 perform_animation "GETUP" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
+    0616: define_AS_pack_end 6@
+    0618: assign_actor $PLAYER_ACTOR to_AS_pack 6@
+    061B: remove_references_to_AS_pack 6@
+end
+
+// Increment Lore Tracker Milestone
+0085: 30@ = 31@
+000A: 30@ += MEM_GRIMPITY_SAVES
+0A8D: 26@ = read_memory 30@ size 4 virtual_protect 0
+0008: 26@ += 1
+0085: 30@ = 31@
+000A: 30@ += MEM_GRIMPITY_SAVES
+0A8C: write_memory 30@ size 4 value 26@ virtual_protect 0
+
+// Sensory: Camera Shake & Audio
+0003: shake_camera 60
+0AF0: 8@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "PlayReviveSound"
+if
+    8@ == 1
+then
+    018C: play_sound 1147 at 0.0 0.0 0.0
+end
+
+// Notification Banner
+0AF0: 8@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "ShowReviveMessage"
+if
+    8@ == 1
+then
+    0ADF: add_text_label "Y_PITY" text "~b~GRIM PITY~n~~w~DEATH DEFIED"
+    00BA: show_text_styled GXT 'Y_PITY' time 3000 style 5
+end
+
+// Trigger Shion Grim Pity Banter if Shion is in entourage and Bit 16 Lore is unlocked
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+if
+    8039: not 21@ == 0
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_LORE_PROGRESS_BIT
+    0A8D: 22@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        08B7: test 22@ bit 16
+    then
+        0A92: create_custom_thread "Shion\Chat\chatGrimPity.c" 21@
+    end
+end
+
+// Dynamic Heal Calculation: BaseReviveHealthPercent + (Points * HealthPercentPerPoint)
+0AF0: 24@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "BaseReviveHealthPercent"
+if
+    24@ == 0
+then
+    24@ = 25
+end
+
+0AF0: 25@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "HealthPercentPerPoint"
+if
+    25@ == 0
+then
+    25@ = 2
+end
+
+0085: 26@ = 15@
+006A: 26@ *= 25@ // Local-to-Local Integer Multiply (006A)
+005A: 24@ += 26@
+
+0AF0: 25@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "MaxReviveHealthCap"
+if
+    25@ == 0
+then
+    25@ = 75
+end
+
+if
+    001D: 24@ > 25@
+then
+    0085: 24@ = 25@
+end
+
+// Scale to Player's Real Engine Max HP (100 to 200)
+0D39: 27@ = actor $PLAYER_ACTOR max_health
+0092: 8@ = float 27@ to_integer
+if
+    8@ <= 0
+then
+    8@ = 100
+end
+
+0085: 26@ = 8@
+006A: 26@ *= 24@ // Local-to-Local Integer Multiply (006A)
+0016: 26@ /= 100
+if
+    26@ < 25
+then
+    26@ = 25
+end
+0223: set_actor $PLAYER_ACTOR health_to 26@
+
+// Dynamic Cooldown Calculation: BaseCooldownSeconds - (Points * CooldownReductionPerPoint)
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "BaseCooldownSeconds"
+if
+    7@ == 0
+then
+    7@ = 300
+end
+
+0AF0: 24@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "CooldownReductionPerPoint"
+if
+    24@ == 0
+then
+    24@ = 5
+end
+
+0085: 26@ = 15@
+006A: 26@ *= 24@ // Local-to-Local Integer Multiply (006A)
+0062: 7@ -= 26@
+
+0AF0: 24@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "MinCooldownFloor"
+if
+    24@ == 0
+then
+    24@ = 60
+end
+
+if
+    001D: 24@ > 7@
+then
+    0085: 7@ = 24@
+end
+0012: 7@ *= 1000 // Convert to ms
+
+// Radial Knockdown Shockwave Radius Calculation
+0AF2: 13@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "BaseShockwaveRadius"
+if
+    13@ <= 0.0
+then
+    13@ = 15.0
+end
+
+0AF2: 25@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "RadiusPerPoint"
+if
+    25@ <= 0.0
+then
+    25@ = 0.5
+end
+
+0093: 24@ = integer 15@ to_float
+006B: 24@ *= 25@
+005B: 13@ += 24@
+
+0AF2: 25@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "MaxRadiusCap"
+if
+    25@ <= 0.0
+then
+    25@ = 30.0
+end
+
+if
+    0025: 13@ > 25@
+then
+    0087: 13@ = 25@
+end
+
+04C4: store_coords_to 20@ 21@ 22@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.0
+28@ = 0
+
+:GrimPity_Scan_Loop
+if
+    0AE1: 29@ = random_char_near_point 20@ 21@ 22@ in_radius 13@ find_next 28@ pass_deads 1
+then
+    28@ = 1
+    gosub @GrimPity_Disarm_Target
+    goto @GrimPity_Scan_Loop
+end
+
+return
+
+// =========================================================================
+// SUBROUTINE: GRIM PITY DISARM TARGET (Collision-Free Scratchpads)
+// =========================================================================
+:GrimPity_Disarm_Target
+if
+    29@ > 0
+then
+    if and
+        056D: actor 29@ defined
+        8118: not actor 29@ dead
+        87D6: not 29@ == $PLAYER_ACTOR
+    then
+        // Check Shion Immunity by Live Handle and Model (Using 23@ to protect AS Pack 2@)
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_HANDLE
+        0A8D: 23@ = read_memory 30@ size 4 virtual_protect 0
+
+        0665: get_actor 29@ model_to 5@
+        if and
+            803B: not 29@ == 23@
+            8039: not 5@ == 299 // Shion is 100% immune!
+        then
+            // Protect only actively recruited squad members (Slots 0 to 6)
+            07AF: 4@ = player $PLAYER_CHAR group
+            07F6: get_group 4@ number_of_leaders_to 24@ number_of_members_to 25@
+            if
+                25@ > 0
+            then
+                for 26@ = 0 to 6
+                    092B: 27@ = group 4@ member 26@
+                    if
+                        003B: 29@ == 27@
+                    then
+                        return
+                    end
+                end
+            end
+
+            // Exclude Special Actors ONLY during missions (Slots 1 to 10: Models 290..299)
+            if
+                0E1D: is_on_mission
+            then
+                if and
+                    5@ >= 290
+                    299 >= 5@
+                then
+                    return
+                end
+            end
+
+            if
+                8449: not actor 29@ in_a_car // Strictly On Foot (No passenger glitches!)
+            then
+                // Determine if target should retaliate with bare fists upon standing up
+                24@ = 0
+
+                // Check if ped was actively targeting player before blast
+                0E44: get_char_kill_target_char 29@ store_to 23@
+                if
+                    003B: 23@ == $PLAYER_ACTOR
+                then
+                    24@ = 1
+                end
+
+                // Check if target is an enemy gang member during a live Gang War
+                if
+                    087A: gang_war_in_progress
+                then
+                    089F: get_actor 29@ pedtype_to 23@
+                    if and
+                        23@ >= 7
+                        14 >= 23@
+                    then
+                        if
+                            8039: not 23@ == 8 // Exclude Grove Street
+                        then
+                            24@ = 1
+                        end
+                    end
+                end
+
+                // Sever ambient gang group hierarchy so group AI cannot override tasks
+                06C9: remove_actor 29@ from_group
+
+                // Kill all weapons, tasks, and forward momentum
+                048F: actor 29@ remove_weapons
+                0687: clear_actor 29@ task
+                0E96: clear_char_primary_tasks 29@
+                0E97: clear_char_secondary_tasks 29@
+                083C: set_actor 29@ velocity_in_direction_XYZ 0.0 0.0 0.0
+
+                0851: set_actor 29@ decrease_health_by 5 affect_armour 0
+
+                // Force immediate bone-level animation snap to override gang walk style
+                0605: actor 29@ perform_animation "KO_SKID_BACK" IFP "PED" framedelta 8.0 loop 0 lockX 1 lockY 1 lockF 1 time 1500
+
+                // Queue Task Sequence: Skid -> Get Up -> Bare-fisted Retaliation if Hostile
+                0615: define_AS_pack_begin 2@
+                0812: AS_actor -1 perform_animation "KO_SKID_BACK" IFP "PED" framedelta 8.0 loopA 0 lockX 1 lockY 1 lockF 1 time 1500
+                0812: AS_actor -1 perform_animation "GETUP" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
+                if
+                    24@ == 1
+                then
+                    05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
+                end
+                0616: define_AS_pack_end 2@
+                0618: assign_actor 29@ to_AS_pack 2@
+                061B: remove_references_to_AS_pack 2@
+            end
+        end
+    end
+end
+return
+
+// =========================================================================
+// DAMAGE CALLBACK (Grim Pity Lethal Intercept)
+// =========================================================================
+:OnGrimPityDamage
+if
+    19@ == 1
+then
+    0ED0: return_script_event
+end
+
+if
+    856D: not actor 18@ defined
+then
+    0ED0: return_script_event
+end
+
+if and
+    15@ > 0 // Alloc_GrimPity > 0
+    7@ <= 0 // Off cooldown
+then
+    0A96: 10@ = ped $PLAYER_ACTOR struct
+    0A96: 11@ = ped 18@ struct
+    if
+        003B: 10@ == 11@ // Victim is CJ!
+    then
+        010B: 11@ = player $PLAYER_CHAR money
+        if
+            11@ <= 0 // Broke or in debt!
+        then
+            0EB5: get_char_damage_last_frame 18@ damager 16@ type 14@ part 12@ intensity 17@
+            0226: 10@ = actor $PLAYER_ACTOR health
+            04DD: 12@ = actor $PLAYER_ACTOR armour
+            0092: 11@ = float 17@ to_integer // Incoming raw damage
+
+            // Total survival pool = Current Health + Current Armour
+            0085: 14@ = 10@
+            005A: 14@ += 12@
+
+            if or
+                10@ <= 20
+                002D: 11@ >= 14@
+            then
+                // Nullify lethal overflow before engine processes death
+                0223: set_actor $PLAYER_ACTOR health_to 100
+                gosub @Trigger_Grim_Pity
+            end
+        end
+    end
+end
+
+0ED0: return_script_event

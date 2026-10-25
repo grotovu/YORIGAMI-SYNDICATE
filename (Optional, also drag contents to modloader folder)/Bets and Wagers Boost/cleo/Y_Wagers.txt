@@ -1,0 +1,334 @@
+{$CLEO .cs}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+script_name "Y_Wagers"
+
+wait 1000
+
+gosub @Load_Wager_Settings
+3@ = 0  // Timer to reload INI
+28@ = 0 // Lowrider Last Bet Tracker (273@)
+
+:Wagers_MainLoop
+wait 50
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @Wagers_MainLoop
+end
+
+// Reload INI settings every 5 seconds so live edits work!
+000A: 3@ += 50
+if
+    3@ >= 5000
+then
+    3@ = 0
+    gosub @Load_Wager_Settings
+end
+
+// =========================================================================
+// 1. INSIDE TRACK BETTING (OTB) - ALL 7 BUTTONS MULTIPLIER!
+// =========================================================================
+0AAA: 1@ = get_script_struct_named 'OTB'
+if
+    8039: not 1@ == 0
+then
+    // 1. Check Shift State (Includes 160 = Left Shift and 161 = Right Shift!)
+    9@ = 0
+    if or
+        0AB0: is_key_pressed 16  // Generic Shift
+        0AB0: is_key_pressed 160 // Left Shift
+        0AB0: is_key_pressed 161 // Right Shift
+    then
+        9@ = 1
+    end
+
+    // --- BUTTON 1: $5 (Variable 89@) ---
+    0AA8: call_method_return 0x463CA0 struct 1@ num_params 1 pop 0 89 2@
+    if
+        8039: not 2@ == 0
+    then
+        if
+            9@ == 1
+        then
+            0085: 5@ = 11@
+            0012: 5@ *= 5 // $5 * 10 = $50
+            0A8C: write_memory 2@ size 4 value 5@ virtual_protect 0
+        else
+            0A8C: write_memory 2@ size 4 value 5 virtual_protect 0
+        end
+    end
+
+    // --- BUTTON 2: $25 (Variable 90@) ---
+    0AA8: call_method_return 0x463CA0 struct 1@ num_params 1 pop 0 90 2@
+    if
+        8039: not 2@ == 0
+    then
+        if
+            9@ == 1
+        then
+            0085: 5@ = 11@
+            0012: 5@ *= 25 // $25 * 10 = $250
+            0A8C: write_memory 2@ size 4 value 5@ virtual_protect 0
+        else
+            0A8C: write_memory 2@ size 4 value 25 virtual_protect 0
+        end
+    end
+
+    // --- BUTTON 3: $100 (Variable 91@) ---
+    0AA8: call_method_return 0x463CA0 struct 1@ num_params 1 pop 0 91 2@
+    if
+        8039: not 2@ == 0
+    then
+        if
+            9@ == 1
+        then
+            0085: 5@ = 11@
+            0012: 5@ *= 100 // $100 * 10 = $1,000
+            0A8C: write_memory 2@ size 4 value 5@ virtual_protect 0
+        else
+            0A8C: write_memory 2@ size 4 value 100 virtual_protect 0
+        end
+    end
+
+    // --- BUTTON 4: $250 (Variable 92@) ---
+    0AA8: call_method_return 0x463CA0 struct 1@ num_params 1 pop 0 92 2@
+    if
+        8039: not 2@ == 0
+    then
+        if
+            9@ == 1
+        then
+            0085: 5@ = 11@
+            0012: 5@ *= 250 // $250 * 10 = $2,500
+            0A8C: write_memory 2@ size 4 value 5@ virtual_protect 0
+        else
+            0A8C: write_memory 2@ size 4 value 250 virtual_protect 0
+        end
+    end
+
+    // --- BUTTON 5: $1,000 (Variable 93@) ---
+    0AA8: call_method_return 0x463CA0 struct 1@ num_params 1 pop 0 93 2@
+    if
+        8039: not 2@ == 0
+    then
+        if
+            9@ == 1
+        then
+            0085: 5@ = 11@
+            0012: 5@ *= 1000 // $1,000 * 10 = $10,000
+            0A8C: write_memory 2@ size 4 value 5@ virtual_protect 0
+        else
+            0A8C: write_memory 2@ size 4 value 1000 virtual_protect 0
+        end
+    end
+
+    // --- BUTTON 6: $5,000 (Variable 94@) ---
+    0AA8: call_method_return 0x463CA0 struct 1@ num_params 1 pop 0 94 2@
+    if
+        8039: not 2@ == 0
+    then
+        if
+            9@ == 1
+        then
+            0085: 5@ = 11@
+            0012: 5@ *= 5000 // $5,000 * 10 = $50,000
+            0A8C: write_memory 2@ size 4 value 5@ virtual_protect 0
+        else
+            0A8C: write_memory 2@ size 4 value 5000 virtual_protect 0
+        end
+    end
+
+    // --- BUTTON 7: $10,000 (Variable 95@) ---
+    0AA8: call_method_return 0x463CA0 struct 1@ num_params 1 pop 0 95 2@
+    if
+        8039: not 2@ == 0
+    then
+        if
+            9@ == 1
+        then
+            0085: 5@ = 11@
+            0012: 5@ *= 10000 // $10,000 * 10 = $100,000!
+            0A8C: write_memory 2@ size 4 value 5@ virtual_protect 0
+        else
+            0A8C: write_memory 2@ size 4 value 10000 virtual_protect 0
+        end
+    end
+end
+
+// =========================================================================
+// 2. POOL / BILLIARDS (Globals $9460 & $9461 + Local Step 155@)
+// =========================================================================
+if and
+    0038: $9460 == 50
+    0038: $9461 == 1000
+then
+    008A: $9460 = 21@ // Min Wager
+    008A: $9461 = 22@ // Max Wager
+
+    0AAA: 1@ = get_script_struct_named 'POOL'
+    if
+        1@ == 0
+    then
+        0AAA: 1@ = get_script_struct_named 'POOL2'
+    end
+
+    if
+        8039: not 1@ == 0
+    then
+        0AA8: call_method_return 0x463CA0 struct 1@ num_params 1 pop 0 155 2@
+        if
+            8039: not 2@ == 0
+        then
+            0A8C: write_memory 2@ size 4 value 23@ virtual_protect 0
+        end
+
+        0AA8: call_method_return 0x463CA0 struct 1@ num_params 1 pop 0 161 2@
+        if
+            8039: not 2@ == 0
+        then
+            0A8C: write_memory 2@ size 4 value 21@ virtual_protect 0
+        end
+    end
+end
+
+// =========================================================================
+// 3. LOWRIDER CHALLENGE (Thread 'LOWR' - Wager Cap 272@ & Wager 273@)
+// =========================================================================
+0AAA: 1@ = get_script_struct_named 'LOWR'
+if
+    1@ == 0
+then
+    0AAA: 1@ = get_script_struct_named 'LOWRIDER'
+end
+
+if
+    8039: not 1@ == 0
+then
+    // Expand Max Wager Ceiling (272@)
+    0AA8: call_method_return 0x463CA0 struct 1@ num_params 1 pop 0 272 2@
+    if
+        8039: not 2@ == 0
+    then
+        0A8D: 4@ = read_memory 2@ size 4 virtual_protect 0
+        if
+            001D: 25@ > 4@
+        then
+            0A8C: write_memory 2@ size 4 value 25@ virtual_protect 0
+        end
+    end
+
+    // Intercept Current Wager (273@) for Shift Multiplier Boost
+    0AA8: call_method_return 0x463CA0 struct 1@ num_params 1 pop 0 273 2@
+    if
+        8039: not 2@ == 0
+    then
+        0A8D: 4@ = read_memory 2@ size 4 virtual_protect 0
+
+        if
+            001D: 4@ > 28@ // Bet increased
+        then
+            if or
+                0AB0: is_key_pressed 16  // Generic Shift
+                0AB0: is_key_pressed 160 // Left Shift
+                0AB0: is_key_pressed 161 // Right Shift
+            then
+                // Calculate extra cash needed: (LowriderWagerStep - Rockstar's Step)
+                0085: 6@ = 4@
+                0062: 6@ -= 28@ // Rockstar's Step (usually 10, 100, or 1000)
+
+                0085: 7@ = 26@ // INI LowriderWagerStep (e.g. 2500)
+                0062: 7@ -= 6@
+
+                if
+                    7@ > 0
+                then
+                    010B: 8@ = player $PLAYER_CHAR money
+                    if
+                        002D: 8@ >= 7@ // Have enough cash
+                    then
+                        // Check if boost exceeds Max Wager Ceiling (25@)
+                        0085: 9@ = 4@
+                        005A: 9@ += 7@
+                        if
+                            001D: 9@ > 25@
+                        then
+                            // Clamp to max allowed (Max - Current)
+                            0085: 7@ = 25@
+                            0062: 7@ -= 4@
+                        end
+
+                        // Deduct extra cash
+                        0085: 9@ = 7@
+                        0012: 9@ *= -1
+                        0109: player $PLAYER_CHAR money += 9@
+
+                        // Boost Pot
+                        005A: 4@ += 7@
+                        0A8C: write_memory 2@ size 4 value 4@ virtual_protect 0
+
+                        018C: play_sound 1058 at 0.0 0.0 0.0
+                    else
+                        018C: play_sound 1057 at 0.0 0.0 0.0
+                    end
+                end
+            end
+        end
+        0085: 28@ = 4@ // Sync tracker
+    end
+else
+    28@ = 0 // Reset tracker when outside LOWR
+end
+
+goto @Wagers_MainLoop
+
+// =========================================================================
+// SUBROUTINE: LOAD SETTINGS FROM INI
+// =========================================================================
+:Load_Wager_Settings
+0AF0: 11@ = read_int_from_ini_file "cleo\Y_Wagers.ini" section "HorseBetting" key "ShiftMultiplier"
+if
+    11@ <= 1
+then
+    11@ = 10 // Default: 10x multiplier
+end
+
+0AF0: 21@ = read_int_from_ini_file "cleo\Y_Wagers.ini" section "Pool" key "MinWager"
+if
+    21@ <= 0
+then
+    21@ = 500
+end
+
+0AF0: 22@ = read_int_from_ini_file "cleo\Y_Wagers.ini" section "Pool" key "MaxWager"
+if
+    22@ <= 0
+then
+    22@ = 50000
+end
+
+0AF0: 23@ = read_int_from_ini_file "cleo\Y_Wagers.ini" section "Pool" key "WagerStep"
+if
+    23@ <= 0
+then
+    23@ = 500
+end
+
+0AF0: 25@ = read_int_from_ini_file "cleo\Y_Wagers.ini" section "Lowrider" key "MaxWager"
+if
+    25@ <= 0
+then
+    25@ = 50000
+end
+
+0AF0: 26@ = read_int_from_ini_file "cleo\Y_Wagers.ini" section "Lowrider" key "WagerStep"
+if
+    26@ <= 0
+then
+    26@ = 2500
+end
+return

@@ -1,0 +1,24 @@
+========================================================================
+QUICK CHANGE TO FISTS (TRIPLE-TAP Y)
+By: EagleRaviOrange
+========================================================================
+
+Scrolling through 8 weapon slots just to reach bare hands in the middle 
+of a firefight is a pain, and as Jo'on, it's suicidal.
+
+[WHY YOU WANT THIS]
+- Jo'on's core melee perk ("Jo'on's Bling") and the Vehicle Smasher punch
+  ONLY activate when your bare fists/brass knuckles are equipped.
+- The Zippity Zap gap-closing dash grants 2 seconds of bullet immunity 
+  ("graze"), which is your main tool for surviving high-star shootouts.
+- This script lets you instantly holster whatever heavy weapon you are 
+  holding and ready your fists without cycling through your entire wheel.
+
+[CONTROLS]
+- Rapidly triple-tap [Y] to instantly holster your weapon and equip Fists.
+- Configurable key code can be edited inside 'cleo/fists.ini' (Default: 89 = Y).
+- Has a 400ms timeout window to prevent accidental triggers while talking.
+
+[INSTALLATION]
+Drop the 'QUICK CHANGE TO FISTS' folder into your 'modloader' directory.
+========================================================================

@@ -1,0 +1,1522 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+script_name "Y_Scav"
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED FOR Y_SCAV)
+// =========================================================================
+const
+    MEM_PLAYER_FORM = 12          // Active character form (0 = CJ, 1 = Jo'on, 2 = Shion)
+    MEM_PRIORITY_LOCK = 20        // Interaction / Dialogue priority lock tier
+    MEM_ALLOC_SCAVENGER = 84      // Allocated points in Scavenger's Feast perk
+    MEM_SHION_HANDLE = 116        // Shion ped handle (-1 = Hitodama spirit form)
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// Initialize Protected Persistent Registers (0@ to 3@, 14@, 26@, 29@)
+0@ = -999   // Last Tracked Interior (-999 forces initial load)
+2@ = 0      // Cached Bin Count for active interior
+3@ = 45000  // Cached VendorMemory (ms)
+14@ = -1    // Last searched custom bin ID
+26@ = 0     // Last Scavenge Outcome Flag (0 = Failed/Refused, 1 = Succeeded)
+29@ = 0     // Last searched dynamic object / vehicle handle
+TIMERB = 60000
+
+// Allocate 16 KB RAM Cache once on boot (Supports 1,000 bins)
+0AC8: 1@ = allocate_memory_size 16000
+
+:YScav_Loop
+wait 100
+
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    goto @YScav_Loop
+end
+
+// =========================================================================
+// INTERIOR TRANSITION DETECTOR (Reloads Cache Only on Change!)
+// =========================================================================
+077E: get_active_interior_to 20@
+if
+    803B: not 20@ == 0@
+then
+    0085: 0@ = 20@
+    gosub @Reload_Bins_Cache
+end
+
+// Read Live Allocated Points in Scavenger's Feast (Shion Perk)
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_SCAVENGER
+0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+
+// =========================================================================
+// IN-GAME "ADDBIN" REGISTRATION TOOL
+// =========================================================================
+if
+    0ADC: test_cheat "ADDBIN"
+then
+    077E: get_active_interior_to 0@
+    00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
+    0AD3: string_format 4@v "Interior_%d" 0@
+
+    0AF0: 12@ = read_int_from_ini_file "cleo\savedata\YorigamiBins.ini" section 4@v key "Count"
+    if or
+        8029: not 12@ >= 0
+        12@ > 1000
+    then
+        12@ = 0
+    end
+    0008: 12@ += 1
+
+    23@ = 2 // Exterior street bin
+    if
+        0@ > 0
+    then
+        23@ = 3 // Fast food indoor bin
+    end
+
+    0AF1: write_int 12@ to_ini_file "cleo\savedata\YorigamiBins.ini" section 4@v key "Count"
+
+    0AD3: string_format 8@v "Bin_%d_X" 12@
+    0AF3: write_float 20@ to_ini_file "cleo\savedata\YorigamiBins.ini" section 4@v key 8@v
+
+    0AD3: string_format 8@v "Bin_%d_Y" 12@
+    0AF3: write_float 21@ to_ini_file "cleo\savedata\YorigamiBins.ini" section 4@v key 8@v
+
+    0AD3: string_format 8@v "Bin_%d_Z" 12@
+    0AF3: write_float 22@ to_ini_file "cleo\savedata\YorigamiBins.ini" section 4@v key 8@v
+
+    0AD3: string_format 8@v "Bin_%d_Tier" 12@
+    0AF1: write_int 23@ to_ini_file "cleo\savedata\YorigamiBins.ini" section 4@v key 8@v
+
+    // Refresh RAM cache immediately
+    gosub @Reload_Bins_Cache
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0AD1: print_formatted_now "~g~Trash bin registered to Interior %d! (Entry #%d)~n~~w~Loaded into RAM cache!" 3500 0@ 2@
+end
+
+// =========================================================================
+// SCAVENGER FEAST CORE (Active if Alloc_ScavengerFeast > 0 & Broke/In Debt)
+// =========================================================================
+if
+    28@ > 0
+then
+    010B: 20@ = player $PLAYER_CHAR money
+    if and
+        8019: not 20@ > 0                     // Broke or in debt
+        80DF: not actor $PLAYER_ACTOR driving // On foot
+        816B: not fading
+    then
+        00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
+        15@ = 0  // Target archetype (1=Dumpster, 2=Can, 3=Indoor Bin, 4=Vending, 5=Cart)
+        24@ = 0  // Target handle
+        27@ = -1 // Custom Bin Unique ID
+
+        // --- CHECK FREE VENDING MACHINES ---
+        0A8D: 23@ = read_memory 12231796 size 1 virtual_protect 0
+        if
+            23@ > 0
+        then
+            04C4: store_coords_to 16@ 17@ 18@ from_actor $PLAYER_ACTOR with_offset 0.0 1.2 0.0
+            23@ = 0
+            :Scan_Vend_Loop
+            0AE3: 24@ = random_object_near_point 16@ 17@ 18@ in_radius 2.2 find_next 23@
+            if
+                24@ > 0
+            then
+                23@ = 1
+                0984: 25@ = object 24@ model
+                if or
+                    25@ == 955
+                    25@ == 956
+                    25@ == 1209
+                    25@ == 1302
+                    25@ == 1775
+                    25@ == 1776
+                    25@ == 1977
+                then
+                    15@ = 4
+                    goto @Target_Acquired
+                end
+                goto @Scan_Vend_Loop
+            end
+        end
+
+        // --- CHECK STREET HOT DOG VAN (Vehicle 588) ---
+        04C4: store_coords_to 16@ 17@ 18@ from_actor $PLAYER_ACTOR with_offset 0.0 1.5 0.0
+        0AE2: 24@ = random_vehicle_near_point 16@ 17@ 18@ in_radius 3.5 find_next 0 pass_wrecked 1
+        if and
+            24@ > 0
+            056E: car 24@ defined
+        then
+            0441: 25@ = car 24@ model
+            if and
+                25@ == 588
+                01C1: car 24@ stopped
+            then
+                15@ = 5
+                goto @Target_Acquired
+            end
+        end
+
+        // --- CHECK DYNAMIC OBJECTS (Food Carts, Dumpsters, Bins) ---
+        04C4: store_coords_to 16@ 17@ 18@ from_actor $PLAYER_ACTOR with_offset 0.0 1.2 0.0
+        23@ = 0
+
+        :Scan_Dynamic_Objects
+        0AE3: 24@ = random_object_near_point 16@ 17@ 18@ in_radius 2.0 find_next 23@
+        if
+            24@ > 0
+        then
+            23@ = 1
+            0984: 25@ = object 24@ model
+
+            // Object Food Carts
+            if or
+                25@ == 1340
+                25@ == 1341
+                25@ == 1342
+            then
+                15@ = 5
+                goto @Target_Acquired
+            end
+
+            // Big Commercial Dumpsters
+            if or
+                25@ == 1334
+                25@ == 1372
+                25@ == 3035
+            then
+                15@ = 1
+                goto @Target_Acquired
+            end
+
+            // Street Cans & Burst Bags (Split to satisfy <= 8 conditions per block)
+            if or
+                25@ == 849
+                25@ == 1328
+                25@ == 1330
+                25@ == 1331
+                25@ == 1336
+                25@ == 1337
+                25@ == 1339
+                25@ == 1343
+            then
+                15@ = 2
+                goto @Target_Acquired
+            end
+
+            if
+                25@ == 1359
+            then
+                15@ = 2
+                goto @Target_Acquired
+            end
+
+            // Fast Food Indoor Customer Bins
+            if or
+                25@ == 1329
+                25@ == 2770
+                25@ == 11706
+            then
+                15@ = 3
+                goto @Target_Acquired
+            end
+
+            goto @Scan_Dynamic_Objects
+        end
+
+        // --- CHECK CUSTOM REGISTERED BINS (From RAM Cache - 0 Disk I/O!) ---
+        if
+            2@ > 0
+        then
+            12@ = 1
+            :Check_Custom_Cache_Loop
+            if
+                801D: not 12@ > 2@
+            then
+                // Pointer = (12@ - 1) * 16 + 1@
+                0085: 13@ = 12@
+                000E: 13@ -= 1
+                0012: 13@ *= 16
+                005A: 13@ += 1@ // 13@ = Pointer in RAM
+
+                // Read X, Y, Z from RAM
+                0A8D: 16@ = read_memory 13@ size 4 virtual_protect 0
+                000A: 13@ += 4
+                0A8D: 17@ = read_memory 13@ size 4 virtual_protect 0
+                000A: 13@ += 4
+                0A8D: 18@ = read_memory 13@ size 4 virtual_protect 0
+
+                050A: 19@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 16@ 17@ 18@
+                if
+                    8021: not 19@ > 1.8
+                then
+                    24@ = 0 // Clear dynamic handle so custom bin uses 27@ ID cooldown
+                    000A: 13@ += 4
+                    0A8D: 15@ = read_memory 13@ size 4 virtual_protect 0 // Tier
+
+                    0085: 27@ = 0@
+                    0012: 27@ *= 1000
+                    005A: 27@ += 12@
+                    goto @Target_Acquired
+                end
+
+                0008: 12@ += 1
+                goto @Check_Custom_Cache_Loop
+            end
+        end
+
+        :Target_Acquired
+        // =================================================================
+        // EXECUTE INTERACTION PROMPT & GATING
+        // =================================================================
+        if
+            15@ > 0
+        then
+            // Read active character mode: 0 = CJ, 1 = Jo'on, 2 = Shion
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PLAYER_FORM
+            0A8D: 23@ = read_memory 30@ size 4 virtual_protect 0
+
+            // Snapshot live timer into scratch register
+            0085: 21@ = TIMERB
+
+            // Check if this specific target is on cooldown (19@ = 1)
+            19@ = 0
+            if and
+                24@ > 0
+                003B: 24@ == 29@
+                001D: 3@ > 21@
+            then
+                19@ = 1
+            end
+
+            if and
+                0029: 27@ >= 0
+                003B: 27@ == 14@
+                001D: 3@ > 21@
+            then
+                19@ = 1
+            end
+
+            // Only show prompt if READY and NOT playing as Jo'on
+            if and
+                19@ == 0
+                8039: not 23@ == 1
+            then
+                if
+                    15@ == 1
+                then
+                    0AD1: print_formatted_now "~w~Press ~y~[F]~w~ to dive into dumpster." 100
+                end
+                if or
+                    15@ == 2
+                    15@ == 3
+                then
+                    0AD1: print_formatted_now "~w~Press ~y~[F]~w~ to scavenge trash." 100
+                end
+                if
+                    15@ == 4
+                then
+                    0AD1: print_formatted_now "~w~Press ~y~[F]~w~ to kick jammed vending machine." 100
+                end
+                if
+                    15@ == 5
+                then
+                    0AD1: print_formatted_now "~w~Press ~y~[F]~w~ to ask for pity food." 100
+                end
+            end
+
+            // Handle Keypress (Enter / F / Tab)
+            if or
+                00E1: player 0 pressed_key 15
+                00E1: player 0 pressed_key 10
+            then
+                // Cancel vehicle entry task if interacting with hot dog van
+                if
+                    15@ == 5
+                then
+                    0687: clear_actor $PLAYER_ACTOR task
+                end
+
+                // Jo'on unconditionally refuses to scavenge or beg
+                if
+                    23@ == 1
+                then
+                    gosub @Joon_Refuse_Scavenge
+                    wait 1000
+                else
+                    // If pressed while on cooldown
+                    if
+                        19@ == 1
+                    then
+                        03EB: clear_small_messages_only
+                        018C: play_sound 1057 at 0.0 0.0 0.0
+
+                        if
+                            15@ == 5
+                        then
+                            if
+                                26@ == 1
+                            then
+                                0ACD: print_string_now "~r~Vendor: ~s~I already fed you! Don't get greedy, kid!" 2500
+                            else
+                                0ACD: print_string_now "~r~Vendor: ~s~I told you to scram! What part of 'no' don't you get?!" 2500
+                            end
+                        end
+
+                        if
+                            15@ == 4
+                        then
+                            if
+                                26@ == 1
+                            then
+                                0ACD: print_string_now "~s~You already got a free drink from this machine." 2500
+                            else
+                                0ACD: print_string_now "~s~The coin slot is still jammed. Try another machine." 2500
+                            end
+                        end
+
+                        if or
+                            15@ == 1
+                            15@ == 2
+                            15@ == 3
+                        then
+                            0ACD: print_string_now "~s~Already picked clean. Nothing left but wrappers." 2500
+                        end
+                        wait 1000
+                    else
+                        // Ready to scavenge: memorize target handle/ID and reset timer
+                        0085: 29@ = 24@
+                        0085: 14@ = 27@
+                        TIMERB = 0
+
+                        03E6: remove_text_box
+                        03EB: clear_small_messages_only
+
+                        // ---------------------------------------------------------
+                        // PROBABILITY ROLL CALCULATION
+                        // ---------------------------------------------------------
+                        26@ = 1 // Success flag (Persists across cooldown checks)
+
+                        // Vending machine probability
+                        if
+                            15@ == 4
+                        then
+                            0AF0: 16@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "VendingBaseChance"
+                            if
+                                16@ == 0
+                            then
+                                16@ = 35
+                            end
+
+                            0AF0: 17@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "VendingChancePerPoint"
+                            if
+                                17@ == 0
+                            then
+                                17@ = 2
+                            end
+
+                            0AF0: 18@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "VendingMaxChanceCap"
+                            if
+                                18@ == 0
+                            then
+                                18@ = 75
+                            end
+
+                            0085: 23@ = 28@
+                            006A: 23@ *= 17@ // Points * ChancePerPoint
+                            005A: 16@ += 23@
+                            if
+                                001D: 16@ > 18@
+                            then
+                                0085: 16@ = 18@
+                            end
+
+                            0209: 27@ = random_int_in_ranges 1 101
+                            if
+                                001D: 27@ > 16@
+                            then
+                                26@ = 0
+                            end
+                        end
+
+                        // Food cart probability
+                        if
+                            15@ == 5
+                        then
+                            0AF0: 16@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "FoodCartBaseChance"
+                            if
+                                16@ == 0
+                            then
+                                16@ = 40
+                            end
+
+                            0AF0: 17@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "FoodCartChancePerPoint"
+                            if
+                                17@ == 0
+                            then
+                                17@ = 3
+                            end
+
+                            0AF0: 18@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "FoodCartMaxChanceCap"
+                            if
+                                18@ == 0
+                            then
+                                18@ = 85
+                            end
+
+                            0085: 23@ = 28@
+                            006A: 23@ *= 17@ // Points * ChancePerPoint
+                            005A: 16@ += 23@
+                            if
+                                001D: 16@ > 18@
+                            then
+                                0085: 16@ = 18@
+                            end
+
+                            0209: 27@ = random_int_in_ranges 1 101
+                            if
+                                001D: 27@ > 16@
+                            then
+                                26@ = 0
+                            end
+                        end
+
+                        // Trash bins and dumpsters probability
+                        if and
+                            15@ >= 1
+                            8019: not 15@ > 3
+                        then
+                            0AF0: 16@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "TrashBaseChance"
+                            if
+                                16@ == 0
+                            then
+                                16@ = 50
+                            end
+
+                            0AF0: 17@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "TrashChancePerPoint"
+                            if
+                                17@ == 0
+                            then
+                                17@ = 3
+                            end
+
+                            0AF0: 18@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "TrashMaxChanceCap"
+                            if
+                                18@ == 0
+                            then
+                                18@ = 90
+                            end
+
+                            0085: 23@ = 28@
+                            006A: 23@ *= 17@ // Points * ChancePerPoint
+                            005A: 16@ += 23@
+                            if
+                                001D: 16@ > 18@
+                            then
+                                0085: 16@ = 18@
+                            end
+
+                            0209: 27@ = random_int_in_ranges 1 101
+                            if
+                                001D: 27@ > 16@
+                            then
+                                26@ = 0
+                            end
+                        end
+
+                        // ---------------------------------------------------------
+                        // EXECUTE ANIMATIONS & OUTCOME
+                        // ---------------------------------------------------------
+                        // Vending machine outcome
+                        if
+                            15@ == 4
+                        then
+                            // Kick the vending machine
+                            04ED: load_animation "POLICE"
+                            :Wait_Vending_Kick_Anim
+                            wait 0
+                            if
+                                84EE: not animation "POLICE" loaded
+                            then
+                                goto @Wait_Vending_Kick_Anim
+                            end
+
+                            0605: actor $PLAYER_ACTOR perform_animation "Door_Kick" IFP "POLICE" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time 1350
+                            wait 1350
+                            04EF: release_animation "POLICE"
+
+                            // Evaluate outcome
+                            if
+                                26@ == 0
+                            then
+                                018C: play_sound 1057 at 0.0 0.0 0.0
+                                0ACD: print_string_now "~s~The mechanism jammed, but the can didn't drop out!" 2500
+                            else
+                                04ED: load_animation "VENDING"
+                                :Wait_Vending_Anim
+                                wait 0
+                                if
+                                    84EE: not animation "VENDING" loaded
+                                then
+                                    goto @Wait_Vending_Anim
+                                end
+
+                                0605: actor $PLAYER_ACTOR perform_animation "VEND_DRINK2_P" IFP "VENDING" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time 2200
+                                wait 2200
+                                04EF: release_animation "VENDING"
+
+                                0223: set_actor $PLAYER_ACTOR health_to 176
+                                0A8C: write_memory 0xB7CEDC size 2 value 0 virtual_protect 0
+                                018C: play_sound 1052 at 0.0 0.0 0.0
+                                0ACD: print_string_now "~g~Vending machine jammed and dropped a free drink!" 2500
+                            end
+                            wait 1500
+                        end
+
+                        // Food cart outcome
+                        if
+                            15@ == 5
+                        then
+                            if
+                                26@ == 0
+                            then
+                                018C: play_sound 1057 at 0.0 0.0 0.0
+                                0209: 27@ = random_int_in_ranges 0 3
+                                if
+                                    27@ == 0
+                                then
+                                    0ACD: print_string_now "~r~Vendor: ~s~Beat it, bum! I run a business, not a soup kitchen!" 2500
+                                end
+                                if
+                                    27@ == 1
+                                then
+                                    0ACD: print_string_now "~r~Vendor: ~s~My boss is watching, kid. Come back with real cash!" 2500
+                                end
+                                if
+                                    27@ == 2
+                                then
+                                    0ACD: print_string_now "~r~Vendor: ~s~No handouts today! Scram!" 2500
+                                end
+                            else
+                                04ED: load_animation "FOOD"
+                                :Wait_Cart_Anim
+                                wait 0
+                                if
+                                    84EE: not animation "FOOD" loaded
+                                then
+                                    goto @Wait_Cart_Anim
+                                end
+
+                                0605: actor $PLAYER_ACTOR perform_animation "EAT_Burger" IFP "FOOD" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time 3000
+                                wait 3000
+                                04EF: release_animation "FOOD"
+
+                                0223: set_actor $PLAYER_ACTOR health_to 176
+                                0A8C: write_memory 0xB7CEDC size 2 value 0 virtual_protect 0
+                                018C: play_sound 1052 at 0.0 0.0 0.0
+
+                                if
+                                    25@ == 588
+                                then
+                                    0ACD: print_string_now "~y~Vendor: ~s~Take the food, kid. You look like you're starving." 2500
+                                end
+                                if
+                                    25@ == 1340
+                                then
+                                    0ACD: print_string_now "~y~Vendor: ~s~Here, take a chili dog. Don't tell my boss." 2500
+                                end
+                                if
+                                    25@ == 1341
+                                then
+                                    0ACD: print_string_now "~y~Vendor: ~s~It's melting anyway. Have a popsicle, kid." 2500
+                                end
+                                if
+                                    25@ == 1342
+                                then
+                                    0ACD: print_string_now "~y~Vendor: ~s~Cold broth and leftover noodles. Eat up, kid." 2500
+                                end
+
+                                // Fallback line for custom registered carts
+                                if and
+                                    8039: not 25@ == 588
+                                    8039: not 25@ == 1340
+                                    8039: not 25@ == 1341
+                                    8039: not 25@ == 1342
+                                then
+                                    0ACD: print_string_now "~y~Vendor: ~s~Take some leftovers, kid. Don't tell my boss." 2500
+                                end
+                            end
+                            wait 1500
+                        end
+
+                        // Trash and dumpster outcome
+                        if and
+                            15@ >= 1
+                            8019: not 15@ > 3
+                        then
+                            if
+                                15@ == 1
+                            then
+                                04ED: load_animation "BOMBER"
+                                :Wait_Dumpster_Anim
+                                wait 0
+                                if
+                                    84EE: not animation "BOMBER" loaded
+                                then
+                                    goto @Wait_Dumpster_Anim
+                                end
+
+                                0605: actor $PLAYER_ACTOR perform_animation "BOM_Plant" IFP "BOMBER" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time 1800
+                                wait 1800
+                                04EF: release_animation "BOMBER"
+                            else
+                                04ED: load_animation "POLICE"
+                                :Wait_Can_Anim
+                                wait 0
+                                if
+                                    84EE: not animation "POLICE" loaded
+                                then
+                                    goto @Wait_Can_Anim
+                                end
+
+                                0605: actor $PLAYER_ACTOR perform_animation "plc_drgbst_01" IFP "POLICE" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time 1500
+                                wait 1500
+                                04EF: release_animation "POLICE"
+                            end
+
+                            if
+                                26@ == 0
+                            then
+                                018C: play_sound 1057 at 0.0 0.0 0.0
+                                0209: 27@ = random_int_in_ranges 0 4
+                                if
+                                    27@ == 0
+                                then
+                                    0ACD: print_string_now "~s~Nothing in here but soggy newspapers." 3000
+                                end
+                                if
+                                    27@ == 1
+                                then
+                                    0ACD: print_string_now "~s~Empty styrofoam containers and wrappers. No food." 3000
+                                end
+                                if
+                                    27@ == 2
+                                then
+                                    0ACD: print_string_now "~s~Just greasy napkins and cardboard. Unlucky." 3000
+                                end
+                                if
+                                    27@ == 3
+                                then
+                                    0ACD: print_string_now "~s~Someone already picked this clean. Empty." 3000
+                                end
+                            else
+                                23@ = 0 // Loot Selector: 0 = food, 1 = weapon
+
+                                if
+                                    8019: not 15@ > 2
+                                then
+                                    0AF0: 17@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "EnableWeaponScavenging"
+                                    if
+                                        17@ == 1
+                                    then
+                                        0AF0: 18@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "WeaponScavengeChance"
+                                        if or
+                                            8019: not 18@ > 0
+                                            18@ > 100
+                                        then
+                                            18@ = 35
+                                        end
+
+                                        0226: 25@ = actor $PLAYER_ACTOR health
+                                        0AF0: 16@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "PrioritizeWeaponsAtFullHP"
+                                        if and
+                                            16@ == 1
+                                            25@ >= 100
+                                        then
+                                            0AF0: 18@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "FullHPWeaponChance"
+                                            if or
+                                                8019: not 18@ > 0
+                                                18@ > 100
+                                            then
+                                                18@ = 85
+                                            end
+                                        end
+
+                                        0209: 27@ = random_int_in_ranges 1 101
+                                        if
+                                            801D: not 27@ > 18@
+                                        then
+                                            23@ = 1
+                                        end
+                                    end
+                                end
+
+                                // -------------------------------------------------
+                                // LOOT PATH A: WEAPONS (Interactive Choice)
+                                // -------------------------------------------------
+                                if
+                                    23@ == 1
+                                then
+                                    018C: play_sound 1058 at 0.0 0.0 0.0
+                                    0209: 27@ = random_int_in_ranges 0 5
+
+                                    // Molotovs (Weapon 18)
+                                    if
+                                        27@ == 0
+                                    then
+                                        0AF0: 17@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "MolotovYieldMin"
+                                        if
+                                            17@ == 0
+                                        then
+                                            17@ = 1
+                                        end
+
+                                        0AF0: 18@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "MolotovYieldMax"
+                                        if
+                                            18@ == 0
+                                        then
+                                            18@ = 2
+                                        end
+
+                                        0008: 18@ += 1
+                                        0209: 16@ = random_int_in_ranges 17@ 18@
+                                        0AD1: print_formatted_now "~w~Found an empty bottle and kerosene rag! Craft %d Molotovs?~n~~g~[Y] Craft  ~w~|  ~r~[N] Leave" 6000 16@
+                                    end
+
+                                    // 9mm Pistol (Weapon 22)
+                                    if
+                                        27@ == 1
+                                    then
+                                        0AF0: 17@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "PistolAmmoMin"
+                                        if
+                                            17@ == 0
+                                        then
+                                            17@ = 17
+                                        end
+
+                                        0AF0: 18@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "PistolAmmoMax"
+                                        if
+                                            18@ == 0
+                                        then
+                                            18@ = 34
+                                        end
+
+                                        0008: 18@ += 1
+                                        0209: 16@ = random_int_in_ranges 17@ 18@
+                                        0AD1: print_formatted_now "~w~Found a rusted 9mm pistol with %d rounds in an oily towel!~n~~g~[Y] Take  ~w~|  ~r~[N] Leave" 6000 16@
+                                    end
+
+                                    // Tec-9 (Weapon 32)
+                                    if
+                                        27@ == 2
+                                    then
+                                        0AF0: 17@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "SMGAmmoMin"
+                                        if
+                                            17@ == 0
+                                        then
+                                            17@ = 30
+                                        end
+
+                                        0AF0: 18@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "SMGAmmoMax"
+                                        if
+                                            18@ == 0
+                                        then
+                                            18@ = 60
+                                        end
+
+                                        0008: 18@ += 1
+                                        0209: 16@ = random_int_in_ranges 17@ 18@
+                                        0AD1: print_formatted_now "~w~Found a discarded Tec-9 with %d rounds under cardboard!~n~~g~[Y] Take  ~w~|  ~r~[N] Leave" 6000 16@
+                                    end
+
+                                    // Shotguns (Chrome 25 in Dumpster, Sawn-off 26 in Bin)
+                                    if
+                                        27@ == 3
+                                    then
+                                        0AF0: 17@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "ShotgunAmmoMin"
+                                        if
+                                            17@ == 0
+                                        then
+                                            17@ = 6
+                                        end
+
+                                        0AF0: 18@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "ShotgunAmmoMax"
+                                        if
+                                            18@ == 0
+                                        then
+                                            18@ = 12
+                                        end
+
+                                        0008: 18@ += 1
+                                        0209: 16@ = random_int_in_ranges 17@ 18@
+                                        if
+                                            15@ == 1
+                                        then
+                                            0AD1: print_formatted_now "~w~Found a dented chrome shotgun with %d loose shells!~n~~g~[Y] Take  ~w~|  ~r~[N] Leave" 6000 16@
+                                        else
+                                            0AD1: print_formatted_now "~w~Found a rusty sawn-off shotgun with %d shells!~n~~g~[Y] Take  ~w~|  ~r~[N] Leave" 6000 16@
+                                        end
+                                    end
+
+                                    // Melee Tools (Shovel 6, Bat 5, Knife 4)
+                                    if
+                                        27@ == 4
+                                    then
+                                        0209: 23@ = random_int_in_ranges 0 3
+                                        if
+                                            23@ == 0
+                                        then
+                                            0AD1: print_formatted_now "~w~Found a rusty garden shovel buried in the trash!~n~~g~[Y] Take  ~w~|  ~r~[N] Leave" 6000
+                                        end
+                                        if
+                                            23@ == 1
+                                        then
+                                            0AD1: print_formatted_now "~w~Found a cracked baseball bat behind the dumpster!~n~~g~[Y] Take  ~w~|  ~r~[N] Leave" 6000
+                                        end
+                                        if
+                                            23@ == 2
+                                        then
+                                            0AD1: print_formatted_now "~w~Found an old kitchen knife with tape on the handle!~n~~g~[Y] Take  ~w~|  ~r~[N] Leave" 6000
+                                        end
+                                    end
+
+                                    // Wait for player decision ([Y] / [N] / 6s timeout)
+                                    0085: 30@ = 31@
+                                    000A: 30@ += MEM_PRIORITY_LOCK
+                                    0A8C: write_memory 30@ size 4 value 3 virtual_protect 0 // Hold Tier 3 while deciding
+                                    TIMERA = 0
+                                    :Wait_Player_Scav_Decision
+                                    wait 50
+
+                                    // Priority lock release on death, bust, or despawn
+                                    if or
+                                        8256: not player $PLAYER_CHAR defined
+                                        0117: player $PLAYER_CHAR wasted
+                                        0741: actor $PLAYER_ACTOR busted
+                                    then
+                                        0085: 30@ = 31@
+                                        000A: 30@ += MEM_PRIORITY_LOCK
+                                        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                                        goto @YScav_Loop
+                                    end
+
+                                    // Option Y: Accept and equip
+                                    if
+                                        0AB0: is_key_pressed 89 // Y Key
+                                    then
+                                        :Wait_Player_Y_Rel
+                                        wait 50
+                                        if
+                                            0AB0: is_key_pressed 89
+                                        then
+                                            goto @Wait_Player_Y_Rel
+                                        end
+
+                                        gosub @Give_Scavenged_Weapon_To_Player
+                                        goto @Finish_Player_Scav_Weapon
+                                    end
+
+                                    // Option N: Refuse and leave
+                                    if
+                                        0AB0: is_key_pressed 78 // N Key
+                                    then
+                                        :Wait_Player_N_Rel
+                                        wait 50
+                                        if
+                                            0AB0: is_key_pressed 78
+                                        then
+                                            goto @Wait_Player_N_Rel
+                                        end
+
+                                        26@ = 0 // Mark outcome as refused
+                                        018C: play_sound 1057 at 0.0 0.0 0.0
+                                        03EB: clear_small_messages_only
+                                        0ACD: print_string_now "~s~Decided to leave the weapon in the garbage." 2500
+                                        goto @Finish_Player_Scav_Weapon
+                                    end
+
+                                    // Timeout (6 seconds passed)
+                                    if
+                                        TIMERA >= 6000
+                                    then
+                                        26@ = 0 // Mark outcome as expired/refused
+                                        03EB: clear_small_messages_only
+                                        0ACD: print_string_now "~s~Left the weapon behind in the trash." 2000
+                                        goto @Finish_Player_Scav_Weapon
+                                    end
+
+                                    goto @Wait_Player_Scav_Decision
+
+                                    :Finish_Player_Scav_Weapon
+                                    wait 1000
+                                    0085: 30@ = 31@
+                                    000A: 30@ += MEM_PRIORITY_LOCK
+                                    0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+                                    if
+                                        25@ == 3
+                                    then
+                                        0085: 30@ = 31@
+                                        000A: 30@ += MEM_PRIORITY_LOCK
+                                        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                                    end
+                                else
+                                    // ---------------------------------------------
+                                    // LOOT PATH B: FOOD & NUTRITION (Instant Heal)
+                                    // ---------------------------------------------
+                                    04ED: load_animation "FOOD"
+                                    :Wait_Trash_Eat_Anim
+                                    wait 0
+                                    if
+                                        84EE: not animation "FOOD" loaded
+                                    then
+                                        goto @Wait_Trash_Eat_Anim
+                                    end
+
+                                    0605: actor $PLAYER_ACTOR perform_animation "EAT_Burger" IFP "FOOD" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time 2500
+                                    wait 2500
+                                    04EF: release_animation "FOOD"
+
+                                    0223: set_actor $PLAYER_ACTOR health_to 176
+                                    0A8C: write_memory 0xB7CEDC size 2 value 0 virtual_protect 0
+                                    018C: play_sound 1052 at 0.0 0.0 0.0
+
+                                    0209: 27@ = random_int_in_ranges 0 4
+
+                                    if
+                                        15@ == 1
+                                    then
+                                        if
+                                            27@ == 0
+                                        then
+                                            0ACD: print_string_now "~g~Found a cold slice of Well Stacked Pizza! Score!" 3000
+                                        end
+                                        if
+                                            27@ == 1
+                                        then
+                                            0ACD: print_string_now "~g~Found half an intact Burger Shot Double D-Luxe!" 3000
+                                        end
+                                        if
+                                            27@ == 2
+                                        then
+                                            0ACD: print_string_now "~g~Found a discarded sub sandwich! Still wrapped in paper!" 3000
+                                        end
+                                        if
+                                            27@ == 3
+                                        then
+                                            0ACD: print_string_now "~g~Found discarded fries and sweet sauce! Delicious." 3000
+                                        end
+                                    end
+
+                                    if
+                                        15@ == 2
+                                    then
+                                        if
+                                            27@ == 0
+                                        then
+                                            0ACD: print_string_now "~g~Found a half-eaten glazed donut in a napkin!" 3000
+                                        end
+                                        if
+                                            27@ == 1
+                                        then
+                                            0ACD: print_string_now "~g~Found an apple with only two bites taken out!" 3000
+                                        end
+                                        if
+                                            27@ == 2
+                                        then
+                                            0ACD: print_string_now "~g~Found a squished hot dog bun with mustard! Still good." 3000
+                                        end
+                                        if
+                                            27@ == 3
+                                        then
+                                            0ACD: print_string_now "~g~Found a cold fried chicken wing! Blessings from above." 3000
+                                        end
+                                    end
+
+                                    if
+                                        15@ == 3
+                                    then
+                                        if
+                                            27@ == 0
+                                        then
+                                            0ACD: print_string_now "~g~Pulled a box of Cluckin' Little Meal nuggets from the tray bin!" 3000
+                                        end
+                                        if
+                                            27@ == 1
+                                        then
+                                            0ACD: print_string_now "~g~Customer threw away half a Cluckin' Huge Meal! Jackpot!" 3000
+                                        end
+                                        if
+                                            27@ == 2
+                                        then
+                                            0ACD: print_string_now "~g~Found an untouched carton of fries in the bin!" 3000
+                                        end
+                                        if
+                                            27@ == 3
+                                        then
+                                            0ACD: print_string_now "~g~Found a cold burger and onion rings! The cashier watched in silence." 3000
+                                        end
+                                    end
+                                end
+                            end
+                            wait 1500
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+goto @YScav_Loop
+
+
+// =========================================================================
+// SUBROUTINE: GIVE SCAVENGED WEAPON TO PLAYER
+// =========================================================================
+:Give_Scavenged_Weapon_To_Player
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+
+// Molotovs
+if
+    27@ == 0
+then
+    0E98: request_priority_model 344
+    0E99: load_all_priority_models_now
+    01B2: give_actor $PLAYER_ACTOR weapon 18 ammo 16@
+    0EA3: remove_model_if_unused 344
+    0AD1: print_formatted_now "~g~Crafted Molotov cocktails! (+%d)" 2500 16@
+    return
+end
+
+// 9mm Pistol
+if
+    27@ == 1
+then
+    0E98: request_priority_model 346
+    0E99: load_all_priority_models_now
+    01B2: give_actor $PLAYER_ACTOR weapon 22 ammo 16@
+    0EA3: remove_model_if_unused 346
+    0AD1: print_formatted_now "~g~Equipped 9mm pistol! (+%d Ammo)" 2500 16@
+    return
+end
+
+// Tec-9
+if
+    27@ == 2
+then
+    0E98: request_priority_model 372
+    0E99: load_all_priority_models_now
+    01B2: give_actor $PLAYER_ACTOR weapon 32 ammo 16@
+    0EA3: remove_model_if_unused 372
+    0AD1: print_formatted_now "~g~Equipped Tec-9! (+%d Ammo)" 2500 16@
+    return
+end
+
+// Shotguns
+if
+    27@ == 3
+then
+    if
+        15@ == 1
+    then
+        0E98: request_priority_model 349
+        0E99: load_all_priority_models_now
+        01B2: give_actor $PLAYER_ACTOR weapon 25 ammo 16@
+        0EA3: remove_model_if_unused 349
+        0AD1: print_formatted_now "~g~Equipped chrome shotgun! (+%d Shells)" 2500 16@
+    else
+        0E98: request_priority_model 350
+        0E99: load_all_priority_models_now
+        01B2: give_actor $PLAYER_ACTOR weapon 26 ammo 16@
+        0EA3: remove_model_if_unused 350
+        0AD1: print_formatted_now "~g~Equipped sawn-off shotgun! (+%d Shells)" 2500 16@
+    end
+    return
+end
+
+// Melee Weapons (Subtype read from 23@)
+if
+    27@ == 4
+then
+    if
+        23@ == 0
+    then
+        0E98: request_priority_model 337 // Shovel
+        0E99: load_all_priority_models_now
+        01B2: give_actor $PLAYER_ACTOR weapon 6 ammo 1
+        0EA3: remove_model_if_unused 337
+        0ACD: print_string_now "~g~Equipped garden shovel!" 2500
+    end
+    if
+        23@ == 1
+    then
+        0E98: request_priority_model 336 // Bat
+        0E99: load_all_priority_models_now
+        01B2: give_actor $PLAYER_ACTOR weapon 5 ammo 1
+        0EA3: remove_model_if_unused 336
+        0ACD: print_string_now "~g~Equipped baseball bat!" 2500
+    end
+    if
+        23@ == 2
+    then
+        0E98: request_priority_model 335 // Knife
+        0E99: load_all_priority_models_now
+        01B2: give_actor $PLAYER_ACTOR weapon 4 ammo 1
+        0EA3: remove_model_if_unused 335
+        0ACD: print_string_now "~g~Equipped kitchen knife!" 2500
+    end
+    return
+end
+return
+
+// =========================================================================
+// SUBROUTINE: RELOAD BINS CACHE (Loads INI Into RAM on Interior Change/Boot)
+// =========================================================================
+:Reload_Bins_Cache
+// Cache VendorMemorySeconds (stored safely in 3@)
+0AF0: 3@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "VendorMemorySeconds"
+if
+    3@ == 0
+then
+    3@ = 45
+end
+0012: 3@ *= 1000 // Convert to ms
+
+// Read Bin Count for this interior (stored safely in 2@)
+0AD3: string_format 4@v "Interior_%d" 0@
+0AF0: 2@ = read_int_from_ini_file "cleo\savedata\YorigamiBins.ini" section 4@v key "Count"
+if or
+    8029: not 2@ >= 0
+    2@ > 1000
+then
+    2@ = 0
+end
+
+if
+    2@ > 0
+then
+    12@ = 1
+    :Cache_Read_Loop
+    if
+        801D: not 12@ > 2@
+    then
+        // Destination Pointer = (12@ - 1) * 16 + 1@
+        0085: 13@ = 12@
+        000E: 13@ -= 1
+        0012: 13@ *= 16
+        005A: 13@ += 1@ // 13@ = Pointer in RAM
+
+        // Read X from INI -> Write to RAM
+        0AD3: string_format 8@v "Bin_%d_X" 12@
+        0AF2: 16@ = read_float_from_ini_file "cleo\savedata\YorigamiBins.ini" section 4@v key 8@v
+        0A8C: write_memory 13@ size 4 value 16@ virtual_protect 0
+
+        // Read Y from INI -> Write to RAM
+        000A: 13@ += 4
+        0AD3: string_format 8@v "Bin_%d_Y" 12@
+        0AF2: 16@ = read_float_from_ini_file "cleo\savedata\YorigamiBins.ini" section 4@v key 8@v
+        0A8C: write_memory 13@ size 4 value 16@ virtual_protect 0
+
+        // Read Z from INI -> Write to RAM
+        000A: 13@ += 4
+        0AD3: string_format 8@v "Bin_%d_Z" 12@
+        0AF2: 16@ = read_float_from_ini_file "cleo\savedata\YorigamiBins.ini" section 4@v key 8@v
+        0A8C: write_memory 13@ size 4 value 16@ virtual_protect 0
+
+        // Read Tier from INI -> Write to RAM
+        000A: 13@ += 4
+        0AD3: string_format 8@v "Bin_%d_Tier" 12@
+        0AF0: 16@ = read_int_from_ini_file "cleo\savedata\YorigamiBins.ini" section 4@v key 8@v
+        0A8C: write_memory 13@ size 4 value 16@ virtual_protect 0
+
+        0008: 12@ += 1
+        goto @Cache_Read_Loop
+    end
+end
+return
+
+// =========================================================================
+// SUBROUTINE: JO'ON REFUSAL FLAVOR TEXT (Never Scavenges / In-Character)
+// =========================================================================
+:Joon_Refuse_Scavenge
+018C: play_sound 1057 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+
+// Check if Shion companion is present (Physical ped nearby or Hitodama spirit)
+23@ = 0 // Shion companion nearby flag (using 23@ to protect target handle 24@)
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+if
+    25@ == -1 // Hitodama floating with Jo'on
+then
+    23@ = 1
+end
+
+if
+    25@ > 0 // Physical Shion
+then
+    if and
+        056D: actor 25@ defined
+        8118: not actor 25@ dead
+    then
+        00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
+        00A0: store_actor 25@ position_to 16@ 17@ 18@
+        050A: 19@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 16@ 17@ 18@
+        if
+            8021: not 19@ > 20.0
+        then
+            23@ = 1
+        end
+    end
+end
+
+// Dumpster Refusal
+if
+    15@ == 1
+then
+    0209: 25@ = random_int_in_ranges 0 3
+    if
+        23@ == 1 // With Shion
+    then
+        if
+            25@ == 0
+        then
+            0ADF: add_text_label "Y_JSH0" text "~y~Jo'on: ~s~\"Oi, Shion! Your paws are already filthy, you jump in! Find us somethin' to eat!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSH0' time 3500 flag 1
+        end
+        if
+            25@ == 1
+        then
+            0ADF: add_text_label "Y_JSH1" text "~y~Jo'on: ~s~\"Ain't no way I'm touchin' that bin, Shion. You're the gutter pro here, get to it!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSH1' time 3500 flag 1
+        end
+        if
+            25@ == 2
+        then
+            0ADF: add_text_label "Y_JSH2" text "~y~Jo'on: ~s~\"Shion, climb in there! If ya find a sealed pizza box, bring it to me!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSH2' time 3500 flag 1
+        end
+    else
+        // Alone
+        if
+            25@ == 0
+        then
+            0ADF: add_text_label "Y_JSC0" text "~y~Jo'on: ~s~\"Like hell I am! I ain't divin' into a filthy dumpster! I've got pride!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSC0' time 3500 flag 1
+        end
+        if
+            25@ == 1
+        then
+            0ADF: add_text_label "Y_JSC1" text "~y~Jo'on: ~s~\"Rummagin' through garbage?! Gross! I'd rather starve in clean clothes!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSC1' time 3500 flag 1
+        end
+        if
+            25@ == 2
+        then
+            0ADF: add_text_label "Y_JSC2" text "~y~Jo'on: ~s~\"...Ugh, I'm starvin'. Where did Shion wander off to anyway?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSC2' time 3500 flag 1
+        end
+    end
+    return
+end
+
+// Street Cans & Indoor Fast-Food Bins Refusal
+if or
+    15@ == 2
+    15@ == 3
+then
+    0209: 25@ = random_int_in_ranges 0 3
+    if
+        23@ == 1 // With Shion
+    then
+        if
+            25@ == 0
+        then
+            0ADF: add_text_label "Y_JSH3" text "~y~Jo'on: ~s~\"Shion! Dig through that bin for us! Don't just watch me starve!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSH3' time 3500 flag 1
+        end
+        if
+            25@ == 1
+        then
+            0ADF: add_text_label "Y_JSH4" text "~y~Jo'on: ~s~\"Your hoodie's already ragged, Shion, search it! I'm wearin' silk!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSH4' time 3500 flag 1
+        end
+        if
+            25@ == 2
+        then
+            0ADF: add_text_label "Y_JSH5" text "~y~Jo'on: ~s~\"Check that trash can, Shion! You know which bags have fries left!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSH5' time 3500 flag 1
+        end
+    else
+        // Alone
+        if
+            25@ == 0
+        then
+            0ADF: add_text_label "Y_JSC3" text "~y~Jo'on: ~s~\"Diggin' through trash cans?! Hell no! What d'ya take me for?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSC3' time 3500 flag 1
+        end
+        if
+            25@ == 1
+        then
+            0ADF: add_text_label "Y_JSC4" text "~y~Jo'on: ~s~\"I refuse to touch garbage! My stomach's growlin', but not that much!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSC4' time 3500 flag 1
+        end
+        if
+            25@ == 2
+        then
+            0ADF: add_text_label "Y_JSC5" text "~y~Jo'on: ~s~\"...Ugh. Where's Shion?! She always knows how to find a bite to eat!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSC5' time 3500 flag 1
+        end
+    end
+    return
+end
+
+// Vending Machine Refusal
+if
+    15@ == 4
+then
+    0209: 25@ = random_int_in_ranges 0 3
+    if
+        23@ == 1 // With Shion
+    then
+        if
+            25@ == 0
+        then
+            0ADF: add_text_label "Y_JSH6" text "~y~Jo'on: ~s~\"Shion! Kick the coin return slot! Jinx that machine with your bad luck!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSH6' time 3500 flag 1
+        end
+        if
+            25@ == 1
+        then
+            0ADF: add_text_label "Y_JSH7" text "~y~Jo'on: ~s~\"Go assault that vendin' machine, Shion! Knock a cold soda loose for me!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSH7' time 3500 flag 1
+        end
+        if
+            25@ == 2
+        then
+            0ADF: add_text_label "Y_JSH8" text "~y~Jo'on: ~s~\"Kick that machine, Shion! If anyone gets blamed for vandalism, it's you!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSH8' time 3500 flag 1
+        end
+    else
+        // Alone
+        if
+            25@ == 0
+        then
+            0ADF: add_text_label "Y_JSC6" text "~y~Jo'on: ~s~\"Kickin' a metal box for a cheap soda? As if! How embarrassin'!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSC6' time 3500 flag 1
+        end
+        if
+            25@ == 1
+        then
+            0ADF: add_text_label "Y_JSC7" text "~y~Jo'on: ~s~\"I ain't assaultin' a coin slot! That's what broke mortals do!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSC7' time 3500 flag 1
+        end
+        if
+            25@ == 2
+        then
+            0ADF: add_text_label "Y_JSC8" text "~y~Jo'on: ~s~\"...I could really use a cold drink. Where'd my sister run off to?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSC8' time 3500 flag 1
+        end
+    end
+    return
+end
+
+// Food Carts & Hot Dog Vans Refusal
+if
+    15@ == 5
+then
+    0209: 25@ = random_int_in_ranges 0 3
+    if
+        23@ == 1 // With Shion
+    then
+        if
+            25@ == 0
+        then
+            0ADF: add_text_label "Y_JSH9" text "~y~Jo'on: ~s~\"Shion! Go put on your pitiful face and beg the vendor for handouts!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSH9' time 3500 flag 1
+        end
+        if
+            25@ == 1
+        then
+            0ADF: add_text_label "Y_JSHA" text "~y~Jo'on: ~s~\"Go work your pity magic on that food cart, Shion! I can't be seen beggin'!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSHA' time 3500 flag 1
+        end
+        if
+            25@ == 2
+        then
+            0ADF: add_text_label "Y_JSHB" text "~y~Jo'on: ~s~\"Walk up to that cart, Shion! Cry a little and see if he spares food!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSHB' time 3500 flag 1
+        end
+    else
+        // Alone
+        if
+            25@ == 0
+        then
+            0ADF: add_text_label "Y_JSC9" text "~y~Jo'on: ~s~\"Beggin' a street vendor for food? As if! I don't plead for scraps!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSC9' time 3500 flag 1
+        end
+        if
+            25@ == 1
+        then
+            0ADF: add_text_label "Y_JSCA" text "~y~Jo'on: ~s~\"Like hell! I buy fine dinin', I don't beg on the sidewalk!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSCA' time 3500 flag 1
+        end
+        if
+            25@ == 2
+        then
+            0ADF: add_text_label "Y_JSCB" text "~y~Jo'on: ~s~\"...Smells amazin', but I can't ask for handouts! Where's Shion right now?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_JSCB' time 3500 flag 1
+        end
+    end
+    return
+end
+return

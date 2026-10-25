@@ -1,0 +1,2611 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+03A4: script_name 'Sh_Int'
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED TO ACTIVE SCOPE)
+// =========================================================================
+const
+    MEM_PRIORITY_LOCK = 20
+    MEM_SHION_HANDLE = 116
+    MEM_LAST_ZONE_INT = 196
+    MEM_SAFEHOUSE_DOOR_ID = 340
+end
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER SAFELY.
+
+// Check if any higher priority tier is already holding the channel (Tier 3 Action or Tier 4 Theater)
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    16@ >= 3
+then
+    0A93: terminate_this_custom_script
+end
+
+// Claim Tier 2 Ambient Lock!
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+
+// 0@ = Shion Actor Handle passed from ShionChat.c
+0085: 10@ = 0@
+
+0050: gosub @Check_Alive_Or_Exit
+
+// Query the real active interior directly from the game engine
+077E: get_active_interior_to 28@
+
+// Check Form Mode: 0 = Physical Ped, 1 = Hitodama Spirit
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+if
+    2@ == -1
+then
+    0006: 11@ = 1 // Hitodama Form
+else
+    0006: 11@ = 0 // Physical Ped Form
+end
+
+// Read Anti-Repetition Memory from Shared Var
+0085: 30@ = 31@
+000A: 30@ += MEM_LAST_ZONE_INT
+0A8D: 15@ = read_memory 30@ size 4 virtual_protect 0
+
+// =========================================================================
+// DIDIER SACHS (Interior 14 - Haute Couture & Diamond Cufflinks)
+// =========================================================================
+if
+    28@ == 14
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 204.1789 -165.8740 1000.5230 radius 30.0
+    then
+        if
+            8039: not 15@ == 101
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_ZONE_INT
+            0A8C: write_memory 30@ size 4 value 101 virtual_protect 0
+            0209: 29@ = random_int_in_ranges 0 2
+
+            // Variant: Silk Ties vs. Rural Houses
+            if
+                29@ == 0
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DID0A" text "~y~Jo'on: ~s~\"Didier Sachs! Get a load of this, Shion! Real French silk, diamond cufflinks, and plush velvet!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DID0A' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DID0B" text "~b~Shion: ~s~\"One silk tie here costs more than a whole house in the sticks, sis...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DID0B' time 3600 flag 1
+                0001: wait 3600 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+
+            // Variant: Sumireko's Knockoff Accusation (AoCF Canon)
+            if
+                29@ == 1
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DID1A" text "~y~Jo'on: ~s~\"Check the stitchin' on these leather bags! None of that knockoff garbage Sumireko claimed I wore!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DID1A' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                if
+                    11@ == 1
+                then
+                    0ADF: add_text_label "Y_DI1BH" text "~b~Shion: ~s~\"The clerk's staring right at me, Jo'on... thinks the shop's haunted.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DI1BH' time 3700 flag 1
+                else
+                    0ADF: add_text_label "Y_DID1B" text "~b~Shion: ~s~\"The clerk's staring at my bare feet, Jo'on... my bad luck's gonna crack the floor tiles.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DID1B' time 3700 flag 1
+                end
+                0001: wait 3700 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+        end
+    end
+end
+
+// =========================================================================
+// BINCO (Interior 15 - Discount Peasant Rags)
+// =========================================================================
+if
+    28@ == 15
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 207.5430 -109.0040 1005.1330 radius 30.0
+    then
+        if
+            8039: not 15@ == 102
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_ZONE_INT
+            0A8C: write_memory 30@ size 4 value 102 virtual_protect 0
+            0209: 29@ = random_int_in_ranges 0 2
+
+            // Variant: Cheap Polyester Disgust
+            if
+                29@ == 0
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_BC0A" text "~y~Jo'on: ~s~\"Binco?! Forty bucks for this cheap nylon trash?! I wouldn't wipe my muddy boots with this!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_BC0A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_BC0B" text "~b~Shion: ~s~\"Twenty bucks for a shirt... we could blend in and look like normal people, sis.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_BC0B' time 3600 flag 1
+                0001: wait 3600 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+
+            // Variant: Cheap Flip-Flops vs Barefoot Poverty
+            if
+                29@ == 1
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                if
+                    11@ == 1
+                then
+                    0ADF: add_text_label "Y_BC1AH" text "~b~Shion: ~s~\"Rubber flip-flops... even if we bought them, floating spirits don't have feet, Jo'on.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_BC1AH' time 3700 flag 1
+                    0001: wait 3700 ms
+                    0050: gosub @Check_Alive_Or_Exit
+
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_BC1BH" text "~y~Jo'on: ~s~\"As if I'd buy eight-dollar foam! You're floatin' barefoot until I score ya custom diamond bling!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_BC1BH' time 3600 flag 1
+                else
+                    0ADF: add_text_label "Y_BC1A" text "~b~Shion: ~s~\"Flip-flops for eight bucks... I wouldn't have to walk on broken glass anymore.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_BC1A' time 3500 flag 1
+                    0001: wait 3500 ms
+                    0050: gosub @Check_Alive_Or_Exit
+
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_BC1B" text "~y~Jo'on: ~s~\"Cheap foam flip-flops?! No way in hell! You're walkin' barefoot until I buy ya Italian leather!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_BC1B' time 3600 flag 1
+                end
+                0001: wait 3600 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+        end
+    end
+end
+
+// =========================================================================
+// SUB URBAN (Interior 1 - Skater Wear & Baggy Street Clothes)
+// =========================================================================
+if
+    28@ == 1
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 203.8173 -46.5385 1001.8050 radius 30.0
+    then
+        if
+            8039: not 15@ == 120
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_ZONE_INT
+            0A8C: write_memory 30@ size 4 value 120 virtual_protect 0
+            0209: 29@ = random_int_in_ranges 0 2
+
+            // Variant: Baggy Pants vs Oversized Sweaters
+            if
+                29@ == 0
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_SUB0A" text "~y~Jo'on: ~s~\"Baggy jeans down to your knees?! What kinda gang-banger scrub outfit is this?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_SUB0A' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                if
+                    11@ == 1
+                then
+                    0ADF: add_text_label "Y_SU0BH" text "~b~Shion: ~s~\"Those oversized hoodies look so warm, Jo'on... you could stash half a loaf of bread in that front pouch.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SU0BH' time 3800 flag 1
+                else
+                    0ADF: add_text_label "Y_SUB0B" text "~b~Shion: ~s~\"Baggy sweaters look warm, Jo'on... and one pair of sneakers would keep my bare feet off the glass.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SUB0B' time 3800 flag 1
+                end
+                0001: wait 3800 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+
+            // Variant: Skate Culture & Price Tags
+            if
+                29@ == 1
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_SUB1A" text "~y~Jo'on: ~s~\"Sixty bucks for a hooded sweater with graffiti prints?! Who buys this junk, street buskers?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_SUB1A' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_SUB1B" text "~b~Shion: ~s~\"Sixty dollars buys enough instant noodles for two months, sis... clothes are an insane luxury.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_SUB1B' time 3700 flag 1
+                0001: wait 3700 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+        end
+    end
+end
+
+// =========================================================================
+// PRO-LAPS (Interior 3 - Sportswear & Athletic Gear)
+// =========================================================================
+if
+    28@ == 3
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 207.3560 -138.0029 1003.3130 radius 30.0
+    then
+        if
+            8039: not 15@ == 121
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_ZONE_INT
+            0A8C: write_memory 30@ size 4 value 121 virtual_protect 0
+            0209: 29@ = random_int_in_ranges 0 2
+
+            // Variant: Sweaty Grunts vs Cloud Running Shoes
+            if
+                29@ == 0
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_PRL0A" text "~y~Jo'on: ~s~\"Tracksuits and sweatbands?! Ugh! Runnin' gear is for sweaty gym grunts, not VIP divas!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_PRL0A' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                if
+                    11@ == 1
+                then
+                    0ADF: add_text_label "Y_PL0BH" text "~b~Shion: ~s~\"Those gym windbreakers look draft-proof, Jo'on... looks like sleeping inside a real tent.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_PL0BH' time 3700 flag 1
+                else
+                    0ADF: add_text_label "Y_PRL0B" text "~b~Shion: ~s~\"Those thick running shoes look like walking on clouds... my bare feet wouldn't get bruised on sharp gravel.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_PRL0B' time 3800 flag 1
+                end
+                0001: wait 3800 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+
+            // Variant: Amateur Cardio vs Fleece Sweatpants
+            if
+                29@ == 1
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_PRL1A" text "~y~Jo'on: ~s~\"Runnin' without someone chasin' ya is amateur cardio! Who exercises on purpose when ya can just jack a car?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_PRL1A' time 3800 flag 1
+                0001: wait 3800 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_PRL1B" text "~b~Shion: ~s~\"Those fleece sweatpants look so soft, sis... beats wrapping old newspaper around my legs to stay warm.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_PRL1B' time 3800 flag 1
+                0001: wait 3800 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+        end
+    end
+end
+
+// =========================================================================
+// VICTIM (Interior 5 - Edgy Designer & Trend Posers)
+// =========================================================================
+if
+    28@ == 5
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 221.3310 -6.6169 1002.0078 radius 30.0
+    then
+        if
+            8039: not 15@ == 122
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_ZONE_INT
+            0A8C: write_memory 30@ size 4 value 122 virtual_protect 0
+            0209: 29@ = random_int_in_ranges 0 2
+
+            // Variant: Budget Trend Posers
+            if
+                29@ == 0
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_VIC0A" text "~y~Jo'on: ~s~\"Victim! A bunch'a broke posers tryin' to look rich on a budget! Better than Binco, but still amateur!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_VIC0A' time 3800 flag 1
+                0001: wait 3800 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_VIC0B" text "~b~Shion: ~s~\"Jo'on... you're a rich poser yourself.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_VIC0B' time 2900 flag 1
+                0001: wait 2900 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_VIC0C" text "~y~Jo'on: ~s~\"I am NOT a poser! I'm an elite trendsetter! Know the difference, dummy!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_VIC0C' time 3600 flag 1
+                0001: wait 3600 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+
+            // Variant: Leather Jackets vs Months of Hot Dinners
+            if
+                29@ == 1
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_VIC1A" text "~b~Shion: ~s~\"A single leather jacket here is four hundred dollars... that's months of hot food, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_VIC1A' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_VIC1B" text "~y~Jo'on: ~s~\"Four hundred is pocket change! A real boss needs heavy chains and spiked leather to keep these chumps in line!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_VIC1B' time 3800 flag 1
+                0001: wait 3800 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+        end
+    end
+end
+
+// =========================================================================
+// CLUCKIN' BELL (Interior 9 - Deep Fryer Grease & Buckets)
+// =========================================================================
+if
+    28@ == 9
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 365.6700 -11.6100 1002.0000 radius 30.0
+    then
+        if
+            8039: not 15@ == 103
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_ZONE_INT
+            0A8C: write_memory 30@ size 4 value 103 virtual_protect 0
+            0209: 29@ = random_int_in_ranges 0 2
+
+            // Variant: Fryer Oil Aromas
+            if
+                29@ == 0
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                if
+                    11@ == 1
+                then
+                    0ADF: add_text_label "Y_CB0AH" text "~b~Shion: ~s~\"Smell that fryer grease... float me over the counter so I can inhale the steam, sis.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_CB0AH' time 3600 flag 1
+                    0001: wait 3600 ms
+                    0050: gosub @Check_Alive_Or_Exit
+
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_CB0BH" text "~y~Jo'on: ~s~\"Quit hoverin' over the vats, Shion! You're gonna ruin their fry oil with your spooky ghost smoke!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_CB0BH' time 3700 flag 1
+                else
+                    0ADF: add_text_label "Y_CB0A" text "~b~Shion: ~s~\"Smell that fryer grease... buy me a Cluckin' Little Meal, Jo'on. I'm starving.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_CB0A' time 3600 flag 1
+                    0001: wait 3600 ms
+                    0050: gosub @Check_Alive_Or_Exit
+
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_CB0B" text "~y~Jo'on: ~s~\"Mystery meat in a paper bucket... fine, but don't wipe your greasy hands on my coat!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_CB0B' time 3500 flag 1
+                end
+                0001: wait 3600 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+
+            // Variant: The Commercial Jingle
+            if
+                29@ == 1
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_CB1A" text "~y~Jo'on: ~s~\"Isn't this the dump payin' that loudmouth DJ on CSR for commercials?! Tacky as hell!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_CB1A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                if
+                    11@ == 1
+                then
+                    0ADF: add_text_label "Y_CB1BH" text "~b~Shion: ~s~\"I don't care about the DJ, sis... that twelve-piece bucket's right under the heat lamp.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_CB1BH' time 3700 flag 1
+                else
+                    0ADF: add_text_label "Y_CB1B" text "~b~Shion: ~s~\"I don't care about the radio, sis... the Cluckin' Huge Meal's got twelve whole wings.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_CB1B' time 3600 flag 1
+                end
+                0001: wait 3600 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+        end
+    end
+end
+
+// =========================================================================
+// BURGER SHOT (Interior 10 - Double D-Luxe & Bleeding Beef)
+// =========================================================================
+if
+    28@ == 10
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 366.4220 -73.4700 1001.5080 radius 30.0
+    then
+        if
+            8039: not 15@ == 104
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_ZONE_INT
+            0A8C: write_memory 30@ size 4 value 104 virtual_protect 0
+            0209: 29@ = random_int_in_ranges 0 2
+
+            // Variant: Warm Beef vs Dumpster Scraps
+            if
+                29@ == 0
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                if
+                    11@ == 1
+                then
+                    0ADF: add_text_label "Y_BS0AH" text "~b~Shion: ~s~\"Sizzling beef patties... just hovering over the kitchen grill is making me drool, Jo'on.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_BS0AH' time 3700 flag 1
+                else
+                    0ADF: add_text_label "Y_BS0A" text "~b~Shion: ~s~\"Burger Shot... I can smell sizzling beef. Means we're not digging through dumpsters today.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_BS0A' time 3500 flag 1
+                end
+                0001: wait 3500 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_BS0B" text "~y~Jo'on: ~s~\"AHAHAHA! Double D-Luxe with extra cheese! Total junk, but even VIPs gotta pig out sometimes!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_BS0B' time 3500 flag 1
+                0001: wait 3500 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+
+            // Variant: Fry Warmer Salt Rush
+            if
+                29@ == 1
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_BS1A" text "~b~Shion: ~s~\"The fries under the heat lamp are dripping with salt... buy me a large box, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_BS1A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_BS1B" text "~y~Jo'on: ~s~\"Grease and salt! Order two large fries and stop droolin' on the counter, Shion!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_BS1B' time 3600 flag 1
+                0001: wait 3600 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+        end
+    end
+end
+
+// =========================================================================
+// WELL STACKED PIZZA (Interior 5 - Full Rack & Melted Mozzarella)
+// =========================================================================
+if
+    28@ == 5
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 377.7758 -126.2766 1001.4920 radius 30.0
+    then
+        if
+            8039: not 15@ == 105
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_ZONE_INT
+            0A8C: write_memory 30@ size 4 value 105 virtual_protect 0
+            0209: 29@ = random_int_in_ranges 0 2
+
+            // Variant: Full Rack Pizza Sizing
+            if
+                29@ == 0
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_PZ0A" text "~b~Shion: ~s~\"Hot pizza... real cheese. Look how huge that Full Rack box is, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_PZ0A' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                if
+                    11@ == 1
+                then
+                    0ADF: add_text_label "Y_PZ0BH" text "~y~Jo'on: ~s~\"Drenched in cheap oil. Order a whole pie, and don't haunt the cashier while he's slicin' it!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_PZ0BH' time 3600 flag 1
+                else
+                    0ADF: add_text_label "Y_PZ0B" text "~y~Jo'on: ~s~\"Drenched in cheap oil. Don't inhale the slices so fast or you'll be chokin' on crust, Shion!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_PZ0B' time 3600 flag 1
+                end
+                0001: wait 3600 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+
+            // Variant: Cheese Pull & Garlic Butter
+            if
+                29@ == 1
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_PZ1A" text "~b~Shion: ~s~\"The crust's soaked in garlic butter... if we order a whole pie, I won't complain all day.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_PZ1A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_PZ1B" text "~y~Jo'on: ~s~\"Fine! Grab extra garlic cups and shove a slice in your mouth before I change my mind!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_PZ1B' time 3500 flag 1
+                0001: wait 3500 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+        end
+    end
+end
+
+// =========================================================================
+// AMMU-NATION (Interiors 1, 4, 6, 7 - Retail Therapy With High Caliber)
+// =========================================================================
+if or
+    28@ == 1
+    28@ == 4
+    28@ == 6
+    28@ == 7
+then
+    if or
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 289.7870 -35.7190 1003.5160 radius 30.0
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 285.8000 -84.5470 1001.5390 radius 30.0
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 297.4460 -109.9680 1001.5160 radius 30.0
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 317.2380 -168.0520 999.5930 radius 30.0
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 315.3850 -142.2420 999.6010 radius 30.0
+    then
+        if
+            8039: not 15@ == 106
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_ZONE_INT
+            0A8C: write_memory 30@ size 4 value 106 virtual_protect 0
+            0209: 29@ = random_int_in_ranges 0 3
+
+            // Variant: Retail Therapy with Hardware
+            if
+                29@ == 0
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_AM0A" text "~y~Jo'on: ~s~\"Grenades, Kevlar vests, and heavy assault rifles! Now THIS is real shoppin'!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_AM0A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                if
+                    11@ == 1
+                then
+                    0ADF: add_text_label "Y_AM0BH" text "~b~Shion: ~s~\"The clerk's got his hand on a shotgun under the counter, staring right through me...\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_AM0BH' time 3700 flag 1
+                else
+                    0ADF: add_text_label "Y_AM0B" text "~b~Shion: ~s~\"The clerk's got a gun under the counter, staring right at my ragged hoodie, Jo'on...\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_AM0B' time 3500 flag 1
+                end
+                0001: wait 3600 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+
+            // Variant: Status Symbols vs Bargain Ammo
+            if
+                29@ == 1
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_AM1A" text "~y~Jo'on: ~s~\"What kind of gun shop doesn't even stock rocket launchers?! Cheap pea-shooters!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_AM1A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                if
+                    11@ == 1
+                then
+                    0ADF: add_text_label "Y_AM1BH" text "~b~Shion: ~s~\"Rocket launchers are heavy anyway, sis... couldn't haul fifty pounds even if I tried.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_AM1BH' time 3700 flag 1
+                else
+                    0ADF: add_text_label "Y_AM1B" text "~b~Shion: ~s~\"That's fine with me... you think they got a bargain bin for cheap ammo, sis?\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_AM1B' time 3600 flag 1
+                end
+                0001: wait 3600 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+
+            // Variant: Sumireko & Outside World Spell Cards
+            if
+                29@ == 2
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_AM2A" text "~b~Shion: ~s~\"All these iron barrels on the wall... outside world spell cards look vicious, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_AM2A' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_AM2B" text "~y~Jo'on: ~s~\"You just yank a trigger and lead comes flyin' out! Isn't this where that psychic brat came from?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_AM2B' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_AM2C" text "~b~Shion: ~s~\"Sumireko? Yeah, you possessed her to buy premium beef that one time.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_AM2C' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_AM2D" text "~y~Jo'on: ~s~\"If I knew they sold military-grade assault rifles in strip malls, I would've made her buy me a tank!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_AM2D' time 3700 flag 1
+                0001: wait 3700 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+        end
+    end
+end
+
+// =========================================================================
+// RUSTY BROWN'S RING DONUTS (Interior 17 - Day-Old Sugar Glaze)
+// =========================================================================
+if
+    28@ == 17
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 377.0030 -192.5070 1000.6330 radius 30.0
+    then
+        if
+            8039: not 15@ == 107
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_ZONE_INT
+            0A8C: write_memory 30@ size 4 value 107 virtual_protect 0
+            0209: 29@ = random_int_in_ranges 0 2
+
+            // Variant: Discard Bins vs Sugar Glaze
+            if
+                29@ == 0
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                if
+                    11@ == 1
+                then
+                    0ADF: add_text_label "Y_DN0AH" text "~b~Shion: ~s~\"Donuts... that warm sugar smell's making my head spin. Look at the conveyor belt, sis.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DN0AH' time 3700 flag 1
+                else
+                    0ADF: add_text_label "Y_DN0A" text "~b~Shion: ~s~\"Warm sugar glaze... they throw the stale ones out back, Jo'on. We don't even have to pay.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DN0A' time 3600 flag 1
+                end
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DN0B" text "~y~Jo'on: ~s~\"Drenched in grease and sugar! Buy two dozen, but if you tell anyone I ate one, you're sleepin' outside!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DN0B' time 3600 flag 1
+                0001: wait 3600 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+
+            // Variant: Sprinkles & Jelly Filling
+            if
+                29@ == 1
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DN1A" text "~b~Shion: ~s~\"Chocolate crullers... if you buy me three of those, I'll carry your bags all week.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DN1A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                if
+                    11@ == 1
+                then
+                    0ADF: add_text_label "Y_DN1BH" text "~y~Jo'on: ~s~\"I'm buyin' a baker's dozen! Keep your blue flame away from the powdered sugar boxes!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DN1BH' time 3600 flag 1
+                else
+                    0ADF: add_text_label "Y_DN1B" text "~y~Jo'on: ~s~\"Watch the jelly filling, Shion! One drip on my sleeves and I'm chargin' you for dry-cleanin'!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DN1B' time 3600 flag 1
+                end
+                0001: wait 3600 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+        end
+    end
+end
+
+// =========================================================================
+// ZIP (Interior 18 - Country Club Polos & Linen)
+// =========================================================================
+if
+    28@ == 18
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 161.4620 -91.3940 1001.8050 radius 30.0
+    then
+        if
+            8039: not 15@ == 108
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_ZONE_INT
+            0A8C: write_memory 30@ size 4 value 108 virtual_protect 0
+            0209: 29@ = random_int_in_ranges 0 2
+
+            // Variant: Country Club Polos vs Mannequin Socks
+            if
+                29@ == 0
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_ZP0A" text "~y~Jo'on: ~s~\"Zip! Designer polo shirts and fancy linen pants! Now that's what I call dressin' down in style!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ZP0A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                if
+                    11@ == 1
+                then
+                    0ADF: add_text_label "Y_ZP0AH" text "~b~Shion: ~s~\"A single linen shirt on that rack costs more than an entire shack back home, sis...\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_ZP0AH' time 3700 flag 1
+                else
+                    0ADF: add_text_label "Y_ZP0B" text "~b~Shion: ~s~\"The mannequin's designer socks cost more than my entire wardrobe, sis...\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_ZP0B' time 3500 flag 1
+                end
+                0001: wait 3600 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+
+            // Variant: Golf Caddie Aesthetic
+            if
+                29@ == 1
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_ZP1A" text "~b~Shion: ~s~\"Why do rich folks pay hundreds of bucks to dress like golf caddies, Jo'on?\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ZP1A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_ZP1B" text "~y~Jo'on: ~s~\"Because rich snobs love lookin' like they own a country club! Take notes and fix your posture!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ZP1B' time 3600 flag 1
+                0001: wait 3600 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+        end
+    end
+end
+
+// =========================================================================
+// THE FOUR DRAGONS CASINO (Interior 10 - High Stakes & Triad Security)
+// =========================================================================
+if
+    28@ == 10
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2009.4140 1017.8990 994.4680 radius 80.0
+    then
+        if
+            8039: not 15@ == 109
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_ZONE_INT
+            0A8C: write_memory 30@ size 4 value 109 virtual_protect 0
+            0209: 29@ = random_int_in_ranges 0 2
+
+            // Variant: Syndicate Enforcers vs. Divine Bankruptcy
+            if
+                29@ == 0
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_4D0A" text "~y~Jo'on: ~s~\"The Four Dragons Casino! Endless tables, ringin' slots, and millions in untraceable chips!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_4D0A' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                if
+                    11@ == 1
+                then
+                    0ADF: add_text_label "Y_4D0AH" text "~b~Shion: ~s~\"The Triad guards in black suits are staring right at me... they look nervous, Jo'on.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_4D0AH' time 3700 flag 1
+                else
+                    0ADF: add_text_label "Y_4D0B" text "~b~Shion: ~s~\"The guys in black suits are glaring at my hoodie, Jo'on... they look like mob hitmen.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_4D0B' time 3700 flag 1
+                end
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_4D0C" text "~y~Jo'on: ~s~\"Ahaha! Let 'em glare! I'll be fleecin' this whole casino floor before security hits the door!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_4D0C' time 3700 flag 1
+                0001: wait 3700 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+
+            // Variant: Tanking the Floor Odds
+            if
+                29@ == 1
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_4D1A" text "~b~Shion: ~s~\"Every time I walk past a row of slot machines, the screens flicker and someone loses their jackpot...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_4D1A' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_4D1B" text "~y~Jo'on: ~s~\"That's exactly why I brought ya! Tank the odds on the floor so I can sweep the high-roller tables!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_4D1B' time 3700 flag 1
+                0001: wait 3700 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+        end
+    end
+end
+
+// =========================================================================
+// CALIGULA'S PALACE (Interior 1 - Roman Decadence & The Mafia Vault)
+// =========================================================================
+if
+    28@ == 1
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 2235.2524 1708.5146 1010.6129 radius 80.0
+    then
+        if
+            8039: not 15@ == 110
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_ZONE_INT
+            0A8C: write_memory 30@ size 4 value 110 virtual_protect 0
+            0209: 29@ = random_int_in_ranges 0 2
+
+            // Variant: Roman Extravagance & Pickpocketing Mobsters
+            if
+                29@ == 0
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_CAL0A" text "~y~Jo'on: ~s~\"Caligula's Palace! Real gold trim, Roman statues, and five-star luxury! Time to blow through a fortune!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_CAL0A' time 3800 flag 1
+                0001: wait 3800 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_CAL0B" text "~b~Shion: ~s~\"It's so crowded... I'm terrified I'll accidentally bump into a mobster and ruin his luck.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_CAL0B' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_CAL0C" text "~y~Jo'on: ~s~\"If you bump 'im, swipe his chips! High rollers ain't apologizin' to mob chumps!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_CAL0C' time 3700 flag 1
+                0001: wait 3700 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+
+            // Variant: Paranoia & The Vault Downstairs
+            if
+                29@ == 1
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_CAL1A" text "~b~Shion: ~s~\"There are so many security cameras on the ceiling, sis... I feel like we're being watched by hitmen.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_CAL1A' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                if
+                    11@ == 1
+                then
+                    0ADF: add_text_label "Y_CA1BH" text "~y~Jo'on: ~s~\"They're guardin' the vault downstairs! Float down through the ceiling and check the combination, Shion!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_CA1BH' time 3800 flag 1
+                else
+                    0ADF: add_text_label "Y_CAL1B" text "~y~Jo'on: ~s~\"They're just protectin' the vault downstairs! Makes me wanna crack it open and haul out the gold!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_CAL1B' time 3700 flag 1
+                end
+                0001: wait 3700 ms
+                0002: jump @Finalize_Ambient_Chat
+            end
+        end
+    end
+end
+
+// =========================================================================
+// ADULT NIGHTLIFE: STRIP CLUBS & BROTHELS
+// Handles Pig Pen, Jizzy's Pleasure Domes, Big Spread Ranch, and Brothels
+// =========================================================================
+0006: 26@ = 0
+
+if
+    28@ == 2
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 1213.4330 -6.6830 1000.9220 radius 35.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    28@ == 3
+then
+    if or
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos -2636.7190 1402.9170 906.4609 radius 45.0
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 940.6520 -18.4860 1000.9300 radius 25.0
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 967.5334 -53.0245 1001.1250 radius 25.0
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 1210.2570 -29.2986 1000.8790 radius 30.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    28@ == 6
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 744.2710 1437.2530 1102.7030 radius 30.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    26@ == 1
+then
+    if
+        8039: not 15@ == 111
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_LAST_ZONE_INT
+        0A8C: write_memory 30@ size 4 value 111 virtual_protect 0
+        0209: 29@ = random_int_in_ranges 0 2
+
+        // Variant: VIP Glamour & Extravagant Tipping
+        if
+            29@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_NL0A" text "~y~Jo'on: ~s~\"VIP private booths, neon lights, and dollar bills flyin' everywhere! Now this is where marks get loose!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_NL0A' time 3800 flag 1
+            0001: wait 3800 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_NL0BH" text "~b~Shion: ~s~\"Floating past the brass poles feels strange, Jo'on... people think I'm part of the stage lighting.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_NL0BH' time 3800 flag 1
+            else
+                0ADF: add_text_label "Y_NL0B" text "~b~Shion: ~s~\"The music's so loud, Jo'on... and why are all the dancers wearing less fabric than my ragged hoodie?\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_NL0B' time 3800 flag 1
+            end
+            0001: wait 3800 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_NL0CH" text "~y~Jo'on: ~s~\"Then bob to the beat! Stage lighting costs extra! Tip the dancers five grand so they treat us like VIPs!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_NL0CH' time 3800 flag 1
+            else
+                0ADF: add_text_label "Y_NL0C" text "~y~Jo'on: ~s~\"It's called stage glamour! Tip the girls five grand so they treat us like high-roller VIPs!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_NL0C' time 3600 flag 1
+            end
+            0001: wait 3800 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_NL0DH" text "~b~Shion: ~s~\"Five grand?! Even as a spirit, hearing that number's gonna give me a heart attack...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_NL0DH' time 3600 flag 1
+            else
+                0ADF: add_text_label "Y_NL0D" text "~b~Shion: ~s~\"Five grand?! Jo'on, that's enough to buy out a whole bakery for ten years...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_NL0D' time 3500 flag 1
+            end
+            0001: wait 3600 ms
+            0002: jump @Finalize_Ambient_Chat
+        end
+
+        // Variant: Shion's Disappointment & Distracted Mark Extortion
+        if
+            29@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_NL1AH" text "~b~Shion: ~s~\"...Even as a spirit, I'm disappointed in you, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_NL1AH' time 3000 flag 1
+            else
+                0ADF: add_text_label "Y_NL1A" text "~b~Shion: ~s~\"...I'm disappointed in you, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_NL1A' time 2800 flag 1
+            end
+            0001: wait 3000 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_NL1B" text "~y~Jo'on: ~s~\"WHAT?! Ya think I'm here for pleasure?! I'm doin' business! Marks in these joints are extra stupid!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_NL1B' time 3800 flag 1
+            0001: wait 3800 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_NL1CH" text "~b~Shion: ~s~\"Business...? You're just sitting on a velvet sofa watching dancers while I hover over their drinks.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_NL1CH' time 3800 flag 1
+            else
+                0ADF: add_text_label "Y_NL1C" text "~b~Shion: ~s~\"Business...? You're just sitting on a velvet sofa watching women dance around brass poles, sis.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_NL1C' time 3800 flag 1
+            end
+            0001: wait 3800 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_NL1DH" text "~y~Jo'on: ~s~\"Distracted marks leave wallets right on the tables! Float down and distract 'em while I strike!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_NL1DH' time 3800 flag 1
+            else
+                0ADF: add_text_label "Y_NL1D" text "~y~Jo'on: ~s~\"Distracted marks leave wallets right on the cocktail tables, dummy! Hush and watch me fleece 'em!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_NL1D' time 3800 flag 1
+            end
+            0001: wait 3800 ms
+            0002: jump @Finalize_Ambient_Chat
+        end
+    end
+end
+
+// =========================================================================
+// NIGHTCLUBS: THE CLUB / ALHAMBRA (Interior 17)
+// =========================================================================
+if
+    28@ == 17
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 493.4687 -23.0080 1000.6796 radius 35.0
+    then
+        if
+            8039: not 15@ == 113
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_ZONE_INT
+            0A8C: write_memory 30@ size 4 value 113 virtual_protect 0
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_CLB0A" text "~y~Jo'on: ~s~\"Alhambra! Moroccan tiles, disco lights, and overpriced cocktails! Time to tear up the dance floor!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CLB0A' time 3800 flag 1
+            0001: wait 3800 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_CL0BH" text "~b~Shion: ~s~\"The subwoofers are rattling right through me, Jo'on... lasers keep cutting across my face.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_CL0BH' time 3800 flag 1
+            else
+                0ADF: add_text_label "Y_CLB0B" text "~b~Shion: ~s~\"The bass is rattling my ribs, sis... and drinks here cost twenty dollars a cup.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_CLB0B' time 3600 flag 1
+            end
+            0001: wait 3800 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_CL0CH" text "~y~Jo'on: ~s~\"Then blend in with the strobe lights! Order a magnum of champagne and charge it to that chump at the bar!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_CL0CH' time 3800 flag 1
+            else
+                0ADF: add_text_label "Y_CLB0C" text "~y~Jo'on: ~s~\"Twenty bucks is chump change! Order a magnum of champagne and charge it to the guy at the bar!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_CLB0C' time 3700 flag 1
+            end
+            0001: wait 3800 ms
+            0002: jump @Finalize_Ambient_Chat
+        end
+    end
+end
+
+// =========================================================================
+// ADULT NOVELTIES: SEX SHOP (Interior 3)
+// =========================================================================
+if
+    28@ == 3
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos -106.7268 -19.6444 1000.7190 radius 25.0
+    then
+        if
+            8039: not 15@ == 112
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_ZONE_INT
+            0A8C: write_memory 30@ size 4 value 112 virtual_protect 0
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_SXS0A" text "~y~Jo'on: ~s~\"What kind of freak shop is this?! Rubber junk, leather whips, and neon trash?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SXS0A' time 3700 flag 1
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_SX0BH" text "~b~Shion: ~s~\"Look at all this purple rubber, Jo'on... good thing I don't have a head for you to smack with it.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_SX0BH' time 3800 flag 1
+            else
+                0ADF: add_text_label "Y_SXS0B" text "~b~Shion: ~s~\"Look at all this purple rubber, Jo'on... remember when you smacked me with one on the sidewalk?\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_SXS0B' time 3800 flag 1
+            end
+            0001: wait 3800 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_SX0CH" text "~y~Jo'on: ~s~\"Don't bring that up! Stop hoverin' over the leather aisle before someone thinks this place is cursed!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_SX0CH' time 3700 flag 1
+            else
+                0ADF: add_text_label "Y_SXS0C" text "~y~Jo'on: ~s~\"Shut up! Drop that nasty purple thing before someone looks over here!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_SXS0C' time 3600 flag 1
+            end
+            0001: wait 3700 ms
+            0002: jump @Finalize_Ambient_Chat
+        end
+    end
+end
+
+// =========================================================================
+// GYMS & DOJO TRAINING (Interiors 5, 6, 7)
+// Shion reveals her secret locker room hot shower / sauna habit
+// =========================================================================
+0006: 26@ = 0
+
+if
+    28@ == 5
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 768.0793 5.8606 1000.7160 radius 30.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    28@ == 6
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 774.0870 -47.9830 1000.5860 radius 30.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    28@ == 7
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 774.2430 -76.0090 1000.6540 radius 30.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    26@ == 1
+then
+    if
+        8039: not 15@ == 114
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_LAST_ZONE_INT
+        0A8C: write_memory 30@ size 4 value 114 virtual_protect 0
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_GYM0A" text "~y~Jo'on: ~s~\"Ugh! Smells like sweat, gym socks, and desperate losers! Liftin' iron weights is grunt work!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_GYM0A' time 3800 flag 1
+        0001: wait 3800 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_GY0BH" text "~b~Shion: ~s~\"Whenever you run off, I sneak into the locker rooms here to soak up the heat from their sauna vents.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_GY0BH' time 3800 flag 1
+        else
+            0ADF: add_text_label "Y_GYM0B" text "~b~Shion: ~s~\"Whenever you run off, I sneak into the locker rooms here just to use their free hot showers.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_GYM0B' time 3800 flag 1
+        end
+        0001: wait 3800 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_GY0CH" text "~y~Jo'on: ~s~\"YOU SNEAK INTO SAUNA VENTS?! Without payin' membership fees?! ...Actually, that's kinda smart.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_GY0CH' time 3800 flag 1
+        else
+            0ADF: add_text_label "Y_GYM0C" text "~y~Jo'on: ~s~\"YOU SNEAK IN FOR SHOWERS?! Without payin' membership fees?! ...Actually, that's kinda smart.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_GYM0C' time 3800 flag 1
+        end
+        0001: wait 3800 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_GY0DH" text "~b~Shion: ~s~\"Spirits don't need towels, sis. The hot steam keeps me toasty for hours.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_GY0DH' time 3600 flag 1
+        else
+            0ADF: add_text_label "Y_GYM0D" text "~b~Shion: ~s~\"They've got clean white towels in the bins too, sis. Feels like a five-star spa to me.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_GYM0D' time 3600 flag 1
+        end
+        0001: wait 3600 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// 24/7 CONVENIENCE STORES (Interiors 4, 6, 10, 16, 17, 18)
+// Roller food, microwave snacks, and premium behind-the-counter cartons
+// =========================================================================
+0006: 26@ = 0
+
+// Batch: Interiors 4, 6, 10
+if or
+    28@ == 4
+    28@ == 6
+    28@ == 10
+then
+    if or
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos -27.3769 -27.6416 1003.5570 radius 25.0
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos -26.7180 -55.9860 1003.5470 radius 25.0
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 6.0780 -28.6330 1003.5490 radius 25.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+// Batch: Interiors 16, 17, 18
+if or
+    28@ == 16
+    28@ == 17
+    28@ == 18
+then
+    if or
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos -25.3730 -139.6540 1003.5470 radius 25.0
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos -25.3930 -185.9110 1003.5470 radius 25.0
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos -30.9460 -89.6090 1003.5490 radius 25.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    26@ == 1
+then
+    if
+        8039: not 15@ == 115
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_LAST_ZONE_INT
+        0A8C: write_memory 30@ size 4 value 115 virtual_protect 0
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_CV0AH" text "~b~Shion: ~s~\"A 24-7... look at the heated roller. Too bad I don't have hands to eat a hot dog right now.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CV0AH' time 3800 flag 1
+        else
+            0ADF: add_text_label "Y_CVS0A" text "~b~Shion: ~s~\"They've got hot dogs on the rollers, Jo'on... let's buy two microwave burritos before we leave.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CVS0A' time 3800 flag 1
+        end
+        0001: wait 3800 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_CVS0B" text "~y~Jo'on: ~s~\"Greasy gas station junk! Check the locked rack behind the counter, grab the Redwood smokes!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CVS0B' time 3900 flag 1
+        0001: wait 3900 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_CV0CH" text "~b~Shion: ~s~\"Spirits can't carry cigarette cartons either, sis... but I can hover over the coffee maker and smell it.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CV0CH' time 3800 flag 1
+        else
+            0ADF: add_text_label "Y_CVS0C" text "~b~Shion: ~s~\"We came in here for food, Jo'on... can I at least heat up a spicy burrito in their microwave?\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CVS0C' time 3700 flag 1
+        end
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_CV0DH" text "~y~Jo'on: ~s~\"Don't fog up the glass pot! Slap a twenty on the counter and let's roll!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CV0DH' time 3500 flag 1
+        else
+            0ADF: add_text_label "Y_CVS0D" text "~y~Jo'on: ~s~\"Fine, nuke your cheap burrito! Slap a twenty on the counter and let's roll!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CVS0D' time 3500 flag 1
+        end
+        0001: wait 3500 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// VEHICLE MOD GARAGES: LOCO LOW CO, WHEEL ARCH ANGELS, TRANSFENDER
+// =========================================================================
+0006: 26@ = 0
+
+if
+    28@ == 1
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 621.7850 -12.5417 1000.9220 radius 30.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    28@ == 2
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 612.5910 -75.6370 997.9920 radius 30.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    28@ == 3
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 614.3889 -124.0991 997.9950 radius 30.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    26@ == 1
+then
+    if
+        8039: not 15@ == 116
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_LAST_ZONE_INT
+        0A8C: write_memory 30@ size 4 value 116 virtual_protect 0
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_MOD0A" text "~y~Jo'on: ~s~\"A tuning garage! Custom carbon hoods, pearlescent paint, and twin nitrous bottles!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_MOD0A' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_MOD0B" text "~b~Shion: ~s~\"A single set of chrome wire rims costs five thousand dollars, Jo'on... are we really spending that?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_MOD0B' time 3800 flag 1
+        0001: wait 3800 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_MOD0C" text "~y~Jo'on: ~s~\"Duh! If my ride don't turn heads at the casino valet, I ain't drivin' it! Gold platin' on everything!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_MOD0C' time 3800 flag 1
+        0001: wait 3800 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_MOD0D" text "~b~Shion: ~s~\"I just hope my bad luck doesn't cause the hydraulics to blow a seal on the driveway...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_MOD0D' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// POLICE STATIONS: LSPD, SFPD, LVPD & EL QUEBRADOS
+// =========================================================================
+0006: 26@ = 0
+
+if
+    28@ == 6
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 246.4510 65.5860 1003.6410 radius 35.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    28@ == 10
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 246.4410 112.1640 1003.2190 radius 35.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    28@ == 3
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 289.7703 171.7460 1007.1790 radius 35.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    28@ == 5
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 322.7200 306.4300 999.1500 radius 25.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    26@ == 1
+then
+    if
+        8039: not 15@ == 117
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_LAST_ZONE_INT
+        0A8C: write_memory 30@ size 4 value 117 virtual_protect 0
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_COP0A" text "~b~Shion: ~s~\"A police station?! Jo'on, there's cops with guns everywhere... we're wanted criminals.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_COP0A' time 3800 flag 1
+        0001: wait 3800 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_COP0B" text "~y~Jo'on: ~s~\"Act like ya belong here, idiot! Strut! Big shots don't get questioned by low-level beat cops!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_COP0B' time 3800 flag 1
+        0001: wait 3800 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_CP0CH" text "~b~Shion: ~s~\"The desk sergeant's reaching for his sidearm, looking straight over your shoulder at me...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CP0CH' time 3800 flag 1
+        else
+            0ADF: add_text_label "Y_COP0C" text "~b~Shion: ~s~\"The sergeant behind the desk's got his hand on his holster, looking straight at my eviction notices...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_COP0C' time 3800 flag 1
+        end
+        0001: wait 3800 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_CP0DH" text "~y~Jo'on: ~s~\"Tell 'im I'm talkin' to my lawyer! If he gets smart with me, I'll buy his badge and fire 'im!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CP0DH' time 3800 flag 1
+        else
+            0ADF: add_text_label "Y_COP0D" text "~y~Jo'on: ~s~\"Tell 'im we're here to bail out an associate! If he gets smart, I'll buy his badge and fire 'im!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_COP0D' time 3800 flag 1
+        end
+        0001: wait 3800 ms
+        0002: jump @Finalize_Ambient_Chat
+    end
+end
+
+
+// =========================================================================
+// TATTOO PARLORS (Interiors 3, 16, 17 - Tenshi Easter Egg & Henchman Ink)
+// =========================================================================
+0006: 26@ = 0
+
+if or
+    28@ == 3
+    28@ == 16
+    28@ == 17
+then
+    if or
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos -204.5580 -25.6970 1002.2730 radius 35.0
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos -204.4390 -43.6520 1002.2990 radius 35.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    26@ == 1
+then
+    if
+        8039: not 15@ == 118
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_LAST_ZONE_INT
+        0A8C: write_memory 30@ size 4 value 118 virtual_protect 0
+        0209: 29@ = random_int_in_ranges 0 2
+
+        // Variant: Tenshi Name Joke (Tenko vs Tenshi)
+        if
+            29@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_TAT0A" text "~y~Jo'on: ~s~\"How do ya read that heaven brat's name again? Tenko? I oughta tattoo it right on your butt, Shion!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_TAT0A' time 3900 flag 1
+            0001: wait 3900 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_TT0BH" text "~b~Shion: ~s~\"It's Tenshi... and I don't have a body right now, Jo'on. Ink wouldn't stick to a ghost.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_TT0BH' time 3900 flag 1
+                0001: wait 3900 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_TT0CH" text "~y~Jo'on: ~s~\"Then as soon as you're walkin' again, we're comin' back! Tell 'em to send the bill straight to Heaven!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_TT0CH' time 3800 flag 1
+                0001: wait 3800 ms
+            else
+                0ADF: add_text_label "Y_TAT0B" text "~b~Shion: ~s~\"It's Tenshi... please don't. I don't want needles stabbing me, and she'd never let it go.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_TAT0B' time 3800 flag 1
+                0001: wait 3800 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_TAT0C" text "~y~Jo'on: ~s~\"AHAHAHA! Imagine her face if ya mooned her from the ground! Tell the artist to make it huge!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_TAT0C' time 3800 flag 1
+                0001: wait 3800 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_TAT0D" text "~b~Shion: ~s~\"I would rather starve in a cardboard box, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_TAT0D' time 3200 flag 1
+                0001: wait 3200 ms
+            end
+            0002: jump @Finalize_Ambient_Chat
+        end
+
+        // Variant: Intimidating Henchman Ink vs Jo'on's Flawless Skin
+        if
+            29@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_TAT1A" text "~y~Jo'on: ~s~\"Every syndicate boss needs scary muscle! Get a giant snarling panther inked across your back, Shion!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_TAT1A' time 3900 flag 1
+            0001: wait 3900 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_TT1BH" text "~b~Shion: ~s~\"If you want scary ink so badly, why don't you get one yourself, Jo'on?\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_TT1BH' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_TT1CH" text "~y~Jo'on: ~s~\"Are you crazy?! Stab needles into my flawless designer skin?! That's what I brought a sister for!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_TT1CH' time 3900 flag 1
+                0001: wait 3900 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_TT1DH" text "~b~Shion: ~s~\"I'm floating around as a spirit, sis... so your bodyguard doesn't have a back anyway.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_TT1DH' time 3800 flag 1
+                0001: wait 3800 ms
+            else
+                0ADF: add_text_label "Y_TAT1B" text "~b~Shion: ~s~\"If you want scary ink so badly, why don't you get one yourself, Jo'on?\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_TAT1B' time 3700 flag 1
+                0001: wait 3700 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_TAT1C" text "~y~Jo'on: ~s~\"Are you crazy?! Stab needles into my flawless designer skin?! That's what I brought a sister for!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_TAT1C' time 3900 flag 1
+                0001: wait 3900 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_TAT1D" text "~b~Shion: ~s~\"I can barely lift a grocery bag, Jo'on... a panther tattoo won't make me look tough.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_TAT1D' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+            0002: jump @Finalize_Ambient_Chat
+        end
+    end
+end
+
+// =========================================================================
+// BARBERSHOPS (Interiors 2, 3, 12 - Twin Drills & Shaving Heads)
+// Reece's (Interior 2), Gay Gordo's (Interior 3), Macisla's (Interior 12)
+// =========================================================================
+0006: 26@ = 0
+
+if
+    28@ == 2
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 411.6259 -21.4332 1001.8046 radius 30.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    28@ == 3
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 418.6530 -82.6390 1001.8050 radius 30.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    28@ == 12
+then
+    if
+        0EEA: locate_char_distance_to_coordinates $PLAYER_ACTOR pos 411.6410 -51.8460 1001.8980 radius 30.0
+    then
+        0006: 26@ = 1
+    end
+end
+
+if
+    26@ == 1
+then
+    if
+        8039: not 15@ == 119
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_LAST_ZONE_INT
+        0A8C: write_memory 30@ size 4 value 119 virtual_protect 0
+        0209: 29@ = random_int_in_ranges 0 2
+
+        // Variant: Twin Drills vs Shaving Shion's Head
+        if
+            29@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_BAR0A" text "~y~Jo'on: ~s~\"Look at this place! Think this guy knows how to handle my designer twin drills without messin' up the volume?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_BAR0A' time 3900 flag 1
+            0001: wait 3900 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_BR0BH" text "~b~Shion: ~s~\"I don't have any hair right now, Jo'on... his scissors are just gonna cut empty air.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_BR0BH' time 3800 flag 1
+                0001: wait 3800 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_BR0CH" text "~y~Jo'on: ~s~\"Good! Let 'im sweat! I'll charge 'im three grand to clear the curse, then blow it on luxury salon spray!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_BR0CH' time 3900 flag 1
+                0001: wait 3900 ms
+            else
+                0ADF: add_text_label "Y_BAR0B" text "~b~Shion: ~s~\"My hair's completely tangled and full of dust, Jo'on... maybe I should just let him shave it all off.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_BAR0B' time 3800 flag 1
+                0001: wait 3800 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_BAR0C" text "~y~Jo'on: ~s~\"Don't you dare touch a razor! Your messy vagrant hair makes my luxury styling pop! It's called contrast!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_BAR0C' time 3900 flag 1
+                0001: wait 3900 ms
+                0050: gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_BAR0D" text "~b~Shion: ~s~\"You're only keeping my hair around so you look richer by comparison...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_BAR0D' time 3600 flag 1
+                0001: wait 3600 ms
+            end
+            0002: jump @Finalize_Ambient_Chat
+        end
+
+        // Variant: Haircut Prices & Tonic Sniffing
+        if
+            29@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_BAR1A" text "~y~Jo'on: ~s~\"Fifty bucks for a fade?! What kind of back-alley chop shop is this?! Where's the imported salon shampoo?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_BAR1A' time 3900 flag 1
+            0001: wait 3900 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_BAR1B" text "~b~Shion: ~s~\"Fifty bucks is a lot of food, Jo'on... but that green hair tonic on the shelf smells nice.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_BAR1B' time 3800 flag 1
+            0001: wait 3800 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_BAR1C" text "~y~Jo'on: ~s~\"That's cheap rubbing alcohol, dummy! Don't you dare drink that! Keep your hands off the barber chair!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_BAR1C' time 3900 flag 1
+            0001: wait 3900 ms
+            0002: jump @Finalize_Ambient_Chat
+        end
+    end
+end
+
+// =========================================================================
+// SAFEHOUSE SPECIFIC INTERIOR BANTER
+// Checks tracked entry point from Shared Variable
+// =========================================================================
+0085: 30@ = 31@
+000A: 30@ += MEM_SAFEHOUSE_DOOR_ID
+0A8D: 12@ = read_memory 30@ size 4 virtual_protect 0
+if
+    12@ > 0
+then
+    0085: 27@ = 12@
+    000A: 27@ += 200
+    if
+        803B: not 15@ == 27@
+    then
+        0085: 15@ = 27@
+        0085: 30@ = 31@
+        000A: 30@ += MEM_LAST_ZONE_INT
+        0A8C: write_memory 30@ size 4 value 15@ virtual_protect 0
+        0050: gosub @Dispatch_Safehouse_Dialogue
+        0002: jump @Finalize_Ambient_Chat
+    end
+end
+
+// =========================================================================
+// FALLBACK: IF ALREADY SPOKEN OR UNMAPPED INTERIOR, FALL TO INDOOR IDLE!
+// =========================================================================
+// Cleanly release Tier 2 lock so chatIdle can claim it without getting blocked!
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0A92: create_custom_thread "Shion\Chat\chatIdle.c" 10@
+0A93: terminate_this_custom_script
+
+// =========================================================================
+// SUBROUTINE: DISPATCH SAFEHOUSE DIALOGUE
+// Delivers banter tailored to the exterior reality of the safehouse
+// =========================================================================
+:Dispatch_Safehouse_Dialogue
+
+// Ganton: Johnson House
+if
+    12@ == 19
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH19A" text "~b~Shion: ~s~\"Grove Street's cozy, Jo'on... but everyone outside's holding pistols.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH19A' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    if
+        11@ == 1
+    then
+        0ADF: add_text_label "Y_S19BH" text "~y~Jo'on: ~s~\"It's gang turf, Shion! Thugs runnin' the whole block! Keep your ghost embers off my couch!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_S19BH' time 3800 flag 1
+    else
+        0ADF: add_text_label "Y_SH19B" text "~y~Jo'on: ~s~\"It's gang turf, Shion! Thugs runnin' the whole block! Keep your filthy hands off my couch!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SH19B' time 3800 flag 1
+    end
+    0001: wait 3800 ms
+    0051: return
+end
+
+// Mulholland: Madd Dogg's Mansion
+if
+    12@ == 21
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH21A" text "~y~Jo'on: ~s~\"Madd Dogg's mansion! Helipad, indoor pool, and arcade cabinets! THIS is livin'!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH21A' time 3800 flag 1
+    0001: wait 3800 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH21B" text "~b~Shion: ~s~\"It's so huge I got lost looking for the kitchen, sis... do we really own all this?\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH21B' time 3800 flag 1
+    0001: wait 3800 ms
+    0051: return
+end
+
+// Santa Maria Beach
+if
+    12@ == 23
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH23A" text "~b~Shion: ~s~\"Can hear the ocean from the window... at least the boardwalk dumpsters are close by.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH23A' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    if
+        11@ == 1
+    then
+        0ADF: add_text_label "Y_S23BH" text "~y~Jo'on: ~s~\"Oceanfront real estate, Shion! Prime luxury! At least as a spirit you won't track beach sand on my rugs.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_S23BH' time 3900 flag 1
+    else
+        0ADF: add_text_label "Y_SH23B" text "~y~Jo'on: ~s~\"Oceanfront real estate, Shion! Prime luxury! Just don't track wet beach sand on my rugs.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SH23B' time 3900 flag 1
+    end
+    0001: wait 3900 ms
+    0051: return
+end
+
+// Jefferson Motel
+if
+    12@ == 20
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH20A" text "~b~Shion: ~s~\"Cheap motel carpet and peeling wallpaper... honestly, I feel right at home here.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH20A' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH20B" text "~y~Jo'on: ~s~\"I feel like I'm catchin' fleas! We're only sleepin' here until the police heat dies down!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH20B' time 3900 flag 1
+    0001: wait 3900 ms
+    0051: return
+end
+
+// Verdant Bluffs: El Corona
+if
+    12@ == 24
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH24A" text "~y~Jo'on: ~s~\"Train tracks right outside the window! The whole house shakes every twenty minutes!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH24A' time 3800 flag 1
+    0001: wait 3800 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH24B" text "~b~Shion: ~s~\"The rumbling feels like a massage chair, Jo'on... and nobody charges us for it.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH24B' time 3700 flag 1
+    0001: wait 3700 ms
+    0051: return
+end
+
+// Calton Heights
+if
+    12@ == 27
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH27A" text "~y~Jo'on: ~s~\"Calton Heights! Loaded neighbors ripe for the fleecin'! Now this is proper San Fierro prestige!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH27A' time 3800 flag 1
+    0001: wait 3800 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH27B" text "~b~Shion: ~s~\"Walking up these steep hills is exhausting, sis... but the fireplace is warm.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH27B' time 3600 flag 1
+    0001: wait 3600 ms
+    0051: return
+end
+
+// Doherty
+if
+    12@ == 29
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH29A" text "~b~Shion: ~s~\"The garage apartment smells like motor oil and welding fumes, Jo'on...\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH29A' time 3500 flag 1
+    0001: wait 3500 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH29B" text "~y~Jo'on: ~s~\"That's the smell of fast money! Street racers pay top dollar for custom work!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH29B' time 3600 flag 1
+    0001: wait 3600 ms
+    0051: return
+end
+
+// Paradiso
+if
+    12@ == 31
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH31A" text "~y~Jo'on: ~s~\"Paradiso! Million-dollar estates! Look at all these rich chumps waitin' to get fleeced!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH31A' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    if
+        11@ == 1
+    then
+        0ADF: add_text_label "Y_S31BH" text "~b~Shion: ~s~\"The neighbors are staring at a floating blue ghost over the hedge... please don't let their dogs out.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_S31BH' time 3900 flag 1
+    else
+        0ADF: add_text_label "Y_SH31B" text "~b~Shion: ~s~\"The neighbors are staring at my ragged hoodie over the hedge... please don't let their dogs out.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SH31B' time 3900 flag 1
+    end
+    0001: wait 3900 ms
+    0051: return
+end
+
+// Hashbury
+if
+    12@ == 30
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH30A" text "~b~Shion: ~s~\"Whole place smells like weird grass and incense... got any instant noodles, sis?\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH30A' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH30B" text "~y~Jo'on: ~s~\"Smells like broke hippies! If someone offers me herbal tea instead of champagne, I'm out!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH30B' time 3900 flag 1
+    0001: wait 3900 ms
+    0051: return
+end
+
+// Chinatown SF
+if
+    12@ == 28
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH28A" text "~b~Shion: ~s~\"I can smell roast duck and steamed buns from the alleyway below, Jo'on...\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH28A' time 3500 flag 1
+    0001: wait 3500 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH28B" text "~y~Jo'on: ~s~\"Triad territory! Gold dragons on the roof and cash flowin' under the table!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH28B' time 3600 flag 1
+    0001: wait 3600 ms
+    0051: return
+end
+
+// The Strip Casino Hotel Suites: Clown's Pocket, Camel's Toe, Pirates
+if or
+    12@ == 10
+    12@ == 11
+    12@ == 14
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SHTSA" text "~y~Jo'on: ~s~\"Casino hotel suite on The Strip! Velvet curtains, room service, and slots downstairs!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SHTSA' time 3800 flag 1
+    0001: wait 3800 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SHTSB" text "~b~Shion: ~s~\"The neon lights outside are flashing red and green all night... my eyes hurt, Jo'on.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SHTSB' time 3700 flag 1
+    0001: wait 3700 ms
+    0051: return
+end
+
+// Prickle Pine
+if
+    12@ == 15
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH15A" text "~y~Jo'on: ~s~\"Prickle Pine! High-society Las Venturas estates! Gated driveways and golf courses!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH15A' time 3800 flag 1
+    0001: wait 3800 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH15B" text "~b~Shion: ~s~\"Even the hedges look expensive... my bad luck's probably gonna rot the lawn by tomorrow.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH15B' time 3800 flag 1
+    0001: wait 3800 ms
+    0051: return
+end
+
+// Verdant Meadows Airstrip
+if
+    12@ == 9
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH09A" text "~b~Shion: ~s~\"An abandoned control tower in the middle of the desert... just dry wind and sand.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH09A' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SH09B" text "~y~Jo'on: ~s~\"A private airstrip, idiot! Smuggler planes and dirty cash! We own the whole runway!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SH09B' time 3800 flag 1
+    0001: wait 3800 ms
+    0051: return
+end
+
+// Angel Pine & Whetstone
+if or
+    12@ == 1
+    12@ == 5
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SHWHA" text "~b~Shion: ~s~\"Middle of the woods... nobody around to chase us off, but there's nothing to eat out here.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SHWHA' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SHWHB" text "~y~Jo'on: ~s~\"It's freezin' and there ain't a boutique for fifty miles! We're hidin' out in the sticks!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SHWHB' time 3900 flag 1
+    0001: wait 3900 ms
+    0051: return
+end
+
+// Desert Outposts: Fort Carson, El Quebrados, Tierra Robada
+if or
+    12@ == 6
+    12@ == 7
+    12@ == 8
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SHDSA" text "~b~Shion: ~s~\"Screen door's rattling from the wind... sand's getting into everything, Jo'on.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SHDSA' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SHDSB" text "~y~Jo'on: ~s~\"Dust in my eyelashes! As soon as the sun rises, we're drivin' back to Las Venturas!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SHDSB' time 3800 flag 1
+    0001: wait 3800 ms
+    0051: return
+end
+
+// Countryside Towns: Blueberry, Dillimore, Palomino Creek
+if or
+    12@ == 2
+    12@ == 3
+    12@ == 4
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SHCTA" text "~b~Shion: ~s~\"Someone left an apple pie on the porch sill... mind if I eat the whole thing, sis?\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SHCTA' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SHCTB" text "~y~Jo'on: ~s~\"Country livin' is borin'! If there ain't a bank to rob, what's the point of stayin'?\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SHCTB' time 3800 flag 1
+    0001: wait 3800 ms
+    0051: return
+end
+
+// Las Venturas Suburban Residences: Creek, Old Strip, Redsands, Rockshore, Whitewood
+if or
+    12@ == 12
+    12@ == 13
+    12@ == 16
+    12@ == 17
+    12@ == 18
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SHLVA" text "~y~Jo'on: ~s~\"Another Las Venturas property secured! We're buyin' up the whole desert map!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SHLVA' time 3700 flag 1
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SHLVB" text "~b~Shion: ~s~\"Roof over our heads and a fridge full of food... you're still buying dinner tonight, right?\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SHLVB' time 3700 flag 1
+    0001: wait 3700 ms
+    0051: return
+end
+
+// Mulholland Safehouse: Hillside Villa & Backyard Pool
+if
+    12@ == 22
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    if
+        11@ == 1
+    then
+        0ADF: add_text_label "Y_S22AH" text "~b~Shion: ~s~\"At least as a spirit I don't track mud inside, Jo'on... so you don't have to hose me down.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_S22AH' time 3800 flag 1
+    else
+        0ADF: add_text_label "Y_SH22A" text "~b~Shion: ~s~\"I'm clean, Jo'on... I take showers at the gym and rinse off at the beach.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SH22A' time 3700 flag 1
+    end
+    0001: wait 3700 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    if
+        11@ == 1
+    then
+        0ADF: add_text_label "Y_S22BH" text "~y~Jo'on: ~s~\"Damn right! If ya had physical feet, you'd be out in the backyard gettin' power-washed!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_S22BH' time 3800 flag 1
+    else
+        0ADF: add_text_label "Y_SH22B" text "~y~Jo'on: ~s~\"Not up to my VIP standards! Out to the backyard right now! I'm grabbin' the garden hose!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SH22B' time 3800 flag 1
+    end
+    0001: wait 3800 ms
+    0051: return
+end
+
+// Remaining Los Santos & San Fierro Residences: Verona Beach, Willowfield, Queens
+if or
+    12@ == 25
+    12@ == 26
+    12@ == 32
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SHLSA" text "~y~Jo'on: ~s~\"Another safehouse in our empire! No landlord in this state can touch us!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SHLSA' time 3600 flag 1
+    0001: wait 3600 ms
+    0050: gosub @Check_Alive_Or_Exit
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_SHLSB" text "~b~Shion: ~s~\"It's dry and nobody's shooting through the door. Let me crash on the rug for a few hours.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SHLSB' time 3500 flag 1
+    0001: wait 3500 ms
+    0051: return
+end
+
+0051: return
+
+// =========================================================================
+// SUBROUTINE: SAFETY BAILOUT
+// =========================================================================
+:Check_Alive_Or_Exit
+if or
+    8256: not player $PLAYER_CHAR defined
+    0E25: is_on_cutscene
+    0EB7: is_on_scripted_cutscene
+then
+    03EB: clear_small_messages_only
+    0002: jump @Finalize_Ambient_Chat
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
+if or
+    0118: actor $PLAYER_ACTOR dead
+    0741: actor $PLAYER_ACTOR busted
+then
+    03EB: clear_small_messages_only
+    0002: jump @Finalize_Ambient_Chat
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    2@ == 0
+then
+    03EB: clear_small_messages_only
+    0002: jump @Finalize_Ambient_Chat
+end
+
+if
+    2@ > 0
+then
+    if
+        856D: not actor 2@ defined
+    then
+        03EB: clear_small_messages_only
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    if
+        0118: actor 2@ dead
+    then
+        03EB: clear_small_messages_only
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    // Verify physical Shion is in the interior room within 35 meters
+    if
+        8EE4: not locate_char_distance_to_char $PLAYER_ACTOR char 2@ radius 35.0
+    then
+        03EB: clear_small_messages_only
+        0002: jump @Finalize_Ambient_Chat
+    end
+end
+0051: return
+
+:Finalize_Ambient_Chat
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
+if
+    19@ == 2
+then
+    03EB: clear_small_messages_only
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+0A93: terminate_this_custom_script

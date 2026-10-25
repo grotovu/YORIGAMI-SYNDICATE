@@ -1,0 +1,498 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+script_name "Y_Mark"
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (SKINNED FOR Y_MARK)
+// =========================================================================
+const
+    MEM_SAVE_SLOT = 0
+    MEM_ALLOC_SHAKEDOWN = 52
+    MEM_SHION_HANDLE = 116
+    MEM_LAST_EXTORTED_PED = 204
+    MEM_ACTIVE_MARK = 344
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    31@ == 0
+then
+    goto @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// Reset active mark handle in master heap on startup
+0085: 30@ = 31@
+000A: 30@ += MEM_ACTIVE_MARK
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+1@ = -999
+10@ = 0 // Active Mark Actor Handle (0 = none)
+11@ = 0 // Active Mark Radar Marker Handle
+12@ = 0 // Active Mark Attached Particle Handle
+TIMERA = 0 // Spawn Pacing Timer
+
+// Register GXT Text Labels once at startup to avoid runtime buffer bloat
+0ADF: add_text_label "Y_MSPT" text "~y~HIGH-ROLLER SPOTTED~n~~w~TRACK ON RADAR"
+0ADF: add_text_label "Y_MEXT" text "~y~HIGH-ROLLER EXTORTED~n~~g~+$~1~ ~b~(+~1~ RESPECT)"
+0ADF: add_text_label "Y_MKILL" text "~y~HIGH-ROLLER ELIMINATED~n~~g~+$~1~ LOOT"
+0ADF: add_text_label "Y_MESC" text "~r~MARK ESCAPED~n~~w~TARGET SLIPPED AWAY"
+
+:YMark_StartupWait
+wait 250
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @YMark_StartupWait
+end
+
+:YMark_Loop
+wait 100
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @YMark_Loop
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
+// Check if Save Slot Changed
+0085: 30@ = 31@
+000A: 30@ += MEM_SAVE_SLOT
+0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+if
+    803B: not 0@ == 1@
+then
+    gosub @YMark_ReloadSettings
+end
+
+// Read Live Allocated Points in Street Shakedown (Jo'on Perk)
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_SHAKEDOWN
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+
+// -------------------------------------------------------------------------
+// ACTIVE MARK MONITOR (Track, Loot, Escape & Clean Particle Teardown)
+// -------------------------------------------------------------------------
+if
+    0019: 10@ > 0
+then
+    // If player starts ANY mission, cancel active mark and clean up particle
+    if
+        0E1D: is_on_mission
+    then
+        gosub @Cleanup_Mark
+        goto @YMark_Loop
+    end
+
+    if
+        056D: actor 10@ defined
+    then
+        00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
+        00A0: store_actor 10@ position_to 23@ 24@ 25@
+        050A: 26@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 23@ 24@ 25@
+
+        // Fetch last extorted ped to provide a fail-soft trigger if animation window is missed
+        0085: 30@ = 31@
+        000A: 30@ += MEM_LAST_EXTORTED_PED
+        0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+
+        // CASE A: MARK WAS EXTORTED! (Performing Surrender Animation or Handled by Shakedown)
+        if and
+            8118: not actor 10@ dead
+        then
+            if or
+                0611: actor 10@ performing_animation "SHP_Rob_React"
+                003B: 10@ == 16@
+            then
+                gosub @Calculate_Jackpot_Cash
+
+                // Spawn Extra Jackpot Cash Pickups at Mark's feet (Elevate Z-axis 25@)
+                000B: 25@ += 0.3
+                02E1: 0@ = create_cash_pickup 18@ at 23@ 24@ 25@ permanence_flag 0
+
+                // Award Respect
+                0653: 27@ = float_stat 64
+                0093: 28@ = integer 9@ to_float
+                005B: 27@ += 28@
+                if
+                    0021: 27@ > 1000.0
+                then
+                    27@ = 1000.0
+                end
+                062A: change_float_stat 64 to 27@
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                036D: show_text_2numbers_styled GXT 'Y_MEXT' numbers 18@ 9@ time 3000 style 5
+
+                // Clean up Marker & Particle
+                if
+                    0019: 11@ > 0
+                then
+                    0164: disable_marker 11@
+                    11@ = 0
+                end
+                if
+                    0019: 12@ > 0
+                then
+                    064E: stop_particle 12@
+                    0650: destroy_particle 12@
+                    064F: remove_references_to_particle 12@
+                    12@ = 0
+                end
+
+                10@ = 0
+                0085: 30@ = 31@
+                000A: 30@ += MEM_ACTIVE_MARK
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                TIMERA = 0
+                0209: 14@ = random_int_in_ranges 4@ 5@
+                goto @YMark_Loop
+            end
+        end
+
+        // CASE B: MARK WAS KILLED!
+        if
+            0118: actor 10@ dead
+        then
+            gosub @Calculate_Jackpot_Cash
+
+            // Grab ground coordinates of the corpse
+            04A5: get_dead_actor_pickup_coords 10@ store_to 23@ 24@ 25@
+
+            // Drop Jackpot Cash on corpse
+            02E1: 0@ = create_cash_pickup 18@ at 23@ 24@ 25@ permanence_flag 0
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            01E3: show_text_1number_styled GXT 'Y_MKILL' number 18@ time 3000 style 5
+
+            gosub @Cleanup_Mark
+            goto @YMark_Loop
+        end
+
+        // CASE C: MARK ESCAPED (Timed out or player moved > 150m away)
+        0085: 15@ = TIMERB
+        if or
+            002D: 15@ >= 13@
+            0021: 26@ > 150.0
+        then
+            gosub @Cleanup_Mark
+            00BA: show_text_styled GXT 'Y_MESC' time 2500 style 5
+            goto @YMark_Loop
+        end
+    else
+        // Mark despawned unexpectedly
+        gosub @Cleanup_Mark
+        goto @YMark_Loop
+    end
+end
+
+// -------------------------------------------------------------------------
+// SPAWN NEW HIGH-ROLLER MARK (Randomized Pacing in Free-Roam Outdoors)
+// -------------------------------------------------------------------------
+if
+    0039: 3@ == 0
+then
+    if
+        0019: 10@ > 0
+    then
+        gosub @Cleanup_Mark
+    end
+end
+
+// Fetch true player interior directly into scratch 15@
+09E8: 15@ = actor $PLAYER_ACTOR active_interior
+
+if and
+    0039: 3@ == 1                         // Feature enabled in INI
+    0019: 2@ > 0                          // Has points in Shakedown
+    0039: 10@ == 0                        // No active mark right now
+    0039: 15@ == 0                        // Must be outdoors on the street
+    816B: not fading
+    8E1D: not is_on_mission               // Strictly Free-Roam
+then
+    0085: 15@ = TIMERA
+    if
+        002D: 15@ >= 14@
+    then
+        00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
+        15@ = 0
+
+        :Scan_For_Candidate
+        0AE1: 29@ = random_char_near_point 20@ 21@ 22@ in_radius 75.0 find_next 15@ pass_deads 1
+        if
+            29@ > 0
+        then
+            15@ = 1
+            gosub @Evaluate_Candidate_Ped
+            if
+                17@ == 1
+            then
+                goto @YMark_Loop
+            end
+            goto @Scan_For_Candidate
+        end
+
+        // No valid candidates in area: reset timer and retry in 3 seconds
+        TIMERA = 0
+        14@ = 3000
+    end
+end
+
+goto @YMark_Loop
+
+
+// =========================================================================
+// SUBROUTINES
+// =========================================================================
+
+// --- CANDIDATE EVALUATION SUBROUTINE ---
+:Evaluate_Candidate_Ped
+17@ = 0 // Acceptance flag (0 = Reject, 1 = Accept)
+
+if or
+    856D: not actor 29@ defined
+    0118: actor 29@ dead
+    07D6: 29@ == $PLAYER_ACTOR
+then
+    return
+end
+
+// Get Ped Model
+0665: get_actor 29@ model_to 28@
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+
+// Ignore Special Actors (Models 290 to 299: Shion, Tenpenny, Smoke)
+if and
+    04B5: 28@ >= 290
+    04B7: 299 >= 28@
+then
+    return
+end
+
+// Ignore Shion by Handle
+if
+    003B: 29@ == 27@
+then
+    return
+end
+
+// Ignore Cops & Players
+089F: get_actor 29@ pedtype_to 28@
+if or
+    0039: 28@ == 6
+    0039: 28@ == 0
+then
+    return
+end
+
+// Ignore Federal Law Enforcement (SWAT, FBI, Army)
+if and
+    04B5: 28@ >= 27
+    04B7: 29 >= 28@
+then
+    return
+end
+
+// Ignore Recently Extorted Ped
+0085: 30@ = 31@
+000A: 30@ += MEM_LAST_EXTORTED_PED
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    003B: 29@ == 16@
+then
+    return
+end
+
+// Ignore Entourage Members
+07AF: 27@ = player $PLAYER_CHAR group
+if
+    06EE: actor 29@ in_group 27@
+then
+    return
+end
+
+// Must be strictly on foot outdoors
+if
+    0449: actor 29@ in_a_car
+then
+    return
+end
+
+// Must not be in water
+if
+    04AD: actor 29@ in_water
+then
+    return
+end
+
+// --- CANDIDATE ACCEPTED! SETUP BEACON ---
+0085: 10@ = 29@
+0E0B: mark_char_as_needed 10@
+0085: 30@ = 31@
+000A: 30@ += MEM_ACTIVE_MARK
+0A8C: write_memory 30@ size 4 value 10@ virtual_protect 0
+
+// Radar Blip
+0187: 11@ = create_marker_above_actor 10@
+0165: set_marker 11@ color_to 4
+0168: set_marker 11@ size 3
+018B: set_marker 11@ radar_mode 2
+
+// Attach Golden Glitter Fountain directly to their head
+0669: 12@ = attach_particle "smoke_flare" to_actor 10@ with_offset 0.0 0.0 1.1 type 1
+064C: make_particle 12@ visible
+
+TIMERB = 0
+TIMERA = 0
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+00BA: show_text_styled GXT 'Y_MSPT' time 2500 style 5
+
+17@ = 1
+return
+
+// --- RELOAD SETTINGS ---
+:YMark_ReloadSettings
+0085: 1@ = 0@
+
+0AF0: 3@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "EnableHighRollerMarks"
+if
+    3@ < 0
+then
+    3@ = 1
+end
+
+0AF0: 4@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "MarkSpawnMinSeconds"
+if
+    4@ <= 0
+then
+    4@ = 45
+end
+0012: 4@ *= 1000
+
+0AF0: 5@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "MarkSpawnMaxSeconds"
+if
+    5@ <= 0
+then
+    5@ = 180
+end
+0012: 5@ *= 1000
+
+// Ensure Max is strictly greater than Min to prevent modulo-by-zero crash
+if
+    002D: 4@ >= 5@
+then
+    0085: 5@ = 4@
+    000A: 5@ += 30000
+end
+
+// Roll initial random spawn delay
+0209: 14@ = random_int_in_ranges 4@ 5@
+
+0AF0: 13@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "MarkEscapeTimeoutSeconds"
+if
+    13@ <= 0
+then
+    13@ = 60
+end
+0012: 13@ *= 1000
+
+0AF0: 6@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "BaseJackpotCash"
+if
+    6@ <= 0
+then
+    6@ = 2500
+end
+
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "JackpotCashPerPoint"
+if
+    7@ <= 0
+then
+    7@ = 75
+end
+
+0AF0: 8@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "MaxJackpotCashCap"
+if
+    8@ <= 0
+then
+    8@ = 10000
+end
+
+0AF0: 9@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Shakedown" key "MarkRespectBonus"
+if
+    9@ <= 0
+then
+    9@ = 25
+end
+return
+
+:Calculate_Jackpot_Cash
+// Base + (Points * BonusPerPoint)
+0085: 18@ = 6@
+0085: 19@ = 2@
+006A: 19@ *= 7@
+005A: 18@ += 19@
+
+if
+    001D: 18@ > 8@
+then
+    0085: 18@ = 8@
+end
+return
+
+:Cleanup_Mark
+// Disable Radar Blip
+if
+    11@ > 0
+then
+    0164: disable_marker 11@
+    11@ = 0
+end
+
+// Complete Particle Teardown
+if
+    12@ > 0
+then
+    064E: stop_particle 12@
+    0650: destroy_particle 12@
+    064F: remove_references_to_particle 12@
+    12@ = 0
+end
+
+// Release Actor Reference safely if still defined
+if
+    10@ > 0
+then
+    if
+        056D: actor 10@ defined
+    then
+        01C2: remove_references_to_actor 10@
+    end
+    10@ = 0
+    0085: 30@ = 31@
+    000A: 30@ += MEM_ACTIVE_MARK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+
+TIMERA = 0
+0209: 14@ = random_int_in_ranges 4@ 5@
+return

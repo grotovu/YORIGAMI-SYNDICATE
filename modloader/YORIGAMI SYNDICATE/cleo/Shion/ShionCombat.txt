@@ -1,0 +1,1071 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+{$USE ini}
+
+0000: NOP
+script_name "Sh_Cmbt"
+
+// Save incoming actor handle argument
+0085: 10@ = 0@
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (SKIMMED FOR COMBAT SUBSYSTEM)
+// =========================================================================
+const
+    MEM_DURGASTRA_FLAG = 72       // Limitless Debt Cheat Flag
+    MEM_SHION_HANDLE = 116        // Shion Entity Handle
+    MEM_SHION_STANCE = 120        // Stance (0 = Peaceful, 1 = Hostile)
+    MEM_SHION_WEAPON_ID = 124     // Tracked Weapon ID
+    MEM_COMBAT_RES_MODE = 132     // 0 = Wallet Drain, 1 = Gear Swap
+    MEM_SHION_KILLS = 236         // Ledger: Total Shion Kills
+    MEM_JOON_KILLS_W_SHION = 296  // Ledger: Total Jo'on Kills with Shion
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// --- INITIALIZATION ---
+1@ = 0 // Last Killed Ped by Shion (Deduplication Tracker)
+0652: 2@ = integer_stat 121 // Tracked Player Kills Stat Baseline
+3@ = 0 // Initialize Damage Callback Recursion Lock to 0
+7@ = 0 // Aviation Scan Timer (ms)
+14@ = 0 // Tracked Ammo Buffer
+15@ = 34 // Tracked Weapon ID
+16@ = 0 // Cost Per Shot
+
+TIMERA = 0 // Misfortune Aura Timer
+TIMERB = 0 // Traffic Hex Timer
+
+// Register Dedicated Damage Event specifically for Shion (Receiving damaged char in 11@)
+0EDE: set_script_event_char_damage 1 @OnShionDamage 11@
+
+gosub @Load_Combat_Config
+
+// Initialize starting ammo buffer if armed (Safe for Hitodama)
+if and
+    10@ > 0
+    056D: actor 10@ defined
+then
+    0470: 25@ = actor 10@ current_weapon
+    if
+        25@ > 1
+    then
+        0085: 15@ = 25@
+        041A: 14@ = actor 10@ weapon 15@ ammo
+    end
+end
+
+:ShionCombat_Loop
+wait 50
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @ShionCombat_Loop
+end
+
+// =========================================================================
+// CHEAT LISTENER: "DURGASTRA" (Limitless Debt Protocol)
+// =========================================================================
+if
+    0ADC: test_cheat "DURGASTRA"
+then
+    gosub @Toggle_Durgastra_Mode
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+// Terminate only if completely dismissed or lost (0)
+if
+    10@ == 0
+then
+    0A93: terminate_this_custom_script
+end
+
+// If in Solid Ped form, check death safely
+if
+    10@ > 0
+then
+    if or
+        856D: not actor 10@ defined
+        0118: actor 10@ dead
+    then
+        0A93: terminate_this_custom_script
+    end
+end
+
+// Synchronize Stance State (0 = Peaceful, 1 = Hostile)
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_STANCE
+0A8D: 8@ = read_memory 30@ size 4 virtual_protect 0
+
+// =========================================================================
+// LIVE COMBAT KILL TRACKER (Strictly while Shion is in the party)
+// =========================================================================
+// Check if Shion is active in the party (Physical >0 OR Hitodama -1)
+28@ = 0
+if
+    10@ == -1
+then
+    28@ = 1
+else
+    if
+        10@ > 0
+    then
+        if and
+            056D: actor 10@ defined
+            8118: not actor 10@ dead
+        then
+            28@ = 1
+        end
+    end
+end
+
+if
+    28@ == 1
+then
+    // Track Shion's kills (Physical Armed Form Only)
+    if and
+        10@ > 0
+        8@ == 1 // Hostile stance
+    then
+        0E44: get_char_kill_target_char 10@ store_to 0@
+        if
+            0@ > 0
+        then
+            if and
+                056D: actor 0@ defined
+                0118: actor 0@ dead
+            then
+                if
+                    803B: not 0@ == 1@
+                then
+                    0085: 1@ = 0@
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_SHION_KILLS
+                    0A8D: 23@ = read_memory 30@ size 4 virtual_protect 0
+                    000A: 23@ += 1
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_SHION_KILLS
+                    0A8C: write_memory 30@ size 4 value 23@ virtual_protect 0
+                end
+            end
+        end
+    end
+
+    // Track Jo'on's kills with Shion (Native Stat 121: Punches, Melee & Firearms)
+    0652: 25@ = integer_stat 121
+    if
+        001D: 25@ > 2@
+    then
+        0085: 23@ = 25@
+        0062: 23@ -= 2@ // Kills made since last check
+        0085: 2@ = 25@  // Update baseline
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_JOON_KILLS_W_SHION
+        0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+        005A: 24@ += 23@
+        0085: 30@ = 31@
+        000A: 30@ += MEM_JOON_KILLS_W_SHION
+        0A8C: write_memory 30@ size 4 value 24@ virtual_protect 0
+    else
+        0085: 2@ = 25@ // Keep baseline synced across loads/reloads
+    end
+else
+    0@ = 0
+    1@ = 0
+    0652: 2@ = integer_stat 121 // Keep synced while Shion is not in party
+end
+
+// =========================================================================
+// WALLET DRAIN (True 1-to-1 Per-Ammo Deduction / Durgastra Support)
+// =========================================================================
+// Read Live Resource Mode (0 = Wallet Drain, 1 = Gear Swap)
+0085: 30@ = 31@
+000A: 30@ += MEM_COMBAT_RES_MODE
+0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
+
+if and
+    19@ == 0 // ONLY run Wallet Drain if CombatResourceMode is 0!
+    8@ == 1  // Hostile / Armed stance
+    13@ == 1 // Wallet Drain enabled in INI
+    10@ > 0  // Solid Ped form only!
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_DURGASTRA_FLAG
+    0A8D: 18@ = read_memory 30@ size 4 virtual_protect 0 // Durgastra Flag (1 = Limitless Debt)
+    010B: 28@ = player $PLAYER_CHAR money
+
+    // Check if bankruptcy disarm is needed (Bypassed if Durgastra is active!)
+    27@ = 0
+    if
+        28@ <= 0
+    then
+        if
+            18@ == 0
+        then
+            27@ = 1
+        end
+    end
+
+    if
+        27@ == 1
+    then
+        gosub @Execute_Shion_Bankruptcy_Disarm
+    else
+        0470: 25@ = actor 10@ current_weapon
+        if
+            25@ > 1
+        then
+            if
+                803B: not 25@ == 15@
+            then
+                0085: 15@ = 25@
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_WEAPON_ID
+                0A8C: write_memory 30@ size 4 value 15@ virtual_protect 0
+                017B: set_actor 10@ weapon 15@ ammo_to 9999
+                041A: 14@ = actor 10@ weapon 15@ ammo
+            end
+
+            041A: 26@ = actor 10@ weapon 15@ ammo
+
+            if
+                26@ > 20000
+            then
+                017B: set_actor 10@ weapon 15@ ammo_to 9999
+                041A: 14@ = actor 10@ weapon 15@ ammo
+                041A: 26@ = actor 10@ weapon 15@ ammo
+            end
+
+            if
+                001D: 14@ > 26@
+            then
+                0085: 27@ = 14@
+                0062: 27@ -= 26@
+
+                if
+                    27@ <= 15
+                then
+                    0085: 14@ = 26@
+                    gosub @Get_Weapon_Shot_Cost
+                    006A: 16@ *= 27@ // Strictly Typed Local Integer Multiply (006A)
+
+                    // Deduct cash! With Durgastra, this plunges deeper into negative debt!
+                    0085: 29@ = 16@
+                    0012: 29@ *= -1
+                    0109: player $PLAYER_CHAR money += 29@
+
+                    if
+                        17@ == 1
+                    then
+                        018C: play_sound 1058 at 0.0 0.0 0.0
+                    end
+
+                    // If Durgastra is OFF and funds dropped to/below $0, disarm!
+                    if
+                        18@ == 0
+                    then
+                        010B: 28@ = player $PLAYER_CHAR money
+                        if
+                            28@ <= 0
+                        then
+                            gosub @Execute_Shion_Bankruptcy_Disarm
+                        end
+                    end
+                else
+                    017B: set_actor 10@ weapon 15@ ammo_to 9999
+                    041A: 14@ = actor 10@ weapon 15@ ammo
+                end
+            else
+                0085: 14@ = 26@
+            end
+
+            if and
+                8@ == 1
+                26@ < 2000
+            then
+                017B: set_actor 10@ weapon 15@ ammo_to 9999
+                041A: 14@ = actor 10@ weapon 15@ ammo
+            end
+        end
+    end
+end
+
+// =========================================================================
+// SHION'S INNATE MISFORTUNE AURA (1s Pacing, 25m Radius)
+// =========================================================================
+if
+    TIMERA > 1000
+then
+    TIMERA = 0
+    if
+        10@ > 0
+    then
+        04C4: store_coords_to 20@ 21@ 22@ from_actor 10@ with_offset 0.0 0.0 0.0
+    else
+        04C4: store_coords_to 20@ 21@ 22@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.0
+    end
+    24@ = 0
+
+    :Shion_Aura_Loop
+    0AE1: 29@ = get_random_char_in_sphere_no_save_recursive 20@ 21@ 22@ radius 25.0 find_next 24@ pass_deads 1
+    if
+        29@ > 0
+    then
+        24@ = 1
+        gosub @Check_Shion_Aura_Target
+        goto @Shion_Aura_Loop
+    end
+end
+
+// =========================================================================
+// SHION'S INNATE TRAFFIC HEX (2.5s Pacing, 45m Radius, Style 5)
+// =========================================================================
+01C0: 26@ = player $PLAYER_CHAR wanted_level
+if
+    26@ > 1
+then
+    if
+        TIMERB >= 2500
+    then
+        TIMERB = 0
+        if
+            10@ > 0
+        then
+            04C4: store_coords_to 20@ 21@ 22@ from_actor 10@ with_offset 0.0 0.0 0.0
+        else
+            04C4: store_coords_to 20@ 21@ 22@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.0
+        end
+        24@ = 0
+
+        :Shion_Traffic_Loop
+        0AE2: 12@ = get_random_car_in_sphere_no_save_recursive 20@ 21@ 22@ radius 45.0 find_next 24@ pass_wrecked 1
+        if
+            12@ > 0
+        then
+            24@ = 1
+            gosub @Check_Shion_Traffic_Target
+            goto @Shion_Traffic_Loop
+        end
+    end
+end
+
+// =========================================================================
+// SHION'S INNATE AVIATION CALAMITY (4s Pacing, 300m Radius, Style 5)
+// =========================================================================
+01C0: 26@ = player $PLAYER_CHAR wanted_level
+if
+    26@ > 2
+then
+    000A: 7@ += 50
+    if
+        7@ >= 4000
+    then
+        7@ = 0
+        if
+            10@ > 0
+        then
+            04C4: store_coords_to 20@ 21@ 22@ from_actor 10@ with_offset 0.0 0.0 0.0
+        else
+            04C4: store_coords_to 20@ 21@ 22@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.0
+        end
+        24@ = 0
+
+        :Shion_Aviation_Loop
+        0AE2: 12@ = get_random_car_in_sphere_no_save_recursive 20@ 21@ 22@ radius 300.0 find_next 24@ pass_wrecked 1
+        if
+            12@ > 0
+        then
+            24@ = 1
+            gosub @Check_Shion_Aviation_Target
+            goto @Shion_Aviation_Loop
+        end
+    end
+end
+
+goto @ShionCombat_Loop
+
+
+// =========================================================================
+// SUBROUTINES
+// =========================================================================
+
+// =========================================================================
+// SUBROUTINE: WEAPON PRICING LOOKUP
+// =========================================================================
+:Get_Weapon_Shot_Cost
+16@ = 0
+
+if
+    15@ == 22 // 9mm Pistol ($200 / 30)
+then
+    16@ = 7
+    return
+end
+if
+    15@ == 23 // Silenced Pistol ($600 / 30)
+then
+    16@ = 20
+    return
+end
+if
+    15@ == 24 // Desert Eagle ($1,200 / 15)
+then
+    16@ = 80
+    return
+end
+if
+    15@ == 25 // Chrome Shotgun ($600 / 15)
+then
+    16@ = 40
+    return
+end
+if
+    15@ == 26 // Sawn-off Shotgun ($800 / 12)
+then
+    16@ = 67
+    return
+end
+if
+    15@ == 27 // Combat Shotgun / SPAS-12 ($1,000 / 10)
+then
+    16@ = 100
+    return
+end
+if
+    15@ == 32 // Tec-9 ($300 / 60)
+then
+    16@ = 5
+    return
+end
+if
+    15@ == 28 // Micro Uzi ($500 / 60)
+then
+    16@ = 8
+    return
+end
+if
+    15@ == 29 // MP5 ($2,000 / 90)
+then
+    16@ = 22
+    return
+end
+if
+    15@ == 30 // AK-47 ($3,500 / 120)
+then
+    16@ = 29
+    return
+end
+if
+    15@ == 31 // M4 ($4,500 / 150)
+then
+    16@ = 30
+    return
+end
+if
+    15@ == 33 // Country Rifle ($1,000 / 20)
+then
+    16@ = 50
+    return
+end
+if
+    15@ == 34 // Sniper Rifle ($5,000 / 10)
+then
+    16@ = 500
+    return
+end
+if
+    15@ == 35 // Rocket Launcher ($3,000 / 10)
+then
+    16@ = 300
+    return
+end
+if
+    15@ == 36 // Heatseeker ($4,000 / 10)
+then
+    16@ = 400
+    return
+end
+if
+    15@ == 37 // Flamethrower ($2,500 / 250)
+then
+    16@ = 10
+    return
+end
+if
+    15@ == 38 // Minigun ($10,000 / 1500)
+then
+    16@ = 7
+    return
+end
+if
+    15@ == 16 // Grenades ($300 / 5)
+then
+    16@ = 60
+    return
+end
+if
+    15@ == 18 // Molotovs ($400 / 8)
+then
+    16@ = 50
+    return
+end
+if
+    15@ == 39 // Satchel Charges ($2,000 / 1)
+then
+    16@ = 2000
+    return
+end
+
+16@ = 10
+return
+
+// =========================================================================
+// SUBROUTINE: BANKRUPTCY AUTO-DISARM (Style 5)
+// =========================================================================
+:Execute_Shion_Bankruptcy_Disarm
+048F: remove_all_char_weapons 10@
+01B9: set_actor 10@ armed_weapon_to 0
+
+07CB: set_actor 10@ supporting_fire 0
+07DD: set_actor 10@ attack_rate 0
+0770: set_actor 10@ target_priority 0
+0816: set_actor 10@ dont_chase_victim 1
+0946: set_actor 10@ actions_uninterupted_by_weapon_fire 0
+060B: set_actor 10@ decision_maker_to 65543
+
+077C: clear_actor 10@ acquaintance 4 to_all_pedtypes
+077C: clear_actor 10@ acquaintance 3 to_all_pedtypes
+0792: clear_char_tasks_immediately 10@
+
+8@ = 0
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_STANCE
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0 // Inform Spawner
+
+018C: play_sound 1057 at 0.0 0.0 0.0
+
+0AF0: 29@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "ShowBankruptAlert"
+if
+    29@ == 1
+then
+    0ADF: add_text_label "Y_DECL" text "~r~CARD DECLINED~n~~w~OUT OF AMMO FUNDS"
+    00BA: show_text_styled GXT 'Y_DECL' time 3000 style 5
+end
+return
+
+// =========================================================================
+// SUBROUTINE: CHECK HOSTILES NEAR SHION (Stumble & Gun Jams)
+// =========================================================================
+:Check_Shion_Aura_Target
+if
+    29@ <= 0
+then
+    return
+end
+if
+    856D: not actor 29@ defined
+then
+    return
+end
+if
+    0118: actor 29@ dead
+then
+    return
+end
+if
+    07D6: 29@ == $PLAYER_ACTOR
+then
+    return
+end
+if
+    003B: 29@ == 10@
+then
+    return
+end
+
+07AF: 25@ = player $PLAYER_CHAR group
+if
+    06EE: actor 29@ in_group 25@
+then
+    return
+end
+
+// Must be strictly on foot (No vehicle passenger animation glitches!)
+if
+    0449: actor 29@ in_a_car
+then
+    return
+end
+
+if or
+    0E49: is_char_entering_any_car 29@
+    0E4A: is_char_exiting_any_car 29@
+then
+    return
+end
+
+28@ = 0
+if
+    02E0: actor 29@ firing_weapon
+then
+    28@ = 1
+end
+if and
+    28@ == 0
+    0E47: is_char_fighting 29@
+then
+    28@ = 1
+end
+if
+    28@ == 0
+then
+    01C0: 26@ = player $PLAYER_CHAR wanted_level
+    if
+        26@ > 0
+    then
+        089F: get_ped_type 29@ 26@
+        if
+            26@ == 6
+        then
+            28@ = 1
+        end
+    end
+end
+
+if
+    28@ == 1
+then
+    0209: 25@ = random_int_in_range 1 101
+    if
+        25@ <= 20
+    then
+        0470: 27@ = actor 29@ current_weapon
+        26@ = 0
+
+        if
+            27@ > 1
+        then
+            0209: 26@ = random_int_in_range 0 2
+        end
+        
+        // Attach Single Blue Hitodama Curse Flame above victim's head!
+        0A92: create_custom_thread "Yorigami\FX_HexFlame.c" 29@ 2600
+
+        0792: clear_char_tasks_immediately 29@
+
+        if
+            26@ == 1
+        then
+            05C5: AS_actor 29@ cower 2500 ms
+        else
+            0209: 25@ = random_int_in_range 0 4
+
+            if
+                25@ == 0
+            then
+                0615: define_AS_pack_begin 12@
+                0812: AS_actor -1 perform_animation "KO_SKID_FRONT" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 1 time 1500
+                0812: AS_actor -1 perform_animation "GETUP_FRONT" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
+                0616: define_AS_pack_end 12@
+                0618: assign_actor 29@ to_AS_pack 12@
+                061B: remove_references_to_AS_pack 12@
+            end
+
+            if
+                25@ == 1
+            then
+                0615: define_AS_pack_begin 12@
+                0812: AS_actor -1 perform_animation "KO_SKID_BACK" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 1 time 1500
+                0812: AS_actor -1 perform_animation "GETUP" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
+                0616: define_AS_pack_end 12@
+                0618: assign_actor 29@ to_AS_pack 12@
+                061B: remove_references_to_AS_pack 12@
+            end
+
+            if
+                25@ == 2
+            then
+                0615: define_AS_pack_begin 12@
+                0812: AS_actor -1 perform_animation "KO_SPIN_L" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 1 time 1500
+                0812: AS_actor -1 perform_animation "GETUP" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
+                0616: define_AS_pack_end 12@
+                0618: assign_actor 29@ to_AS_pack 12@
+                061B: remove_references_to_AS_pack 12@
+            end
+
+            if
+                25@ == 3
+            then
+                0615: define_AS_pack_begin 12@
+                0812: AS_actor -1 perform_animation "KO_SPIN_R" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 1 time 1500
+                0812: AS_actor -1 perform_animation "GETUP" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
+                0616: define_AS_pack_end 12@
+                0618: assign_actor 29@ to_AS_pack 12@
+                061B: remove_references_to_AS_pack 12@
+            end
+        end
+    end
+end
+return
+
+// =========================================================================
+// SUBROUTINE: TRAFFIC HEX (Stall Cruisers - Style 5)
+// =========================================================================
+:Check_Shion_Traffic_Target
+if and
+    056E: car 12@ defined
+    8119: not car 12@ wrecked
+then
+    // Verify CJ is not inside the vehicle as driver or passenger
+    if
+        80DB: not actor $PLAYER_ACTOR in_car 12@
+    then
+        046C: 28@ = car 12@ driver
+        if
+            28@ > 0
+        then
+            if and
+                056D: actor 28@ defined
+                8118: not actor 28@ dead
+            then
+                0441: 26@ = car 12@ model
+                02E3: 27@ = car 12@ speed
+                if
+                    0021: 27@ > 2.0
+                then
+                    // Check 4-wheel police cruisers first
+                    if or
+                        26@ == 596
+                        26@ == 597
+                        26@ == 598
+                        26@ == 599
+                        26@ == 427
+                        26@ == 490
+                        26@ == 528
+                    then
+                        0209: 25@ = random_int_in_range 1 101
+                        if
+                            25@ <= 20
+                        then
+                            // Repeatedly stall cruiser
+                            0477: set_car 12@ action 1 time 3500
+
+                            // Only pop tires if not already flat
+                            if
+                                8496: not tire 1 on_car 12@ deflated
+                            then
+                                04FE: deflate_tire 1 on_car 12@
+                                04FE: deflate_tire 2 on_car 12@
+                            end
+
+                            018C: play_sound 1147 at 0.0 0.0 0.0
+                            0ADF: add_text_label "Y_SSTAL" text "~r~SHION'S AURA~n~~w~CRUISER STALLED"
+                            00BA: show_text_styled GXT 'Y_SSTAL' time 2500 style 5
+                        end
+                    else
+                        // Safe handling for Cop Bike (Stall only, no car tire opcodes)
+                        if
+                            26@ == 523
+                        then
+                            0209: 25@ = random_int_in_range 1 101
+                            if
+                                25@ <= 20
+                            then
+                                0477: set_car 12@ action 1 time 3500
+
+                                018C: play_sound 1147 at 0.0 0.0 0.0
+                                0ADF: add_text_label "Y_SBKST" text "~r~SHION'S AURA~n~~w~COP BIKE STALLED"
+                                00BA: show_text_styled GXT 'Y_SBKST' time 2500 style 5
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+return
+
+// =========================================================================
+// SUBROUTINE: AVIATION CALAMITY (Explode Aircraft - Style 5)
+// =========================================================================
+:Check_Shion_Aviation_Target
+if and
+    056E: car 12@ defined
+    8119: not car 12@ wrecked
+then
+    // Verify CJ is not inside the aircraft as pilot or passenger
+    if
+        80DB: not actor $PLAYER_ACTOR in_car 12@
+    then
+        0441: 26@ = car 12@ model
+        if or
+            26@ == 497 // #POLMAV
+            26@ == 520 // #HYDRA
+        then
+            // Protect Shion if she is in physical form
+            28@ = 0
+            if
+                10@ > 0
+            then
+                if
+                    00DB: actor 10@ in_car 12@
+                then
+                    28@ = 1
+                end
+            end
+
+            if
+                28@ == 0
+            then
+                // Must be active and in flight (Ignores parked tarmac aircraft)
+                02E3: 27@ = car 12@ speed
+                if or
+                    01F3: car 12@ in_air
+                    0021: 27@ > 3.0
+                then
+                    // Check if there is a pilot ped (Friendly check for homies/mods)
+                    046C: 28@ = car 12@ driver
+                    25@ = 0
+                    if
+                        28@ > 0
+                    then
+                        07AF: 27@ = player $PLAYER_CHAR group
+                        if or
+                            07D6: 28@ == $PLAYER_ACTOR
+                            06EE: actor 28@ in_group 27@
+                            003B: 28@ == 10@
+                        then
+                            25@ = 1 // Pilot is friendly, do not target
+                        end
+                    end
+
+                    if
+                        25@ == 0
+                    then
+                        0209: 25@ = random_int_in_range 1 101
+                        if
+                            25@ <= 20
+                        then
+                            020B: explode_car 12@
+                            0003: shake_camera 30
+                            018C: play_sound 1057 at 0.0 0.0 0.0
+                            0ADF: add_text_label "Y_SAIR" text "~r~SHION'S AURA~n~~w~AIRCRAFT DESTROYED"
+                            00BA: show_text_styled GXT 'Y_SAIR' time 2500 style 5
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+return
+
+// =========================================================================
+// DAMAGE CALLBACK: SHION'S VOODOO REFLECTION
+// =========================================================================
+:OnShionDamage
+if
+    3@ == 1 // Isolated recursion lock using dedicated register 3@
+then
+    0ED0: return_script_event
+end
+
+if
+    10@ > 0
+then
+    if and
+        056D: actor 10@ defined
+        8118: not actor 10@ dead
+    then
+        if
+            003B: 11@ == 10@
+        then
+            // Strictly isolated registers (4@ 5@ 6@ 9@) to prevent collision with main loop (26@ 27@ 28@ 29@)
+            0EB5: get_char_damage_last_frame 11@ damager 4@ type 5@ part 6@ intensity 9@
+            if
+                4@ > 0
+            then
+                0E13: get_entity 4@ type_to 5@
+                if
+                    5@ == 3 // Ped
+                then
+                    0AEA: 4@ = ped_struct 4@ handle
+                    if and
+                        056D: actor 4@ defined
+                        8118: not actor 4@ dead
+                        87D6: not 4@ == $PLAYER_ACTOR
+                        803B: not 4@ == 10@
+                    then
+                        0092: 9@ = float 9@ to_integer
+                        if
+                            9@ > 0
+                        then
+                            3@ = 1 // Lock callback during script damage
+                            0851: set_actor 4@ decrease_health_by 9@ affect_armour 1
+                            3@ = 0
+
+                            // Spawn shion_misfortune using isolated scratch registers (5@ 6@ 9@)
+                            04C4: store_coords_to 5@ 6@ 9@ from_actor 4@ with_offset 0.0 0.0 0.2
+                            064B: 4@ = create_particle "shion_misfortune" at 5@ 6@ 9@ type 1
+                            064C: make_particle 4@ visible
+                            064F: remove_references_to_particle 4@
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+0ED0: return_script_event
+
+// =========================================================================
+// SUBROUTINE: TOGGLE DURGASTRA MODE
+// =========================================================================
+:Toggle_Durgastra_Mode
+0085: 30@ = 31@
+000A: 30@ += MEM_DURGASTRA_FLAG
+0A8D: 18@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    18@ == 0
+then
+    // Activate Limitless Debt
+    18@ = 1
+    0085: 30@ = 31@
+    000A: 30@ += MEM_DURGASTRA_FLAG
+    0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+    018C: play_sound 1147 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_DURA" text "~p~DURGASTRA UNLEASHED~n~~w~LIMITLESS DEBT ENABLED"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_DURA' time 2500 style 5
+
+    // Only configure physical ped if currently materialized
+    if and
+        8@ == 0
+        10@ > 0
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_STANCE
+        0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+        8@ = 1
+
+        0781: get_weapon_with_ID 15@ model_to 25@
+        if
+            25@ > 0
+        then
+            0247: request_model 25@
+            038B: load_requested_models
+
+            :Wait_Durgastra_Weapon_Model
+            wait 0
+            if
+                8256: not is_player_playing $PLAYER_CHAR
+            then
+                return
+            end
+            if
+                8248: not model 25@ available
+            then
+                goto @Wait_Durgastra_Weapon_Model
+            end
+
+            01B2: give_actor 10@ weapon 15@ ammo 9999
+            01B9: set_actor 10@ armed_weapon_to 15@
+            0249: release_model 25@
+        end
+
+        // Restore Hostile AI & Combat Acquaintances
+        07CB: set_actor 10@ supporting_fire 1
+        07DD: set_actor 10@ attack_rate 100
+        0946: set_actor 10@ actions_uninterupted_by_weapon_fire 1
+        0816: set_actor 10@ dont_chase_victim 0
+        0770: set_actor 10@ target_priority 1
+
+        077A: set_actor 10@ acquaintance 4 to_actors_pedtype 6
+        077A: set_actor 10@ acquaintance 3 to_actors_pedtype 6
+        077A: set_actor 10@ acquaintance 4 to_actors_pedtype 17
+        077A: set_actor 10@ acquaintance 3 to_actors_pedtype 17
+        077A: set_actor 10@ acquaintance 4 to_actors_pedtype 7
+        077A: set_actor 10@ acquaintance 4 to_actors_pedtype 9
+        077A: set_actor 10@ acquaintance 4 to_actors_pedtype 10
+        077A: set_actor 10@ acquaintance 4 to_actors_pedtype 11
+        077A: set_actor 10@ acquaintance 4 to_actors_pedtype 12
+        077A: set_actor 10@ acquaintance 4 to_actors_pedtype 15
+    end
+else
+    // Deactivate
+    18@ = 0
+    0085: 30@ = 31@
+    000A: 30@ += MEM_DURGASTRA_FLAG
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_DURD" text "~s~DURGASTRA SEALED~n~~r~LIMITLESS DEBT DISABLED"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_DURD' time 2500 style 5
+
+    // If player is in debt, immediately enforce standard bankruptcy disarm
+    010B: 28@ = player $PLAYER_CHAR money
+    if
+        28@ <= 0
+    then
+        if
+            10@ > 0
+        then
+            gosub @Execute_Shion_Bankruptcy_Disarm
+        end
+    end
+end
+return
+
+// =========================================================================
+// SUBROUTINE: CONFIG LOADER
+// =========================================================================
+:Load_Combat_Config
+0AF0: 13@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "EnableWalletDrain"
+if
+    13@ < 0
+then
+    13@ = 1
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_COMBAT_RES_MODE
+0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0 // 0 = Wallet Drain, 1 = Gear Swap
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_WEAPON_ID
+0A8D: 15@ = read_memory 30@ size 4 virtual_protect 0
+
+if and
+    19@ == 0 // Only enforce fallback in Wallet Drain mode
+    15@ <= 1
+then
+    15@ = 34
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_WEAPON_ID
+    0A8C: write_memory 30@ size 4 value 15@ virtual_protect 0
+end
+
+0AF0: 17@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "PlayShotCashSound"
+if
+    17@ < 0
+then
+    17@ = 1
+end
+return
