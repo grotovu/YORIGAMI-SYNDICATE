@@ -98,6 +98,16 @@ Every $10,000 you spend or lose in the game earns you 1 **Y-Point** (praying to 
   <em>"She didn't do anything..."</em>
 </p>
 
+* **Yorigami Contract:**
+  * Instantly plunge yourself into $1,000,000 of crippling debt in exchange for a massive payout of Y-Points. Perfect for instantly activating Shion's poverty-reliant perks (or just ruining your own life).
+  * _You can configure this up to 1,000 Y-Points for $10,000,000 debt if you're impatient like me and want to max out all the perks and suffer the consequences..._
+
+<p align="center">
+<img width="1264" height="706" alt="image" src="https://github.com/user-attachments/assets/fe8860a6-c714-4ac2-96b6-b8497e4486f2" />
+  <br>
+  <em>"When our balance is zero, you're in my domain, Jo'on."</em>
+</p>
+
 ### 3. Food, Hunger & Wallet Drain
 * Shion gets hungry every two in-game days. You can pull into drive-thrus (Burger Shot, Cluckin' Bell), stop by diners, or hit up street carts to feed her. If you don't have cash, she'll beg vendors for scraps or look through the garbage. (Type `ADDFOOD` to register custom food locations, which are saved in the savedata folder).
 * Optional combat resource - `Wallet Drain`: Shion's shooting drains your wallet. Instead of being limited to the ammo you gave her, she can fire until you're broke, retroactively paying per bullet. If you run out of money, her gun disappears until you get cash again. (Type `DURGASTRA` to enable limitless debt mode for Wallet Drain, or enable `DURGASTRA` mode in Shion's Settings Menu in-game).
