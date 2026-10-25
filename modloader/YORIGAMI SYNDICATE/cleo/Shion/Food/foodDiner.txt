@@ -81,7 +81,7 @@ end
 0ADF: add_text_label "F_R5" text "$50"
 0ADF: add_text_label "F_R6" text "$100"
 
-08D4: 8@ = create_panel_with_title 'F_TIT' position 29.0 145.0 width 220.0 columns 1 interactive 1 background 1 alignment 0
+08D4: 8@ = create_panel_with_title 'F_TIT' position 29.0 145.0 width 100.0 columns 1 interactive 1 background 1 alignment 0
 08DB: set_panel 8@ column 0 header 'F_COL' data 'F_R0' 'F_R1' 'F_R2' 'F_R3' 'F_R4' 'F_R5' 'F_R6' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY'
 090E: set_panel 8@ active_row 15@
 0085: 14@ = 15@
