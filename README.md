@@ -119,7 +119,7 @@ I wrote a ton of contextual dialogue based on what you're doing in the game:
 * **Radio:** Commentaries for every single radio station in the game.
 * **World awareness:** Specific dialogue depending on where you are (Rodeo Drive, the desert, hoods, inside clothing stores, gun shops, casinos).
 * **Physics/Driving:** Shion complains if you drive like a maniac, do flips, end up underwater, or punch random people.
-* **Sister Talk (31 Lore Episodes):** Unlocked through in-game milestones (spending money, surviving on $0, doing paramedic jobs, hitting Mt. Chiliad, etc.). You can read and replay them anytime via the Lore Archive menu. *(Tip: Type `ALLORE` to unlock all episodes for testing).*
+* **Sister Talk (31 Lore Episodes):** Unlocked through in-game milestones (spending money, surviving on $0, doing paramedic jobs, hitting Mt. Chiliad, etc.). You can read and replay them anytime via the Lore Archive menu.
 
 ### 5. Persistent Tracker (`ShionMemories.ini`)
 The mod saves lifetime stats in the savedata folder, and each save has its own memory:
