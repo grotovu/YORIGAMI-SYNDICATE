@@ -139,6 +139,8 @@ There is nothing encrypted in the savedata folder. You may alter as you wish.
 ## 🛠️ Development & Transparency
 A lot of the coding, CLEO opcode debugging, and string/data table formatting throughout this 60-day development process was heavily AI-assisted.
 
+For the dialogue and narrative: I provided the specific character context, lore, and desired tone (referencing source material and the Yorigami sisters' established dynamics). I used AI as an assistive tool to generate initial dialogue drafts, which were then heavily reviewed, edited, and curated by me. As an ESL (English as a Second Language) developer, these tools helped bridge linguistic gaps to ensure the rough, abrasive, and distinct slang of the characters was localized accurately for an English-speaking audience. I personally revised every block of dialogue to ensure it adhered to my specific vision for Jo'on and Shion and to eliminate any OOC (out-of-character) behavior.
+
 All creative direction, systems architecture, mechanical balance (the prestige tree, companion logic, economy sinks), and dialogue concepts were directed and finalized by **EagleRaviOrange**.
 
 ---
