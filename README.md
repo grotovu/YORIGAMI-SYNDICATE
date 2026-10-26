@@ -135,4 +135,11 @@ CJ's base game stats are tracked completely separately from the experiences accu
 There is nothing encrypted in the savedata folder. You may alter as you wish.
 
 ---
+
+## 🛠️ Development & Transparency
+A lot of the coding, CLEO opcode debugging, and string/data table formatting throughout this 60-day development process was heavily AI-assisted.
+
+All creative direction, systems architecture, mechanical balance (the prestige tree, companion logic, economy sinks), and dialogue concepts were directed and finalized by **EagleRaviOrange**.
+
+---
 *Touhou Project belongs to ZUN / Team Shanghai Alice. Mod is open-source and free on GitHub.*
