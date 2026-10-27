@@ -127,19 +127,36 @@ The mod saves lifetime stats in the savedata folder, and each save has its own m
 
 ---
 
-## ⚙️ Tweaking Stuff
-If you want to rebind keys, change how much money 1 Y-Point costs, disable the hunger mechanic, or turn off the wallet drain, open up `cleo/Shion.ini` and `cleo/YorigamiPerks.ini`. Everything is commented and highly configurable.
+## ⚙️ Configuration & Savegame Safety
 
-CJ's base game stats are tracked completely separately from the experiences accumulated by Jo'on and Shion. So you can play on a 100% save and Shion acts as if Jo'on has yet to accomplish anything.
+### 🎮 Customization & Tweaks
+If you want to rebind hotkeys, adjust how much money 1 Y-Point costs, disable the hunger mechanic, or toggle wallet drain, open up `cleo/Shion.ini` and `cleo/YorigamiPerks.ini`. Every setting is documented with comments and fully configurable.
 
-There is nothing encrypted in the savedata folder. You may alter as you wish.
+### 💾 Zero Save Corruption & Data Isolation
+* **Safe for Existing Saves:** Nothing from this mod is permanently baked into your vanilla GTA San Andreas save files (`GTASAsf*.b`). No global variables or script states are modified in ways that cause savegame corruption or bloat.
+* **Complete Data Isolation:** All mod-specific progression, Y-Point allocations, perk states, and sister banter milestones are saved strictly in the mod's own `savedata/` folder, completely segregated from the base game's save system.
+* **Safe on 100% Saves:** You can safely load this mod on a fresh game or an existing 100% completion save file without polluting CJ's base statistics. If you ever uninstall or disable the mod, your vanilla save files remain completely clean and uncorrupted.
+* **Open & Editable:** Nothing in the `savedata/` folder is encrypted. All saved data is stored in plain-text `.ini` files that you can inspect or modify at will.
+
+---
+
+## 📜 Credits & Attributions
+
+* **ZUN / Team Shanghai Alice & Twilight Frontier** — *Touhou Project* and the Yorigami Sisters (*Touhou 15.5: Antinomy of Common Flowers*, *Touhou 17.5: Sunken Fossil World*).
+* **schwarz** — Original Jo'on & Shion MMD Models:
+  * [Yorigami Jo'on MMD Model](https://3d.nicovideo.jp/works/td32247)
+  * [Yorigami Shion MMD Model](https://3d.nicovideo.jp/works/td31923)
+* **tudhsbf123** — Jo'on MMD model port to GTA SA.
+* **Misaki Yutsuki** — Shion MMD model port to GTA SA.
+* **WarButler, DK22Pac, Junior_Djjr, Ezekiel, Function-X** — *CombatFX* (Base shootlight FX modified into custom `joon_gold` and `shion_misfortune` particle systems via texture and keyvalue edits).
 
 ---
 
 ## 🛠️ Development & Transparency
-A lot of the coding, CLEO opcode debugging, and string/data table formatting throughout this 60-day development process was heavily AI-assisted.
 
-For the dialogue and narrative: I provided the specific character context, lore, and desired tone (referencing source material and the Yorigami sisters' established dynamics). I used AI as an assistive tool to generate initial dialogue drafts, which were then heavily reviewed, edited, and curated by me. As an ESL (English as a Second Language) developer, these tools helped bridge linguistic gaps to ensure the rough, abrasive, and distinct slang of the characters was localized accurately for an English-speaking audience. I personally revised every block of dialogue to ensure it adhered to my specific vision for Jo'on and Shion and to eliminate any OOC (out-of-character) behavior.
+A lot of the coding, CLEO opcode debugging, and string/data table formatting throughout this 60-day development process was heavily AI-assisted. 
+
+For the dialogue and narrative: I provided the specific character context, lore, and desired tone (referencing source material and the Yorigami sisters' established dynamics). I used AI as an assistive tool to generate initial dialogue drafts, which were then **heavily reviewed, edited, and curated by me**. As an ESL (English as a Second Language) developer, these tools helped bridge linguistic gaps to ensure the rough, abrasive, and distinct slang of the characters was localized accurately for an English-speaking audience. I personally revised every block of dialogue to ensure it adhered to my specific vision for Jo'on and Shion and to eliminate any OOC (out-of-character) behavior. 
 
 All creative direction, systems architecture, mechanical balance (the prestige tree, companion logic, economy sinks), and dialogue concepts were directed and finalized by **EagleRaviOrange**.
 
