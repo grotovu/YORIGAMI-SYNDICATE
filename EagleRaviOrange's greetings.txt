@@ -1,70 +1,129 @@
 Hey everyone, I’m EagleRaviOrange (or grotobuvic on Reddit).
-Ironically, my first-ever public release is about the Yorigami sisters... and has absolutely nothing to do with Ringo or Seiran.
+Ironically, my first-ever public release is about the Yorigami sisters...
+and has absolutely nothing to do with Ringo or Seiran.
 
-==================================
-Dev Notes & Personal Thoughts:
-If anything feels wildly OOC, let me know! I wrote over 3,000+ lines of ambient banter and contextual dialogue for this, so I’m happy to tweak anything that feels off. I only fell down the Yorigami rabbit hole while building this, so I don't claim to be an absolute lore master, but I based their dialogue directly on their original Japanese game scripts to capture their raw vibe rather than relying on translated interpretations.
+================================================================================
+DEV NOTES & PERSONAL THOUGHTS
+================================================================================
+If anything feels wildly OOC, let me know! I built a dynamic dialogue system
+with over 3,000 lines of ambient banter and contextual dialogue for this,
+so I’m happy to tweak anything that feels off.
 
-Jo'on:
-She’s basically a nouveau-riche gutter kid. Fake rich. The exact type of person to blow stolen cash on designer trash and wake up flat broke the next day. She can sweet-talk marks when running a con, but underneath she’s abrasive, loud, and completely rude. Since she's mostly just talking to Shion in this mod, the mask is completely off. She’s bossy, materialistic, and shameless.
+...I only fell down the Yorigami rabbit hole while building this, so I don't claim
+to be an absolute lore master. I based their dialogue directly on their original
+Japanese game scripts, as well as the rough, chain-smoking 'Shitamachi delinquent'
+portrayal in Japanese comics, rather than relying on standard Western translations.
 
-Shion:
-While Jo'on is obsessed with looking like a VIP, Shion has zero dignity left to lose. I leaned hard into making her a shameless moocher. She accepts her role as Jo'on's meat-shield, but treats it purely like a mercenary transaction: she’ll gladly take a shotgun blast for her sister, provided she gets paid in Cluckin' Bell.
+* Jo'on:
+  She’s basically a nouveau-riche gutter kid. Fake rich. (I leaned heavily into the
+  Japanese fan-comic interpretation of her: a chain-smoking, rough-talking delinquent
+  who grew up in the mud). She can sweet-talk marks when running a con, but underneath
+  she’s abrasive, loud, and completely rude. Since she's mostly just talking to Shion
+  in this mod, the mask is completely off. She’s bossy, materialistic, and shameless.
 
-The Dynamic:
-A dysfunctional, transactional, and toxic duo. Mostly slapstick and dark comedy. Jo'on drags Shion into violent crimes just to flex stolen cash at Didier Sachs, while Shion weaponizes her own misery to hustle Jo'on for burgers.
+* Shion:
+  While Jo'on is obsessed with looking like a VIP, Shion has zero dignity left
+  to lose. I leaned hard into making her a shameless moocher. She accepts her
+  role as Jo'on's meat-shield, but treats it purely like a mercenary
+  transaction: she’ll gladly take a shotgun blast for her sister, provided she
+  gets paid in Cluckin' Bell.
+
+* The Dynamic:
+  A dysfunctional, transactional, and toxic duo. Mostly slapstick and dark
+  comedy. Jo'on drags Shion into violent crimes just to flex stolen cash at
+  Didier Sachs, while Shion weaponizes her own misery to hustle Jo'on for
+  burgers.
 
 I'll let you guys discover the rest of their banter in-game!
 
-
-==================================
-Why I Made This:
-
-Normally, my personal copy of GTA San Andreas is a private playground full of other people's mods mixed with my own unreleased stuff (mostly because I'm shy about sharing). I have a custom Modloader setup with Touhou ped skins hand-picked from old Japanese sites, assigned specifically to match certain economic zones, lore relations, and story roles. It’s completely unique to my install, and I never published it.
+================================================================================
+WHY I MADE THIS
+================================================================================
+Normally, my personal copy of GTA San Andreas is a private playground full of
+other people's mods mixed with my own unreleased stuff (mostly because I'm shy
+about sharing). I have a custom Modloader setup with Touhou ped skins hand-picked
+from old Japanese sites, assigned specifically to match certain economic zones,
+lore relations, and story roles. It’s completely unique to my install, and I
+never published it.
 
 Whenever I did side missions, I’d always swap to a skin that felt fitting:
-Burglary: Marisa
-Firefighting: Mokou
-Paramedic: Reisen or Eirin
-Vigilante: Eiki Shiki
-Pimping: Jo'on
+  - Burglary:     Marisa Kirisame
+  - Firefighting: Fujiwara no Mokou
+  - Paramedic:    Reisen Udongein Inaba / Eirin Yagokoro
+  - Vigilante:    Eiki Shiki
+  - Pimping:      Jo'on Yorigami
 
-And that’s when it struck me. I always found it hilarious how naturally Jo'on fits the Pimping side-mission, even if just visually based on her AoCF design.
+And that’s when it struck me. I always found it hilarious how naturally Jo'on
+fits the Pimping side-mission, even if just visually based on her Antinomy of
+Common Flowers design.
 
-At the same time, I wanted to fix an age-old issue with GTA San Andreas: money becomes useless very quickly. Eventually you own every asset, your bank account hits eight figures, and guns cost pocket change.
+At the same time, I wanted to fix an age-old issue with GTA San Andreas: money
+becomes useless very quickly. Eventually you own every asset, your bank account
+hits eight figures, and guns cost pocket change.
 
-That led to the idea of Yorigami Points (Y-Points). The sisters were the perfect thematic fit since their lore is literally tied to economics, the Japanese Bubble Era, and the Lost Decades.
+That led to the idea of Yorigami Points (Y-Points). The sisters were the perfect
+thematic fit since their lore is literally tied to economics, the Japanese
+Bubble Era, and the Lost Decades.
 
 Every point is expensive ($10,000 per point).
 
-You earn them naturally by draining your wallet, spending money on guns, tuning cars, buying meals, or losing stacks at the casino felt like "praying" to the gods of pestilence and poverty.
+You earn them naturally by draining your wallet—spending money on guns, tuning
+cars, buying meals, or losing stacks at casino felt tables all act as "praying"
+to the gods of pestilence and poverty.
 
-Allocating those points into the Prestige Menu unlocks and scales unique Jo'on (Wealth) and Shion (Misfortune) perks.
+Allocating those points in the Prestige Menu unlocks and scales unique Jo'on
+(Wealth) and Shion (Misfortune) perks.
 
-==================================
-The "Inigo" Inspiration: From Perk Tree to Full Companion:
+================================================================================
+THE "INIGO" INSPIRATION: FROM PERK TREE TO FULL COMPANION
+================================================================================
+Because I stubbornly insisted on playing as Jo'on while testing the script, I
+wanted Shion as my partner instead of a generic gang homie. Manually recruiting
+skins was tedious, so I wrote a simple script to spawn her via typing SHION.
 
-Because I stubbornly insisted on playing as Jo'on while testing the script, I wanted Shion as my partner instead of a generic gang homie. Manually recruiting skins was tedious, so I wrote a simple script to spawn her via typing SHION.
+From there, scope creep took over. It went from a simple perk menu to a full-blown
+companion system.
 
-From there, scope creep took over. It went from a simple perk menu to a full-blown companion system.
+Think of Inigo from Skyrim—that was my benchmark. I didn't want another brain-dead
+NPC who runs into walls and gets left behind. I wanted Shion to actually feel
+alive: commenting on where you are, reacting to how much cash is in your wallet,
+complaining about your driving, and having sit-down talks where the sisters
+reflect on their past.
 
-Think of Inigo from Skyrim. That was my benchmark. I didn't want another brain-dead NPC who runs into walls and gets left behind. I wanted Shion to actually feel alive, commenting on where you are, reacting to how much cash is in your wallet, complaining about your driving, and having sit-down talks where the sisters reflect on their past.
+To solve GTA's notoriously janky follower pathing, I gave her the ability to
+phase between physical form and a Hitodama (spirit) form, floating over your
+shoulder, absorbing bullets, and warping right into the passenger seat without
+getting stuck on fences.
 
-To solve GTA's notoriously janky follower pathing, I gave her the ability to phase between physical form and a Hitodama (spirit) form, floating over your shoulder, absorbing bullets, and warping right into the passenger seat without getting stuck on fences.
+From that point, it became a personal writing challenge: How much of San Andreas
+could I hook into dynamic dialogue?
 
-From that point, it became a personal writing challenge: How much of San Andreas could I hook into dynamic dialogue?
+Right now, almost every vehicle class, odd-job, weather condition, radio station,
+and neighborhood triggers unique back-and-forth banter.
 
-Right now, almost every vehicle class, odd-job, weather condition, radio station, and neighborhood triggers unique back-and-forth banter.
+I haven’t really seen a companion mod attempted at this scale for GTA San
+Andreas before. Even though I’ve modded other games for years, building this
+taught me so much about CLEO scripting. The Yorigami sisters ended up earning a
+very special place in my heart throughout development.
 
-I haven’t really seen a companion mod attempted at this scale for GTA San Andreas before. Even though I’ve modded other games for years, building this taught me so much about CLEO scripting. The Yorigami sisters ended up earning a very special place in my heart throughout development.
+I hope you guys have fun with it, and maybe it inspires someone else to build
+something similar. (A Marisa overhaul with a follower Reimu? The framework is
+definitely possible!)
 
-I hope you guys have fun with it, and maybe it inspires someone else to build something similar. (A Marisa overhaul with a follower Reimu? The framework is definitely possible!)
+================================================================================
+OPEN SOURCE & ZERO MONETIZATION (oh, the irony...)
+================================================================================
+Just to be clear: I will never monetize this mod. No Patreon locks, no ad-fly
+links, and no paywalls.
 
-==================================
-Open Source & Zero Monetization (oh, the irony...):
+The entire project is hosted completely open-source on GitHub, not re-uploaded
+to commercial GTA mod repositories. All the source scripts and assets are right
+there in the open for anyone to inspect, learn from, borrow, or adapt for their
+own mods.
 
-Just to be clear: I will never monetize this mod. No Patreon locks, no ad-fly links, and no paywalls.
-
-The entire project is hosted completely open-source on GitHub, not re-uploaded to GTA mod repositories. All the source scripts and assets are right there in the open for anyone to inspect, learn from, borrow, or adapt for their own mods.
-
-I’m well aware of the sheer irony of spending 60 days building a mod centered entirely around Jo'on Yorigami, the most greedy, shameless, asset-draining extortionist in fiction, only to give the entire thing away for free without making a single cent off it. Jo'on is probably screaming at me from the code right now for leaving free cash on the table, but hey... at least Shion would appreciate the charity.
+I’m well aware of the sheer irony of spending 60 days building a mod centered
+entirely around Jo'on Yorigami—the most greedy, shameless, asset-draining
+extortionist in fiction—only to give the entire thing away for free without
+making a single cent off it. Jo'on is probably screaming at me from the code
+right now for leaving free cash on the table, but hey... at least Shion would
+appreciate the charity.
