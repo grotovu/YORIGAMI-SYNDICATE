@@ -1110,8 +1110,9 @@ then
             84AB: not actor $PLAYER_ACTOR driving_plane
         then
             02E3: 27@ = car 24@ speed
-            if
+            if and
                 0021: 27@ > 40.0
+                10@ > 0 // Suppress if Hitodama (-1)
             then
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only

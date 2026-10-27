@@ -3826,7 +3826,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L17L" text "~y~Jo'on: ~s~\"I'm runnin' a criminal syndicate, not a charity! Five grand just to adopt my own sister!\""
+0ADF: add_text_label "Y_L17L" text "~y~Jo'on: ~s~\"I'm runnin' a criminal syndicate, not a charity! A grand just to adopt my own sister!\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L17L' time 4400 flag 1
 wait 4400
