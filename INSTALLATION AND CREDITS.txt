@@ -5,14 +5,32 @@ Author: EagleRaviOrange
 ==============================================
 [INSTALLATION]
 ==============================================
-Extract/merge the folders into your root GTA San Andreas directory. 
-Your game folder structure should look like this:
+
+▶ IF YOU ARE UPDATING FROM AN EARLIER VERSION:
+1. Drag the "modloader" and "models" folders into your root GTA San Andreas directory.
+2. Choose "Replace files in the destination" when prompted.
+3. Done! Your active saves in "savedata" will remain 100% intact.
+
+----------------------------------------------
+
+▶ IF YOU ARE INSTALLING FOR THE FIRST TIME:
+1. Open the folder: "_FIRST TIME INSTALL (New Players)"
+2. Drag the "modloader" folder inside it into your root GTA San Andreas directory.
+3. Next, drag the main "modloader" and "models" folders into your root GTA San Andreas directory.
+4. Done!
+
+----------------------------------------------
+
+Your final game folder structure should look like this:
 
 GTA San Andreas/
     ├── EffectLoader.asi  <-- (Must be in root or modloader)
     ├── modloader/
     │   └── YORIGAMI SYNDICATE/
     │       ├── cleo/
+    │       │   ├── savedata/
+    │       │   ├── Shion/
+    │       │   └── Yorigami/
     │       └── models/
     └── models/
         └── effects/
