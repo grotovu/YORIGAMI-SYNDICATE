@@ -8,6 +8,7 @@
 // YORIGAMI HEAP CONSTANTS (FILTERED FOR SHION_FRIENDLYFIRE)
 // =========================================================================
 const
+    MEM_PLAYER_FORM   = 12
     MEM_PRIORITY_LOCK = 20
     MEM_SHION_HANDLE  = 116
     MEM_HITODAMA_X    = 144
@@ -148,70 +149,77 @@ else
     27@ = 0
 end
 
-// Evaluate photo target only when debounce is off cooldown
+// Evaluate photo target only when debounce is off cooldown and playing as Jo'on
 if
     1@ <= 0
 then
-    // Physical Ped Photography (Native Opcode 04C5)
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PLAYER_FORM
+    0A8D: 17@ = read_memory 30@ size 4 virtual_protect 0
     if
-        10@ > 0
+        17@ == 1
     then
-        if and
-            056D: actor 10@ defined
-            8118: not actor 10@ dead
+        // Physical Ped Photography (Native Opcode 04C5)
+        if
+            10@ > 0
         then
-            if
-                04C5: actor 10@ photographed
+            if and
+                056D: actor 10@ defined
+                8118: not actor 10@ dead
             then
-                0085: 30@ = 31@
-                000A: 30@ += MEM_PRIORITY_LOCK
-                0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
                 if
-                    16@ < 4
+                    04C5: actor 10@ photographed
                 then
-                    11@ = 1
-                    12@ = 43
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_PRIORITY_LOCK
+                    0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+                    if
+                        16@ < 4
+                    then
+                        11@ = 1
+                        12@ = 43
+                    end
                 end
             end
-        end
-    else
-        // Hitodama Spirit Photography (Frustum & Viewfinder Detection)
-        if and
-            10@ == -1
-            27@ == 1 // Photo was actually taken this tick
-        then
-            0085: 30@ = 31@
-            000A: 30@ += MEM_HITODAMA_X
-            0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
-
-            0085: 30@ = 31@
-            000A: 30@ += MEM_HITODAMA_Y
-            0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
-
-            0085: 30@ = 31@
-            000A: 30@ += MEM_HITODAMA_Z
-            0A8D: 22@ = read_memory 30@ size 4 virtual_protect 0
-
-            if or
-                8043: not 20@ == 0.0
-                8043: not 21@ == 0.0
+        else
+            // Hitodama Spirit Photography (Frustum & Viewfinder Detection)
+            if and
+                10@ == -1
+                27@ == 1 // Photo was actually taken this tick
             then
-                00A0: store_actor $PLAYER_ACTOR position_to 7@ 8@ 9@
-                050A: 15@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 7@ 8@ 9@
-                if
-                    8021: not 15@ > 35.0
+                0085: 30@ = 31@
+                000A: 30@ += MEM_HITODAMA_X
+                0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_HITODAMA_Y
+                0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_HITODAMA_Z
+                0A8D: 22@ = read_memory 30@ size 4 virtual_protect 0
+
+                if or
+                    8043: not 20@ == 0.0
+                    8043: not 21@ == 0.0
                 then
+                    00A0: store_actor $PLAYER_ACTOR position_to 7@ 8@ 9@
+                    050A: 15@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 7@ 8@ 9@
                     if
-                        00C2: sphere_onscreen 20@ 21@ 22@ radius 2.5
+                        8021: not 15@ > 35.0
                     then
-                        0085: 30@ = 31@
-                        000A: 30@ += MEM_PRIORITY_LOCK
-                        0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
                         if
-                            16@ < 4
+                            00C2: sphere_onscreen 20@ 21@ 22@ radius 2.5
                         then
-                            11@ = 1
-                            12@ = 443
+                            0085: 30@ = 31@
+                            000A: 30@ += MEM_PRIORITY_LOCK
+                            0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+                            if
+                                16@ < 4
+                            then
+                                11@ = 1
+                                12@ = 443
+                            end
                         end
                     end
                 end
@@ -249,47 +257,55 @@ then
             if
                 80DF: not actor $PLAYER_ACTOR driving
             then
-                // 2@ = Damager Struct, 3@ = Weapon Type, 4@ = Body Part, 5@ = Intensity
-                0EB5: get_char_damage_last_frame 19@ damager 2@ type 3@ part 4@ intensity 5@
-                0A96: 6@ = ped $PLAYER_ACTOR struct
-
-                if or
-                    003B: 2@ == 6@
-                    07D6: 2@ == $PLAYER_ACTOR
+                // Guard: Only Jo'on triggers sisterly friendly-fire banter
+                0085: 14@ = 31@
+                000A: 14@ += MEM_PLAYER_FORM
+                0A8D: 7@ = read_memory 14@ size 4 virtual_protect 0
+                if
+                    7@ == 1
                 then
-                    if
-                        1@ <= 0
+                    // 2@ = Damager Struct, 3@ = Weapon Type, 4@ = Body Part, 5@ = Intensity
+                    0EB5: get_char_damage_last_frame 19@ damager 2@ type 3@ part 4@ intensity 5@
+                    0A96: 6@ = ped $PLAYER_ACTOR struct
+
+                    if or
+                        003B: 2@ == 6@
+                        07D6: 2@ == $PLAYER_ACTOR
                     then
-                        // Use 14@ for isolated pointer math and 6@ for priority lock
-                        0085: 14@ = 31@
-                        000A: 14@ += MEM_PRIORITY_LOCK
-                        0A8D: 6@ = read_memory 14@ size 4 virtual_protect 0
                         if
-                            6@ < 4
+                            1@ <= 0
                         then
+                            // Use 14@ for isolated pointer math and 6@ for priority lock
+                            0085: 14@ = 31@
+                            000A: 14@ += MEM_PRIORITY_LOCK
+                            0A8D: 6@ = read_memory 14@ size 4 virtual_protect 0
                             if
-                                3@ == 51
+                                6@ < 4
                             then
-                                0470: 3@ = actor $PLAYER_ACTOR current_weapon
-                                
                                 if
-                                    3@ == 40
+                                    3@ == 51
                                 then
-                                    3@ = 39
+                                    0470: 3@ = actor $PLAYER_ACTOR current_weapon
+                                    
+                                    if
+                                        3@ == 40
+                                    then
+                                        3@ = 39
+                                    end
+
+                                    if and
+                                        8039: not 3@ == 16
+                                        8039: not 3@ == 35
+                                        8039: not 3@ == 36
+                                        8039: not 3@ == 39
+                                    then
+                                        3@ = 35 
+                                    end
                                 end
 
-                                if and
-                                    8039: not 3@ == 16
-                                    8039: not 3@ == 35
-                                    8039: not 3@ == 36
-                                    8039: not 3@ == 39
-                                then
-                                    3@ = 35 
-                                end
+                                11@ = 1
+                                0085: 12@ = 3@
                             end
-
-                            11@ = 1
-                            0085: 12@ = 3@
                         end
                     end
                 end

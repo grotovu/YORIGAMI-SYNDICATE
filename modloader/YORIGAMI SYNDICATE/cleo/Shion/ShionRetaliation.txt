@@ -1,0 +1,208 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+script_name "Sh_Retal"
+
+wait 1000
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (SCOPED: RETALIATION)
+// =========================================================================
+const
+    MEM_PLAYER_FORM   = 12
+    MEM_PRIORITY_LOCK = 20
+    MEM_SHION_HANDLE  = 116
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    31@ == 0
+then
+    goto @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+10@ = 0 // Retaliation Latch (0 = Idle, 1 = Triggered)
+11@ = 0 // Target Shion Ped Handle
+1@ = 0  // Cooldown / Anti-Spam Timer (ms)
+
+// Register Damage Callback
+0EDE: set_script_event_char_damage 1 @OnCharDamageRetaliate 19@
+
+:ShionRetaliation_Loop
+wait 50
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @ShionRetaliation_Loop
+end
+
+// Cooldown tick-down
+if
+    1@ > 0
+then
+    000E: 1@ -= 50
+    if
+        1@ <= 0
+    then
+        1@ = 0
+    end
+end
+
+// Process Pending Retaliation against CJ
+if
+    10@ == 1
+then
+    10@ = 0
+    gosub @Execute_Shion_Retaliation
+end
+
+goto @ShionRetaliation_Loop
+
+
+// =========================================================================
+// DAMAGE CALLBACK: DETECT ATTACKS ON SHION BY CJ
+// =========================================================================
+:OnCharDamageRetaliate
+if and
+    056D: actor 19@ defined
+    8118: not actor 19@ dead
+    1@ <= 0
+then
+    // Only trigger if player is currently in CJ form
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PLAYER_FORM
+    0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        27@ == 0
+    then
+        // Check if victim is Shion (Special Actor 10 / Model 299) and not CJ himself
+        if
+            87D6: not 19@ == $PLAYER_ACTOR
+        then
+            0665: get_actor 19@ model_to 26@
+            if
+                26@ == 299
+            then
+                // Check if the damager was CJ
+                0EB5: get_char_damage_last_frame 19@ damager 2@ type 3@ part 4@ intensity 5@
+                0A96: 6@ = ped $PLAYER_ACTOR struct
+                if or
+                    003B: 2@ == 6@
+                    07D6: 2@ == $PLAYER_ACTOR
+                then
+                    10@ = 1
+                    0085: 11@ = 19@
+                    1@ = 5000 // 5-second cooldown latch
+                end
+            end
+        end
+    end
+end
+0ED0: return_script_event
+
+
+// =========================================================================
+// SUBROUTINE: EXECUTE RETALIATION SEQUENCE
+// =========================================================================
+:Execute_Shion_Retaliation
+// Acquire Priority Lock to clear and prevent overlapping quips
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 4 virtual_protect 0
+
+// Clear CJ's tasks and make him stagger back
+0687: clear_actor $PLAYER_ACTOR task
+0E96: clear_char_primary_tasks $PLAYER_ACTOR
+0E97: clear_char_secondary_tasks $PLAYER_ACTOR
+0812: AS_actor $PLAYER_ACTOR perform_animation "hit_front" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
+
+// Camera and controller feedback
+0003: shake_camera 40
+015B: shake_player_controller 0 time 300 intensity 255
+
+// CJ loses a chunk of health
+0226: 12@ = actor $PLAYER_ACTOR health
+if
+    12@ > 40
+then
+    0851: set_actor $PLAYER_ACTOR decrease_health_by 35 affect_armour 1
+else
+    if
+        12@ > 10
+    then
+        000E: 12@ -= 5
+        0851: set_actor $PLAYER_ACTOR decrease_health_by 12@ affect_armour 1
+    end
+end
+
+// Emit shion_misfortune particles and blue flash around CJ
+04C4: store_coords_to 20@ 21@ 22@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.2
+04D5: create_corona_at 20@ 21@ 22@ radius 1.2 type 0 flare 0 RGB 0 100 255
+04D5: create_corona_at 20@ 21@ 22@ radius 0.6 type 0 flare 0 RGB 80 200 255
+04D5: create_corona_at 20@ 21@ 22@ radius 0.25 type 0 flare 0 RGB 255 255 255
+
+064B: 14@ = create_particle "shion_misfortune" at 20@ 21@ 22@ type 1
+064C: make_particle 14@ visible
+064F: remove_references_to_particle 14@
+
+018C: play_sound 1052 at 0.0 0.0 0.0
+
+// Display Shion's reaction
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_CJRET" text "~b~Shion: ~s~\"Should've thought twice...\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_CJRET' time 3500 flag 1
+
+// Shion turns, triggers FX_Warp, and despawns
+if and
+    056D: actor 11@ defined
+    8118: not actor 11@ dead
+then
+    0639: AS_actor 11@ rotate_to_actor $PLAYER_ACTOR
+    00A0: store_actor 11@ position_to 23@ 24@ 25@
+
+    0A92: create_custom_thread "Shion\FX_Warp.c" 0 23@ 24@ 25@
+
+    wait 200
+
+    if
+        056D: actor 11@ defined
+    then
+        0792: clear_char_tasks_immediately 11@
+        009B: destroy_actor 11@
+    end
+end
+
+// Clear Shion handle from shared memory
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+// Terminate any remaining companion threads
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Flw"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sync"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Ctrl"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Cmbt"
+0ABA: terminate_all_custom_scripts_with_this_name "Y_ShChat"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_FF"
+
+// Release Priority Lock after subtitle finishes
+wait 3000
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+return
