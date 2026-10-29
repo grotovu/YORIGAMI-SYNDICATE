@@ -192,10 +192,10 @@ then
         000A: 30@ += 0x1C
         0A8D: 30@ = read_memory 30@ size 1 virtual_protect 0
 
-        // Type 8 = Cash Pickup, Type 19 = Cash Pickup Doesn't Disappear
-        if or
+        // Type 8 = Natural Cash Drops from dead peds/gangs
+        // Type 19 = Scripted permanent mission pickups (Small Town Bank, Against All Odds) - EXCLUDED to prevent softlocks
+        if
             30@ == 8
-            30@ == 19
         then
             // Validate physical existence in the world (m_pObject != 0 at +0x04)
             0085: 30@ = 11@
@@ -204,7 +204,7 @@ then
             if
                 8039: not 30@ == 0
             then
-                // Calculate Script Handle
+                // Calculate Script Handle into 30@
                 0085: 30@ = 11@
                 000A: 30@ += 0x1A
                 0A8D: 30@ = read_memory 30@ size 2 virtual_protect 0
@@ -214,46 +214,45 @@ then
                 0016: 29@ /= 0x20
                 005A: 30@ += 29@ // 30@ = Pickup Script Handle
 
-                // Get Pickup World Coordinates
+                // Get Pickup World Coordinates (populates 27@, 28@, 29@)
                 065B: store_pickup 30@ position_to 27@ 28@ 29@
 
-                // Check distance to CJ
+                // Check distance to CJ (stored into 9@ to keep 30@ handle safe)
                 050A: 9@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 27@ 28@ 29@
                 if
                     8025: not 9@ > 23@ // Within dynamic suction radius! (float var-to-var)
                 then
-                    // Read Cash Value (offset +0x08) BEFORE destroying pickup
+                    // Read Cash Value (offset +0x08) directly into 9@ using 9@ as pointer
                     0085: 9@ = 11@
                     000A: 9@ += 0x08
                     0A8D: 9@ = read_memory 9@ size 4 virtual_protect 0 // 9@ = Base Cash Value
 
+                    // Safeguard: Never collect or destroy $0 dummy objective pickups
                     if
-                        9@ <= 0
+                        9@ > 0
                     then
-                        9@ = 50
-                    end
+                        // Destroy pickup from world immediately using untouched handle in 30@
+                        0215: destroy_pickup 30@
 
-                    // Destroy pickup from world immediately
-                    0215: destroy_pickup 30@
+                        // Calculate Pure Bonus Cash into 30@ (Strict 006A)
+                        0085: 30@ = 9@
+                        006A: 30@ *= 24@ // Base * Bonus % (006A)
+                        0016: 30@ /= 100 // 30@ = Pure Bonus Cash
 
-                    // Calculate Pure Bonus Cash into 30@ (Strict 006A)
-                    0085: 30@ = 9@
-                    006A: 30@ *= 24@ // Base * Bonus % (006A)
-                    0016: 30@ /= 100 // 30@ = Pure Bonus Cash
+                        // Add to Batch Accumulators
+                        005A: 25@ += 9@  // Total Cash += Base
+                        005A: 25@ += 30@ // Total Cash += Bonus
+                        000A: 26@ += 1   // Pickup Count += 1
 
-                    // Add to Batch Accumulators
-                    005A: 25@ += 9@  // Total Cash += Base
-                    005A: 25@ += 30@ // Total Cash += Bonus
-                    000A: 26@ += 1   // Pickup Count += 1
-
-                    // Optional Particle Burst at Pickup Location (Auto-Cleans!)
-                    if
-                        0@ == 1
-                    then
-                        000B: 29@ += 0.35 // Lift slightly off ground
-                        064B: 30@ = create_particle "joon_gold" at 27@ 28@ 29@ type 1
-                        064C: make_particle 30@ visible
-                        064F: remove_references_to_particle 30@
+                        // Optional Particle Burst at Pickup Location (27@, 28@, 29@ preserved!)
+                        if
+                            0@ == 1
+                        then
+                            000B: 29@ += 0.35 // Lift slightly off ground
+                            064B: 30@ = create_particle "joon_gold" at 27@ 28@ 29@ type 1
+                            064C: make_particle 30@ visible
+                            064F: remove_references_to_particle 30@
+                        end
                     end
                 end
             end

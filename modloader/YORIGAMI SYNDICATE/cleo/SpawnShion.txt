@@ -73,6 +73,7 @@ end
 0A92: create_custom_thread "Shion\ShionGear.c"
 0A92: create_custom_thread "Shion\Lore\loreMenu.c"
 0A92: create_custom_thread "Shion\FX_ShionMoneyDanmaku.c"
+0A92: create_custom_thread "Shion\ShionRetaliation.c"
 
 // Permanently unlock 7-slot group capacity (bypasses zero-respect lockout on new games!)
 08F4: set_max_group_members 7
