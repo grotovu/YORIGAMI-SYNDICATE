@@ -161,4 +161,13 @@ For the dialogue and narrative: I provided the specific character context, lore,
 All creative direction, systems architecture, mechanical balance (the prestige tree, companion logic, economy sinks), and dialogue concepts were directed and finalized by **EagleRaviOrange**.
 
 ---
+
+## 📖 Further Reading & Design Notes
+
+* [The Choice of Shitamachi Chain-Smoker Jo'on: Gutter Dialects, and Fake-Rich Nuance](https://eagleraviorange.bearblog.dev/the-choice-of-shitamachi-chain-smoker-joon-gutter-dialects-and-fake-rich-nuance/) 
+  *A deep dive into the linguistic inspirations, Japanese Shitamachi speech patterns, and character psychology behind Jo'on's street dialogue in this mod.*
+  *(**Note:** This link leads to my personal blog. It contains unfiltered analysis and embraces the darker, messy, and taboo elements of Japanese doujin culture. Proceed accordingly.)*
+
+---
+
 *Touhou Project belongs to ZUN / Team Shanghai Alice. Mod is open-source and free on GitHub.*
