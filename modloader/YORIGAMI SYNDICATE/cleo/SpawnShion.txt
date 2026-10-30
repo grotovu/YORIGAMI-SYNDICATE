@@ -33,6 +33,10 @@ const
     MEM_SHION_PRES_ARMOUR = 164   // Formerly 736
 
     MEM_REUNION_SIGNAL = 208      // Formerly 720
+    
+    MEM_SHION_DEATH_FLAG = 380
+    MEM_SHION_KILLER_IS_JOON = 384
+    MEM_SHION_DEATH_WEAPON = 388
 end
 
 :Connect_To_Brain
@@ -74,6 +78,7 @@ end
 0A92: create_custom_thread "Shion\Lore\loreMenu.c"
 0A92: create_custom_thread "Shion\FX_ShionMoneyDanmaku.c"
 0A92: create_custom_thread "Shion\ShionRetaliation.c"
+0A92: create_custom_thread "Shion\ShionDeathTracker.c"
 
 // Permanently unlock 7-slot group capacity (bypasses zero-respect lockout on new games!)
 08F4: set_max_group_members 7
@@ -113,6 +118,18 @@ end
 
 0085: 30@ = 31@
 000A: 30@ += MEM_DURGASTRA_FLAG
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_DEATH_FLAG
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_KILLER_IS_JOON
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_DEATH_WEAPON
 0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
 gosub @Load_Spawn_Keys
@@ -897,10 +914,39 @@ then
         gosub @Transform_Player_To_Joon
         gosub @Boot_All_Worker_Threads
 
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        0ADF: add_text_label "Y_SHIT0" text "~b~SHION YORIGAMI~n~~w~MATERIAL FORM"
-        09C1: add_next_text_to_brief_history 1
-        00BA: show_text_styled GXT 'Y_SHIT0' time 2500 style 5
+        // Trigger post-death complaint if Shion died earlier in the session
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_DEATH_FLAG
+        0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+        if
+            0039: 29@ == 1
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                0039: 28@ == 0
+            then
+                // Claim priority lock immediately so Sandbox cannot hijack during warp
+                0085: 30@ = 31@
+                000A: 30@ += MEM_PRIORITY_LOCK
+                0A8C: write_memory 30@ size 4 value 3 virtual_protect 0
+
+                0ABA: terminate_all_custom_scripts_with_this_name "Sh_Spwn"
+                0A92: create_custom_thread "Shion\Chat\chatSpawned.c" 10@
+            else
+                // Priority channel is busy; keep death flag so she can complain on next spawn/reunion
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                0ADF: add_text_label "Y_SHIT0" text "~b~SHION YORIGAMI~n~~w~MATERIAL FORM"
+                09C1: add_next_text_to_brief_history 1
+                00BA: show_text_styled GXT 'Y_SHIT0' time 2500 style 5
+            end
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            0ADF: add_text_label "Y_SHIT0" text "~b~SHION YORIGAMI~n~~w~MATERIAL FORM"
+            09C1: add_next_text_to_brief_history 1
+            00BA: show_text_styled GXT 'Y_SHIT0' time 2500 style 5
+        end
 
         wait 250
     end
@@ -1398,6 +1444,7 @@ return
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_FF"
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sndb"
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_RedM"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Spwn"
 
 0085: 30@ = 31@
 000A: 30@ += MEM_PRIORITY_LOCK

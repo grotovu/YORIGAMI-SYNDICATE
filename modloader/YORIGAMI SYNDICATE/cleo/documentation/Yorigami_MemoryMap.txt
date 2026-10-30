@@ -110,4 +110,7 @@ const
     MEM_DANMAKU_CASH_SPENT = 368
     MEM_CAR_SMASH_SIGNAL = 372   // Car Smasher Punch Detonation Signal (0 = Idle, 1 = Triggered)
     MEM_FLEX_SIGNAL = 376 
+MEM_SHION_DEATH_FLAG = 380       // Session Death Latch (0 = Alive/Clean, 1 = Has died this session)
+    MEM_SHION_KILLER_IS_JOON = 384   // Killer Identity (0 = World/Enemies/Unknown, 1 = Jo'on)
+    MEM_SHION_DEATH_WEAPON = 388     // Weapon ID / Damage Reason that killed her (-1 = Generic)
 end

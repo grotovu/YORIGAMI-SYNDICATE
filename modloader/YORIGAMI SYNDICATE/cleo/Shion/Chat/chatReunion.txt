@@ -11,6 +11,9 @@
 const
     MEM_PRIORITY_LOCK = 20
     MEM_REUNION_SIGNAL = 208
+    MEM_SHION_DEATH_FLAG = 380
+    MEM_SHION_KILLER_IS_JOON = 384
+    MEM_SHION_DEATH_WEAPON = 388
 end
 
 :Connect_To_Brain
@@ -52,6 +55,94 @@ end
 0085: 30@ = 31@
 000A: 30@ += MEM_PRIORITY_LOCK
 0A8C: write_memory 30@ size 4 value 4 virtual_protect 0
+
+// Check if Shion died earlier in the session before loitering here
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_DEATH_FLAG
+0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 28@ == 1
+then
+    // Read death manner telemetry
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_KILLER_IS_JOON
+    0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+
+    // Clear session death flag
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_DEATH_FLAG
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    if
+        0039: 27@ == 1
+    then
+        // Case A: Jo'on killed her
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND0" text "~y~Jo'on: ~s~\"There ya are! Back on your feet already? See? Told ya you were tough enough to take a stray bullet!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND0' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Reunion_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND1" text "~b~Shion: ~s~\"You shot me straight in the ribs, Jo'on... it wasn't a stray bullet. My chest is still black and blue.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND1' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Reunion_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND2" text "~y~Jo'on: ~s~\"Collateral damage! It happens to the best of us! Now shake it off, we've got cash to fleece!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND2' time 3500 flag 1
+        0001: wait 3500 ms
+        0050: gosub @Check_Reunion_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND3" text "~b~Shion: ~s~\"You're paying for my hospital bill... and dinner. Mostly dinner.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND3' time 3200 flag 1
+        0001: wait 3200 ms
+        0002: jump @Finish_Reunion_Chat
+    else
+        // Case B: Killed by enemies / environment
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND4" text "~y~Jo'on: ~s~\"Finally crawled out of the hospital, huh? I was startin' to think I'd have to rob these fools alone!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND4' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Reunion_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND5" text "~b~Shion: ~s~\"The coroner almost zipped me up, Jo'on... my joints are still stiff from the morgue slab.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND5' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Reunion_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND6" text "~y~Jo'on: ~s~\"A little morgue chill never hurt nobody! Move those legs, we're makin' up for lost time!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND6' time 3500 flag 1
+        0001: wait 3500 ms
+        0050: gosub @Check_Reunion_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND7" text "~b~Shion: ~s~\"Fine... but walk slow. If I drop dead again, you're carrying me.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND7' time 3200 flag 1
+        0001: wait 3200 ms
+        0002: jump @Finish_Reunion_Chat
+    end
+end
 
 // 6 Randomized Reunion Exchanges (0 to 5)
 0209: 29@ = random_int_in_ranges 0 6

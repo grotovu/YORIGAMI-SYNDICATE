@@ -1,0 +1,172 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+03A4: script_name 'Sh_Spwn'
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (SCOPED TO CHATSPAWNED)
+// =========================================================================
+const
+    MEM_PRIORITY_LOCK = 20
+    MEM_SHION_HANDLE = 116
+    MEM_SHION_DEATH_FLAG = 380
+    MEM_SHION_KILLER_IS_JOON = 384
+    MEM_SHION_DEATH_WEAPON = 388
+end
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// 0@ = Shion Actor Handle passed as parameter
+0085: 10@ = 0@
+
+// Wait 1.2s post-warp for her model to settle
+0001: wait 1200 ms
+
+if or
+    8256: not is_player_playing $PLAYER_CHAR
+    856D: not actor 10@ defined
+    0118: actor 10@ dead
+then
+    0050: gosub @Bailout_Spawn_Chat
+end
+
+// Verify no Tier 4 Master Theater has taken over during warp delay
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0029: 16@ >= 4
+then
+    // Yield quietly to Tier 4 without clearing their lock
+    0A93: terminate_this_custom_script
+end
+
+// Preempt lower-priority ambient chatter
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
+03EB: clear_small_messages_only
+
+// Maintain Priority Lock 3
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 3 virtual_protect 0
+
+// Read Death Telemetry
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_KILLER_IS_JOON
+0A8D: 13@ = read_memory 30@ size 4 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_DEATH_WEAPON
+0A8D: 12@ = read_memory 30@ size 4 virtual_protect 0
+
+// Clear session death flag now that complaint is voiced
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_DEATH_FLAG
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+
+// Case A: Jo'on delivered the fatal blow
+if
+    0039: 13@ == 1
+then
+    0209: 26@ = random_int_in_ranges 0 3
+    if
+        0039: 26@ == 0
+    then
+        0ADF: add_text_label "Y_SPD0" text "~b~Shion: ~s~\"Ugh... everything aches. Did you really have to kill me earlier, Jo'on?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SPD0' time 3500 flag 1
+    end
+    if
+        0039: 26@ == 1
+    then
+        0ADF: add_text_label "Y_SPD1" text "~b~Shion: ~s~\"My ribs are still throbbing... watch where you point your weapons next time.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SPD1' time 3500 flag 1
+    end
+    if
+        0039: 26@ == 2
+    then
+        0ADF: add_text_label "Y_SPD2" text "~b~Shion: ~s~\"I crawled back from the dirt, Jo'on... but only because starving hurts worse.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SPD2' time 3500 flag 1
+    end
+else
+    // Case B: Enemies / Environment killed her
+    0209: 26@ = random_int_in_ranges 0 3
+    if
+        0039: 26@ == 0
+    then
+        0ADF: add_text_label "Y_SPD3" text "~b~Shion: ~s~\"Ugh... my whole body is aching. Getting gunned down really takes it out of you.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SPD3' time 3500 flag 1
+    end
+    if
+        0039: 26@ == 1
+    then
+        0ADF: add_text_label "Y_SPD4" text "~b~Shion: ~s~\"My head is spinning... I can still feel all the lead from earlier.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SPD4' time 3500 flag 1
+    end
+    if
+        0039: 26@ == 2
+    then
+        0ADF: add_text_label "Y_SPD5" text "~b~Shion: ~s~\"Dying hurts, Jo'on... let's try not to get cornered like that again.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SPD5' time 3500 flag 1
+    end
+end
+
+0001: wait 3500 ms
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 16@ == 3
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+
+0A93: terminate_this_custom_script
+
+:Bailout_Spawn_Chat
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 16@ == 3
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+0A93: terminate_this_custom_script
