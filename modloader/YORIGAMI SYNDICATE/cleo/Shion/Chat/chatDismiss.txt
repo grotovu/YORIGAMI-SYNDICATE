@@ -304,8 +304,10 @@ else
     18@ = 1 // Already walking on foot
 end
 
-15@ = 0 // Stalker reaction cooldown timer (ms)
-14@ = 0 // Total walk-away lifetime timer (ms)
+15@ = 0  // Stalker reaction cooldown timer (ms)
+14@ = 0  // Total walk-away lifetime timer (ms)
+11@ = 0  // Stalker reaction complaint counter (max 3 times)
+13@ = -1 // Last spoken stalker variant index (anti-repetition)
 
 // =========================================================================
 // DISMISSAL WALK-AWAY & STALKER WATCHDOG LOOP
@@ -386,8 +388,9 @@ if and
     8449: not actor 10@ in_a_car
     8021: not 26@ > 5.0
 then
-    if
+    if and
         0039: 15@ == 0
+        001B: 3 > 11@ // Only complain up to 3 times, then stay completely silent
     then
         // Only trigger if Player is Jo'on
         0085: 30@ = 31@
@@ -408,6 +411,19 @@ then
                 000A: 30@ += MEM_PRIORITY_LOCK
                 0A8C: write_memory 30@ size 4 value 3 virtual_protect 0
 
+                // Increment complaint counter
+                000A: 11@ += 1
+
+                // Anti-repetition: Roll a line that wasn't spoken last time
+                :Roll_Stalker_Line
+                0209: 28@ = random_int_in_ranges 0 4
+                if
+                    003B: 28@ == 13@
+                then
+                    jump @Roll_Stalker_Line
+                end
+                0085: 13@ = 28@ // Record as last spoken
+
                 // Shion stops and turns to face Jo'on
                 0687: clear_actor 10@ task
                 0E96: clear_char_primary_tasks 10@
@@ -415,7 +431,6 @@ then
 
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
-                0209: 28@ = random_int_in_ranges 0 4
 
                 if
                     0039: 28@ == 0
@@ -434,7 +449,7 @@ then
                 if
                     0039: 28@ == 2
                 then
-                    0ADF: add_text_label "Y_STK2" text "~b~Shion: ~s~\"Are you going to stare at me all day? Go do something productive.\""
+                    0ADF: add_text_label "Y_STK2" text "~b~Shion: ~s~\"Are you going to stare at me all day? Go see some rich people.\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_STK2' time 3200 flag 1
                 end
