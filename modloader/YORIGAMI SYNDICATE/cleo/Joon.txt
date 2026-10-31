@@ -19,8 +19,11 @@ const
     MEM_SHION_HANDLE = 116        // Formerly 703
     MEM_SHION_WEAPON_ID = 124     // Formerly 731
     MEM_SHION_AMMO_COUNT = 128    // Formerly 732
+    MEM_COMBAT_RES_MODE = 132     // Formerly 733
     MEM_JOON_STASH_WEAPON = 136   // Formerly 738
     MEM_JOON_STASH_AMMO = 140     // Formerly 739
+    MEM_SHION_PRES_HP = 160       // Preserved HP
+    MEM_SHION_PRES_ARMOUR = 164   // Preserved Armour
     MEM_JOON_CIGAR_OBJ = 220      // Formerly 740
 end
 
@@ -608,12 +611,26 @@ gosub @Restore_CJ_Gang_Acquaintances
 000A: 30@ += MEM_SHION_HANDLE
 0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
 if
-    25@ > 0 // Solid Ped Form
+    0019: 25@ > 0 // Solid Ped Form
 then
     if and
         056D: actor 25@ defined
         8118: not actor 25@ dead
     then
+        // Max out Shion's health so CJ's punch triggers Retaliation without killing her
+        08AF: set_actor 25@ max_health_to 1000
+        0223: set_actor 25@ health 1000
+        035F: actor 25@ armour += 500
+
+        // Sync preserved values in Master Heap
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_PRES_HP
+        0A8C: write_memory 30@ size 4 value 1000 virtual_protect 0
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_PRES_ARMOUR
+        0A8C: write_memory 30@ size 4 value 500 virtual_protect 0
+
         0085: 30@ = 31@
         000A: 30@ += MEM_INTENTIONAL_DISM
         0A8C: write_memory 30@ size 4 value 1 virtual_protect 0 // Set intentional dismissal flag
@@ -639,8 +656,17 @@ then
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 else
     if
-        25@ == -1 // Hitodama Spirit Form
+        0039: 25@ == -1 // Hitodama Spirit Form
     then
+        // Restore preserved health for next rematerialization
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_PRES_HP
+        0A8C: write_memory 30@ size 4 value 1000 virtual_protect 0
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_PRES_ARMOUR
+        0A8C: write_memory 30@ size 4 value 500 virtual_protect 0
+
         0ABA: terminate_all_custom_scripts_with_this_name "Sh_HitoF"
         0ABA: terminate_all_custom_scripts_with_this_name "Sh_Warp"
 
