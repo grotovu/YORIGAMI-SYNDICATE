@@ -1402,7 +1402,7 @@ then
     if
         26@ == 6
     then
-        0ADF: add_text_label "Y_FF43G" text "~b~Shion: ~s~\"Film costs money, Jo'on! Stop wasting exposures on my ragged hoodie!\""
+        0ADF: add_text_label "Y_FF43G" text "~b~Shion: ~s~\"Film costs money, Jo'on! Stop wasting shots on my ragged hoodie!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF43G' time 2800 flag 1
     end
