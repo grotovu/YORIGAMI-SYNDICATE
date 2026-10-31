@@ -337,7 +337,7 @@ then
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0209: 28@ = random_int_in_ranges 0 3
+    0209: 28@ = random_int_in_ranges 0 4
     if
         0039: 28@ == 0
     then
@@ -358,6 +358,13 @@ then
         0ADF: add_text_label "Y_NORE3" text "~b~Shion: ~s~\"You told me to beat it, Jo'on. I'm beating it.\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_NORE3' time 3200 flag 1
+    end
+    if
+        0039: 28@ == 3
+    then
+        0ADF: add_text_label "Y_NORE4" text "~b~Shion: ~s~\"You need me back in your posse? Pray my name first.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_NORE4' time 3200 flag 1
     end
 end
 
@@ -443,11 +450,11 @@ then
     jump @Cleanup_Dismiss_And_Exit
 end
 
-// STALKER REACTION: Jo'on is following Shion on foot (<= 5.0m)
+// STALKER REACTION: Jo'on is following Shion on foot (<= 3.0m)
 if and
     8449: not actor $PLAYER_ACTOR in_a_car
     8449: not actor 10@ in_a_car
-    8021: not 26@ > 5.0
+    8021: not 26@ > 3.0
 then
     if and
         0039: 15@ == 0
