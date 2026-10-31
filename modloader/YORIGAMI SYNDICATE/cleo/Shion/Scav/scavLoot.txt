@@ -629,7 +629,7 @@ then
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_VPD0' time 3500 flag 1
     else
-        0ADF: add_text_label "Y_VPD1" text "~b~Shion: ~s~\"Bought us cold sodas, Jo'on!\"~n~~y~Jo'on: ~s~\"Outta MY two bucks, dummy! Hand mine over!\""
+        0ADF: add_text_label "Y_VPD1" text "~b~Shion: ~s~\"Jo'on, I bought us cold sodas.\"~n~~y~Jo'on: ~s~\"Outta MY two bucks, dummy! Hand mine over!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_VPD1' time 4000 flag 1
     end

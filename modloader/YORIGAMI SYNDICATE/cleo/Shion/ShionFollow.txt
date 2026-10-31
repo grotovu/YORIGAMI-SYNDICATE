@@ -46,6 +46,8 @@ end
 13@ = 0   // Transition State (0 = Idle, 1 = Wait Mesh, 2 = Doorway Clearance)
 14@ = 0   // Transition Timer (ms)
 15@ = 0   // Stay Put Mode Flag (0 = Follow / Auto-Warp, 1 = Stay Put via [H])
+9@ = 0    // Double-tap G rolling window timer (ms)
+11@ = 0   // G key tap counter
 16@ = 0.0 // Doorway Arrival X (float)
 17@ = 0.0 // Doorway Arrival Y (float)
 18@ = 0.0 // Doorway Arrival Z (float)
@@ -63,6 +65,19 @@ end
 
 :ShionFollow_Loop
 wait 50
+
+// Tick down double-tap G window timer
+if
+    0019: 9@ > 0
+then
+    000E: 9@ -= 50
+    if
+        002B: 0 >= 9@
+    then
+        9@ = 0
+        11@ = 0
+    end
+end
 
 // Casualty & Arrest Telemetry (Only counts while with Shion!)
 if
@@ -223,45 +238,108 @@ then
 end
 
 // =========================================================================
-// GANG STANCE TRACKER ([H] = Stay Put | [G] = Follow / Beckon)
-// =========================================================================
-// Guarded with not Y-key so Y + H (Hitodama Morph) never triggers stay put!
-if and
-    0AB0: is_key_pressed 72 // H Key
-    8AB0: not is_key_pressed 3@ // Y Key NOT held
-then
-    15@ = 1 // Stay Put Mode Active
-end
-
-if and
-    0AB0: is_key_pressed 71 // G Key
-    8AB0: not is_key_pressed 3@ // Y Key NOT held
-then
-    15@ = 0 // Follow Mode Active
-end
-
-// =========================================================================
-// ON-FOOT DISTANCE & TELEPORT ENGINE
+// ON-FOOT DISTANCE & GANG STANCE ENGINE
 // =========================================================================
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_BUSY // Scavenge / Parachute Busy Flag
 0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+
 if
-    2@ == 0
+    0039: 2@ == 0 // Only active when NOT busy scavenging or parachuting
 then
     077E: get_active_interior_to 28@
     09E8: 27@ = actor 10@ active_interior
+
     if and
-        28@ == 0
+        0039: 28@ == 0 // Both outdoors in the same world
         003B: 28@ == 27@
         816B: not fading
         8E25: not is_on_cutscene
     then
+        // Calculate true live distance 26@ FIRST before any checks use it!
         00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
         00A0: store_actor 10@ position_to 23@ 24@ 25@
         050A: 26@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 23@ 24@ 25@
 
+        // -----------------------------------------------------------------
+        // [H] Key: Stay Put (Guarded so Y + H Hitodama Morph does not trigger it)
+        // -----------------------------------------------------------------
+        if and
+            0AB0: is_key_pressed 72 // H Key
+            8AB0: not is_key_pressed 3@ // Y Key NOT held
+        then
+            15@ = 1 // Stay Put Mode Active
+        end
+
+        // -----------------------------------------------------------------
+        // [G] Key: Follow, Break Combat Freeze, or Double-Tap Instant Warp
+        // -----------------------------------------------------------------
+        if and
+            8449: not actor $PLAYER_ACTOR in_a_car // On foot only
+            8449: not actor 10@ in_a_car
+            8818: not actor 10@ in_air
+        then
+            if and
+                0AB0: is_key_pressed 71 // G Key
+                8AB0: not is_key_pressed 3@ // Y Key NOT held
+            then
+                :Wait_G_Key_Rel
+                wait 50
+                if or
+                    0117: player $PLAYER_CHAR wasted
+                    0741: actor $PLAYER_ACTOR busted
+                    856D: not actor 10@ defined
+                    0118: actor 10@ dead
+                then
+                    jump @ShionFollow_Loop
+                end
+                if
+                    0AB0: is_key_pressed 71 // G Key
+                then
+                    jump @Wait_G_Key_Rel
+                end
+
+                // G Key released cleanly: cancel Stay Put mode
+                15@ = 0
+
+                000A: 11@ += 1 // Increment tap counter
+
+                // DOUBLE-TAP / SPAM G: Emergency Hitodama Warp right to Jo'on
+                if
+                    0029: 11@ >= 2
+                then
+                    11@ = 0
+                    9@ = 0
+                    gosub @Execute_Shion_OnFoot_Warp
+                else
+                    // SINGLE TAP G: Start 500ms double-tap window
+                    9@ = 500
+
+                    // If far away (> 15m), warp immediately
+                    if
+                        0021: 26@ > 15.0
+                    then
+                        gosub @Execute_Shion_OnFoot_Warp
+                    else
+                        // If nearby (<= 15m) but frozen by cops/enemies: forcibly break tasks and run to Jo'on
+                        0687: clear_actor 10@ task
+                        0E96: clear_char_primary_tasks 10@
+                        0E97: clear_char_secondary_tasks 10@
+
+                        07AF: 12@ = player $PLAYER_CHAR group
+                        0631: put_actor 10@ in_group 12@
+                        07B3: set_group 12@ give_command 0 // Force group follow leader
+
+                        05D9: AS_actor 10@ run_to_actor $PLAYER_ACTOR timelimit 4000 stop_within_radius 2.0
+                        018C: play_sound 1058 at 0.0 0.0 0.0
+                    end
+                end
+            end
+        end
+
+        // -----------------------------------------------------------------
         // Automatic On-Foot Catch-Up Warp (Distance > 45m)
+        // -----------------------------------------------------------------
         if and
             8449: not actor $PLAYER_ACTOR in_a_car
             8449: not actor 10@ in_a_car
@@ -275,48 +353,9 @@ then
             end
         end
 
-        // Manual [G] On-Foot Beckon Warp (> 15m)
-        if and
-            8449: not actor $PLAYER_ACTOR in_a_car
-            8449: not actor 10@ in_a_car
-            8818: not actor 10@ in_air
-        then
-            if and
-                0AB0: is_key_pressed 71 // G Key
-                8AB0: not is_key_pressed 3@ // Y Key NOT held
-            then
-                if
-                    0021: 26@ > 15.0
-                then
-                    :Wait_OnFoot_G_Rel
-                    wait 50
-                    if or
-                        0117: player $PLAYER_CHAR wasted
-                        0741: actor $PLAYER_ACTOR busted
-                    then
-                        jump @ShionFollow_Loop
-                    end
-
-                    if or
-                        856D: not actor 10@ defined
-                        0118: actor 10@ dead
-                    then
-                        jump @ShionFollow_Loop
-                    end
-
-                    if
-                        0AB0: is_key_pressed 71
-                    then
-                        jump @Wait_OnFoot_G_Rel
-                    end
-
-                    15@ = 0 // Clear stay put mode
-                    gosub @Execute_Shion_OnFoot_Warp
-                end
-            end
-        end
-
+        // -----------------------------------------------------------------
         // Hard Despawn Fallback (Distance > 130m)
+        // -----------------------------------------------------------------
         if
             0021: 26@ > 130.0
         then
@@ -417,7 +456,7 @@ return
 // Check if the fatal damage blow came from Jo'on / Player
 28@ = 0
 
-// Check 1: Synchronous Heap Telemetry from Death Tracker
+// Master Authority: Synchronous Heap Telemetry from Death Tracker
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_KILLER_IS_JOON
 0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
@@ -425,6 +464,10 @@ if
     0039: 29@ == 1
 then
     28@ = 1
+else
+    // If Death Tracker recorded that an enemy or environment dealt the fatal blow,
+    // do NOT let a stale native 051A flag falsely blame Jo'on!
+    28@ = 0
 end
 
 // Check 2: Direct Last Frame Damage Inspector (CLEO+ 0EB5 catches melee knockdowns)
@@ -582,11 +625,6 @@ then
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
     return
 end
-
-0085: 30@ = 31@
-000A: 30@ += MEM_PRIORITY_LOCK
-0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-return
 
 0085: 30@ = 31@
 000A: 30@ += MEM_PRIORITY_LOCK

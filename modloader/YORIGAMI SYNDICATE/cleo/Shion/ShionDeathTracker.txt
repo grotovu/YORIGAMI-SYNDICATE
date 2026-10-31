@@ -95,7 +95,7 @@ then
                 end
             end
 
-            // Write telemetry to Master Heap
+            // Write final telemetry to Master Heap
             0085: 30@ = 31@
             000A: 30@ += MEM_SHION_DEATH_FLAG
             0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
@@ -133,21 +133,89 @@ then
         0A96: 6@ = ped $PLAYER_ACTOR struct
 
         13@ = 0
+
+        // Check 1: Jo'on damaged her on foot
         if or
             003B: 2@ == 6@
             07D6: 2@ == $PLAYER_ACTOR
         then
             13@ = 1
+        end
 
-            // Resolve explosion damage types back to active weapon
+        // Check 2: Jo'on damaged her with a vehicle (Rammed, Run Over, or Driving)
+        if
+            0039: 13@ == 0
+        then
             if
-                0039: 3@ == 51
+                00DF: actor $PLAYER_ACTOR driving
             then
-                0470: 3@ = actor $PLAYER_ACTOR current_weapon
+                03C0: 24@ = actor $PLAYER_ACTOR car
                 if
-                    0039: 3@ == 40
+                    056E: car 24@ defined
                 then
-                    3@ = 39
+                    0A97: 25@ = vehicle 24@ struct
+                    if or
+                        003B: 2@ == 24@
+                        003B: 2@ == 25@
+                        051B: actor 10@ damaged_by_car 24@
+                    then
+                        13@ = 1
+                        // If run over or rammed, ensure weapon type reflects vehicular impact
+                        if or
+                            0039: 3@ == 49
+                            0039: 3@ == 50
+                        then
+                            3@ = 50
+                        end
+                    end
+                end
+            end
+        end
+
+        // Check 3: Explosion Resolution (51)
+        if
+            0039: 3@ == 51
+        then
+            0470: 23@ = actor $PLAYER_ACTOR current_weapon
+            22@ = 0
+
+            // Only map to hand weapons if Jo'on has an actual explosive equipped ON FOOT
+            if
+                80DF: not actor $PLAYER_ACTOR driving
+            then
+                if or
+                    0039: 23@ == 16 // Grenade
+                    0039: 23@ == 35 // Rocket Launcher
+                    0039: 23@ == 36 // Heatseeker
+                    0039: 23@ == 39 // Satchel Charge
+                    0039: 23@ == 40 // Detonator
+                then
+                    22@ = 1
+                    if
+                        0039: 23@ == 40
+                    then
+                        23@ = 39
+                    end
+                    0085: 3@ = 23@
+                end
+            end
+
+            // If not fired from an explosive weapon, it is a vehicle/environmental explosion
+            if
+                0039: 22@ == 0
+            then
+                3@ = 51 // Preserve as pure Car / Environmental Explosion
+
+                // If Jo'on was driving a wrecked/burning car, attribute the crash explosion to her
+                if
+                    00DF: actor $PLAYER_ACTOR driving
+                then
+                    03C0: 24@ = actor $PLAYER_ACTOR car
+                    if
+                        056E: car 24@ defined
+                    then
+                        13@ = 1
+                    end
                 end
             end
         end
