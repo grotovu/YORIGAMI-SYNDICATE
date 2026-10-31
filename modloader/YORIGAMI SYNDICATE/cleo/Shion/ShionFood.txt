@@ -16,6 +16,8 @@ const
     MEM_PRIORITY_LOCK = 20
     MEM_SHION_HANDLE = 116
     MEM_LAST_FED_HOURS = 228
+    MEM_SHION_DEATH_FLAG = 380
+    MEM_SHION_RECRUITED = 400
 end
 
 :Connect_To_Brain
@@ -37,16 +39,14 @@ wait 1500
 2@ = 0    // Cached Food Stop Count for active interior
 3@ = -999 // Last Tracked Interior ID (-999 forces initial load)
 8@ = 0    // TAB Hold Timer (ms) for on-foot
-11@ = 0   // Dedicated Player Vehicle Handle
-12@ = 0   // Needs Food Boolean Flag (Relocated from 31@)
-13@ = 48  // HungerIntervalHours (default 48h)
-14@ = 0   // Elapsed Hours Since Last Fed (Relocated from 30@)
+11@ = 0   // Previous Recruitment State Latch
+12@ = 0   // Needs Food Boolean Flag
+13@ = 0   // 10-Second Spawn/Recruit Delay Timer (ms)
+14@ = 0   // Death Memory Suppression Flag (1 = Suppress initial hunger line)
 15@ = 0   // Diner Active State: 0 = Idle/Monitoring, 1 = Diner Active
-19@ = 0   // Near Food Location Boolean Flag (1 = Near, 0 = Not Near)
-22@ = 0   // Shion Health Tracker (Integer)
-23@ = 0   // FoodReasonFlag to pass: 1 = Hungry, 2 = Wounded, 3 = Mild Hurt
-28@ = 0   // Current Active Interior ID
-29@ = 0   // Current Total In-Game Hours
+17@ = 0   // Previous Shion Ped Handle (Tracks respawns and morphs!)
+21@ = 0   // Dedicated Player Vehicle Handle
+// 29@       Elapsed Hours Since Last Fed (Calculated globally in loop)
 
 // Allocate 8 KB RAM Cache once on boot (Holds up to 500 custom food locations)
 0AC8: 1@ = allocate_memory_size 8000
@@ -60,39 +60,83 @@ then
     goto @ShionFood_Loop
 end
 
-// Read Live Handle from Shared Memory
+// -------------------------------------------------------------------------
+// 1. MONITOR RECRUITMENT STATE & HANDLE CHANGES
+// -------------------------------------------------------------------------
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_RECRUITED
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_HANDLE
 0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
 
-// If dismissed or inactive (0), sleep cleanly without terminating (Prevents heap memory leaks!)
+24@ = 0 // Flag: Trigger 10-second spawn delay?
+
+// Check Recruitment Rising Edge
 if
-    10@ == 0
+    803B: not 16@ == 11@
+then
+    if and
+        16@ == 1
+        11@ == 0
+    then
+        24@ = 1
+    end
+    0085: 11@ = 16@
+end
+
+// Check Handle Change (Respawn via Cheat or Morphing from Hitodama)
+if
+    803B: not 10@ == 17@
+then
+    if and
+        16@ == 1 // Only applies if she is actively recruited
+        10@ > 0  // Only applies when a new solid ped is created
+    then
+        24@ = 1
+    end
+    0085: 17@ = 10@
+end
+
+// Execute 10-Second Silence on any spawn or recruitment
+if
+    24@ == 1
+then
+    13@ = 10000 // Begin 10-second silence delay
+end
+
+if
+    16@ == 0 // Shion is loitering, dismissed, or dead -> suspend food checks!
 then
     0@ = 0
     8@ = 0
-    wait 500
     goto @ShionFood_Loop
 end
 
-// If in Hitodama Form (-1), sleep and stay alive! (Spirits do not eat, but thread remains active!)
+// -------------------------------------------------------------------------
+// 2. VALIDATE ENTITY
+// -------------------------------------------------------------------------
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+// If Handle is invalid or in Hitodama Form (-1), sleep cleanly
+// (Spirits do not eat, and dead handles crash the game)
 if
-    10@ == -1
+    10@ <= 0
 then
-    0@ = 0 // Clear prompt latch
-    8@ = 0 // Clear TAB timer
-    wait 250
+    0@ = 0
+    8@ = 0
     goto @ShionFood_Loop
 end
 
-// If Solid Ped (> 0), wait cleanly if dead or undefined (Matches persistent engines!)
 if or
     856D: not actor 10@ defined
     0118: actor 10@ dead
 then
     0@ = 0
     8@ = 0
-    wait 250
     goto @ShionFood_Loop
 end
 
@@ -180,7 +224,7 @@ if
     001D: 9@ > 29@
 then
     0085: 9@ = 29@
-    0062: 9@ -= 13@
+    000E: 9@ -= 48
     if
         9@ < 0
     then
@@ -195,7 +239,7 @@ if
     9@ == 0
 then
     0085: 9@ = 29@
-    0062: 9@ -= 13@
+    000E: 9@ -= 48
     if
         9@ < 0
     then
@@ -206,9 +250,8 @@ then
     0A8C: write_memory 30@ size 4 value 9@ virtual_protect 0
 end
 
-// Calculate Elapsed Hours directly into 14@
-0085: 14@ = 29@
-0062: 14@ -= 9@
+// Calculate Elapsed Hours directly into 29@
+0062: 29@ -= 9@
 
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_HANDLE
@@ -242,8 +285,13 @@ if
 then
     23@ = 1 // Reason: Hunger
 
-    0085: 9@ = 29@
-    0062: 9@ -= 13@
+    // Recalculate global hours to update the save file
+    0652: 9@ = integer_stat 134 
+    0012: 9@ *= 24
+    00BF: 20@ = current_time_hours, 27@ = current_time_minutes 
+    005A: 9@ += 20@
+    
+    000E: 9@ -= 48
     if
         9@ < 0
     then
@@ -253,8 +301,7 @@ then
     000A: 30@ += MEM_LAST_FED_HOURS
     0A8C: write_memory 30@ size 4 value 9@ virtual_protect 0
 
-    0085: 14@ = 29@
-    0062: 14@ -= 9@
+    29@ = 48 // Set elapsed hours locally
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
@@ -302,7 +349,7 @@ end
 12@ = 0 // 1 = Needs Food, 0 = Full & Healthy
 
 if
-    002D: 14@ >= 13@ // 48+ hours passed
+    0029: 29@ >= 48 // 48+ hours passed
 then
     12@ = 1
 end
@@ -314,17 +361,32 @@ then
 end
 
 // -------------------------------------------------------------------------
-// 1. NATURAL EVALUATION IN CAR (Spoken Line Trigger)
+// HANDLE SPAWN DELAY
+// -------------------------------------------------------------------------
+if
+    13@ > 0
+then
+    000E: 13@ -= 250
+    if
+        0 >= 13@
+    then
+        13@ = 0
+    end
+end
+
+// -------------------------------------------------------------------------
+// NATURAL EVALUATION (Spoken Line Trigger)
 // -------------------------------------------------------------------------
 if and
     15@ == 0 // Not in Diner
     12@ == 1 // Needs Food
+    13@ == 0 // 10-second delay has elapsed!
 then
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
     0A8D: 9@ = read_memory 30@ size 4 virtual_protect 0
     if
-        9@ < 4 // Do not interrupt Tier 4 Master Theater (Sister Talk / Reunion)
+        9@ == 0 // Must be completely idle (no wanted level banter, no spawn banter)
     then
         01C0: 9@ = player $PLAYER_CHAR wanted_level
         if and
@@ -349,7 +411,7 @@ then
             else
                 // Case B: 48 In-Game Hours Passed
                 if
-                    002D: 14@ >= 13@
+                    0029: 29@ >= 48
                 then
                     if
                         8039: not 23@ == 1
@@ -384,10 +446,10 @@ if and
     15@ == 0
     00DF: actor $PLAYER_ACTOR driving
 then
-    03C0: 11@ = actor $PLAYER_ACTOR car
+    03C0: 21@ = actor $PLAYER_ACTOR car
     if and
-        00DB: actor 10@ in_car 11@
-        01C1: car 11@ stopped
+        00DB: actor 10@ in_car 21@
+        01C1: car 21@ stopped
     then
         if and
             0AB0: is_key_pressed 89 // Y Key
@@ -409,12 +471,12 @@ then
                 0226: 22@ = actor 10@ health
                 if or
                     22@ < 950
-                    002D: 14@ >= 13@
+                    0029: 29@ >= 48
                 then
                     // Check if player can afford to send Shion to eat
-                    010B: 21@ = player $PLAYER_CHAR money
+                    010B: 9@ = player $PLAYER_CHAR money
                     if
-                        21@ > 0
+                        9@ > 0
                     then
                         if
                             22@ < 950
@@ -474,10 +536,10 @@ if and
     00DF: actor $PLAYER_ACTOR driving // MUST BE DRIVING!
     816B: not fading
 then
-    03C0: 11@ = actor $PLAYER_ACTOR car
+    03C0: 21@ = actor $PLAYER_ACTOR car
     if and
-        00DB: actor 10@ in_car 11@
-        01C1: car 11@ stopped
+        00DB: actor 10@ in_car 21@
+        01C1: car 21@ stopped
     then
         gosub @Check_Near_Food_Location
         if
@@ -490,9 +552,9 @@ then
                 9@ < 4 // Can prompt and override any chat except Tier 4 Sister Talk!
             then
                 // Check wallet: Only display prompt if player has money!
-                010B: 21@ = player $PLAYER_CHAR money
+                010B: 9@ = player $PLAYER_CHAR money
                 if
-                    21@ > 0
+                    9@ > 0
                 then
                     // Display prompt ONCE upon stopping (Latched with 0@!)
                     if
@@ -508,9 +570,9 @@ then
                     0AB0: is_key_pressed 9 // TAB Key
                     00E1: player 0 pressed_key 4
                 then
-                    010B: 21@ = player $PLAYER_CHAR money
+                    010B: 9@ = player $PLAYER_CHAR money
                     if
-                        21@ > 0
+                        9@ > 0
                     then
                         if
                             23@ == 0
@@ -842,7 +904,7 @@ then
     9@ = 1
     if and
         056E: car 20@ defined
-        803B: not 20@ == 11@
+        803B: not 20@ == 21@
     then
         0441: 25@ = car 20@ model
         if
@@ -1364,20 +1426,20 @@ then
 
         // Read X from INI -> Write to RAM
         0AD3: 24@v = string_format "Food_%d_X" 9@
-        0AF2: 21@ = read_float_from_ini_file "cleo\savedata\ShionFood.ini" section 4@v key 24@v
-        0A8C: write_memory 20@ size 4 value 21@ virtual_protect 0
+        0AF2: 22@ = read_float_from_ini_file "cleo\savedata\ShionFood.ini" section 4@v key 24@v
+        0A8C: write_memory 20@ size 4 value 22@ virtual_protect 0
 
         // Read Y from INI -> Write to RAM
         000A: 20@ += 4
         0AD3: 24@v = string_format "Food_%d_Y" 9@
-        0AF2: 21@ = read_float_from_ini_file "cleo\savedata\ShionFood.ini" section 4@v key 24@v
-        0A8C: write_memory 20@ size 4 value 21@ virtual_protect 0
+        0AF2: 22@ = read_float_from_ini_file "cleo\savedata\ShionFood.ini" section 4@v key 24@v
+        0A8C: write_memory 20@ size 4 value 22@ virtual_protect 0
 
         // Read Z from INI -> Write to RAM
         000A: 20@ += 4
         0AD3: 24@v = string_format "Food_%d_Z" 9@
-        0AF2: 21@ = read_float_from_ini_file "cleo\savedata\ShionFood.ini" section 4@v key 24@v
-        0A8C: write_memory 20@ size 4 value 21@ virtual_protect 0
+        0AF2: 22@ = read_float_from_ini_file "cleo\savedata\ShionFood.ini" section 4@v key 24@v
+        0A8C: write_memory 20@ size 4 value 22@ virtual_protect 0
 
         0008: 9@ += 1
         goto @Food_Cache_Read_Loop

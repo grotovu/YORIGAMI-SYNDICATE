@@ -11,6 +11,10 @@
 const
     MEM_PRIORITY_LOCK = 20
     MEM_REUNION_SIGNAL = 208
+    MEM_SHION_DEATH_FLAG = 380
+    MEM_SHION_KILLER_IS_JOON = 384
+    MEM_SHION_DEATH_WEAPON = 388
+    MEM_SHION_DEATH_IN_CAR = 392
 end
 
 :Connect_To_Brain
@@ -52,6 +56,1620 @@ end
 0085: 30@ = 31@
 000A: 30@ += MEM_PRIORITY_LOCK
 0A8C: write_memory 30@ size 4 value 4 virtual_protect 0
+
+// Check if Shion died earlier in the session before loitering here
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_DEATH_FLAG
+0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 28@ == 1
+then
+    // Read death manner telemetry
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_KILLER_IS_JOON
+    0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_DEATH_WEAPON
+    0A8D: 26@ = read_memory 30@ size 4 virtual_protect 0
+
+    // Clear session death flag
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_DEATH_FLAG
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    // =====================================================================
+    // 1. FISTS & BRASS KNUCKLES (IDs 0, 1)
+    // =====================================================================
+    if or
+        0039: 26@ == 0
+        0039: 26@ == 1
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNF0A" text "~y~Jo'on: ~s~\"Back on your feet? Good! Don't look at me like that! You were standin' right in my swingin' lane!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNF0A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNF0B" text "~b~Shion: ~s~\"You jumped on me and hammered my chest until my lungs stopped working, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNF0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNF0C" text "~y~Jo'on: ~s~\"Street brawls are frantic business! You expect me to check who I'm hittin'?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNF0C' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNF0D" text "~b~Shion: ~s~\"Ah, getting my ribs crushed by you... how nostalgic. You're buying me dinner for that.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNF0D' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNF0E" text "~y~Jo'on: ~s~\"Fine! A big steak feast on someone else's tab! Now start walkin'!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNF0E' time 3400 flag 1
+            0001: wait 3400 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNF1A" text "~y~Jo'on: ~s~\"Took ya long enough! How'd ya let a bunch'a thugs beat ya to a pulp right in front of me?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNF1A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNF1B" text "~b~Shion: ~s~\"They had steel toes, Jo'on... my ribs gave out on the second kick.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNF1B' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNF1C" text "~y~Jo'on: ~s~\"You're supposed to drag their luck down, not let 'em stomp ya like a welcome mat! Move it!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNF1C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNF1D" text "~b~Shion: ~s~\"Fine... but walk slow. Breathing still hurts.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNF1D' time 3200 flag 1
+            0001: wait 3200 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 2. BLUNT OBJECTS (Bat, Shovel, Golf Club, Cue, Cane: IDs 2, 5, 6, 7, 15)
+    // =====================================================================
+    if or
+        0039: 26@ == 2
+        0039: 26@ == 5
+        0039: 26@ == 6
+        0039: 26@ == 7
+        0039: 26@ == 15
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNB0A" text "~y~Jo'on: ~s~\"Quit slouchin' against the wall, Shion! You're fine! I barely tapped ya!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNB0A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNB0B" text "~b~Shion: ~s~\"You cracked a heavy stick across my collarbone until it snapped. Should've buried me in the dirt.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNB0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNB0C" text "~y~Jo'on: ~s~\"You're so bitter! It was an accident! I was aimin' for the mark!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNB0C' time 3400 flag 1
+            0001: wait 3400 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNB0D" text "~b~Shion: ~s~\"The mark ran away ten seconds before that. You just kept swinging.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNB0D' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNB0E" text "~y~Jo'on: ~s~\"AHAHAHA! Follow-through! A good strike always has follow-through! Move it!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNB0E' time 3500 flag 1
+            0001: wait 3500 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNB1A" text "~y~Jo'on: ~s~\"There ya are! You let some punk with a heavy stick crack your skull right in front of me!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNB1A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNB1B" text "~b~Shion: ~s~\"He swung that heavy piece of junk from my blind spot. My neck snapped before I could turn.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNB1B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNB1C" text "~y~Jo'on: ~s~\"Embarrassin'! Jo'on Yorigami's partner doesn't get laid out like that! Let's rob him blind!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNB1C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNB1D" text "~b~Shion: ~s~\"Let's just take his cash. I don't have the energy for another fight.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNB1D' time 3400 flag 1
+            0001: wait 3400 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 3. KNIFE (ID 4)
+    // =====================================================================
+    if
+        0039: 26@ == 4
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNK0A" text "~y~Jo'on: ~s~\"Oh, quit holdin' your neck! The cut's completely closed, see? Good as new!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNK0A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNK0B" text "~b~Shion: ~s~\"Like I said right before you cut my throat, Jo'on... I didn't swallow your jewelry.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNK0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNK0C" text "~y~Jo'on: ~s~\"My gold ring went missin'! You were the only one sittin' by my bag!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNK0C' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNK0D" text "~b~Shion: ~s~\"It fell under the seat. I pointed at it right before your blade hit my neck.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNK0D' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNK0E" text "~y~Jo'on: ~s~\"...Well! Ya should've pointed faster! Stop standin' there poutin' and let's go!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNK0E' time 3500 flag 1
+            0001: wait 3500 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNK1A" text "~y~Jo'on: ~s~\"Look at that hoodie! It's sliced to ribbons! You made us look like amateurs back there!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNK1A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNK1B" text "~b~Shion: ~s~\"That guy pulled a blade and jammed it straight into my stomach. Couldn't push him off.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNK1B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNK1C" text "~y~Jo'on: ~s~\"Well, you're patched up now! Shake the dust off your bare feet, we're takin' his ride!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNK1C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNK1D" text "~b~Shion: ~s~\"Can we eat first? Bleeding out on the asphalt makes you really hungry.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNK1D' time 3500 flag 1
+            0001: wait 3500 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 4. KATANA (ID 8)
+    // =====================================================================
+    if
+        0039: 26@ == 8
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNS0A" text "~y~Jo'on: ~s~\"Hey! Don't give me that dead-eyed stare! That blade was way too sharp!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNS0A' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNS0B" text "~b~Shion: ~s~\"Ugh... seeing my guts all over the pavement... brings back memories.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNS0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNS0C" text "~y~Jo'on: ~s~\"I was testin' the balance! How was I supposed to know it'd cut right through ya?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNS0C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNS0D" text "~b~Shion: ~s~\"You aimed right at my waist and yelled for me to hold still.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNS0D' time 3400 flag 1
+            0001: wait 3400 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNS0E" text "~y~Jo'on: ~s~\"AHAHAHA! Well, you held still, didn't ya?! Come on, let's go pawn that thing!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNS0E' time 3500 flag 1
+            0001: wait 3500 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNS1A" text "~y~Jo'on: ~s~\"Finally put yourself together?! We were in a shakedown and you let a sword guy chop ya down!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNS1A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNS1B" text "~b~Shion: ~s~\"He drew that long blade in half a second. My upper half hit the dirt before my feet did.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNS1B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNS1C" text "~y~Jo'on: ~s~\"Well, that sword looked expensive! We're goin' back to jump him and sell it!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNS1C' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNS1D" text "~b~Shion: ~s~\"I'm not getting sliced in two twice in one day, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNS1D' time 3300 flag 1
+            0001: wait 3300 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 5. NIGHTSTICK (ID 3)
+    // =====================================================================
+    if
+        0039: 26@ == 3
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNN0A" text "~y~Jo'on: ~s~\"Oh, wipe that pout off your face! I was clearin' a path through the heat!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNN0A' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNN0B" text "~b~Shion: ~s~\"Are you done playing police officer, Jo'on? Because you cracked my skull open.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNN0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNN0C" text "~y~Jo'on: ~s~\"The cops were swarmin' us! I swung blind behind me to keep 'em off my coat!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNN0C' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNN0D" text "~b~Shion: ~s~\"You looked right at me, yelled 'Stop resisting!', and swung three times.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNN0D' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNN0E" text "~y~Jo'on: ~s~\"AHAHAHA! Pure street reflexes! Now move your legs, the heat's still hot!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNN0E' time 3400 flag 1
+            0001: wait 3400 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNN1A" text "~y~Jo'on: ~s~\"The sirens were screamin', we had squad cars on our tail, and ya let a cop club ya cold!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNN1A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNN1B" text "~b~Shion: ~s~\"I tripped on the curb, Jo'on... my bare feet slipped and he kept swinging that stick.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNN1B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNN1C" text "~y~Jo'on: ~s~\"Next time bite his leg or somethin'! Move it before more badges roll up on this block!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNN1C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNN1D" text "~b~Shion: ~s~\"My head is pounding... please don't drive near any loud sirens.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNN1D' time 3300 flag 1
+            0001: wait 3300 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 6. CHAINSAW (ID 9)
+    // =====================================================================
+    if
+        0039: 26@ == 9
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNC0A" text "~y~Jo'on: ~s~\"Hey, don't back away from me! The throttle got jammed, alright?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNC0A' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNC0B" text "~b~Shion: ~s~\"You revved it three times, grinned, and sawed right through my chest, Jo'on. You snapped.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNC0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNC0C" text "~y~Jo'on: ~s~\"I DID NOT SNAP! I told ya to carry the heavy stash and you gave me attitude!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNC0C' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNC0D" text "~b~Shion: ~s~\"I was exhausted with an empty stomach. A chainsaw wasn't a reasonable punishment.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNC0D' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNC0E" text "~y~Jo'on: ~s~\"It got your attention, didn't it?! Now quit lookin' so mangled, let's get movin'!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNC0E' time 3500 flag 1
+            0001: wait 3500 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNC1A" text "~y~Jo'on: ~s~\"There ya are! That was disgusting! You got dragged right into that spinnin' saw blade!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNC1A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNC1B" text "~b~Shion: ~s~\"The teeth caught my sleeve, Jo'on... it chewed through my ribs before I could pull away.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNC1B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNC1C" text "~y~Jo'on: ~s~\"Well, you made a huge mess on the street! Shake it off, we're blowin' that psycho away!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNC1C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNC1D" text "~b~Shion: ~s~\"Just let me sit down... my chest still feels like shredded paper.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNC1D' time 3400 flag 1
+            0001: wait 3400 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 7. NOVELTY TOYS (IDs 10, 11, 12, 13)
+    // =====================================================================
+    if or
+        0039: 26@ == 10
+        0039: 26@ == 11
+        0039: 26@ == 12
+        0039: 26@ == 13
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNT0A" text "~y~Jo'on: ~s~\"Hey, wipe that sulky look off your face! It was sittin' right there on the shelf!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNT0A' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNT0B" text "~b~Shion: ~s~\"Next time you beat me to death with a sex toy, Jo'on, let's agree on a safeword first.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNT0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNT0C" text "~y~Jo'on: ~s~\"DID YOU JUST SAY SAFEWORD?! WHAT IS WRONG WITH YOU?! YOU'RE A FREAK, SHION!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNT0C' time 3400 flag 1
+            0001: wait 3400 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNT0D" text "~b~Shion: ~s~\"You're the one who swung a giant purple dildo like a club until my heart stopped.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNT0D' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNT0E" text "~y~Jo'on: ~s~\"I was grabbin' whatever was close! Stop sayin' weird stuff before people think things!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNT0E' time 3600 flag 1
+            0001: wait 3600 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNT1A" text "~y~Jo'on: ~s~\"AHAHAHA! Oh man, I saw that whole thing! You got laid out cold by a purple rubber toy!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNT1A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNT1B" text "~b~Shion: ~s~\"...Shut up, Jo'on. Just shut up.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNT1B' time 2800 flag 1
+            0001: wait 2800 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNT1C" text "~y~Jo'on: ~s~\"A poverty god knocked out by bedroom novelties! The tabloids would pay a fortune for that!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNT1C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNT1D" text "~b~Shion: ~s~\"If you tell a single soul, I'll curse your wallet into permanent negative numbers.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNT1D' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNT1E" text "~y~Jo'on: ~s~\"Alright, alright! AHAHAHA! Wipe your tears, let's go steal some dignity back!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNT1E' time 3500 flag 1
+            0001: wait 3500 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 8. FLOWERS (ID 14)
+    // =====================================================================
+    if
+        0039: 26@ == 14
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNW0A" text "~y~Jo'on: ~s~\"Hey, don't look at me like that! I bought you a nice bouquet!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNW0A' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNW0B" text "~b~Shion: ~s~\"If the flowers were for my funeral, Jo'on... usually the dying part comes first.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNW0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNW0C" text "~y~Jo'on: ~s~\"I handed 'em over and you dropped 'em in the dirt! I had to whip ya into shape!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNW0C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNW0D" text "~b~Shion: ~s~\"You hit me thirty times with wrapped stems until the thorns tore my neck open.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNW0D' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNW0E" text "~y~Jo'on: ~s~\"Ungrateful! Those flowers cost seventy bucks! Next time you're gettin' ditch weeds!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNW0E' time 3600 flag 1
+            0001: wait 3600 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNW1A" text "~y~Jo'on: ~s~\"I saw that whole mess! How'd ya let someone whip ya to death with a bunch'a roses?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNW1A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNW1B" text "~b~Shion: ~s~\"Those stems had thick thorns, Jo'on. Felt like getting whipped by Kazami's umbrella.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNW1B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNW1C" text "~y~Jo'on: ~s~\"Don't bring that psycho up! You're makin' my skin crawl! Move it!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNW1C' time 3400 flag 1
+            0001: wait 3400 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNW1D" text "~b~Shion: ~s~\"Pity... the flowers smelled nice before they crushed my throat.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNW1D' time 3400 flag 1
+            0001: wait 3400 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 9. HEAVY ORDNANCE (Grenades, Rockets, Satchels: IDs 16, 35, 36, 39)
+    // =====================================================================
+    if or
+        0039: 26@ == 16
+        0039: 26@ == 35
+        0039: 26@ == 36
+        0039: 26@ == 39
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNX0A" text "~y~Jo'on: ~s~\"Hey! Back in one piece? Good! See? Told ya you're fireproof!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNX0A' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNX0B" text "~b~Shion: ~s~\"Fireproof doesn't mean blast-proof, Jo'on. You threw an explosive right at me.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNX0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNX0C" text "~y~Jo'on: ~s~\"I thought you were clear of the blast! It had a bigger radius than I thought!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNX0C' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNX0D" text "~b~Shion: ~s~\"I was standing two feet away from you. My arm landed in a tree.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNX0D' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNX0E" text "~y~Jo'on: ~s~\"AHAHAHA! Look at the bright side! The blast blew open the safe! Teamwork!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNX0E' time 3500 flag 1
+            0001: wait 3500 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNX1A" text "~y~Jo'on: ~s~\"Took ya long enough! There was an explosion and you rained down across the street!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNX1A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNX1B" text "~b~Shion: ~s~\"A rocket landed at my feet, Jo'on. Piecing my torso back together took hours.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNX1B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNX1C" text "~y~Jo'on: ~s~\"Well, hurry it up! While you were playin' puzzle pieces, armored vans drove right past!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNX1C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNX1D" text "~b~Shion: ~s~\"Next time a missile flies in, you stand in front of the shockwave.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNX1D' time 3400 flag 1
+            0001: wait 3400 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 9B. CAR / VEHICLE EXPLOSION (ID 51)
+    // =====================================================================
+    if
+        0039: 26@ == 51
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_DEATH_IN_CAR
+        0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+
+        if
+            0039: 27@ == 1
+        then
+            // -------------------------------------------------------------
+            // JO'ON CAUSED THE EXPLOSION
+            // -------------------------------------------------------------
+            if
+                0039: 25@ == 1
+            then
+                // Inside the car
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC0A" text "~y~Jo'on: ~s~\"There ya are! Back on your feet? See? Told ya that little dashboard fireball wouldn't leave a mark!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC0A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC0B" text "~b~Shion: ~s~\"The gas tank blew up in my face, Jo'on... you drove a smoking wreck until it popped.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC0B' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC0C" text "~y~Jo'on: ~s~\"I thought we could make it to the Pay 'n' Spray! The garage was two blocks away!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC0C' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC0D" text "~b~Shion: ~s~\"The hood was on fire. Next time, I'm tucking and rolling out the passenger door.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC0D' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC0E" text "~y~Jo'on: ~s~\"AHAHAHA! Roll into the bushes next time! Now get in, we've got a fresh ride!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC0E' time 3500 flag 1
+                0001: wait 3500 ms
+            else
+                // On foot outside (Jo'on punched / detonated the car)
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP0A" text "~y~Jo'on: ~s~\"AHAHAHA! Look who's back! Did ya see the fireball when I clocked that sedan?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP0A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP0B" text "~b~Shion: ~s~\"You punched the gas tank while I was standing right next to the trunk, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP0B' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP0C" text "~y~Jo'on: ~s~\"I had to clear the street! You should've stepped back when ya saw my fist light up!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP0C' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP0D" text "~b~Shion: ~s~\"The shockwave blew me into a lamppost. You're buying me dinner for that.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP0D' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP0E" text "~y~Jo'on: ~s~\"Fine, fine! Double bacon burgers! Just stay clear of my fists next time!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP0E' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+        else
+            // -------------------------------------------------------------
+            // ENEMY / WORLD CAUSED THE EXPLOSION
+            // -------------------------------------------------------------
+            if
+                0039: 25@ == 1
+            then
+                // Inside the car
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC1A" text "~y~Jo'on: ~s~\"Took ya long enough! That whole car went up in flames right in the middle of traffic!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC1A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC1B" text "~b~Shion: ~s~\"The engine blew apart while I was still trying to kick the door open, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC1B' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC1C" text "~y~Jo'on: ~s~\"Soon as ya see black smoke, you bail! Come on, we're stealin' a replacement!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC1C' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC1D" text "~b~Shion: ~s~\"Fine... but let me catch my breath first. Burnt gasoline tastes awful.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC1D' time 3400 flag 1
+                0001: wait 3400 ms
+            else
+                // On foot on the street
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP1A" text "~y~Jo'on: ~s~\"Finally dragged yourself back! You were walkin' right next to that burning junk pile!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP1A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP1B" text "~b~Shion: ~s~\"I didn't think the gas tank would pop that fast, Jo'on... the blast sent me flying.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP1B' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP1C" text "~y~Jo'on: ~s~\"Never trust street cars! Shake the soot off your hoodie, we've got a score to settle!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP1C' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP1D" text "~b~Shion: ~s~\"My bare feet are still sore from the landing... walk a little slower.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP1D' time 3400 flag 1
+                0001: wait 3400 ms
+            end
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 10. HANDGUNS (9mm, Silenced, Deagle: IDs 22, 23, 24)
+    // =====================================================================
+    if or
+        0039: 26@ == 22
+        0039: 26@ == 23
+        0039: 26@ == 24
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNP0A" text "~y~Jo'on: ~s~\"Oh, stop checkin' your chest! The bullet went clean through, you're fine!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNP0A' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNP0B" text "~b~Shion: ~s~\"You panicked when a car backfired and emptied an entire pistol magazine into me, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNP0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNP0C" text "~y~Jo'on: ~s~\"I thought we were gettin' ambushed! Reflexes, Shion! Gotta be ready for anythin'!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNP0C' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNP0D" text "~b~Shion: ~s~\"A stray alley dog has better trigger discipline than you. You're buying me a huge meal.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNP0D' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNP0E" text "~y~Jo'on: ~s~\"AHAHAHA! The entire VIP menu, baby! Move those legs!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNP0E' time 3300 flag 1
+            0001: wait 3300 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNP1A" text "~y~Jo'on: ~s~\"Quit slouchin'! How'd ya let a stray pistol shot drop ya as we made our getaway?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNP1A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNP1B" text "~b~Shion: ~s~\"I stepped in front so your coat wouldn't get torn, Jo'on. Took two slugs to the ribs.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNP1B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNP1C" text "~y~Jo'on: ~s~\"And I appreciate the hustle! This coat is imported silk! Now move, let's lose this heat!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNP1C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNP1D" text "~b~Shion: ~s~\"You're buying the whole menu at the diner for that.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNP1D' time 3200 flag 1
+            0001: wait 3200 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 11. MINIGUN (ID 38)
+    // =====================================================================
+    if
+        0039: 26@ == 38
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNM0A" text "~y~Jo'on: ~s~\"Hey! Back together? Good! That spinning cannon was insane!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNM0A' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNM0B" text "~b~Shion: ~s~\"You held the trigger down, laughed like a maniac, and erased me in two seconds, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNM0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNM0C" text "~y~Jo'on: ~s~\"Do you know how much torque that beast has?! It dragged my arms across the whole sidewalk!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNM0C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNM0D" text "~b~Shion: ~s~\"You were grinning the entire time the barrels were spinning.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNM0D' time 3400 flag 1
+            0001: wait 3400 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNM0E" text "~y~Jo'on: ~s~\"AHAHAHA! Power is intoxicatin'! Shake the lead outta your rags, we're robbin' the city!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNM0E' time 3600 flag 1
+            0001: wait 3600 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNM1A" text "~y~Jo'on: ~s~\"There ya are! That heavy gunner turned the street into shredded scrap, including you!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNM1A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNM1B" text "~b~Shion: ~s~\"Those barrels spun up and chewed right through my ribs, Jo'on. Couldn't even scream.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNM1B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNM1C" text "~y~Jo'on: ~s~\"That gun is pure power! We're goin' back, takin' it, and keepin' it for bank jobs!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNM1C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNM1D" text "~b~Shion: ~s~\"Just don't point it near me. My ears are still bleeding from the roar.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNM1D' time 3500 flag 1
+            0001: wait 3500 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 12. AUTOMATICS & SMGS (IDs 28, 29, 30, 31, 32)
+    // =====================================================================
+    if or
+        0039: 26@ == 28
+        0039: 26@ == 29
+        0039: 26@ == 30
+        0039: 26@ == 31
+        0039: 26@ == 32
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNA0A" text "~y~Jo'on: ~s~\"Look who decided to show up! Still holdin' a grudge over that little spray?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNA0A' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNA0B" text "~b~Shion: ~s~\"You held down the trigger with your eyes shut and sprayed me with thirty rounds, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNA0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNA0C" text "~y~Jo'on: ~s~\"The gun kicked straight up! It was climbin' all over! You should've hit the dirt!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNA0C' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNA0D" text "~b~Shion: ~s~\"I was standing behind you. You turned around like a lawn sprinkler.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNA0D' time 3400 flag 1
+            0001: wait 3400 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNA0E" text "~y~Jo'on: ~s~\"I was keepin' 'em off us! Fast street defense! Now quit poutin' and let's move!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNA0E' time 3500 flag 1
+            0001: wait 3500 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNA1A" text "~y~Jo'on: ~s~\"Finally out of the gutter?! You were leakin' like a sieve back there!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNA1A' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNA1B" text "~b~Shion: ~s~\"Countless lead just sprayed into my chest. Couldn't even dive away.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNA1B' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNA1C" text "~y~Jo'on: ~s~\"Duck behind the car door next time! Come on, we're trackin' those punks down!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNA1C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNA1D" text "~b~Shion: ~s~\"My feet feel heavy. Don't walk so fast.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNA1D' time 3200 flag 1
+            0001: wait 3200 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 13. SHOTGUNS (IDs 25, 26, 27)
+    // =====================================================================
+    if or
+        0039: 26@ == 25
+        0039: 26@ == 26
+        0039: 26@ == 27
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNG0A" text "~y~Jo'on: ~s~\"Hey! Back on your feet? The hole in your hoodie's barely noticeable!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNG0A' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNG0B" text "~b~Shion: ~s~\"You fired a shotgun point-blank and blew my chest cavity into a dumpster, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNG0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNG0C" text "~y~Jo'on: ~s~\"The pellets spread out! That's what shotguns do, they spread! You were too close!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNG0C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNG0D" text "~b~Shion: ~s~\"I was two feet in front of the barrel. You couldn't have missed me if you tried.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNG0D' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNG0E" text "~y~Jo'on: ~s~\"AHAHAHA! But you pulled through! Come on, I'm buyin' us prime rib at the casino!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNG0E' time 3500 flag 1
+            0001: wait 3500 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNG1A" text "~y~Jo'on: ~s~\"Look at ya! Slumped over like a deflated balloon! How'd ya take a blast like that?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNG1A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNG1B" text "~b~Shion: ~s~\"Some guy with a shotgun caught me in an alley. Put a hole right through my ribs.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNG1B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNG1C" text "~y~Jo'on: ~s~\"The nerve of these low-rent punks! We're trackin' him down and cleanin' him out!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNG1C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNG1D" text "~b~Shion: ~s~\"Take his lunch too... dying on an empty stomach is miserable.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNG1D' time 3400 flag 1
+            0001: wait 3400 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 14. RIFLES (Sniper & Country Rifle: IDs 33, 34)
+    // =====================================================================
+    if or
+        0039: 26@ == 33
+        0039: 26@ == 34
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNR0A" text "~y~Jo'on: ~s~\"Hey! Look, I told ya, the crosshairs were driftin' in the wind!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNR0A' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNR0B" text "~b~Shion: ~s~\"You said you wanted to hunt game, Jo'on. There were no animals, so you used me for target practice.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNR0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNR0C" text "~y~Jo'on: ~s~\"I WAS LININ' UP A SHOT! You were slouchin' around the brush! You looked like a wild animal!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNR0C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNR0D" text "~b~Shion: ~s~\"A wild animal doesn't carry a plastic convenience store bag, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNR0D' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNR0E" text "~y~Jo'on: ~s~\"AHAHAHA! An exotic urban beast! Highly prized! Now drop it, let's go rob a pawn shop!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNR0E' time 3600 flag 1
+            0001: wait 3600 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNR1A" text "~y~Jo'on: ~s~\"There ya are! What took so long?! Your head snapped back and you were down on the asphalt!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNR1A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNR1B" text "~b~Shion: ~s~\"Rifle shot from a rooftop. Blew right through my head before I could point him out.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNR1B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNR1C" text "~y~Jo'on: ~s~\"Cowardly rooftop bushwhackers! Grab a gun, we're climbin' up and tossin' him off!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNR1C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RNR1D" text "~b~Shion: ~s~\"My skull's still putting itself together... don't run so fast.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RNR1D' time 3300 flag 1
+            0001: wait 3300 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 15. SPRAY CAN (ID 41)
+    // =====================================================================
+    if
+        0039: 26@ == 41
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RSP0A" text "~y~Jo'on: ~s~\"Stop makin' faces, Shion! I was tryin' to tag our turf mark on the brick!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RSP0A' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RSP0B" text "~b~Shion: ~s~\"You sprayed paint directly into my face until I choked, Jo'on. I am not a wall.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RSP0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RSP0C" text "~y~Jo'on: ~s~\"You stepped right between the nozzle and the wall! The can had massive pressure!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RSP0C' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RSP0D" text "~b~Shion: ~s~\"My throat still tastes like blue paint. Get me some clean water.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RSP0D' time 3400 flag 1
+            0001: wait 3400 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RSP0E" text "~y~Jo'on: ~s~\"Bottled spring water at the hotel! Move your legs, we're stealin' the whole case!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RSP0E' time 3500 flag 1
+            0001: wait 3500 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RSP1A" text "~y~Jo'on: ~s~\"Ugh! Why're your lips bright blue?! You look like a frozen corpse!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RSP1A' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RSP1B" text "~b~Shion: ~s~\"Those street taggers pinned me to a wall and sprayed paint down my throat, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RSP1B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RSP1C" text "~y~Jo'on: ~s~\"Over turf tags?! The nerve! We're buyin' ten cans and sprayin' their ride neon pink!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RSP1C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_RSP1D" text "~b~Shion: ~s~\"My throat's still coated in paint... let me find a water faucet first.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RSP1D' time 3400 flag 1
+            0001: wait 3400 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 16. FIRE EXTINGUISHER (ID 42)
+    // =====================================================================
+    if
+        0039: 26@ == 42
+    then
+        if
+            0039: 27@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_REX0A" text "~y~Jo'on: ~s~\"Hey, spit that out! Why're ya still coughin' up white powder?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_REX0A' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_REX0B" text "~b~Shion: ~s~\"Because you emptied a fire extinguisher point-blank into my face until I stopped breathing.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_REX0B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_REX0C" text "~y~Jo'on: ~s~\"Your hoodie caught a spark from my cigarette! I was savin' your life!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_REX0C' time 3500 flag 1
+            0001: wait 3500 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_REX0D" text "~b~Shion: ~s~\"We are both completely fireproof, Jo'on. You suffocated me for no reason.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_REX0D' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_REX0E" text "~y~Jo'on: ~s~\"...Well! Better safe than sorry! The seats in my car aren't fireproof! Now keep up!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_REX0E' time 3600 flag 1
+            0001: wait 3600 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_REX1A" text "~y~Jo'on: ~s~\"What took so long?! That clerk blasted you with an extinguisher and you just choked!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_REX1A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_REX1B" text "~b~Shion: ~s~\"The foam froze my throat solid, Jo'on. Couldn't draw breath.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_REX1B' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_REX1C" text "~y~Jo'on: ~s~\"Next time grab the nozzle and turn it on him! We're goin' back for the cash!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_REX1C' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Reunion_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_REX1D" text "~b~Shion: ~s~\"My lungs still hurt... let me cough up the rest of this foam first.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_REX1D' time 3400 flag 1
+            0001: wait 3400 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 17. FALLBACK / RUN-OVER / GENERIC (IDs 49, 50, 53, or unhandled)
+    // =====================================================================
+    if
+        0039: 27@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND0A" text "~y~Jo'on: ~s~\"There ya are! Back on your feet already? See? Told ya that bumper wouldn't leave a mark!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND0A' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Reunion_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND0B" text "~b~Shion: ~s~\"You backed up, ran over my legs, put it in drive, and ran over my chest, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND0B' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Reunion_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND0C" text "~y~Jo'on: ~s~\"The rear-view mirror was misaligned! Besides, it was on you for standin' behind my car!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND0C' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Reunion_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND0D" text "~b~Shion: ~s~\"You're paying for a five-star dinner for this. With dessert.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND0D' time 3400 flag 1
+        0001: wait 3400 ms
+        0050: gosub @Check_Reunion_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND0E" text "~y~Jo'on: ~s~\"AHAHAHA! Fine, fine! Caviar and chocolate! Now get in, we've got places to rob!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND0E' time 3500 flag 1
+        0001: wait 3500 ms
+    else
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND1A" text "~y~Jo'on: ~s~\"Finally crawled out of the hospital, huh? I was startin' to think I'd have to fleece these fools alone!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND1A' time 3600 flag 1
+        0001: wait 3600 ms
+        0050: gosub @Check_Reunion_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND1B" text "~b~Shion: ~s~\"The coroner almost zipped me up, Jo'on... my joints are still stiff from the morgue slab.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND1B' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Reunion_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND1C" text "~y~Jo'on: ~s~\"A little morgue chill never hurt nobody! Move those legs, we're makin' up for lost time!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND1C' time 3500 flag 1
+        0001: wait 3500 ms
+        0050: gosub @Check_Reunion_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_RND1D" text "~b~Shion: ~s~\"Fine... but walk slow. If I drop dead again, you're carrying me.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RND1D' time 3400 flag 1
+        0001: wait 3400 ms
+    end
+    0002: jump @Finish_Reunion_Chat
+end
 
 // 6 Randomized Reunion Exchanges (0 to 5)
 0209: 29@ = random_int_in_ranges 0 6

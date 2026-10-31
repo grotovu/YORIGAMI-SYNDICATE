@@ -299,15 +299,15 @@ then
             000A: 30@ += MEM_PLAYER_FORM
             0A8D: 23@ = read_memory 30@ size 4 virtual_protect 0
 
-            // Snapshot live timer into scratch register
-            0085: 21@ = TIMERB
+            // Snapshot live timer into scratch register 25@
+            0085: 25@ = TIMERB
 
             // Check if this specific target is on cooldown (19@ = 1)
             19@ = 0
             if and
                 24@ > 0
                 003B: 24@ == 29@
-                001D: 3@ > 21@
+                001D: 3@ > 25@
             then
                 19@ = 1
             end
@@ -315,7 +315,7 @@ then
             if and
                 0029: 27@ >= 0
                 003B: 27@ == 14@
-                001D: 3@ > 21@
+                001D: 3@ > 25@
             then
                 19@ = 1
             end
@@ -348,10 +348,9 @@ then
                 end
             end
 
-            // Handle Keypress (Enter / F / Tab)
-            if or
+            // Handle Keypress (Enter / F only)
+            if
                 00E1: player 0 pressed_key 15
-                00E1: player 0 pressed_key 10
             then
                 // Cancel vehicle entry task if interacting with hot dog van
                 if

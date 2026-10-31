@@ -524,8 +524,8 @@ then
         goto @Wait_Dump_Anim
     end
 
-    0605: actor 10@ perform_animation "BOM_Plant" IFP "BOMBER" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time 1800
-    wait 1800
+    0605: actor 10@ perform_animation "BOM_Plant" IFP "BOMBER" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time 3000
+    wait 3000
     04EF: release_animation "BOMBER"
 end
 
@@ -543,8 +543,8 @@ then
         goto @Wait_Can_Anim
     end
 
-    0605: actor 10@ perform_animation "plc_drgbst_01" IFP "POLICE" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time 1500
-    wait 1500
+    0605: actor 10@ perform_animation "plc_drgbst_01" IFP "POLICE" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time 2000
+    wait 2100
     04EF: release_animation "POLICE"
 end
 

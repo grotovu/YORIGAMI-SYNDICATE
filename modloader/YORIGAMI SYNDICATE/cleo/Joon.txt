@@ -19,8 +19,11 @@ const
     MEM_SHION_HANDLE = 116        // Formerly 703
     MEM_SHION_WEAPON_ID = 124     // Formerly 731
     MEM_SHION_AMMO_COUNT = 128    // Formerly 732
+    MEM_COMBAT_RES_MODE = 132     // Formerly 733
     MEM_JOON_STASH_WEAPON = 136   // Formerly 738
     MEM_JOON_STASH_AMMO = 140     // Formerly 739
+    MEM_SHION_PRES_HP = 160       // Preserved HP
+    MEM_SHION_PRES_ARMOUR = 164   // Preserved Armour
     MEM_JOON_CIGAR_OBJ = 220      // Formerly 740
 end
 
@@ -419,6 +422,21 @@ else
 end
 
 // =========================================================================
+// VOICE MUTING WATCHDOG (Continuously enforces muting for Jo'on & Shion)
+// =========================================================================
+if
+    0@ > 0 // Jo'on (1) or Shion (2) active
+then
+    if
+        6@ == 1 // MuteCharacterVoice enabled
+    then
+        0489: set_actor $PLAYER_ACTOR muted 1
+        0A09: set_actor $PLAYER_ACTOR muted 1
+        094E: set_actor $PLAYER_ACTOR mute_pain_audio 1
+    end
+end
+
+// =========================================================================
 // GIRLFRIEND RADAR & CALL WATCHDOG (Suppresses Hearts & Calls in Jo'on Mode)
 // =========================================================================
 if
@@ -525,21 +543,15 @@ end
 0653: 12@ = float_stat 23
 
 // Voice muting configuration
-6@ = 0
-0AF0: 6@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "MuteCharacterVoice"
-if
-    6@ < 0
-then
-    6@ = 1
-end
-
 if
     6@ == 1
 then
     0489: set_actor $PLAYER_ACTOR muted 1
+    0A09: set_actor $PLAYER_ACTOR muted 1
     094E: set_actor $PLAYER_ACTOR mute_pain_audio 1
 else
     0489: set_actor $PLAYER_ACTOR muted 0
+    0A09: set_actor $PLAYER_ACTOR muted 0
     094F: enable_actor $PLAYER_ACTOR pain_audio
 end
 
@@ -590,6 +602,7 @@ gosub @Terminate_Joon_Smoking_Safely
 01B4: set_player $PLAYER_CHAR can_move 1
 
 0489: set_actor $PLAYER_ACTOR muted 0
+0A09: set_actor $PLAYER_ACTOR muted 0
 094F: enable_actor $PLAYER_ACTOR pain_audio
 
 // Restore CJ's storyline gang hostility matrix immediately
@@ -608,12 +621,26 @@ gosub @Restore_CJ_Gang_Acquaintances
 000A: 30@ += MEM_SHION_HANDLE
 0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
 if
-    25@ > 0 // Solid Ped Form
+    0019: 25@ > 0 // Solid Ped Form
 then
     if and
         056D: actor 25@ defined
         8118: not actor 25@ dead
     then
+        // Max out Shion's health so CJ's punch triggers Retaliation without killing her
+        08AF: set_actor 25@ max_health_to 1000
+        0223: set_actor 25@ health 1000
+        035F: actor 25@ armour += 500
+
+        // Sync preserved values in Master Heap
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_PRES_HP
+        0A8C: write_memory 30@ size 4 value 1000 virtual_protect 0
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_PRES_ARMOUR
+        0A8C: write_memory 30@ size 4 value 500 virtual_protect 0
+
         0085: 30@ = 31@
         000A: 30@ += MEM_INTENTIONAL_DISM
         0A8C: write_memory 30@ size 4 value 1 virtual_protect 0 // Set intentional dismissal flag
@@ -639,8 +666,17 @@ then
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 else
     if
-        25@ == -1 // Hitodama Spirit Form
+        0039: 25@ == -1 // Hitodama Spirit Form
     then
+        // Restore preserved health for next rematerialization
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_PRES_HP
+        0A8C: write_memory 30@ size 4 value 1000 virtual_protect 0
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_PRES_ARMOUR
+        0A8C: write_memory 30@ size 4 value 500 virtual_protect 0
+
         0ABA: terminate_all_custom_scripts_with_this_name "Sh_HitoF"
         0ABA: terminate_all_custom_scripts_with_this_name "Sh_Warp"
 
@@ -996,21 +1032,15 @@ end
 0653: 12@ = float_stat 23
 
 // Voice muting configuration
-6@ = 0
-0AF0: 6@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "MuteCharacterVoice"
-if
-    6@ < 0
-then
-    6@ = 1
-end
-
 if
     6@ == 1
 then
     0489: set_actor $PLAYER_ACTOR muted 1
+    0A09: set_actor $PLAYER_ACTOR muted 1
     094E: set_actor $PLAYER_ACTOR mute_pain_audio 1
 else
     0489: set_actor $PLAYER_ACTOR muted 0
+    0A09: set_actor $PLAYER_ACTOR muted 0
     094F: enable_actor $PLAYER_ACTOR pain_audio
 end
 
@@ -1335,16 +1365,16 @@ return
 // SUBROUTINES: WEAPON SLOT MEMORY (Exact 1-Indexed GTA SA Table)
 // =========================================================================
 :Record_Current_Weapon_Slot
-0470: 6@ = actor $PLAYER_ACTOR current_weapon
+0470: 2@ = actor $PLAYER_ACTOR current_weapon
 gosub @Get_Weapon_Slot_From_ID
 return
 
 :Get_Weapon_Slot_From_ID
-// Input: 6@ (Weapon ID) -> Output: 20@ (1-Indexed Slot 1..13)
+// Input: 2@ (Weapon ID) -> Output: 20@ (1-Indexed Slot 1..13)
 20@ = 1
 if or
-    6@ == 0
-    6@ == 1
+    2@ == 0
+    2@ == 1
 then
     20@ = 1
     return
@@ -1352,8 +1382,8 @@ end
 
 // Slot 2: Melee Weapons (Golf Club..Chainsaw)
 if and
-    6@ >= 2
-    9 >= 6@
+    2@ >= 2
+    9 >= 2@
 then
     20@ = 2
     return
@@ -1361,8 +1391,8 @@ end
 
 // Slot 3: Handguns (Pistol, Silenced, Desert Eagle)
 if and
-    6@ >= 22
-    24 >= 6@
+    2@ >= 22
+    24 >= 2@
 then
     20@ = 3
     return
@@ -1370,8 +1400,8 @@ end
 
 // Slot 4: Shotguns (Chrome, Sawn-off, Combat)
 if and
-    6@ >= 25
-    27 >= 6@
+    2@ >= 25
+    27 >= 2@
 then
     20@ = 4
     return
@@ -1379,9 +1409,9 @@ end
 
 // Slot 5: Sub-Machine Guns (Micro Uzi, MP5, Tec-9)
 if or
-    6@ == 28
-    6@ == 29
-    6@ == 32
+    2@ == 28
+    2@ == 29
+    2@ == 32
 then
     20@ = 5
     return
@@ -1389,8 +1419,8 @@ end
 
 // Slot 6: Assault Rifles (AK-47, M4)
 if or
-    6@ == 30
-    6@ == 31
+    2@ == 30
+    2@ == 31
 then
     20@ = 6
     return
@@ -1398,8 +1428,8 @@ end
 
 // Slot 7: Rifles (Country Rifle, Sniper Rifle)
 if or
-    6@ == 33
-    6@ == 34
+    2@ == 33
+    2@ == 34
 then
     20@ = 7
     return
@@ -1407,8 +1437,8 @@ end
 
 // Slot 8: Heavy Weapons (Rocket Launcher, Heatseeker, Flamethrower, Minigun)
 if and
-    6@ >= 35
-    38 >= 6@
+    2@ >= 35
+    38 >= 2@
 then
     20@ = 8
     return
@@ -1416,10 +1446,10 @@ end
 
 // Slot 9: Projectiles & Satchel Charges (Grenades, Tear Gas, Molotovs, Satchels)
 if or
-    6@ == 16
-    6@ == 17
-    6@ == 18
-    6@ == 39
+    2@ == 16
+    2@ == 17
+    2@ == 18
+    2@ == 39
 then
     20@ = 9
     return
@@ -1427,8 +1457,8 @@ end
 
 // Slot 10: Special 2 (Spray Paint, Fire Extinguisher, Camera)
 if and
-    6@ >= 41
-    43 >= 6@
+    2@ >= 41
+    43 >= 2@
 then
     20@ = 10
     return
@@ -1436,8 +1466,8 @@ end
 
 // Slot 11: Gifts / Special 1 (Dildos, Flowers, Cane)
 if and
-    6@ >= 10
-    15 >= 6@
+    2@ >= 10
+    15 >= 2@
 then
     20@ = 11
     return
@@ -1445,8 +1475,8 @@ end
 
 // Slot 12: Special 3 (Nightvision, Thermal, Parachute)
 if and
-    6@ >= 44
-    46 >= 6@
+    2@ >= 44
+    46 >= 2@
 then
     20@ = 12
     return
@@ -1454,7 +1484,7 @@ end
 
 // Slot 13: Detonator
 if
-    6@ == 40
+    2@ == 40
 then
     20@ = 13
     return
@@ -1623,6 +1653,14 @@ if
     10@ == 0
 then
     10@ = 76 // L
+end
+
+// Voice muting configuration (Dedicated to 6@)
+0AF0: 6@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "MuteCharacterVoice"
+if
+    6@ < 0
+then
+    6@ = 1
 end
 
 // Read Girlfriend Suppression Setting (Tri-state 19@: -1 = Disabled, 0 = CJ, 1 = Suppressed)

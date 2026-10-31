@@ -708,10 +708,9 @@ then
     000A: 30@ += MEM_PRIORITY_LOCK
     0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
 
-    // Firetruck hose-down (12@ == 1) always takes priority
-    if or
+    // Strictly yield if Priority Lock is 3 (Action/Spawn) or 4+ (Theater)
+    if
         001B: 3 > 29@
-        0039: 12@ == 1
     then
         1@ = 12000 // 12-second sandbox cooldown
         gosub @Dispatch_Sandbox_Dialogue

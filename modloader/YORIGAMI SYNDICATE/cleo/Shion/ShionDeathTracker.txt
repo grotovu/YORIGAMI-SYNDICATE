@@ -1,0 +1,247 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+03A4: script_name 'Sh_Dth'
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (SCOPED TO DEATH TRACKER)
+// =========================================================================
+const
+    MEM_SHION_HANDLE = 116
+    MEM_SHION_DEATH_FLAG = 380
+    MEM_SHION_KILLER_IS_JOON = 384
+    MEM_SHION_DEATH_WEAPON = 388
+    MEM_SHION_DEATH_IN_CAR = 392
+end
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+10@ = 0  // Tracked Shion Handle
+11@ = 0  // Last Damager Ped / Struct Pointer
+12@ = -1 // Last Weapon Type ID (-1 = Generic)
+13@ = 0  // Last Damager Was Jo'on Flag (0 = No, 1 = Yes)
+14@ = 0  // Last Damage Timestamp (ms)
+15@ = 0  // Death Handled Latch for Current Ped Instance (0 = Ready, 1 = Processed)
+
+0EDE: set_script_event_char_damage 1 @OnCharDamageTracker 19@
+
+:DeathTracker_Loop
+0001: wait 50 ms
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    0002: jump @DeathTracker_Loop
+end
+
+// Read Live Shion Ped Handle
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+// Reset latch if Shion is inactive (0) or in Hitodama spirit form (-1)
+if
+    001B: 1 > 10@
+then
+    15@ = 0
+    12@ = -1
+    13@ = 0
+    0002: jump @DeathTracker_Loop
+end
+
+// Monitor Live Ped for Death
+if and
+    0019: 10@ > 0
+    056D: actor 10@ defined
+then
+    if
+        0118: actor 10@ dead
+    then
+        if
+            0039: 15@ == 0
+        then
+            15@ = 1 // Prevent duplicate writes
+
+            // Check if last damage timestamp was within 3000ms
+            0085: 20@ = TIMERA
+            0062: 20@ -= 14@
+            if
+                0029: 20@ >= 3000
+            then
+                // Environmental or untracked death fallback
+                13@ = 0
+                12@ = -1
+
+                if
+                    04AD: actor 10@ in_water
+                then
+                    12@ = 53 // Drowned
+                end
+            end
+
+            // Write final telemetry to Master Heap
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_DEATH_FLAG
+            0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_KILLER_IS_JOON
+            0A8C: write_memory 30@ size 4 value 13@ virtual_protect 0
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_DEATH_WEAPON
+            0A8C: write_memory 30@ size 4 value 12@ virtual_protect 0
+        end
+    else
+        // Ped is alive; clear latch if handle reused
+        15@ = 0
+    end
+end
+
+0002: jump @DeathTracker_Loop
+
+
+// =========================================================================
+// DAMAGE CALLBACK
+// =========================================================================
+:OnCharDamageTracker
+if and
+    0019: 10@ > 0
+    056D: actor 19@ defined
+then
+    if
+        003B: 19@ == 10@
+    then
+        // 2@ = Damager Struct, 3@ = Weapon Type, 4@ = Body Part, 5@ = Intensity
+        0EB5: get_char_damage_last_frame 19@ damager 2@ type 3@ part 4@ intensity 5@
+        0A96: 6@ = ped $PLAYER_ACTOR struct
+
+        13@ = 0
+
+        // Check 1: Jo'on damaged her on foot
+        if or
+            003B: 2@ == 6@
+            07D6: 2@ == $PLAYER_ACTOR
+        then
+            13@ = 1
+        end
+
+        // Check 2: Jo'on damaged her with a vehicle (Rammed, Run Over, or Driving)
+        if
+            0039: 13@ == 0
+        then
+            if
+                00DF: actor $PLAYER_ACTOR driving
+            then
+                03C0: 24@ = actor $PLAYER_ACTOR car
+                if
+                    056E: car 24@ defined
+                then
+                    0A97: 25@ = vehicle 24@ struct
+                    if or
+                        003B: 2@ == 24@
+                        003B: 2@ == 25@
+                        051B: actor 10@ damaged_by_car 24@
+                    then
+                        13@ = 1
+                        // If run over or rammed, ensure weapon type reflects vehicular impact
+                        if or
+                            0039: 3@ == 49
+                            0039: 3@ == 50
+                        then
+                            3@ = 50
+                        end
+                    end
+                end
+            end
+        end
+
+        // Check 3: Explosion Resolution (51)
+        if
+            0039: 3@ == 51
+        then
+            0470: 23@ = actor $PLAYER_ACTOR current_weapon
+            22@ = 0
+
+            // Only map to hand weapons if Jo'on has an actual explosive equipped ON FOOT
+            if
+                80DF: not actor $PLAYER_ACTOR driving
+            then
+                if or
+                    0039: 23@ == 16 // Grenade
+                    0039: 23@ == 35 // Rocket Launcher
+                    0039: 23@ == 36 // Heatseeker
+                    0039: 23@ == 39 // Satchel Charge
+                    0039: 23@ == 40 // Detonator
+                then
+                    22@ = 1
+                    if
+                        0039: 23@ == 40
+                    then
+                        23@ = 39
+                    end
+                    0085: 3@ = 23@
+                end
+            end
+
+            // If not fired from an explosive hand weapon, it is a car explosion
+            if
+                0039: 22@ == 0
+            then
+                3@ = 51 // Car / Vehicle Explosion
+
+                // Check if Shion was inside a vehicle or on foot
+                18@ = 0
+                if
+                    0449: actor 10@ in_a_car
+                then
+                    18@ = 1
+                end
+
+                // If Jo'on was driving the wrecked car, or Jo'on punched/destroyed it on foot
+                if or
+                    00DF: actor $PLAYER_ACTOR driving
+                    003B: 2@ == 6@
+                    07D6: 2@ == $PLAYER_ACTOR
+                then
+                    13@ = 1 // Jo'on's fault
+                end
+
+                // Sync vehicle presence latch to Master Heap
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_DEATH_IN_CAR
+                0A8C: write_memory 30@ size 4 value 18@ virtual_protect 0
+            end
+        end
+
+        0085: 12@ = 3@
+        0085: 14@ = TIMERA
+
+        // Synchronously update Master Heap so ShionFollow.c has zero latency on lethal frame
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_KILLER_IS_JOON
+        0A8C: write_memory 30@ size 4 value 13@ virtual_protect 0
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_DEATH_WEAPON
+        0A8C: write_memory 30@ size 4 value 12@ virtual_protect 0
+    end
+end
+0ED0: return_script_event

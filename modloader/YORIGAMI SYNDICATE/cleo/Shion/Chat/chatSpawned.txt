@@ -1,0 +1,544 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+03A4: script_name 'Sh_Spwn'
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (SCOPED TO CHATSPAWNED)
+// =========================================================================
+const
+    MEM_PRIORITY_LOCK = 20
+    MEM_SHION_HANDLE = 116
+    MEM_SHION_DEATH_FLAG = 380
+    MEM_SHION_KILLER_IS_JOON = 384
+    MEM_SHION_DEATH_WEAPON = 388
+    MEM_SHION_DEATH_IN_CAR = 392
+end
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// 0@ = Shion Actor Handle passed as parameter
+0085: 10@ = 0@
+
+// Wait 1.2s post-warp for her model to settle
+0001: wait 1200 ms
+
+if or
+    8256: not is_player_playing $PLAYER_CHAR
+    856D: not actor 10@ defined
+    0118: actor 10@ dead
+then
+    0050: gosub @Bailout_Spawn_Chat
+end
+
+// Verify no Tier 4 Master Theater has taken over during warp delay
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0029: 16@ >= 4
+then
+    // Yield quietly to Tier 4 without clearing their lock
+    0A93: terminate_this_custom_script
+end
+
+// Preempt lower-priority ambient chatter
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
+03EB: clear_small_messages_only
+
+// Maintain Priority Lock 3
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 3 virtual_protect 0
+
+// Read Death Telemetry
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_KILLER_IS_JOON
+0A8D: 13@ = read_memory 30@ size 4 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_DEATH_WEAPON
+0A8D: 12@ = read_memory 30@ size 4 virtual_protect 0
+
+// Clear session death flag now that complaint is voiced
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_DEATH_FLAG
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+
+// =========================================================================
+// WEAPON-SPECIFIC POST-DEATH COMPLAINTS (SHION ONE-LINERS)
+// =========================================================================
+
+// -------------------------------------------------------------------------
+// FISTS & BRASS KNUCKLES (IDs 0, 1)
+// -------------------------------------------------------------------------
+if or
+    0039: 12@ == 0
+    0039: 12@ == 1
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP0A" text "~b~Shion: ~s~\"Ah, getting my ribs crushed by you... how nostalgic, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP0A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP0B" text "~b~Shion: ~s~\"Ugh... getting stomped into the dirt really knocks the wind out of you.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP0B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// BLUNT OBJECTS (Bat, Shovel, Golf Club, Cue, Cane: IDs 2, 5, 6, 7, 15)
+// -------------------------------------------------------------------------
+if or
+    0039: 12@ == 2
+    0039: 12@ == 5
+    0039: 12@ == 6
+    0039: 12@ == 7
+    0039: 12@ == 15
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP1A" text "~b~Shion: ~s~\"Should've just buried me in the dirt while you were at it, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP1A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP1B" text "~b~Shion: ~s~\"Getting beaten down with a dented piece of wood... what a cheap way to die.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP1B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// KNIFE (ID 4)
+// -------------------------------------------------------------------------
+if
+    0039: 12@ == 4
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP2A" text "~b~Shion: ~s~\"Like I said right before you cut my throat, Jo'on... I didn't swallow your jewelry.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP2A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP2B" text "~b~Shion: ~s~\"I can still feel the cold blade between my ribs... dying to a rusty knife hurts.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP2B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// KATANA (ID 8)
+// -------------------------------------------------------------------------
+if
+    0039: 12@ == 8
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP3A" text "~b~Shion: ~s~\"Seeing my guts spilled across the pavement by my own sister... how poetic.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP3A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP3B" text "~b~Shion: ~s~\"Ugh... seeing my guts all over the pavement... brings back memories.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP3B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// NIGHTSTICK (ID 3)
+// -------------------------------------------------------------------------
+if
+    0039: 12@ == 3
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP4A" text "~b~Shion: ~s~\"Are you done playing police officer, Jo'on?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP4A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP4B" text "~b~Shion: ~s~\"Beaten to death with a wooden club... we were running and they cornered me.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP4B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// CHAINSAW (ID 9)
+// -------------------------------------------------------------------------
+if
+    0039: 12@ == 9
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP5A" text "~b~Shion: ~s~\"I knew you'd finally snap one day, Jo'on... but a chainsaw was a bit dramatic.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP5A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP5B" text "~b~Shion: ~s~\"Getting ripped apart by a buzzing chainsaw... my ears are still screaming.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP5B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// NOVELTY TOYS (IDs 10, 11, 12, 13)
+// -------------------------------------------------------------------------
+if or
+    0039: 12@ == 10
+    0039: 12@ == 11
+    0039: 12@ == 12
+    0039: 12@ == 13
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP6A" text "~b~Shion: ~s~\"Next time you beat me to death with a sex toy, Jo'on, let's agree on a safeword first.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP6A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP6B" text "~b~Shion: ~s~\"...Beaten to death with a giant purple rubber thing. I have no pride left to lose.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP6B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// FLOWERS (ID 14)
+// -------------------------------------------------------------------------
+if
+    0039: 12@ == 14
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP7A" text "~b~Shion: ~s~\"If the flowers were for my funeral, Jo'on... usually the dying part comes first.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP7A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP7B" text "~b~Shion: ~s~\"Whipped to death with a bunch of roses... brings back nightmares of that sunflower lady.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP7B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// HEAVY ORDNANCE (Grenades, Rockets, Satchels: IDs 16, 35, 36, 39)
+// -------------------------------------------------------------------------
+if or
+    0039: 12@ == 16
+    0039: 12@ == 35
+    0039: 12@ == 36
+    0039: 12@ == 39
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP8A" text "~b~Shion: ~s~\"Hundreds of dollars for heavy explosives, and you blew me into chunks, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP8A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP8B" text "~b~Shion: ~s~\"Ugh... scraping my pieces off three different roofs took hours.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP8B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// CAR / VEHICLE EXPLOSION (ID 51)
+// -------------------------------------------------------------------------
+if
+    0039: 12@ == 51
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_DEATH_IN_CAR
+    0A8D: 17@ = read_memory 30@ size 4 virtual_protect 0
+
+    if
+        0039: 13@ == 1
+    then
+        // Case A: Jo'on blew it up
+        if
+            0039: 17@ == 1
+        then
+            // Inside the car when Jo'on wrecked it
+            0ADF: add_text_label "Y_SP17A" text "~b~Shion: ~s~\"Next time the engine catches fire, let me unbuckle before it blows up, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP17A' time 3500 flag 1
+        else
+            // On foot outside when Jo'on punched / detonated the car
+            0ADF: add_text_label "Y_SP17B" text "~b~Shion: ~s~\"You punched a car into a fireball and blew me across the street, Jo'on...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP17B' time 3500 flag 1
+        end
+    else
+        // Case B: Enemy / World blew it up
+        if
+            0039: 17@ == 1
+        then
+            // Trapped inside
+            0ADF: add_text_label "Y_SP17C" text "~b~Shion: ~s~\"Getting trapped in an exploding car takes a lot out of you... my ears are still ringing.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP17C' time 3500 flag 1
+        else
+            // On foot nearby
+            0ADF: add_text_label "Y_SP17D" text "~b~Shion: ~s~\"A car blew up right on the sidewalk... I can still feel heat radiating off my skin.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP17D' time 3500 flag 1
+        end
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// HANDGUNS (9mm, Silenced, Deagle: IDs 22, 23, 24)
+// -------------------------------------------------------------------------
+if or
+    0039: 12@ == 22
+    0039: 12@ == 23
+    0039: 12@ == 24
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP9A" text "~b~Shion: ~s~\"Pistol ammo costs real money, and you emptied the clip straight into my back.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP9A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP9B" text "~b~Shion: ~s~\"Taking bullets for you is in the job description, but it never stops stinging, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP9B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// MINIGUN (ID 38)
+// -------------------------------------------------------------------------
+if
+    0039: 12@ == 38
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP10A" text "~b~Shion: ~s~\"You held that spinning minigun and erased me from existence, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP10A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP10B" text "~b~Shion: ~s~\"Those spinning barrels chewed through me in half a second... nothing was left.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP10B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// AUTOMATICS & SMGS (IDs 28, 29, 30, 31, 32)
+// -------------------------------------------------------------------------
+if or
+    0039: 12@ == 28
+    0039: 12@ == 29
+    0039: 12@ == 30
+    0039: 12@ == 31
+    0039: 12@ == 32
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP11A" text "~b~Shion: ~s~\"Spray and pray, Jo'on... except you sprayed me and I had to pray for it to end.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP11A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP11B" text "~b~Shion: ~s~\"Caught in a drive-by spray... felt like a swarm of hornets tearing through my chest.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP11B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// SHOTGUNS (IDs 25, 26, 27)
+// -------------------------------------------------------------------------
+if or
+    0039: 12@ == 25
+    0039: 12@ == 26
+    0039: 12@ == 27
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP12A" text "~b~Shion: ~s~\"Don't shoot a shotgun from behind me ever again, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP12A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP12B" text "~b~Shion: ~s~\"Taking a shotgun blast to the chest... my ribs were completely blown open.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP12B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// RIFLES (Sniper & Country Rifle: IDs 33, 34)
+// -------------------------------------------------------------------------
+if or
+    0039: 12@ == 33
+    0039: 12@ == 34
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP13A" text "~b~Shion: ~s~\"You couldn't find any animals to hunt, so you shot me for sport, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP13A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP13B" text "~b~Shion: ~s~\"Didn't even hear the shot... just felt a rifle bullet tear through my head.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP13B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// SPRAY CAN (ID 41)
+// -------------------------------------------------------------------------
+if
+    0039: 12@ == 41
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP14A" text "~b~Shion: ~s~\"Spraying paint straight into my mouth until I choked... you're terrifying, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP14A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP14B" text "~b~Shion: ~s~\"Coughing up paint and fumes... what a miserable way to die.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP14B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// FIRE EXTINGUISHER (ID 42)
+// -------------------------------------------------------------------------
+if
+    0039: 12@ == 42
+then
+    if
+        0039: 13@ == 1
+    then
+        0ADF: add_text_label "Y_SP15A" text "~b~Shion: ~s~\"Blasting me with an extinguisher until I stopped breathing... did you really have to do that?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP15A' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_SP15B" text "~b~Shion: ~s~\"My throat feels like it's frozen solid... I couldn't even draw breath.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP15B' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// -------------------------------------------------------------------------
+// FALLBACK / VEHICLE RUN-OVER / GENERIC (IDs 49, 50, 53, or unhandled)
+// -------------------------------------------------------------------------
+if
+    0039: 13@ == 1
+then
+    0ADF: add_text_label "Y_SP16A" text "~b~Shion: ~s~\"You ran me over, Jo'on... I can still hear my bones snapping like twigs.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SP16A' time 3500 flag 1
+else
+    0ADF: add_text_label "Y_SP16B" text "~b~Shion: ~s~\"Ugh... waking up in the dirt with broken ribs is getting very old.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SP16B' time 3500 flag 1
+end
+0001: wait 3500 ms
+
+:Finish_Spawn_Chat
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 16@ == 3
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+
+0A93: terminate_this_custom_script
+
+:Bailout_Spawn_Chat
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 16@ == 3
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+0A93: terminate_this_custom_script
