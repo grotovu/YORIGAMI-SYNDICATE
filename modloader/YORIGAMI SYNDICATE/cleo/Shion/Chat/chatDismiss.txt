@@ -14,6 +14,7 @@ const
     MEM_QUICK_DISM_LATCH = 16
     MEM_PRIORITY_LOCK = 20
     MEM_SHION_HANDLE = 116
+    MEM_SHION_DEATH_FLAG = 380
     MEM_SHION_RECRUITED = 400
 end
 
@@ -276,7 +277,8 @@ end
 000A: 30@ += MEM_INTENTIONAL_DISM
 0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
 
-// Shut down all companion follower threads so they do not recall her!
+// Shut down follower and combat threads so they do not recall or order her
+// Sh_FF is kept alive intentionally so friendly fire dialogue functions on foot
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Flw"
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Ctrl"
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Cmbt"
@@ -284,7 +286,6 @@ end
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Chut"
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Pimp"
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Burg"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_FF"
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_RedM"
 
 // Remove from group and task Shion to wander away down the street
@@ -297,6 +298,18 @@ end
 // Strip all weapons immediately upon dismissal
 048F: actor 10@ remove_weapons
 01B9: set_actor 10@ armed_weapon_to 0
+
+// Configure complete passivity so she never retaliates against Jo'on or cowers
+060B: set_actor 10@ decision_maker_to 65540
+0946: set_actor 10@ actions_uninterupted_by_weapon_fire 1
+0350: set_actor 10@ maintain_position_when_attacked 1
+0816: set_actor 10@ dont_chase_victim 1
+07CB: set_actor 10@ supporting_fire 0
+07DD: set_actor 10@ attack_rate 0
+0770: set_actor 10@ target_priority 0
+077C: clear_actor 10@ acquaintance 4 to_all_pedtypes
+077C: clear_actor 10@ acquaintance 3 to_all_pedtypes
+077A: set_actor 10@ acquaintance 1 to_actors_pedtype 0
 
 if
     0449: actor 10@ in_a_car
@@ -337,11 +350,21 @@ then
     jump @Cleanup_Dismiss_And_Exit
 end
 
-// Bail if Shion is dead or missing
-if or
-    856D: not actor 10@ defined
-    0118: actor 10@ dead
+// Bail and log death if Shion was killed while walking away dismissed
+if and
+    0019: 10@ > 0
+    056D: actor 10@ defined
 then
+    if
+        0118: actor 10@ dead
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_DEATH_FLAG
+        0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+        01C2: remove_references_to_actor 10@
+        jump @Cleanup_Dismiss_And_Exit
+    end
+else
     jump @Cleanup_Dismiss_And_Exit
 end
 
@@ -407,6 +430,21 @@ then
         048F: actor 10@ remove_weapons
         01B9: set_actor 10@ armed_weapon_to 0
     end
+end
+
+// Combat & Cower Override: Abort any retaliation, gun fight, or fear tasks
+if or
+    0E47: is_char_fighting 10@
+    0E46: is_char_using_gun 10@
+    02E0: actor 10@ firing_weapon
+    0E42: is_char_doing_task_id 10@ 206 // TASK_COMPLEX_COWER
+    0E42: is_char_doing_task_id 10@ 207 // TASK_COMPLEX_HANDS_UP
+then
+    0687: clear_actor 10@ task
+    0E96: clear_char_primary_tasks 10@
+    0E97: clear_char_secondary_tasks 10@
+    01B9: set_actor 10@ armed_weapon_to 0
+    05DE: AS_actor 10@ walk_around_ped_path
 end
 
 // If Shion was in a car, task her to walk as soon as she steps onto the sidewalk
@@ -560,8 +598,14 @@ if and
     0019: 10@ > 0
     056D: actor 10@ defined
 then
-    0792: clear_char_tasks_immediately 10@
-    009B: destroy_actor 10@
+    if
+        8118: not actor 10@ dead
+    then
+        0792: clear_char_tasks_immediately 10@
+        009B: destroy_actor 10@
+    else
+        01C2: remove_references_to_actor 10@
+    end
 end
 
 // Only clear handle if it still points to the actor this thread managed
@@ -581,6 +625,8 @@ end
 0085: 30@ = 31@
 000A: 30@ += MEM_INTENTIONAL_DISM
 0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_FF"
 
 0A93: terminate_this_custom_script
 

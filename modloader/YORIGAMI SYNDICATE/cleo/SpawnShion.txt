@@ -324,6 +324,11 @@ then
         then
             :Wait_Morph_YH_Rel
             wait 50
+            if
+                8256: not is_player_playing $PLAYER_CHAR
+            then
+                goto @SpawnShion_Loop
+            end
             if or
                 0AB0: is_key_pressed 3@
                 0AB0: is_key_pressed 4@
@@ -593,6 +598,28 @@ then
             01B9: set_actor 10@ armed_weapon_to 0
         end
 
+        // Combat & Cower Override: Immediately halt any retaliation or panic and restore lean
+        if or
+            0E47: is_char_fighting 10@
+            0E46: is_char_using_gun 10@
+            02E0: actor 10@ firing_weapon
+            0E42: is_char_doing_task_id 10@ 206 // TASK_COMPLEX_COWER
+            0E42: is_char_doing_task_id 10@ 207 // TASK_COMPLEX_HANDS_UP
+        then
+            0687: clear_actor 10@ task
+            0E96: clear_char_primary_tasks 10@
+            0E97: clear_char_secondary_tasks 10@
+            01B9: set_actor 10@ armed_weapon_to 0
+            0605: actor 10@ perform_animation "M_SMKLEAN_LOOP" IFP "LOWRIDER" framedelta 4.0 loop 1 lockX 1 lockY 1 lockF 0 time -1
+        end
+
+        // Indifference Watchdog: Keep lean active if interrupted by aiming or flinching
+        if
+            8611: not actor 10@ performing_animation "M_SMKLEAN_LOOP"
+        then
+            0605: actor 10@ perform_animation "M_SMKLEAN_LOOP" IFP "LOWRIDER" framedelta 4.0 loop 1 lockX 1 lockY 1 lockF 0 time -1
+        end
+
         if and
             10@ > 0
             056D: actor 10@ defined
@@ -616,6 +643,8 @@ then
                 0085: 30@ = 31@
                 000A: 30@ += MEM_SHION_RECRUITED
                 0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+                0ABA: terminate_all_custom_scripts_with_this_name "Sh_FF"
                 
                 9@ = 0
                 2@ = 0
@@ -653,10 +682,31 @@ then
                 end
             end
         else
+            // Shion was killed while loitering at the hangout spot
+            if and
+                10@ > 0
+                056D: actor 10@ defined
+            then
+                if
+                    0118: actor 10@ dead
+                then
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_SHION_DEATH_FLAG
+                    0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+                    01C2: remove_references_to_actor 10@
+                end
+            end
+
             10@ = 0
             0085: 30@ = 31@
             000A: 30@ += MEM_SHION_HANDLE
             0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_RECRUITED
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+            0ABA: terminate_all_custom_scripts_with_this_name "Sh_FF"
             9@ = 0
             2@ = 0
         end
@@ -969,9 +1019,9 @@ then
         then
             0085: 30@ = 31@
             000A: 30@ += MEM_PRIORITY_LOCK
-            0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+            0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
             if
-                0039: 28@ == 0
+                0039: 27@ == 0
             then
                 // Claim priority lock immediately so Sandbox cannot hijack during warp
                 0085: 30@ = 31@
@@ -1092,19 +1142,19 @@ then
     0792: clear_char_tasks_immediately 10@
     009B: destroy_actor 10@
     10@ = 0
+
+    // Terminate previous effects to prevent corona and script leaks
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_HitoF"
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Warp"
+
+    0A92: create_custom_thread "Shion\FX_Warp.c" 0 20@ 21@ 22@
+    0A92: create_custom_thread "Shion\FX_ShionHitodama.c"
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_SHIT1" text "~b~SHION YORIGAMI~n~~w~HITODAMA FORM"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_SHIT1' time 2500 style 5
 end
-
-// Terminate previous effects to prevent corona and script leaks
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_HitoF"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Warp"
-
-0A92: create_custom_thread "Shion\FX_Warp.c" 0 20@ 21@ 22@
-0A92: create_custom_thread "Shion\FX_ShionHitodama.c"
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-0ADF: add_text_label "Y_SHIT1" text "~b~SHION YORIGAMI~n~~w~HITODAMA FORM"
-09C1: add_next_text_to_brief_history 1
-00BA: show_text_styled GXT 'Y_SHIT1' time 2500 style 5
 return
 
 // =========================================================================
@@ -1341,6 +1391,11 @@ end
 
 0296: unload_special_actor 10
 
+// Broadcast handle to Master Heap so DeathTracker and FriendlyFire track ambient Shion
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8C: write_memory 30@ size 4 value 10@ virtual_protect 0
+
 0489: set_actor 10@ muted 1
 094E: set_actor 10@ mute_pain_audio 1
 08AF: set_actor 10@ max_health_to 1000
@@ -1348,7 +1403,21 @@ end
 035F: actor 10@ armour += 500
 02AB: set_actor 10@ immunities BP 0 FP 1 EP 0 CP 0 MP 0
 0446: set_actor 10@ dismemberment_possible 0 // Immune to headshots/decapitation!
-060B: set_actor 10@ decision_maker_to 65543
+
+// Passive Brain Setup: Never cower from gunshots or aim, and never chase Jo'on
+060B: set_actor 10@ decision_maker_to 65540
+0946: set_actor 10@ actions_uninterupted_by_weapon_fire 1
+0350: set_actor 10@ maintain_position_when_attacked 1
+0816: set_actor 10@ dont_chase_victim 1
+07CB: set_actor 10@ supporting_fire 0
+07DD: set_actor 10@ attack_rate 0
+0770: set_actor 10@ target_priority 0
+
+// Clear all hostility and set Like towards Player
+077C: clear_actor 10@ acquaintance 4 to_all_pedtypes
+077C: clear_actor 10@ acquaintance 3 to_all_pedtypes
+077A: set_actor 10@ acquaintance 1 to_actors_pedtype 0
+
 09B5: set_actor 10@ signal_after_kill 0
 081A: set_actor 10@ weapon_skill_to 2
 02E2: set_actor 10@ weapon_accuracy_to 85
@@ -1368,6 +1437,10 @@ end
 
 // Start infinite lean loop (Keep IFP loaded in memory while she loiters!)
 0605: actor 10@ perform_animation "M_SMKLEAN_LOOP" IFP "LOWRIDER" framedelta 4.0 loop 1 lockX 1 lockY 1 lockF 0 time -1
+
+// Launch Friendly Fire thread so attacks while loitering trigger dialogue
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_FF"
+0A92: create_custom_thread "Shion\ShionFriendlyFire.c" 10@
 
 9@ = 1
 return
