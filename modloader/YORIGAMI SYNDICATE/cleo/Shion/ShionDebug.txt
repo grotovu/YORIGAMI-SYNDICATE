@@ -1,0 +1,115 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+{$USE ini}
+
+0000: NOP
+03A4: script_name 'Sh_Dbg'
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (SCOPED TO SHIONDEBUG)
+// =========================================================================
+const
+    MEM_SHION_HANDLE = 116
+    MEM_SHION_PRES_HP = 160
+    MEM_SHION_PRES_ARMOUR = 164
+end
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// Verify DebugMode in Shion.ini
+0AF0: 1@ = read_int_from_ini_file "cleo\Shion.ini" section "Debug" key "DebugMode"
+if
+    0039: 1@ == 0
+then
+    0A93: terminate_this_custom_script
+end
+
+:Debug_Loop
+0001: wait 50 ms
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    0002: jump @Debug_Loop
+end
+
+// =========================================================================
+// CHEAT: KILLPOOR (Sets Shion's HP to 5 and Armour to 0)
+// =========================================================================
+if
+    0ADC: test_cheat "KILLPOOR"
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_HANDLE
+    0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+    if
+        0039: 10@ == 0
+    then
+        018C: play_sound 1057 at 0.0 0.0 0.0
+        0AD1: print_formatted_now "~r~DEBUG: Shion is not summoned!" 2000
+    else
+        // Case 1: Hitodama Spirit Form
+        if
+            0039: 10@ == -1
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_PRES_HP
+            0A8C: write_memory 30@ size 4 value 5 virtual_protect 0
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_PRES_ARMOUR
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            0AD1: print_formatted_now "~w~CHEAT: ~b~KILLPOOR ~y~(Hitodama HP: 5 / Armour: 0)" 2500
+        else
+            // Case 2: Physical Ped Form
+            if and
+                0019: 10@ > 0
+                056D: actor 10@ defined
+                8118: not actor 10@ dead
+            then
+                0223: set_actor 10@ health 5
+
+                // Strip Armour (Write 0.0f float to CPed+0x548)
+                0A96: 25@ = ped 10@ struct
+                000A: 25@ += 0x548
+                0A8C: write_memory 25@ size 4 value 0 virtual_protect 0
+
+                // Sync preserved values in Master Heap
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_PRES_HP
+                0A8C: write_memory 30@ size 4 value 5 virtual_protect 0
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_PRES_ARMOUR
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                0AD1: print_formatted_now "~w~CHEAT: ~b~KILLPOOR ~r~(HP: 5 / Armour: 0)" 2500
+            else
+                018C: play_sound 1057 at 0.0 0.0 0.0
+                0AD1: print_formatted_now "~r~DEBUG: Shion is dead or invalid!" 2000
+            end
+        end
+    end
+end
+
+0002: jump @Debug_Loop

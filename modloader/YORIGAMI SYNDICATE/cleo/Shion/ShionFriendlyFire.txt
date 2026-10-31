@@ -416,7 +416,7 @@ then
     if
         26@ == 4
     then
-        0ADF: add_text_label "Y_FF04" text "~b~Shion: ~s~\"...I already got bruises from yesterday, Jo'on.\""
+        0ADF: add_text_label "Y_FF04" text "~b~Shion: ~s~\"...I already have bruises from yesterday, Jo'on.\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF04' time 2500 flag 1
     end
@@ -424,10 +424,10 @@ then
 end
 
 // =========================================================================
-// GOLF CLUB (ID 2) [Unique]
+// GOLF CLUB (ID 2)
 // =========================================================================
 if
-    12@ == 2 // Golf Club
+    12@ == 2
 then
     0209: 26@ = random_int_in_range 0 3
 
@@ -448,7 +448,7 @@ then
     if
         26@ == 2
     then
-        0ADF: add_text_label "Y_FF02C" text "~b~Shion: ~s~\"Watch your backswing! That iron club hurts!\""
+        0ADF: add_text_label "Y_FF02C" text "~b~Shion: ~s~\"Watch your backswing! That heavy metal club hurts!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF02C' time 2500 flag 1
     end
@@ -456,24 +456,24 @@ then
 end
 
 // =========================================================================
-// NIGHTSTICK (ID 3) [Unique]
+// NIGHTSTICK (ID 3)
 // =========================================================================
 if
-    12@ == 3 // Nightstick
+    12@ == 3
 then
     0209: 26@ = random_int_in_range 0 3
 
     if
         26@ == 0
     then
-        0ADF: add_text_label "Y_FF03A" text "~b~Shion: ~s~\"Ow! You're hitting me like a corrupt beat cop, Jo'on!\""
+        0ADF: add_text_label "Y_FF03A" text "~b~Shion: ~s~\"Ow! You're hitting me like a crooked cop, Jo'on!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF03A' time 2500 flag 1
     end
     if
         26@ == 1
     then
-        0ADF: add_text_label "Y_FF03B" text "~b~Shion: ~s~\"Put the police baton away! I didn't resist arrest!\""
+        0ADF: add_text_label "Y_FF03B" text "~b~Shion: ~s~\"Put the cop stick away! I didn't resist arrest!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF03B' time 2500 flag 1
     end
@@ -488,10 +488,10 @@ then
 end
 
 // =========================================================================
-// KNIFE (ID 4) [Unique]
+// KNIFE (ID 4)
 // =========================================================================
 if
-    12@ == 4 // Knife
+    12@ == 4
 then
     0209: 26@ = random_int_in_range 0 5
 
@@ -519,7 +519,7 @@ then
     if
         26@ == 3
     then
-        0ADF: add_text_label "Y_FF04D" text "~b~Shion: ~s~\"A rusty blade?! Watch the tetanus, Jo'on!\""
+        0ADF: add_text_label "Y_FF04D" text "~b~Shion: ~s~\"A rusty blade?! Are you trying to poison my blood, Jo'on?!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF04D' time 2500 flag 1
     end
@@ -534,10 +534,10 @@ then
 end
 
 // =========================================================================
-// BASEBALL BAT (ID 5) [Unique]
+// BASEBALL BAT (ID 5)
 // =========================================================================
 if
-    12@ == 5 // Baseball Bat
+    12@ == 5
 then
     0209: 26@ = random_int_in_range 0 3
 
@@ -558,7 +558,7 @@ then
     if
         26@ == 2
     then
-        0ADF: add_text_label "Y_FF05C" text "~b~Shion: ~s~\"I'm on your team! Stop swinging for the bleachers!\""
+        0ADF: add_text_label "Y_FF05C" text "~b~Shion: ~s~\"I'm on your team! Stop swinging like you're trying to hit a home run!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF05C' time 2500 flag 1
     end
@@ -566,10 +566,10 @@ then
 end
 
 // =========================================================================
-// SHOVEL (ID 6) [Unique]
+// SHOVEL (ID 6)
 // =========================================================================
 if
-    12@ == 6 // Shovel
+    12@ == 6
 then
     0209: 26@ = random_int_in_range 0 3
 
@@ -598,10 +598,10 @@ then
 end
 
 // =========================================================================
-// POOL CUE (ID 7) [Unique]
+// POOL CUE (ID 7)
 // =========================================================================
 if
-    12@ == 7 // Pool Cue
+    12@ == 7
 then
     0209: 26@ = random_int_in_range 0 3
 
@@ -622,7 +622,7 @@ then
     if
         26@ == 2
     then
-        0ADF: add_text_label "Y_FF07C" text "~b~Shion: ~s~\"You're gonna snap the tip off that pool cue on my shoulder!\""
+        0ADF: add_text_label "Y_FF07C" text "~b~Shion: ~s~\"You're gonna snap that pool stick in half on my shoulder!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF07C' time 2500 flag 1
     end
@@ -630,24 +630,24 @@ then
 end
 
 // =========================================================================
-// KATANA (ID 8) [Unique: Youmu Joke]
+// KATANA (ID 8)
 // =========================================================================
 if
-    12@ == 8 // Katana
+    12@ == 8
 then
     0209: 26@ = random_int_in_range 0 4
 
     if
         26@ == 0
     then
-        0ADF: add_text_label "Y_FF08A" text "~b~Shion: ~s~\"You're swinging that like Konpaku trimming a hedge, Jo'on!\""
+        0ADF: add_text_label "Y_FF08A" text "~b~Shion: ~s~\"You're swinging that sword like an angry gardener, Jo'on!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF08A' time 2500 flag 1
     end
     if
         26@ == 1
     then
-        0ADF: add_text_label "Y_FF08B" text "~b~Shion: ~s~\"Put the sword away! You're a pestilence god, not a gardener!\""
+        0ADF: add_text_label "Y_FF08B" text "~b~Shion: ~s~\"Put the sword away! You're a street con, not a samurai!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF08B' time 2500 flag 1
     end
@@ -669,10 +669,10 @@ then
 end
 
 // =========================================================================
-// CHAINSAW (ID 9) [Unique]
+// CHAINSAW (ID 9)
 // =========================================================================
 if
-    12@ == 9 // Chainsaw
+    12@ == 9
 then
     0209: 26@ = random_int_in_range 0 3
 
@@ -781,10 +781,10 @@ then
 end
 
 // =========================================================================
-// FLOWERS (ID 14) [Unique]
+// FLOWERS (ID 14)
 // =========================================================================
 if
-    12@ == 14 // Flowers
+    12@ == 14
 then
     0209: 26@ = random_int_in_range 0 5
 
@@ -827,10 +827,10 @@ then
 end
 
 // =========================================================================
-// WALKING CANE (ID 15) [Unique: Jo'on's Hustler Pimp Accessory]
+// WALKING CANE (ID 15)
 // =========================================================================
 if
-    12@ == 15 // Walking Cane
+    12@ == 15
 then
     0209: 26@ = random_int_in_range 0 4
 
@@ -851,7 +851,7 @@ then
     if
         26@ == 2
     then
-        0ADF: add_text_label "Y_FF15C" text "~b~Shion: ~s~\"Ow! Fancy canes are for leaning and dancing around lampposts!\""
+        0ADF: add_text_label "Y_FF15C" text "~b~Shion: ~s~\"Ow! Fancy canes are for leaning and strutting around, Jo'on!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF15C' time 2500 flag 1
     end
@@ -883,7 +883,7 @@ then
     if
         26@ == 1
     then
-        0ADF: add_text_label "Y_FFGR1" text "~b~Shion: ~s~\"Shrapnel in my hoodie! Throw it further next time!\""
+        0ADF: add_text_label "Y_FFGR1" text "~b~Shion: ~s~\"Scraps in my hoodie! Throw that bomb further next time!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFGR1' time 2500 flag 1
     end
@@ -897,7 +897,7 @@ then
     if
         26@ == 3
     then
-        0ADF: add_text_label "Y_FFGR3" text "~b~Shion: ~s~\"I absorb misfortune, not shrapnel! Watch your throws!\""
+        0ADF: add_text_label "Y_FFGR3" text "~b~Shion: ~s~\"I absorb misfortune, not bomb blasts! Watch your throws!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFGR3' time 2500 flag 1
     end
@@ -908,8 +908,8 @@ end
 // ROCKET LAUNCHERS (IDs 35, 36)
 // =========================================================================
 if or
-    12@ == 35 // Rocket Launcher
-    12@ == 36 // Heat Seeking Rocket Launcher
+    12@ == 35
+    12@ == 36
 then
     0209: 26@ = random_int_in_range 0 4
 
@@ -923,7 +923,7 @@ then
     if
         26@ == 1
     then
-        0ADF: add_text_label "Y_FFRL1" text "~b~Shion: ~s~\"The backblast scorched my hoodie! Watch the launch tube!\""
+        0ADF: add_text_label "Y_FFRL1" text "~b~Shion: ~s~\"The fire blew right back on me! Watch where you point that tube!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFRL1' time 2500 flag 1
     end
@@ -937,7 +937,7 @@ then
     if
         26@ == 3
     then
-        0ADF: add_text_label "Y_FFRL3" text "~b~Shion: ~s~\"I'm not a syndicate helicopter! Point that somewhere else!\""
+        0ADF: add_text_label "Y_FFRL3" text "~b~Shion: ~s~\"I'm not an armored truck, Jo'on! Point that somewhere else!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFRL3' time 2500 flag 1
     end
@@ -948,28 +948,28 @@ end
 // SATCHEL CHARGES (ID 39)
 // =========================================================================
 if
-    12@ == 39 // Satchel Charges
+    12@ == 39
 then
     0209: 26@ = random_int_in_range 0 3
 
     if
         26@ == 0
     then
-        0ADF: add_text_label "Y_FFST0" text "~b~Shion: ~s~\"Satchel charges?! Step back before you detonate us both!\""
+        0ADF: add_text_label "Y_FFST0" text "~b~Shion: ~s~\"Satchel charges?! Step back before you blow us both up!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFST0' time 2500 flag 1
     end
     if
         26@ == 1
     then
-        0ADF: add_text_label "Y_FFST1" text "~b~Shion: ~s~\"You stuck plastic explosives to my hoodie?! Are you crazy?!\""
+        0ADF: add_text_label "Y_FFST1" text "~b~Shion: ~s~\"You stuck a bomb to my hoodie?! Are you crazy?!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFST1' time 2500 flag 1
     end
     if
         26@ == 2
     then
-        0ADF: add_text_label "Y_FFST2" text "~b~Shion: ~s~\"Two thousand dollars for plastic explosives just to blow ME up?!\""
+        0ADF: add_text_label "Y_FFST2" text "~b~Shion: ~s~\"Two thousand dollars for explosives just to blow ME up?!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFST2' time 2800 flag 1
     end
@@ -977,11 +977,11 @@ then
 end
 
 // =========================================================================
-// PISTOLS & SILENCED (IDs 22, 23) [Grouped]
+// PISTOLS & SILENCED (IDs 22, 23)
 // =========================================================================
 if or
-    12@ == 22 // 9mm
-    12@ == 23 // Silenced Pistol
+    12@ == 22
+    12@ == 23
 then
     0209: 26@ = random_int_in_range 0 4
 
@@ -995,7 +995,7 @@ then
     if
         26@ == 1
     then
-        0ADF: add_text_label "Y_FFP1" text "~b~Shion: ~s~\"Ow... nine-millimeter lead still stings, sis.\""
+        0ADF: add_text_label "Y_FFP1" text "~b~Shion: ~s~\"Ow... pistol bullets still sting, sis.\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFP1' time 2500 flag 1
     end
@@ -1009,7 +1009,7 @@ then
     if
         26@ == 3
     then
-        0ADF: add_text_label "Y_FFP3" text "~b~Shion: ~s~\"A poverty god aims better than you.\""
+        0ADF: add_text_label "Y_FFP3" text "~b~Shion: ~s~\"A blind stray dog aims better than you.\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFP3' time 2500 flag 1
     end
@@ -1017,10 +1017,10 @@ then
 end
 
 // =========================================================================
-// DESERT EAGLE (ID 24) [Unique: Heavy Hand Cannon]
+// DESERT EAGLE (ID 24)
 // =========================================================================
 if
-    12@ == 24 // Desert Eagle
+    12@ == 24
 then
     0209: 26@ = random_int_in_range 0 3
 
@@ -1049,19 +1049,19 @@ then
 end
 
 // =========================================================================
-// SHOTGUNS (IDs 25, 26, 27) [Grouped]
+// SHOTGUNS (IDs 25, 26, 27)
 // =========================================================================
 if or
-    12@ == 25 // Shotgun
-    12@ == 26 // Sawn Off Shotgun
-    12@ == 27 // Combat Shotgun
+    12@ == 25
+    12@ == 26
+    12@ == 27
 then
     0209: 26@ = random_int_in_range 0 4
 
     if
         26@ == 0
     then
-        0ADF: add_text_label "Y_FFSG0" text "~b~Shion: ~s~\"Half those buckshot pellets hit me, Jo'on!\""
+        0ADF: add_text_label "Y_FFSG0" text "~b~Shion: ~s~\"Half those pellets hit me, Jo'on!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFSG0' time 2500 flag 1
     end
@@ -1075,14 +1075,14 @@ then
     if
         26@ == 2
     then
-        0ADF: add_text_label "Y_FFSG2" text "~b~Shion: ~s~\"Don't shoot from behind me with a twelve-gauge!\""
+        0ADF: add_text_label "Y_FFSG2" text "~b~Shion: ~s~\"Don't shoot a shotgun from behind me ever!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFSG2' time 2500 flag 1
     end
     if
         26@ == 3
     then
-        0ADF: add_text_label "Y_FFSG3" text "~b~Shion: ~s~\"That was a full buckshot blast to my ribs, sis...\""
+        0ADF: add_text_label "Y_FFSG3" text "~b~Shion: ~s~\"That shotgun blast hit my ribs, sis...\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFSG3' time 2500 flag 1
     end
@@ -1090,15 +1090,15 @@ then
 end
 
 // =========================================================================
-// AUTOMATICS, SMGS & MINIGUN (IDs 28, 29, 30, 31, 32, 38) [Grouped]
+// AUTOMATICS, SMGS & MINIGUN (IDs 28, 29, 30, 31, 32, 38)
 // =========================================================================
 if or
-    12@ == 28 // Micro UZI
-    12@ == 29 // MP5
-    12@ == 30 // AK47
-    12@ == 31 // M4
-    12@ == 32 // Tec9
-    12@ == 38 // Minigun
+    12@ == 28
+    12@ == 29
+    12@ == 30
+    12@ == 31
+    12@ == 32
+    12@ == 38
 then
     0209: 26@ = random_int_in_range 0 5
 
@@ -1112,14 +1112,14 @@ then
     if
         26@ == 1
     then
-        0ADF: add_text_label "Y_FFAU1" text "~b~Shion: ~s~\"Stop shooting me! This isn't danmaku!\""
+        0ADF: add_text_label "Y_FFAU1" text "~b~Shion: ~s~\"Stop shooting me! I'm not target practice!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFAU1' time 2500 flag 1
     end
     if
         26@ == 2
     then
-        0ADF: add_text_label "Y_FFAU2" text "~b~Shion: ~s~\"Of course you don't have trigger discipline!\""
+        0ADF: add_text_label "Y_FFAU2" text "~b~Shion: ~s~\"Of course you hold the trigger down until it's empty!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFAU2' time 2500 flag 1
     end
@@ -1141,10 +1141,10 @@ then
 end
 
 // =========================================================================
-// COUNTRY RIFLE (ID 33) [Unique: Hunting / Iron Sights]
+// COUNTRY RIFLE (ID 33)
 // =========================================================================
 if
-    12@ == 33 // Country Rifle
+    12@ == 33
 then
     0209: 26@ = random_int_in_range 0 5
 
@@ -1158,7 +1158,7 @@ then
     if
         26@ == 1
     then
-        0ADF: add_text_label "Y_FFCR1" text "~b~Shion: ~s~\"A hunting rifle?! You're using iron sights, how'd you hit me?!\""
+        0ADF: add_text_label "Y_FFCR1" text "~b~Shion: ~s~\"A hunting rifle?! I'm standing right in front of you, how'd you hit me?!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFCR1' time 2800 flag 1
     end
@@ -1187,17 +1187,17 @@ then
 end
 
 // =========================================================================
-// SNIPER RIFLE (ID 34) [Unique: Scoped / $500 Bullet]
+// SNIPER RIFLE (ID 34)
 // =========================================================================
 if
-    12@ == 34 // Sniper Rifle
+    12@ == 34
 then
     0209: 26@ = random_int_in_range 0 5
 
     if
         26@ == 0
     then
-        0ADF: add_text_label "Y_FFSN0" text "~b~Shion: ~s~\"You hit me through a ten-power scope?!\""
+        0ADF: add_text_label "Y_FFSN0" text "~b~Shion: ~s~\"You're looking through a scope and you still hit me?!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FFSN0' time 2500 flag 1
     end
@@ -1233,10 +1233,10 @@ then
 end
 
 // =========================================================================
-// SPRAY CAN (ID 41) [Unique]
+// SPRAY CAN (ID 41)
 // =========================================================================
 if
-    12@ == 41 // Spray Paint
+    12@ == 41
 then
     0209: 26@ = random_int_in_range 0 3
 
@@ -1265,10 +1265,10 @@ then
 end
 
 // =========================================================================
-// FIRE EXTINGUISHER (ID 42) [Unique]
+// FIRE EXTINGUISHER (ID 42)
 // =========================================================================
 if
-    12@ == 42 // Fire Extinguisher
+    12@ == 42
 then
     0209: 26@ = random_int_in_range 0 3
 

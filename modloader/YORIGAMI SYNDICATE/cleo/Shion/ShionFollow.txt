@@ -17,6 +17,7 @@ const
     MEM_TIMES_WASTED = 300        // Telemetry: Times wasted with Shion
     MEM_TIMES_BUSTED = 304        // Telemetry: Times arrested with Shion
     MEM_SAFEHOUSE_DOOR_ID = 340   // Current safehouse EnEx doorway index
+    MEM_SHION_KILLER_IS_JOON = 384 // Live killer telemetry (0 = World, 1 = Jo'on)
 end
 
 // 0@ = Shion Actor Handle passed from SpawnShion.cs
@@ -415,20 +416,55 @@ return
 
 // Check if the fatal damage blow came from Jo'on / Player
 28@ = 0
+
+// Check 1: Synchronous Heap Telemetry from Death Tracker
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_KILLER_IS_JOON
+0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
 if
-    051A: actor 10@ damaged_by_actor $PLAYER_ACTOR
+    0039: 29@ == 1
 then
     28@ = 1
 end
 
+// Check 2: Direct Last Frame Damage Inspector (CLEO+ 0EB5 catches melee knockdowns)
 if
-    00DF: actor $PLAYER_ACTOR driving
+    0039: 28@ == 0
 then
-    03C0: 27@ = actor $PLAYER_ACTOR car
-    if
-        051B: actor 10@ damaged_by_car 27@
+    0EB5: get_char_damage_last_frame 10@ damager 26@ type 27@ part 25@ intensity 24@
+    0A96: 25@ = ped $PLAYER_ACTOR struct
+    if or
+        003B: 26@ == 25@
+        07D6: 26@ == $PLAYER_ACTOR
     then
         28@ = 1
+    end
+end
+
+// Check 3: Native Ped Damage Flag (Firearms & Slashing)
+if
+    0039: 28@ == 0
+then
+    if
+        051A: actor 10@ damaged_by_actor $PLAYER_ACTOR
+    then
+        28@ = 1
+    end
+end
+
+// Check 4: Vehicular Impact
+if
+    0039: 28@ == 0
+then
+    if
+        00DF: actor $PLAYER_ACTOR driving
+    then
+        03C0: 27@ = actor $PLAYER_ACTOR car
+        if
+            051B: actor 10@ damaged_by_car 27@
+        then
+            28@ = 1
+        end
     end
 end
 

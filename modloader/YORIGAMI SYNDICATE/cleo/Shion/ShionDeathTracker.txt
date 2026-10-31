@@ -154,6 +154,15 @@ then
 
         0085: 12@ = 3@
         0085: 14@ = TIMERA
+
+        // Synchronously update Master Heap so ShionFollow.c has zero latency on lethal frame
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_KILLER_IS_JOON
+        0A8C: write_memory 30@ size 4 value 13@ virtual_protect 0
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_DEATH_WEAPON
+        0A8C: write_memory 30@ size 4 value 12@ virtual_protect 0
     end
 end
 0ED0: return_script_event
