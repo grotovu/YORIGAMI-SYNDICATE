@@ -699,7 +699,7 @@ return
 0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0 // Ammo Count from RAM
 
 if
-    19@ == 0 // Wallet Drain Mode: Infinite ammo cushion
+    0039: 19@ == 0 // Wallet Drain Mode: Infinite ammo cushion
 then
     if
         15@ <= 1
@@ -744,6 +744,17 @@ end
 0946: set_actor 10@ actions_uninterupted_by_weapon_fire 1
 0816: set_actor 10@ dont_chase_victim 0
 0770: set_actor 10@ target_priority 1
+
+// RESTORE COMBAT BRAIN & MOVEMENT FREEDOM
+060B: set_actor 10@ decision_maker_to 65543
+087F: set_actor 10@ never_leave_group 0
+
+// FORCE AI TO RE-EVALUATE THREATS INSTANTLY
+0687: clear_actor 10@ task
+0E96: clear_char_primary_tasks 10@
+0E97: clear_char_secondary_tasks 10@
+07AF: 27@ = player $PLAYER_CHAR group
+0631: put_actor 10@ in_group 27@
 
 077A: set_actor 10@ acquaintance 4 to_actors_pedtype 6
 077A: set_actor 10@ acquaintance 3 to_actors_pedtype 6
