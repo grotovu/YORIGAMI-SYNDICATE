@@ -572,6 +572,16 @@ then
     if
         9@ == 1
     then
+        // Prevent Aim + G gang recruitment from interrupting her hangout lean
+        07AF: 24@ = player $PLAYER_CHAR group
+        if
+            06EE: actor 10@ in_group 24@
+        then
+            06C9: remove_actor 10@ from_group
+            0687: clear_actor 10@ task
+            0605: actor 10@ perform_animation "M_SMKLEAN_LOOP" IFP "LOWRIDER" framedelta 4.0 loop 1 lockX 1 lockY 1 lockF 0 time -1
+        end
+
         if and
             10@ > 0
             056D: actor 10@ defined

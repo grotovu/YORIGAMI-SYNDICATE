@@ -315,6 +315,43 @@ end
 :Dismiss_Walk_Loop
 0001: wait 250 ms
 
+// Prevent GTA SA native gang recruitment (Aim + G) from turning her into a generic homie
+07AF: 12@ = player $PLAYER_CHAR group
+if
+    06EE: actor 10@ in_group 12@
+then
+    06C9: remove_actor 10@ from_group
+    0687: clear_actor 10@ task
+    0E96: clear_char_primary_tasks 10@
+    0E97: clear_char_secondary_tasks 10@
+    05DE: AS_actor 10@ walk_around_ped_path
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0209: 28@ = random_int_in_ranges 0 3
+    if
+        0039: 28@ == 0
+    then
+        0ADF: add_text_label "Y_NORE1" text "~b~Shion: ~s~\"I'm done for today, Jo'on. I'm not following you.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_NORE1' time 3200 flag 1
+    end
+    if
+        0039: 28@ == 1
+    then
+        0ADF: add_text_label "Y_NORE2" text "~b~Shion: ~s~\"Don't bother aiming at me. I'm ignoring you.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_NORE2' time 3200 flag 1
+    end
+    if
+        0039: 28@ == 2
+    then
+        0ADF: add_text_label "Y_NORE3" text "~b~Shion: ~s~\"You told me to beat it, Jo'on. I'm beating it.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_NORE3' time 3200 flag 1
+    end
+end
+
 // Bail if player dead or arrested
 if
     8256: not is_player_playing $PLAYER_CHAR
