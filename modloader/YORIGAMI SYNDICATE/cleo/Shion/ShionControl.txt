@@ -747,7 +747,6 @@ end
 
 // RESTORE COMBAT BRAIN & MOVEMENT FREEDOM
 060B: set_actor 10@ decision_maker_to 65543
-087F: set_actor 10@ never_leave_group 0
 
 // FORCE AI TO RE-EVALUATE THREATS INSTANTLY
 0687: clear_actor 10@ task
