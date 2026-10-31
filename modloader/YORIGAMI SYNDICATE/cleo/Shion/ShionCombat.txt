@@ -545,8 +545,8 @@ return
 07DD: set_actor 10@ attack_rate 0
 0770: set_actor 10@ target_priority 0
 0816: set_actor 10@ dont_chase_victim 1
-0946: set_actor 10@ actions_uninterupted_by_weapon_fire 0
-060B: set_actor 10@ decision_maker_to 65543
+0946: set_actor 10@ actions_uninterupted_by_weapon_fire 1 // Ignore gunfire
+060B: set_actor 10@ decision_maker_to 65540
 
 077C: clear_actor 10@ acquaintance 4 to_all_pedtypes
 077C: clear_actor 10@ acquaintance 3 to_all_pedtypes
@@ -561,7 +561,7 @@ return
 
 0AF0: 29@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "ShowBankruptAlert"
 if
-    29@ == 1
+    0039: 29@ == 1
 then
     0ADF: add_text_label "Y_DECL" text "~r~CARD DECLINED~n~~w~OUT OF AMMO FUNDS"
     00BA: show_text_styled GXT 'Y_DECL' time 3000 style 5
