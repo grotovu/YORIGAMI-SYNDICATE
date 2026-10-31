@@ -12,12 +12,14 @@ script_name 'Sh_Flw'
 const
     MEM_SHION_BUSY = 4            // Parachute / Scavenge busy state
     MEM_INTENTIONAL_DISM = 8      // Companion intentional dismissal flag
+    MEM_PLAYER_FORM = 12          // Active character form (0 = CJ, 1 = Jo'on, 2 = Shion)
     MEM_PRIORITY_LOCK = 20        // Banter / reaction dialogue lock
     MEM_SHION_HANDLE = 116        // Active Shion ped handle
     MEM_TIMES_WASTED = 300        // Telemetry: Times wasted with Shion
     MEM_TIMES_BUSTED = 304        // Telemetry: Times arrested with Shion
     MEM_SAFEHOUSE_DOOR_ID = 340   // Current safehouse EnEx doorway index
     MEM_SHION_KILLER_IS_JOON = 384 // Live killer telemetry (0 = World, 1 = Jo'on)
+    MEM_SHION_STAY_PUT = 396      // Stay Put state (0 = Follow, 1 = Stay Put via [H])
 end
 
 // 0@ = Shion Actor Handle passed from SpawnShion.cs
@@ -40,7 +42,12 @@ then
 end
 // 31@ NOW HOLDS THE MASTER POINTER.
 
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_STAY_PUT
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
 // Protected Doorway & Transition Registers
+1@ = 0    // Dedicated Non-blocking Recall Dialogue Lock Timer (ms)
 7@ = 0.0  // Doorway Arrival Z Angle (float)
 077E: get_active_interior_to 8@ // Seed with current interior so spawning indoors does not trigger a false transition
 13@ = 0   // Transition State (0 = Idle, 1 = Wait Mesh, 2 = Doorway Clearance)
@@ -76,6 +83,28 @@ then
     then
         9@ = 0
         11@ = 0
+    end
+end
+
+// Tick down recall dialogue priority lock timer
+if
+    0019: 1@ > 0
+then
+    000E: 1@ -= 50
+    if
+        002B: 0 >= 1@
+    then
+        1@ = 0
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+        if
+            2@ == 1
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+        end
     end
 end
 
@@ -265,10 +294,44 @@ then
         // [H] Key: Stay Put (Guarded so Y + H Hitodama Morph does not trigger it)
         // -----------------------------------------------------------------
         if and
+            8449: not actor $PLAYER_ACTOR in_a_car // On foot only
+            8449: not actor 10@ in_a_car
+            8818: not actor 10@ in_air
             0AB0: is_key_pressed 72 // H Key
             8AB0: not is_key_pressed 3@ // Y Key NOT held
         then
-            15@ = 1 // Stay Put Mode Active
+            :Wait_H_Key_Rel
+            wait 50
+            if or
+                0117: player $PLAYER_CHAR wasted
+                0741: actor $PLAYER_ACTOR busted
+                856D: not actor 10@ defined
+                0118: actor 10@ dead
+            then
+                jump @ShionFollow_Loop
+            end
+            if
+                0AB0: is_key_pressed 72 // H Key
+            then
+                jump @Wait_H_Key_Rel
+            end
+
+            // Set Stay Put mode locally and in shared heap
+            15@ = 1
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_STAY_PUT
+            0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+            // Clear tasks and command Shion and group to hold ground
+            0687: clear_actor 10@ task
+            0E96: clear_char_primary_tasks 10@
+            0E97: clear_char_secondary_tasks 10@
+            07AF: 12@ = player $PLAYER_CHAR group
+            07B3: set_group 12@ give_command 1 // Group Stay Put / Hold Ground
+            0638: AS_actor 10@ stay_put 1
+
+            // Trigger Jo'on Stay Put Dialogue
+            gosub @Process_Joon_StayPut_Dialogue
         end
 
         // -----------------------------------------------------------------
@@ -301,6 +364,9 @@ then
 
                 // G Key released cleanly: cancel Stay Put mode
                 15@ = 0
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_STAY_PUT
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
                 000A: 11@ += 1 // Increment tap counter
 
@@ -334,9 +400,12 @@ then
                         018C: play_sound 1058 at 0.0 0.0 0.0
                     end
                 end
+
+                // Evaluate and play Jo'on recall banter
+                gosub @Process_Joon_Recall_Dialogue
             end
         end
-
+        
         // -----------------------------------------------------------------
         // Automatic On-Foot Catch-Up Warp (Distance > 45m)
         // -----------------------------------------------------------------
@@ -364,6 +433,10 @@ then
             07AF: 12@ = player $PLAYER_CHAR group
             06C9: remove_actor 10@ from_group
             009B: destroy_actor 10@
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_STAY_PUT
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
             0085: 30@ = 31@
             000A: 30@ += MEM_SHION_HANDLE
@@ -1030,4 +1103,393 @@ end
 0085: 30@ = 31@
 000A: 30@ += MEM_SAFEHOUSE_DOOR_ID
 0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+return
+
+// =========================================================================
+// SUBROUTINE: PROCESS JO'ON RECALL DIALOGUE (G KEY)
+// Low Tier 1 priority; strictly solo Shion companion & on-foot Jo'on
+// =========================================================================
+:Process_Joon_Recall_Dialogue
+// Must be playing as Jo'on
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+if
+    8039: not 2@ == 1
+then
+    return
+end
+
+// Priority channel must be completely free (0)
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+if
+    8039: not 2@ == 0
+then
+    return
+end
+
+// Do not talk over cutscenes or screen fades
+if or
+    0E25: is_on_cutscene
+    016B: fading
+then
+    return
+end
+
+// Verify Shion is alive and defined
+if or
+    856D: not actor 10@ defined
+    0118: actor 10@ dead
+then
+    return
+end
+
+// Must have NO OTHER companions in the group (only Shion)
+07AF: 12@ = player $PLAYER_CHAR group
+07F6: get_group 12@ number_of_leaders_to 24@ number_of_members_to 25@
+if
+    0019: 25@ > 1
+then
+    return
+end
+
+// Check if currently engaged in combat or pursued by hostiles
+23@ = 0
+01C0: 19@ = player $PLAYER_CHAR wanted_level
+if
+    0019: 19@ > 0
+then
+    23@ = 1
+end
+
+if
+    23@ == 0
+then
+    if or
+        0E47: is_char_fighting $PLAYER_ACTOR
+        0E46: is_char_using_gun $PLAYER_ACTOR
+        02E0: actor $PLAYER_ACTOR firing_weapon
+    then
+        23@ = 1
+    end
+end
+
+if
+    23@ == 0
+then
+    if or
+        0E47: is_char_fighting 10@
+        02E0: actor 10@ firing_weapon
+    then
+        23@ = 1
+    end
+end
+
+// Claim low Tier 1 Priority Lock
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+1@ = 2800 // Non-blocking timer holds lock for 2.8s
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+
+// COMBAT / HOSTILE SITUATION
+if
+    23@ == 1
+then
+    0209: 29@ = random_int_in_ranges 0 5
+    if
+        29@ == 0
+    then
+        0ADF: add_text_label "Y_RC_C0" text "~y~Jo'on: ~s~\"Get over here, Shion! Now!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RC_C0' time 2500 flag 1
+    end
+    if
+        29@ == 1
+    then
+        0ADF: add_text_label "Y_RC_C1" text "~y~Jo'on: ~s~\"To me, Shion! Move your ass!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RC_C1' time 2500 flag 1
+    end
+    if
+        29@ == 2
+    then
+        0ADF: add_text_label "Y_RC_C2" text "~y~Jo'on: ~s~\"Dammit, Shion! Get behind me!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RC_C2' time 2500 flag 1
+    end
+    if
+        29@ == 3
+    then
+        0ADF: add_text_label "Y_RC_C3" text "~y~Jo'on: ~s~\"Here! Right now! Don't just stand there!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RC_C3' time 2500 flag 1
+    end
+    if
+        29@ == 4
+    then
+        0ADF: add_text_label "Y_RC_C4" text "~y~Jo'on: ~s~\"Shion, fall in! Quit daydreamin' in a firefight!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RC_C4' time 2500 flag 1
+    end
+    return
+end
+
+// RELAXED SITUATION: FAR (> 5.0m)
+if
+    0021: 26@ > 5.0
+then
+    0209: 29@ = random_int_in_ranges 0 5
+    if
+        29@ == 0
+    then
+        0ADF: add_text_label "Y_RC_F0" text "~y~Jo'on: ~s~\"Keep up, ya slowpoke!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RC_F0' time 2500 flag 1
+    end
+    if
+        29@ == 1
+    then
+        0ADF: add_text_label "Y_RC_F1" text "~y~Jo'on: ~s~\"Oi, Shion! Pick up the pace!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RC_F1' time 2500 flag 1
+    end
+    if
+        29@ == 2
+    then
+        0ADF: add_text_label "Y_RC_F2" text "~y~Jo'on: ~s~\"What'cha doin' starin' at nothin'? Walk!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RC_F2' time 2500 flag 1
+    end
+    if
+        29@ == 3
+    then
+        0ADF: add_text_label "Y_RC_F3" text "~y~Jo'on: ~s~\"Quit draggin' your feet back there! Move it!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RC_F3' time 2500 flag 1
+    end
+    if
+        29@ == 4
+    then
+        0ADF: add_text_label "Y_RC_F4" text "~y~Jo'on: ~s~\"I ain't waitin' around all day, Shion! Hurry up!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RC_F4' time 2500 flag 1
+    end
+    return
+end
+
+// RELAXED SITUATION: CLOSE (<= 5.0m)
+0209: 29@ = random_int_in_ranges 0 5
+if
+    29@ == 0
+then
+    0ADF: add_text_label "Y_RC_N0" text "~y~Jo'on: ~s~\"Hey, pay attention. You're startin' to space out.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RC_N0' time 2500 flag 1
+end
+if
+    29@ == 1
+then
+    0ADF: add_text_label "Y_RC_N1" text "~y~Jo'on: ~s~\"Still breathin'? Fix your posture, you're slouchin'.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RC_N1' time 2500 flag 1
+end
+if
+    29@ == 2
+then
+    0ADF: add_text_label "Y_RC_N2" text "~y~Jo'on: ~s~\"Don't wander off. Stick close to me.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RC_N2' time 2500 flag 1
+end
+if
+    29@ == 3
+then
+    0ADF: add_text_label "Y_RC_N3" text "~y~Jo'on: ~s~\"Stop starin' at the cracks in the pavement, Shion.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RC_N3' time 2500 flag 1
+end
+if
+    29@ == 4
+then
+    0ADF: add_text_label "Y_RC_N4" text "~y~Jo'on: ~s~\"Eyes front, sis. Look like you've got somewhere to be.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_RC_N4' time 2500 flag 1
+end
+return
+
+// =========================================================================
+// SUBROUTINE: PROCESS JO'ON STAY PUT DIALOGUE (H KEY)
+// Low Tier 1 priority; strictly solo Shion companion & on-foot Jo'on
+// =========================================================================
+:Process_Joon_StayPut_Dialogue
+// Must be playing as Jo'on
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+if
+    8039: not 2@ == 1
+then
+    return
+end
+
+// Priority channel must be completely free (0)
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+if
+    8039: not 2@ == 0
+then
+    return
+end
+
+// Do not talk over cutscenes or screen fades
+if or
+    0E25: is_on_cutscene
+    016B: fading
+then
+    return
+end
+
+// Verify Shion is alive and defined
+if or
+    856D: not actor 10@ defined
+    0118: actor 10@ dead
+then
+    return
+end
+
+// Must have NO OTHER companions in the group (only Shion)
+07AF: 12@ = player $PLAYER_CHAR group
+07F6: get_group 12@ number_of_leaders_to 24@ number_of_members_to 25@
+if
+    0019: 25@ > 1
+then
+    return
+end
+
+// Check if currently engaged in combat or pursued by hostiles
+23@ = 0
+01C0: 19@ = player $PLAYER_CHAR wanted_level
+if
+    0019: 19@ > 0
+then
+    23@ = 1
+end
+
+if
+    23@ == 0
+then
+    if or
+        0E47: is_char_fighting $PLAYER_ACTOR
+        0E46: is_char_using_gun $PLAYER_ACTOR
+        02E0: actor $PLAYER_ACTOR firing_weapon
+    then
+        23@ = 1
+    end
+end
+
+if
+    23@ == 0
+then
+    if or
+        0E47: is_char_fighting 10@
+        02E0: actor 10@ firing_weapon
+    then
+        23@ = 1
+    end
+end
+
+// Claim low Tier 1 Priority Lock
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+1@ = 2800 // Non-blocking timer holds lock for 2.8s
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+
+// COMBAT / HOSTILE SITUATION
+if
+    23@ == 1
+then
+    0209: 29@ = random_int_in_ranges 0 5
+    if
+        29@ == 0
+    then
+        0ADF: add_text_label "Y_SP_C0" text "~y~Jo'on: ~s~\"Stay down right there, Shion!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP_C0' time 2500 flag 1
+    end
+    if
+        29@ == 1
+    then
+        0ADF: add_text_label "Y_SP_C1" text "~y~Jo'on: ~s~\"Take cover and don't move!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP_C1' time 2500 flag 1
+    end
+    if
+        29@ == 2
+    then
+        0ADF: add_text_label "Y_SP_C2" text "~y~Jo'on: ~s~\"Hold that spot! Keep your head down!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP_C2' time 2500 flag 1
+    end
+    if
+        29@ == 3
+    then
+        0ADF: add_text_label "Y_SP_C3" text "~y~Jo'on: ~s~\"Plant yourself! I'm handlin' this!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP_C3' time 2500 flag 1
+    end
+    if
+        29@ == 4
+    then
+        0ADF: add_text_label "Y_SP_C4" text "~y~Jo'on: ~s~\"Don't you dare step into the line of fire! Stay!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SP_C4' time 2500 flag 1
+    end
+    return
+end
+
+// RELAXED SITUATION
+0209: 29@ = random_int_in_ranges 0 5
+if
+    29@ == 0
+then
+    0ADF: add_text_label "Y_SP_N0" text "~y~Jo'on: ~s~\"Stay right here, Shion. Don't wander off.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SP_N0' time 2500 flag 1
+end
+if
+    29@ == 1
+then
+    0ADF: add_text_label "Y_SP_N1" text "~y~Jo'on: ~s~\"Hold it right there. Don't move a muscle.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SP_N1' time 2500 flag 1
+end
+if
+    29@ == 2
+then
+    0ADF: add_text_label "Y_SP_N2" text "~y~Jo'on: ~s~\"Wait here. And quit starin' at strangers while I'm gone.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SP_N2' time 2500 flag 1
+end
+if
+    29@ == 3
+then
+    0ADF: add_text_label "Y_SP_N3" text "~y~Jo'on: ~s~\"Plant your feet, Shion. I'll be right back.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SP_N3' time 2500 flag 1
+end
+if
+    29@ == 4
+then
+    0ADF: add_text_label "Y_SP_N4" text "~y~Jo'on: ~s~\"Don't move an inch. Stand there and guard the curb.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SP_N4' time 2500 flag 1
+end
 return

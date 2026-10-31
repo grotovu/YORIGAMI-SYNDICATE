@@ -16,6 +16,7 @@ const
     MEM_SHION_WEAPON_ID = 124     // Formerly 731
     MEM_SHION_AMMO_COUNT = 128    // Formerly 732
     MEM_COMBAT_RES_MODE = 132     // Formerly 733
+    MEM_SHION_STAY_PUT = 396      // Stay Put / Hold Ground state via [H] (0 = Follow, 1 = Stay Put)
 end
 
 :Connect_To_Brain
@@ -146,26 +147,36 @@ then
             end
 
             // 2. MOVEMENT CORRECTION & STUCK WATCHDOG
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_STAY_PUT
+            0A8D: 17@ = read_memory 30@ size 4 virtual_protect 0
             if
-                0021: 26@ > 5.0
+                0039: 17@ == 0 // Only run watchdog if NOT ordered to stay put via [H]!
             then
                 if
-                    0039: 2@ == 0 // Debounce off cooldown
+                    0021: 26@ > 5.0
                 then
-                    // Trigger recall if she tried to fight OR if she is completely stuck
-                    if or
-                        0039: 7@ == 1
-                        02A0: actor 10@ stopped
+                    if
+                        0039: 2@ == 0 // Debounce off cooldown
                     then
-                        07AF: 27@ = player $PLAYER_CHAR group
-                        0631: put_actor 10@ in_group 27@
-                        07B3: set_group 27@ give_command 0
-                        05D9: AS_actor 10@ run_to_actor $PLAYER_ACTOR timelimit 3000 stop_within_radius 2.5
-                        2@ = 2000 // 2-second debounce prevents rapid task re-issuing
+                        // Trigger recall if she tried to fight OR if she is completely stuck
+                        if or
+                            0039: 7@ == 1
+                            02A0: actor 10@ stopped
+                        then
+                            07AF: 27@ = player $PLAYER_CHAR group
+                            0631: put_actor 10@ in_group 27@
+                            07B3: set_group 27@ give_command 0
+                            05D9: AS_actor 10@ run_to_actor $PLAYER_ACTOR timelimit 3000 stop_within_radius 2.5
+                            2@ = 2000 // 2-second debounce prevents rapid task re-issuing
+                        end
                     end
+                else
+                    // Within 5.0m: Keep her disarmed and standing her ground next to Jo'on
+                    0816: set_actor 10@ dont_chase_victim 1
                 end
             else
-                // Within 5.0m: Keep her disarmed and standing her ground next to Jo'on
+                // While in Stay Put mode: maintain disarmed stand-ground state
                 0816: set_actor 10@ dont_chase_victim 1
             end
         else

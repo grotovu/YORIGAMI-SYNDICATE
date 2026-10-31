@@ -114,4 +114,5 @@ MEM_SHION_DEATH_FLAG = 380       // Session Death Latch (0 = Alive/Clean, 1 = Ha
     MEM_SHION_KILLER_IS_JOON = 384   // Killer Identity (0 = World/Enemies/Unknown, 1 = Jo'on)
     MEM_SHION_DEATH_WEAPON = 388     // Weapon ID / Damage Reason that killed her (-1 = Generic)
     MEM_SHION_DEATH_IN_CAR = 392     // Vehicle Explosion State (0 = On foot outside, 1 = Inside vehicle)
+    MEM_SHION_STAY_PUT = 396      // Stay Put / Hold Ground state via [H] (0 = Follow, 1 = Stay Put)
 end
