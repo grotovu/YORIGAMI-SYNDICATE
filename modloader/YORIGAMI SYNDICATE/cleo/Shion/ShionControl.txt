@@ -813,7 +813,7 @@ end
 018C: play_sound 1057 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
 
-0209: 29@ = random_int_in_range 0 4
+0209: 29@ = random_int_in_ranges 0 4
 if
     29@ == 0
 then
@@ -874,7 +874,7 @@ end
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
 
-0209: 29@ = random_int_in_range 0 4
+0209: 29@ = random_int_in_ranges 0 4
 if
     29@ == 0
 then
