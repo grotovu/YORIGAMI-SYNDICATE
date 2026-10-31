@@ -319,6 +319,32 @@ end
 :Dismiss_Walk_Loop
 0001: wait 250 ms
 
+// Bail immediately if Shion was recruited back into the party elsewhere!
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_RECRUITED
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 16@ == 1
+then
+    0050: gosub @Release_Tier3_Lock_Safely
+    0A93: terminate_this_custom_script
+end
+
+// Bail if player dead or arrested
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    jump @Cleanup_Dismiss_And_Exit
+end
+
+// Bail if Shion is dead or missing
+if or
+    856D: not actor 10@ defined
+    0118: actor 10@ dead
+then
+    jump @Cleanup_Dismiss_And_Exit
+end
+
 // Prevent GTA SA native gang recruitment (Aim + G) from turning her into a generic homie
 07AF: 12@ = player $PLAYER_CHAR group
 if
@@ -381,31 +407,6 @@ then
         048F: actor 10@ remove_weapons
         01B9: set_actor 10@ armed_weapon_to 0
     end
-end
-
-// Bail if player dead or arrested
-if
-    8256: not is_player_playing $PLAYER_CHAR
-then
-    jump @Cleanup_Dismiss_And_Exit
-end
-
-// Bail if Shion is dead or missing
-if or
-    856D: not actor 10@ defined
-    0118: actor 10@ dead
-then
-    jump @Cleanup_Dismiss_And_Exit
-end
-
-// Bail immediately if Shion was recruited back into the party elsewhere!
-0085: 30@ = 31@
-000A: 30@ += MEM_SHION_RECRUITED
-0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
-if
-    0039: 16@ == 1
-then
-    0A93: terminate_this_custom_script
 end
 
 // If Shion was in a car, task her to walk as soon as she steps onto the sidewalk
@@ -553,6 +554,8 @@ jump @Dismiss_Walk_Loop
 // CLEANUP & DESPAWN
 // =========================================================================
 :Cleanup_Dismiss_And_Exit
+0050: gosub @Release_Tier3_Lock_Safely
+
 if and
     0019: 10@ > 0
     056D: actor 10@ defined
@@ -560,12 +563,20 @@ then
     0792: clear_char_tasks_immediately 10@
     009B: destroy_actor 10@
 end
-10@ = 0
 
-// Reset handle and dismissal flags in shared memory
+// Only clear handle if it still points to the actor this thread managed
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_HANDLE
-0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    003B: 16@ == 10@
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_HANDLE
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+
+10@ = 0
 
 0085: 30@ = 31@
 000A: 30@ += MEM_INTENTIONAL_DISM

@@ -1497,6 +1497,7 @@ return
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sndb"
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_RedM"
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Spwn"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Dism"
 
 0085: 30@ = 31@
 000A: 30@ += MEM_PRIORITY_LOCK
