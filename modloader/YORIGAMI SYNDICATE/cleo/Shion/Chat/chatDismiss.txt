@@ -294,6 +294,10 @@ end
 0E96: clear_char_primary_tasks 10@
 0E97: clear_char_secondary_tasks 10@
 
+// Strip all weapons immediately upon dismissal
+048F: actor 10@ remove_weapons
+01B9: set_actor 10@ armed_weapon_to 0
+
 if
     0449: actor 10@ in_a_car
 then
@@ -324,6 +328,11 @@ then
     0687: clear_actor 10@ task
     0E96: clear_char_primary_tasks 10@
     0E97: clear_char_secondary_tasks 10@
+    
+    // Strip any weapon external recruit/gang mods injected when [G] was pressed
+    048F: actor 10@ remove_weapons
+    01B9: set_actor 10@ armed_weapon_to 0
+    
     05DE: AS_actor 10@ walk_around_ped_path
 
     018C: play_sound 1058 at 0.0 0.0 0.0
@@ -349,6 +358,21 @@ then
         0ADF: add_text_label "Y_NORE3" text "~b~Shion: ~s~\"You told me to beat it, Jo'on. I'm beating it.\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_NORE3' time 3200 flag 1
+    end
+end
+
+// Continuous Disarm Watchdog: Strip any weapon forced onto her while walking
+if and
+    0019: 10@ > 0
+    056D: actor 10@ defined
+    8118: not actor 10@ dead
+then
+    0470: 27@ = actor 10@ current_weapon
+    if
+        0019: 27@ > 0
+    then
+        048F: actor 10@ remove_weapons
+        01B9: set_actor 10@ armed_weapon_to 0
     end
 end
 

@@ -579,7 +579,18 @@ then
         then
             06C9: remove_actor 10@ from_group
             0687: clear_actor 10@ task
+            048F: actor 10@ remove_weapons
+            01B9: set_actor 10@ armed_weapon_to 0
             0605: actor 10@ perform_animation "M_SMKLEAN_LOOP" IFP "LOWRIDER" framedelta 4.0 loop 1 lockX 1 lockY 1 lockF 0 time -1
+        end
+
+        // Continuous Disarm Watchdog: Strip any weapon forced onto her while loitering
+        0470: 25@ = actor 10@ current_weapon
+        if
+            0019: 25@ > 0
+        then
+            048F: actor 10@ remove_weapons
+            01B9: set_actor 10@ armed_weapon_to 0
         end
 
         if and
