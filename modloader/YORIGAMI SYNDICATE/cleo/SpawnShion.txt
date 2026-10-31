@@ -1439,6 +1439,7 @@ return
 0ABA: terminate_all_custom_scripts_with_this_name 'Y_ShChat'
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sndb"
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_RedM"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Dism"
 
 0A92: create_custom_thread "Shion\ShionFollow.c" 10@
 0A92: create_custom_thread "Shion\ShionVehicle.c" 10@

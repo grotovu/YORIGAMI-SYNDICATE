@@ -146,14 +146,14 @@ then
     0A93: terminate_this_custom_script
 end
 
-// Suspend all chat monitoring if Shion is merely loitering at a hangout!
+// Suspend all regular chat monitoring if Shion is merely loitering at a hangout!
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_RECRUITED
 0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
 if
     16@ == 0
 then
-    1@ = 0 // Reset ambient chat timer
+    1@ = 0 // Reset normal ambient chat timer
     wait 250
     goto @ShionChat_Loop
 end
