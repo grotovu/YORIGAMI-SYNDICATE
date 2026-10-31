@@ -13,6 +13,7 @@ const
     MEM_SHION_DEATH_FLAG = 380
     MEM_SHION_KILLER_IS_JOON = 384
     MEM_SHION_DEATH_WEAPON = 388
+    MEM_SHION_DEATH_IN_CAR = 392
 end
 
 :Connect_To_Brain
@@ -200,23 +201,33 @@ then
                 end
             end
 
-            // If not fired from an explosive weapon, it is a vehicle/environmental explosion
+            // If not fired from an explosive hand weapon, it is a car explosion
             if
                 0039: 22@ == 0
             then
-                3@ = 51 // Preserve as pure Car / Environmental Explosion
+                3@ = 51 // Car / Vehicle Explosion
 
-                // If Jo'on was driving a wrecked/burning car, attribute the crash explosion to her
+                // Check if Shion was inside a vehicle or on foot
+                18@ = 0
                 if
-                    00DF: actor $PLAYER_ACTOR driving
+                    0449: actor 10@ in_a_car
                 then
-                    03C0: 24@ = actor $PLAYER_ACTOR car
-                    if
-                        056E: car 24@ defined
-                    then
-                        13@ = 1
-                    end
+                    18@ = 1
                 end
+
+                // If Jo'on was driving the wrecked car, or Jo'on punched/destroyed it on foot
+                if or
+                    00DF: actor $PLAYER_ACTOR driving
+                    003B: 2@ == 6@
+                    07D6: 2@ == $PLAYER_ACTOR
+                then
+                    13@ = 1 // Jo'on's fault
+                end
+
+                // Sync vehicle presence latch to Master Heap
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_DEATH_IN_CAR
+                0A8C: write_memory 30@ size 4 value 18@ virtual_protect 0
             end
         end
 

@@ -14,6 +14,7 @@ const
     MEM_SHION_DEATH_FLAG = 380
     MEM_SHION_KILLER_IS_JOON = 384
     MEM_SHION_DEATH_WEAPON = 388
+    MEM_SHION_DEATH_IN_CAR = 392
 end
 
 :Connect_To_Brain
@@ -750,14 +751,13 @@ then
     end
 
     // =====================================================================
-    // 9. HEAVY EXPLOSIVES (Grenades, Rockets, Satchels: IDs 16, 35, 36, 39, 51)
+    // 9. HEAVY ORDNANCE (Grenades, Rockets, Satchels: IDs 16, 35, 36, 39)
     // =====================================================================
     if or
         0039: 26@ == 16
         0039: 26@ == 35
         0039: 26@ == 36
         0039: 26@ == 39
-        0039: 26@ == 51
     then
         if
             0039: 27@ == 1
@@ -831,6 +831,180 @@ then
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_RNX1D' time 3400 flag 1
             0001: wait 3400 ms
+        end
+        0002: jump @Finish_Reunion_Chat
+    end
+
+    // =====================================================================
+    // 9B. CAR / VEHICLE EXPLOSION (ID 51)
+    // =====================================================================
+    if
+        0039: 26@ == 51
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_DEATH_IN_CAR
+        0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+
+        if
+            0039: 27@ == 1
+        then
+            // -------------------------------------------------------------
+            // JO'ON CAUSED THE EXPLOSION
+            // -------------------------------------------------------------
+            if
+                0039: 25@ == 1
+            then
+                // Inside the car
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC0A" text "~y~Jo'on: ~s~\"There ya are! Back on your feet? See? Told ya that little dashboard fireball wouldn't leave a mark!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC0A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC0B" text "~b~Shion: ~s~\"The gas tank blew up in my face, Jo'on... you drove a smoking wreck until it popped.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC0B' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC0C" text "~y~Jo'on: ~s~\"I thought we could make it to the Pay 'n' Spray! The garage was two blocks away!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC0C' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC0D" text "~b~Shion: ~s~\"The hood was on fire. Next time, I'm tucking and rolling out the passenger door.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC0D' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC0E" text "~y~Jo'on: ~s~\"AHAHAHA! Roll into the bushes next time! Now get in, we've got a fresh ride!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC0E' time 3500 flag 1
+                0001: wait 3500 ms
+            else
+                // On foot outside (Jo'on punched / detonated the car)
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP0A" text "~y~Jo'on: ~s~\"AHAHAHA! Look who's back! Did ya see the fireball when I clocked that sedan?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP0A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP0B" text "~b~Shion: ~s~\"You punched the gas tank while I was standing right next to the trunk, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP0B' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP0C" text "~y~Jo'on: ~s~\"I had to clear the street! You should've stepped back when ya saw my fist light up!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP0C' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP0D" text "~b~Shion: ~s~\"The shockwave blew me into a lamppost. You're buying me dinner for that.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP0D' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP0E" text "~y~Jo'on: ~s~\"Fine, fine! Double bacon burgers! Just stay clear of my fists next time!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP0E' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+        else
+            // -------------------------------------------------------------
+            // ENEMY / WORLD CAUSED THE EXPLOSION
+            // -------------------------------------------------------------
+            if
+                0039: 25@ == 1
+            then
+                // Inside the car
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC1A" text "~y~Jo'on: ~s~\"Took ya long enough! That whole car went up in flames right in the middle of traffic!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC1A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC1B" text "~b~Shion: ~s~\"The engine blew apart while I was still trying to kick the door open, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC1B' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC1C" text "~y~Jo'on: ~s~\"Soon as ya see black smoke, you bail! Come on, we're stealin' a replacement!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC1C' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REC1D" text "~b~Shion: ~s~\"Fine... but let me catch my breath first. Burnt gasoline tastes awful.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REC1D' time 3400 flag 1
+                0001: wait 3400 ms
+            else
+                // On foot on the street
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP1A" text "~y~Jo'on: ~s~\"Finally dragged yourself back! You were walkin' right next to that burning junk pile!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP1A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP1B" text "~b~Shion: ~s~\"I didn't think the gas tank would pop that fast, Jo'on... the blast sent me flying.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP1B' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP1C" text "~y~Jo'on: ~s~\"Never trust street cars! Shake the soot off your hoodie, we've got a score to settle!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP1C' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REP1D" text "~b~Shion: ~s~\"My bare feet are still sore from the landing... walk a little slower.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REP1D' time 3400 flag 1
+                0001: wait 3400 ms
+            end
         end
         0002: jump @Finish_Reunion_Chat
     end
