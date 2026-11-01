@@ -385,6 +385,7 @@ then
             0638: AS_actor 10@ stay_put 1
             
             // Trigger MODE 1: ON-FOOT STAY PUT (H KEY)
+            0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
             0A92: create_custom_thread "Shion\Chat\chatFollow.c" 1
         end
 
@@ -452,6 +453,10 @@ then
                     end
 
                     // Trigger MODE 4: EXIT CAR RECALL (JO'ON ON FOOT, SHION IN VEHICLE)
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_PRIORITY_LOCK
+                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
                     0A92: create_custom_thread "Shion\Chat\chatFollow.c" 4
                 else
                     // Shion is already on foot outside:
@@ -487,6 +492,10 @@ then
                     end
 
                     // Trigger MODE 0: ON-FOOT WALKING RECALL (G KEY)
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_PRIORITY_LOCK
+                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
                     0A92: create_custom_thread "Shion\Chat\chatFollow.c" 0
                 end
             end

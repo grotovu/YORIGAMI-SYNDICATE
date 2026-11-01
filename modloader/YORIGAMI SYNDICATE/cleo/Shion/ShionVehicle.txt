@@ -233,6 +233,10 @@ then
                                     0A8C: write_memory 30@ size 4 value 3 virtual_protect 0
                                     gosub @Play_Warp_Catchup_Dialogue
                                 end
+                            else
+                                // MODE 7: MANUAL [G] CALLING SHION TO BOARD VEHICLE
+                                0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
+                                0A92: create_custom_thread "Shion\Chat\chatFollow.c" 7
                             end
                         else
                             if
@@ -270,6 +274,7 @@ then
                     0638: AS_actor 10@ stay_put 1
 
                     // MODE 5: IN-CAR STAY PUT (JO'ON ORDERING SHION TO WAIT IN CAR)
+                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
                     0A92: create_custom_thread "Shion\Chat\chatFollow.c" 5
                 end
                 // =============================================================
@@ -409,6 +414,7 @@ then
                             018C: play_sound 1058 at 0.0 0.0 0.0
 
                             // MODE 6: SEAT CYCLING (BOTH IN CAR, SHION SHIFTING SEATS)
+                            0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
                             0A92: create_custom_thread "Shion\Chat\chatFollow.c" 6
                         end
                     end
