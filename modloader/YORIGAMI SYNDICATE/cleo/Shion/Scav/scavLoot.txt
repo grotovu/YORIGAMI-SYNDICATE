@@ -840,9 +840,17 @@ else
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_CPD0' time 3500 flag 1
     else
-        0ADF: add_text_label "Y_CPD1" text "~b~Shion: ~s~\"Hot food that didn't come out of a paper bag on the curb... tastes incredible, Jo'on.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_CPD1' time 3500 flag 1
+        if
+            15@ == 1341
+        then
+            0ADF: add_text_label "Y_CPD1" text "~b~Shion: ~s~\"Real ice cream that didn't melt all over the sidewalk... tastes incredible, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CPD1' time 3500 flag 1
+        else
+            0ADF: add_text_label "Y_CPD2" text "~b~Shion: ~s~\"Hot food that didn't come out of a paper bag on the curb... tastes incredible, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CPD2' time 3500 flag 1
+        end
     end
 end
 

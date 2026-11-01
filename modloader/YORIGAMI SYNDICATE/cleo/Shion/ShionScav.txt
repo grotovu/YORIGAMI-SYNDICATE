@@ -459,10 +459,37 @@ then
     if
         27@ >= 2
     then
-        0ADF: add_text_label "Y_CBP0" text "~b~Shion: ~s~\"A food vendor... I'll go buy us something warm with your two dollars, Jo'on.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_CBP0' time 2500 flag 1
+        // Paid Approach (Player has $2 or more)
+        if
+            15@ == 588
+        then
+            0ADF: add_text_label "Y_CBP0" text "~b~Shion: ~s~\"A hot dog van... I'll buy us fresh hot dogs with your two dollars, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CBP0' time 2500 flag 1
+        end
+        if
+            15@ == 1340
+        then
+            0ADF: add_text_label "Y_CBP1" text "~b~Shion: ~s~\"A chili cart... I'll go buy us warm bowls with your two dollars, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CBP1' time 2500 flag 1
+        end
+        if
+            15@ == 1341
+        then
+            0ADF: add_text_label "Y_CBP2" text "~b~Shion: ~s~\"An ice cream cart... I'll buy us cold popsicles with your two dollars, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CBP2' time 2500 flag 1
+        end
+        if
+            15@ == 1342
+        then
+            0ADF: add_text_label "Y_CBP3" text "~b~Shion: ~s~\"A noodle cart... I'll go buy us warm noodles with your two dollars, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CBP3' time 2500 flag 1
+        end
     else
+        // Broke Approach (Player has less than $2)
         if
             15@ == 588
         then
