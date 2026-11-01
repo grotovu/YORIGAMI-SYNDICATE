@@ -476,6 +476,13 @@ then
                     11@ = 0
                     9@ = 0
                     gosub @Execute_Shion_OnFoot_Warp
+
+                    // Trigger MODE 8: DOUBLE-TAP G FORCED WARP
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_PRIORITY_LOCK
+                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
+                    0A92: create_custom_thread "Shion\Chat\chatFollow.c" 8
                 else
                     // SINGLE TAP G: Start 500ms window & order normal vehicle exit
                     9@ = 500
@@ -491,32 +498,46 @@ then
                     07B3: set_group 12@ give_command 0 // Form up with Jo'on
 
                     018C: play_sound 1058 at 0.0 0.0 0.0
-                end
 
-                // Trigger MODE 4: EXIT CAR RECALL (JO'ON ON FOOT, SHION IN VEHICLE)
-                0085: 30@ = 31@
-                000A: 30@ += MEM_PRIORITY_LOCK
-                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-                0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
-                0A92: create_custom_thread "Shion\Chat\chatFollow.c" 4
+                    // Trigger MODE 4: EXIT VEHICLE RECALL (JO'ON ON FOOT, SHION IN VEHICLE)
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_PRIORITY_LOCK
+                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
+                    0A92: create_custom_thread "Shion\Chat\chatFollow.c" 4
+                end
             else
-                // Shion is already on foot outside:
-                // DOUBLE-TAP / SPAM G: Emergency Hitodama Warp right to Jo'on
+                // Shion is already on foot outside
                 if
                     0029: 11@ >= 2
                 then
+                    // DOUBLE-TAP G: Emergency Hitodama Warp right to Jo'on
                     11@ = 0
                     9@ = 0
                     gosub @Execute_Shion_OnFoot_Warp
+
+                    // Trigger MODE 8: DOUBLE-TAP G FORCED WARP
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_PRIORITY_LOCK
+                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
+                    0A92: create_custom_thread "Shion\Chat\chatFollow.c" 8
                 else
                     // SINGLE TAP G: Start 500ms double-tap window
                     9@ = 500
 
-                    // If far away (> 15m), warp immediately
                     if
                         0021: 26@ > 15.0
                     then
+                        // Far catch-up warp (> 15m) triggers forced warp banter
                         gosub @Execute_Shion_OnFoot_Warp
+
+                        // Trigger MODE 8: DOUBLE-TAP G FORCED WARP
+                        0085: 30@ = 31@
+                        000A: 30@ += MEM_PRIORITY_LOCK
+                        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
+                        0A92: create_custom_thread "Shion\Chat\chatFollow.c" 8
                     else
                         // Nearby (<= 15m): Break combat lock and force native group follow
                         0687: clear_actor 10@ task
@@ -529,15 +550,15 @@ then
                         07B3: set_group 12@ give_command 0 // Native group follow
 
                         018C: play_sound 1058 at 0.0 0.0 0.0
+
+                        // Trigger MODE 0: ON-FOOT WALKING RECALL (G KEY)
+                        0085: 30@ = 31@
+                        000A: 30@ += MEM_PRIORITY_LOCK
+                        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
+                        0A92: create_custom_thread "Shion\Chat\chatFollow.c" 0
                     end
                 end
-
-                // Trigger MODE 0: ON-FOOT WALKING RECALL (G KEY)
-                0085: 30@ = 31@
-                000A: 30@ += MEM_PRIORITY_LOCK
-                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-                0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
-                0A92: create_custom_thread "Shion\Chat\chatFollow.c" 0
             end
         end
         

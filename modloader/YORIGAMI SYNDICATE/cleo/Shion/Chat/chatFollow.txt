@@ -142,7 +142,7 @@ then
         if and
             0019: 6@ > 0
             056D: actor 6@ defined
-            0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 6@ radius 5.0
+            0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 6@ radius 3.0
         then
             7@ = 1
         end
@@ -150,7 +150,7 @@ then
         if
             0039: 7@ == 1
         then
-            // Close Range (<= 5.0m)
+            // Close Range (<= 3.0m)
             0226: 22@ = actor 6@ health
             23@ = 0
             if
@@ -328,7 +328,7 @@ then
                 end
             end
         else
-            // Far Range (> 5.0m)
+            // Far Range (> 3.0m)
             0209: 1@ = random_int_in_ranges 0 5
             if
                 0039: 1@ == 0
@@ -1061,6 +1061,63 @@ then
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_RC_B4' time 2500 flag 1
         end
+    end
+
+    0001: wait 2500 ms
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A93: terminate_this_custom_script
+end
+
+// =========================================================================
+// MODE 8: FORCED HITODAMA WARP (DOUBLE-TAP G / LONG-RANGE RECALL)
+// =========================================================================
+if
+    0039: 10@ == 8
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+
+    0209: 1@ = random_int_in_ranges 0 5
+    if
+        0039: 1@ == 0
+    then
+        0ADF: add_text_label "Y_DW0" text "~y~Jo'on: ~s~\"There you are! Don't make me drag you by the collar next time!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DW0' time 2500 flag 1
+    end
+    if
+        0039: 1@ == 1
+    then
+        0ADF: add_text_label "Y_DW1" text "~y~Jo'on: ~s~\"Finally! Quit laggin' behind and stay on my heel!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DW1' time 2500 flag 1
+    end
+    if
+        0039: 1@ == 2
+    then
+        0ADF: add_text_label "Y_DW2" text "~y~Jo'on: ~s~\"See? That wasn't so hard! Now stick close to me!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DW2' time 2500 flag 1
+    end
+    if
+        0039: 1@ == 3
+    then
+        0ADF: add_text_label "Y_DW3" text "~y~Jo'on: ~s~\"'Bout time! I ain't got time to wait for your slow ass!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DW3' time 2500 flag 1
+    end
+    if
+        0039: 1@ == 4
+    then
+        0ADF: add_text_label "Y_DW4" text "~y~Jo'on: ~s~\"Right by my side, where I can see ya! Move it!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DW4' time 2500 flag 1
     end
 
     0001: wait 2500 ms
