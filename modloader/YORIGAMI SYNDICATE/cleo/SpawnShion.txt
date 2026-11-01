@@ -642,20 +642,26 @@ then
                 01B9: set_actor 10@ armed_weapon_to 0
             end
 
-            // Anti-Surrender Watchdog: Unconditionally abort hands-up and cower
+            // Anti-Surrender Watchdog:
             if or
-                0E42: is_char_doing_task_id 10@ 206 // TASK_COMPLEX_COWER
-                0E42: is_char_doing_task_id 10@ 207 // TASK_COMPLEX_HANDS_UP
-                0E42: is_char_doing_task_id 10@ 208 // TASK_SIMPLE_HANDS_UP
-                0E42: is_char_doing_task_id 10@ 210 // TASK_SIMPLE_COWER
+                0E42: is_char_doing_task_id 10@ 601 // TASK_COMPLEX_REACT_TO_GUN_AIMED_AT
+                0E42: is_char_doing_task_id 10@ 413 // TASK_SIMPLE_HANDS_UP
+                0E42: is_char_doing_task_id 10@ 412 // TASK_SIMPLE_COWER
+                0E42: is_char_doing_task_id 10@ 512 // TASK_COMPLEX_EVASIVE_COWER
+                0E42: is_char_doing_task_id 10@ 415 // TASK_SIMPLE_DUCK
+                0457: player $PLAYER_CHAR aiming_at_actor 10@
             then
-                0687: clear_actor 10@ task
-                0E96: clear_char_primary_tasks 10@
-                0E97: clear_char_secondary_tasks 10@
-                0173: set_actor 10@ Z_angle_to 7@
-                0638: AS_actor 10@ stay_put 1
-                0605: actor 10@ perform_animation "M_SMKLEAN_LOOP" IFP "LOWRIDER" framedelta 4.0 loop 1 lockX 1 lockY 1 lockF 0 time -1
-                11@ = 0 // Instantly reset state machine to anchor lean
+                if
+                    8611: not actor 10@ performing_animation "M_SMKLEAN_LOOP"
+                then
+                    0687: clear_actor 10@ task
+                    0E96: clear_char_primary_tasks 10@
+                    0E97: clear_char_secondary_tasks 10@
+                    0173: set_actor 10@ Z_angle_to 7@
+                    0638: AS_actor 10@ stay_put 1
+                    0605: actor 10@ perform_animation "M_SMKLEAN_LOOP" IFP "LOWRIDER" framedelta 4.0 loop 1 lockX 1 lockY 1 lockF 0 time -1
+                    11@ = 0
+                end
             end
 
             // Combat Override: Abort any retaliation task immediately
@@ -676,7 +682,7 @@ then
             00A0: store_actor 10@ position_to 23@ 24@ 25@
             050A: 26@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 23@ 24@ 25@
 
-            // Measure 2D horizontal displacement so ground slopes never falsely trigger walk
+            // Measure 2D horizontal displacement
             0509: 27@ = distance_between_XY 23@ 24@ and_XY 16@ 17@
 
             // -----------------------------------------------------------------
@@ -685,15 +691,14 @@ then
             if
                 0039: 11@ == 0
             then
-                // Check if pushed or displaced away from the wall (> 1.2m horizontally)
+                // Only trigger walk if shoved > 1.6m away (prevents false triggers)
                 if
-                    0021: 27@ > 1.2
+                    0021: 27@ > 1.6
                 then
                     if and
                         8E48: not is_char_fallen_on_ground 10@
                         8E92: not is_char_really_in_air 10@
                     then
-                        // Free her from stay_put and begin walking back smoothly
                         0638: AS_actor 10@ stay_put 0
                         0687: clear_actor 10@ task
                         0E96: clear_char_primary_tasks 10@
@@ -701,7 +706,7 @@ then
                         11@ = 1
                     end
                 else
-                    // Recover lean if flinched in place (<= 1.2m) and stopped
+                    // Recover lean if flinched in place (<= 1.6m) and stopped
                     if and
                         8E48: not is_char_fallen_on_ground 10@
                         8E92: not is_char_really_in_air 10@
@@ -825,6 +830,13 @@ then
                 end
             end
 
+            if
+                0019: 1@ > 0
+            then
+                065C: release_decision_maker 1@ // Free slot on death
+                1@ = 0
+            end
+
             10@ = 0
             0085: 30@ = 31@
             000A: 30@ += MEM_SHION_HANDLE
@@ -835,7 +847,7 @@ then
             0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
             0ABA: terminate_all_custom_scripts_with_this_name "Sh_FF"
-            9@ = 4 // State 4: Lockout until Jo'on leaves hangout radius (> 90m)! Prevents instant respawn!
+            9@ = 4
             2@ = 0
         end
     end
@@ -861,9 +873,15 @@ then
                 0118: actor 10@ dead
             then
                 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Reun"
+                if
+                    0019: 1@ > 0
+                then
+                    065C: release_decision_maker 1@ // Free slot on reunion death
+                    1@ = 0
+                end
                 0085: 30@ = 31@
                 000A: 30@ += MEM_PRIORITY_LOCK
-                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0 // Clear Tier 4 lock on death!
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
                 10@ = 0
                 0085: 30@ = 31@
                 000A: 30@ += MEM_SHION_HANDLE

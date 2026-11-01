@@ -469,12 +469,13 @@ then
     end
 end
 
-// Anti-Surrender Watchdog: Suppress hands-up and cowering while walking away
+// Anti-Surrender Watchdog: Suppress real aim panic tasks while walking away
 if or
-    0E42: is_char_doing_task_id 10@ 206 // TASK_COMPLEX_COWER
-    0E42: is_char_doing_task_id 10@ 207 // TASK_COMPLEX_HANDS_UP
-    0E42: is_char_doing_task_id 10@ 208 // TASK_SIMPLE_HANDS_UP
-    0E42: is_char_doing_task_id 10@ 210 // TASK_SIMPLE_COWER
+    0E42: is_char_doing_task_id 10@ 601 // TASK_COMPLEX_REACT_TO_GUN_AIMED_AT
+    0E42: is_char_doing_task_id 10@ 413 // TASK_SIMPLE_HANDS_UP
+    0E42: is_char_doing_task_id 10@ 412 // TASK_SIMPLE_COWER
+    0E42: is_char_doing_task_id 10@ 512 // TASK_COMPLEX_EVASIVE_COWER
+    0E42: is_char_doing_task_id 10@ 415 // TASK_SIMPLE_DUCK
 then
     0687: clear_actor 10@ task
     0E96: clear_char_primary_tasks 10@
@@ -799,8 +800,11 @@ TIMERA = 0
 0050: gosub @Check_Dismiss_Alive_Or_Exit
 
 if or
-    0E42: is_char_doing_task_id 10@ 206 // TASK_COMPLEX_COWER
-    0E42: is_char_doing_task_id 10@ 207 // TASK_COMPLEX_HANDS_UP
+    0E42: is_char_doing_task_id 10@ 601 // TASK_COMPLEX_REACT_TO_GUN_AIMED_AT
+    0E42: is_char_doing_task_id 10@ 413 // TASK_SIMPLE_HANDS_UP
+    0E42: is_char_doing_task_id 10@ 412 // TASK_SIMPLE_COWER
+    0E42: is_char_doing_task_id 10@ 512 // TASK_COMPLEX_EVASIVE_COWER
+    0457: player $PLAYER_CHAR aiming_at_actor 10@
 then
     0687: clear_actor 10@ task
     0E96: clear_char_primary_tasks 10@
@@ -813,9 +817,9 @@ then
     end
 end
 
-0085: 9@ = TIMERA
+0085: 18@ = TIMERA
 if
-    001D: 19@ > 9@
+    001D: 19@ > 18@
 then
     0002: jump @Wait_Dismiss_Dialogue_Loop
 end
