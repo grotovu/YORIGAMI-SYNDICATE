@@ -139,9 +139,6 @@ then
         // REJECTED: Vendor refuses, Shion cowers/sulks (NO eating!)
         018C: play_sound 1057 at 0.0 0.0 0.0
 
-        // Shion cowers back from the angry vendor
-        05C5: AS_actor 10@ cower 2000 ms
-
         if
             15@ == 588
         then
@@ -153,8 +150,6 @@ then
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_CRJ1' time 4000 flag 1
         end
-
-        wait 2000
     else
         // ACCEPTED: Vendor gives pity food, Shion eats
         04ED: load_animation "FOOD"
