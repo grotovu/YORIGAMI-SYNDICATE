@@ -58,6 +58,7 @@ end
 16@ = 0.0 // Doorway Arrival X (float)
 17@ = 0.0 // Doorway Arrival Y (float)
 18@ = 0.0 // Doorway Arrival Z (float)
+19@ = 0   // Dedicated Seat Assignment Latch (0 = Idle, 1 = Ordered into Car)
 
 // Safehouse EnEx Tracking Registers
 00A0: store_actor $PLAYER_ACTOR position_to 4@ 5@ 6@ // Seed with current coordinates
@@ -258,6 +259,7 @@ then
 
             07AF: 12@ = player $PLAYER_CHAR group
             0631: put_actor 10@ in_group 12@
+            0940: set_group 12@ enters_leaders_vehicle 1
 
             13@ = 0
         end
@@ -290,52 +292,63 @@ then
         00A0: store_actor 10@ position_to 23@ 24@ 25@
         050A: 26@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 23@ 24@ 25@
         
-        // -----------------------------------------------------------------
-        // Infinite Stamina Watchdog: Cancel Tired/Exhausted State Instantly
-        // -----------------------------------------------------------------
-        if
+        // Anti-Fatigue Watchdog: Suppress "out of breath" tired animation (Infinite Stamina)
+        if or
             0E42: is_char_doing_task_id 10@ 219 // TASK_SIMPLE_TIRED
+            0611: actor 10@ performing_animation "IDLE_TIRED"
         then
             0687: clear_actor 10@ task
             0E96: clear_char_primary_tasks 10@
+            0E97: clear_char_secondary_tasks 10@
             07AF: 12@ = player $PLAYER_CHAR group
             0631: put_actor 10@ in_group 12@
+            0940: set_group 12@ enters_leaders_vehicle 1
             if
-                0039: 15@ == 0
+                0039: 15@ == 1
             then
-                07B3: set_group 12@ give_command 0
-            else
-                07B3: set_group 12@ give_command 1
+                07B3: set_group 12@ give_command 1 // Stay Put
                 0638: AS_actor 10@ stay_put 1
+            else
+                07B3: set_group 12@ give_command 0 // Follow Leader
+            end
+        end
+
+        // Tick down vehicle boarding task debounce timer
+        if
+            0019: 19@ > 0
+        then
+            000E: 19@ -= 50
+            if
+                002B: 0 >= 19@
+            then
+                19@ = 0
             end
         end
 
         // -----------------------------------------------------------------
-        // Vehicle Passive Watchdog: Clear Stay Put if Shion is in the Car
+        // Vehicle Follower Engine: Enforce Stay Put or Allow Native Boarding
         // -----------------------------------------------------------------
         if
-            00DF: actor $PLAYER_ACTOR driving
+            0449: actor $PLAYER_ACTOR in_a_car
         then
-            03C0: 27@ = actor $PLAYER_ACTOR car
+            07AF: 12@ = player $PLAYER_CHAR group
+            0940: set_group 12@ enters_leaders_vehicle 1
+
             if
-                00DB: actor 10@ in_car 27@
+                0039: 15@ == 1
             then
+                // Stay Put is active: keep Shion planted on foot and forbid car entry
                 if
-                    0039: 15@ == 1
+                    8449: not actor 10@ in_a_car
                 then
-                    15@ = 0
-                    0085: 30@ = 31@
-                    000A: 30@ += MEM_SHION_STAY_PUT
-                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-                    07AF: 12@ = player $PLAYER_CHAR group
-                    0631: put_actor 10@ in_group 12@
-                    07B3: set_group 12@ give_command 0
+                    07B3: set_group 12@ give_command 1 // Group Stay Put / Hold Ground
+                    0638: AS_actor 10@ stay_put 1
                 end
             end
         end
 
         // -----------------------------------------------------------------
-        // [G] Key In-Car: Warp Shion into Passenger Seat & Clear Stay Put
+        // [G] Key In-Car: Smart Seat Warp (Seat 0 First, Cascade to Rear)
         // -----------------------------------------------------------------
         if and
             0449: actor $PLAYER_ACTOR in_a_car
@@ -350,7 +363,6 @@ then
                 0117: player $PLAYER_CHAR wasted
                 0741: actor $PLAYER_ACTOR busted
                 856D: not actor 10@ defined
-                0118: actor 10@ dead
             then
                 jump @ShionFollow_Loop
             end
@@ -361,42 +373,37 @@ then
             end
 
             03C0: 27@ = actor $PLAYER_ACTOR car
-            2@ = -1
-            01EA: 24@ = car 27@ max_passengers
+            01EA: 29@ = car 27@ max_passengers
 
-            // Prioritize Front Passenger Seat (Seat 0) if vehicle supports passengers
             if
-                0019: 24@ > 0
+                0019: 29@ > 0
             then
-                25@ = -1
-                0432: 25@ = get_actor_handle_from_car 27@ passenger_seat 0
-                if or
-                    0039: 25@ == -1
-                    856D: not actor 25@ defined
+                2@ = -1
+
+                // Check Seat 0 (Front passenger or Bike pillion)
+                if
+                    0431: car 27@ passenger_seat_free 0
                 then
                     2@ = 0
-                else
-                    // Front seat is physically taken; check rear left (Seat 1)
+                end
+
+                // If Seat 0 is occupied, check rear seats for multi-passenger vehicles
+                if
+                    2@ < 0
+                then
                     if
-                        0019: 24@ > 1
+                        0019: 29@ > 1
                     then
-                        25@ = -1
-                        0432: 25@ = get_actor_handle_from_car 27@ passenger_seat 1
-                        if or
-                            0039: 25@ == -1
-                            856D: not actor 25@ defined
+                        if
+                            0431: car 27@ passenger_seat_free 1
                         then
                             2@ = 1
                         else
-                            // Check rear right (Seat 2)
                             if
-                                0019: 24@ > 2
+                                0019: 29@ > 2
                             then
-                                25@ = -1
-                                0432: 25@ = get_actor_handle_from_car 27@ passenger_seat 2
-                                if or
-                                    0039: 25@ == -1
-                                    856D: not actor 25@ defined
+                                if
+                                    0431: car 27@ passenger_seat_free 2
                                 then
                                     2@ = 2
                                 end
@@ -404,33 +411,33 @@ then
                         end
                     end
                 end
-            end
 
-            if
-                0029: 2@ >= 0
-            then
-                00A0: store_actor 10@ position_to 23@ 24@ 25@
-                0A92: create_custom_thread "Shion\FX_Warp.c" 0 23@ 24@ 25@
+                // Warp into the assigned seat if one is available
+                if
+                    0029: 2@ >= 0
+                then
+                    00A0: store_actor 10@ position_to 23@ 24@ 25@
+                    0A92: create_custom_thread "Shion\FX_Warp.c" 0 23@ 24@ 25@
 
-                0687: clear_actor 10@ task
-                0E96: clear_char_primary_tasks 10@
-                0E97: clear_char_secondary_tasks 10@
-                warp_char_into_car_as_passenger 10@ car 27@ seat 2@
+                    0687: clear_actor 10@ task
+                    0E96: clear_char_primary_tasks 10@
+                    0E97: clear_char_secondary_tasks 10@
+                    warp_char_into_car_as_passenger 10@ into_car 27@ passenger_seat 2@
 
-                0A92: create_custom_thread "Shion\FX_Warp.c" 1 10@ 0.0 0.0
-                018C: play_sound 1058 at 0.0 0.0 0.0
+                    0A92: create_custom_thread "Shion\FX_Warp.c" 1 10@ 0.0 0.0
+                    018C: play_sound 1058 at 0.0 0.0 0.0
 
-                // Cancel Stay Put mode and re-link group
-                15@ = 0
-                0085: 30@ = 31@
-                000A: 30@ += MEM_SHION_STAY_PUT
-                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                    // Cancel Stay Put mode and restore group follow
+                    15@ = 0
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_SHION_STAY_PUT
+                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
-                07AF: 12@ = player $PLAYER_CHAR group
-                0631: put_actor 10@ in_group 12@
-                07B3: set_group 12@ give_command 0
-
-                0A92: create_custom_thread "Shion\Chat\chatFollow.c" 0
+                    07AF: 12@ = player $PLAYER_CHAR group
+                    0631: put_actor 10@ in_group 12@
+                    0940: set_group 12@ enters_leaders_vehicle 1
+                    07B3: set_group 12@ give_command 0
+                end
             end
         end
 
@@ -495,7 +502,6 @@ then
                     0117: player $PLAYER_CHAR wasted
                     0741: actor $PLAYER_ACTOR busted
                     856D: not actor 10@ defined
-                    0118: actor 10@ dead
                 then
                     jump @ShionFollow_Loop
                 end
@@ -513,7 +519,7 @@ then
 
                 000A: 11@ += 1 // Increment tap counter
 
-                // If Shion is trapped in a vehicle, pull her out instantly
+                // If Shion is trapped in an external vehicle, pull her out instantly
                 if
                     0449: actor 10@ in_a_car
                 then
@@ -538,16 +544,16 @@ then
                         then
                             gosub @Execute_Shion_OnFoot_Warp
                         else
-                            // Nearby (<= 15m): forcibly break tasks and run to Jo'on
+                            // Nearby (<= 15m): Break combat lock and force native group follow
                             0687: clear_actor 10@ task
                             0E96: clear_char_primary_tasks 10@
                             0E97: clear_char_secondary_tasks 10@
 
                             07AF: 12@ = player $PLAYER_CHAR group
                             0631: put_actor 10@ in_group 12@
-                            07B3: set_group 12@ give_command 0 // Force group follow leader
+                            0940: set_group 12@ enters_leaders_vehicle 1
+                            07B3: set_group 12@ give_command 0 // Native group follow (sprints in formation)
 
-                            05D9: AS_actor 10@ run_to_actor $PLAYER_ACTOR timelimit 4000 stop_within_radius 2.0
                             018C: play_sound 1058 at 0.0 0.0 0.0
                         end
                     end
@@ -625,6 +631,7 @@ then
             0A93: terminate_this_custom_script
         else
             0631: put_actor 10@ in_group 12@
+            0940: set_group 12@ enters_leaders_vehicle 1
         end
     end
 end
@@ -652,6 +659,7 @@ goto @ShionFollow_Loop
 
 07AF: 12@ = player $PLAYER_CHAR group
 0631: put_actor 10@ in_group 12@
+0940: set_group 12@ enters_leaders_vehicle 1
 07B3: set_group 12@ give_command 0
 
 0A92: create_custom_thread "Shion\FX_Warp.c" 1 10@ 0.0 0.0
