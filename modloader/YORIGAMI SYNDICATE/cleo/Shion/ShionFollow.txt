@@ -18,7 +18,6 @@ const
     MEM_TIMES_WASTED = 300        // Telemetry: Times wasted with Shion
     MEM_TIMES_BUSTED = 304        // Telemetry: Times arrested with Shion
     MEM_SAFEHOUSE_DOOR_ID = 340   // Current safehouse EnEx doorway index
-    MEM_SHION_KILLER_IS_JOON = 384 // Live killer telemetry (0 = World, 1 = Jo'on)
     MEM_SHION_STAY_PUT = 396      // Stay Put state (0 = Follow, 1 = Stay Put via [H])
 end
 
@@ -87,28 +86,6 @@ then
     end
 end
 
-// Tick down recall dialogue priority lock timer
-if
-    0019: 1@ > 0
-then
-    000E: 1@ -= 50
-    if
-        002B: 0 >= 1@
-    then
-        1@ = 0
-        0085: 30@ = 31@
-        000A: 30@ += MEM_PRIORITY_LOCK
-        0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
-        if
-            2@ == 1
-        then
-            0085: 30@ = 31@
-            000A: 30@ += MEM_PRIORITY_LOCK
-            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-        end
-    end
-end
-
 // Casualty & Arrest Telemetry (Only counts while with Shion!)
 if
     0117: player $PLAYER_CHAR wasted
@@ -120,6 +97,10 @@ then
     0085: 30@ = 31@
     000A: 30@ += MEM_TIMES_WASTED
     0A8C: write_memory 30@ size 4 value 29@ virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_STAY_PUT
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
     0085: 30@ = 31@
     000A: 30@ += MEM_SHION_HANDLE
@@ -137,6 +118,10 @@ then
     0085: 30@ = 31@
     000A: 30@ += MEM_TIMES_BUSTED
     0A8C: write_memory 30@ size 4 value 29@ virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_STAY_PUT
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
     0085: 30@ = 31@
     000A: 30@ += MEM_SHION_HANDLE
@@ -169,15 +154,20 @@ then
     if
         056D: actor 10@ defined
     then
-        if
-            0118: actor 10@ dead
-        then
-            0A92: create_custom_thread "Shion\Chat\chatFollow.c" 3
-        end
         07AF: 12@ = player $PLAYER_CHAR group
         06C9: remove_actor 10@ from_group
         01C2: remove_references_to_actor 10@ // Leaves the corpse lying on the ground naturally
     end
+
+    // Allow ShionDeathTracker to process the lethal frame and write weapon telemetry
+    wait 100
+
+    // Trigger post-mortem banter now that Master Heap has accurate death data
+    0A92: create_custom_thread "Shion\Chat\chatFollow.c" 3
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_STAY_PUT
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
     0085: 30@ = 31@
     000A: 30@ += MEM_SHION_HANDLE
@@ -225,7 +215,7 @@ if
 then
     000A: 14@ += 50
     if
-        14@ >= 2150
+        0029: 14@ >= 2150
     then
         04C4: store_coords_to 16@ 17@ 18@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.0
         000F: 18@ -= 1.0 // Adjust to floor plane
@@ -234,10 +224,11 @@ then
     end
 end
 
-// Phase 2: Wait for Jo'on to Clear Doorway Threshold, then Spawn & Step In
+// Phase 2: Wait for Jo'on to Clear Doorway Threshold or Timeout, then Spawn & Step In
 if
     13@ == 2
 then
+    000A: 14@ += 50
     09E8: 27@ = actor 10@ active_interior
     if
         803B: not 27@ == 28@
@@ -245,9 +236,10 @@ then
         00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
         050A: 26@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 16@ 17@ 18@
 
-        // Stepped at least 1.0m away from the door
-        if
+        // Stepped at least 1.0m away from the door OR 4.0s timeout reached
+        if or
             0021: 26@ > 1.0
+            0029: 14@ >= 4000
         then
             00A1: put_actor 10@ at 16@ 17@ 18@
             0860: link_actor 10@ to_interior 28@
@@ -278,6 +270,11 @@ end
 if
     0039: 2@ == 0 // Only active when NOT busy scavenging or parachuting
 then
+    // Keep local Stay Put flag synchronized with shared heap (set by Sh_Sync or on-foot [H])
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_STAY_PUT
+    0A8D: 15@ = read_memory 30@ size 4 virtual_protect 0
+
     077E: get_active_interior_to 28@
     09E8: 27@ = actor 10@ active_interior
 
@@ -348,10 +345,9 @@ then
         end
 
         // -----------------------------------------------------------------
-        // [H] Key: Stay Put (Guarded so Y + H Hitodama Morph does not trigger it)
+        // [H] Key: Stay Put (On-Foot Only; In-Car is handled by Sh_Sync)
         // -----------------------------------------------------------------
         if and
-            8449: not actor $PLAYER_ACTOR in_a_car // On foot only
             8449: not actor 10@ in_a_car
             8818: not actor 10@ in_air
             0AB0: is_key_pressed 72 // H Key
@@ -379,15 +375,14 @@ then
             000A: 30@ += MEM_SHION_STAY_PUT
             0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
 
-            // Clear tasks and command Shion and group to hold ground
+            // Clear on-foot tasks and anchor position
             0687: clear_actor 10@ task
             0E96: clear_char_primary_tasks 10@
             0E97: clear_char_secondary_tasks 10@
+
             07AF: 12@ = player $PLAYER_CHAR group
             07B3: set_group 12@ give_command 1 // Group Stay Put / Hold Ground
             0638: AS_actor 10@ stay_put 1
-
-            // Trigger Jo'on Stay Put Dialogue via Sh_FolC
             0A92: create_custom_thread "Shion\Chat\chatFollow.c" 1
         end
 
@@ -408,6 +403,7 @@ then
                     0117: player $PLAYER_CHAR wasted
                     0741: actor $PLAYER_ACTOR busted
                     856D: not actor 10@ defined
+                    0118: actor 10@ dead
                 then
                     jump @ShionFollow_Loop
                 end
@@ -425,14 +421,35 @@ then
 
                 000A: 11@ += 1 // Increment tap counter
 
-                // If Shion is trapped in an external vehicle, pull her out instantly
+                // If Shion is inside a vehicle while Jo'on is outside:
                 if
                     0449: actor 10@ in_a_car
                 then
-                    11@ = 0
-                    9@ = 0
-                    gosub @Execute_Shion_OnFoot_Warp
+                    // DOUBLE-TAP G: Emergency Hitodama Warp right to Jo'on on foot
+                    if
+                        0029: 11@ >= 2
+                    then
+                        11@ = 0
+                        9@ = 0
+                        gosub @Execute_Shion_OnFoot_Warp
+                    else
+                        // SINGLE TAP G: Start 500ms window & order normal vehicle exit
+                        9@ = 500
+
+                        0687: clear_actor 10@ task
+                        0E96: clear_char_primary_tasks 10@
+                        0E97: clear_char_secondary_tasks 10@
+                        0633: AS_actor 10@ exit_car
+
+                        07AF: 12@ = player $PLAYER_CHAR group
+                        0631: put_actor 10@ in_group 12@
+                        0940: set_group 12@ enters_leaders_vehicle 1
+                        07B3: set_group 12@ give_command 0 // Form up with Jo'on
+
+                        018C: play_sound 1058 at 0.0 0.0 0.0
+                    end
                 else
+                    // Shion is already on foot outside:
                     // DOUBLE-TAP / SPAM G: Emergency Hitodama Warp right to Jo'on
                     if
                         0029: 11@ >= 2
@@ -458,7 +475,7 @@ then
                             07AF: 12@ = player $PLAYER_CHAR group
                             0631: put_actor 10@ in_group 12@
                             0940: set_group 12@ enters_leaders_vehicle 1
-                            07B3: set_group 12@ give_command 0 // Native group follow (sprints in formation)
+                            07B3: set_group 12@ give_command 0 // Native group follow
 
                             018C: play_sound 1058 at 0.0 0.0 0.0
                         end

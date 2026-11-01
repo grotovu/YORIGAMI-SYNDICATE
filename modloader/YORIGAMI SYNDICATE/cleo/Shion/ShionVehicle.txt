@@ -10,8 +10,10 @@ script_name "Sh_Sync"
 // YORIGAMI MASTER HEAP DICTIONARY (PRUNED FOR SH_SYNC)
 // =========================================================================
 const
-    MEM_SHION_BUSY = 4            // Formerly 708
-    MEM_PRIORITY_LOCK = 20        // Formerly 765
+    MEM_SHION_BUSY = 4
+    MEM_PRIORITY_LOCK = 20
+    MEM_SHION_HANDLE = 116
+    MEM_SHION_STAY_PUT = 396
 end
 
 :Connect_To_Brain
@@ -24,6 +26,11 @@ then
 end
 000A: 31@ += 0x3C 
 0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    31@ == 0
+then
+    goto @Connect_To_Brain
+end
 // 31@ NOW HOLDS THE MASTER POINTER.
 
 // 0@ = Shion Actor Handle passed from SpawnShion
@@ -36,7 +43,7 @@ end
 // Read ModifierKey once on boot into dedicated register 2@
 0AF0: 2@ = read_int_from_ini_file "cleo\Shion.ini" section "Controls" key "ModifierKey"
 if
-    2@ <= 0
+    002A: 0 >= 2@
 then
     2@ = 89 // Default: Y Key
 end
@@ -46,9 +53,19 @@ wait 50
 
 if or
     8256: not is_player_playing $PLAYER_CHAR
-    10@ <= 0
+    8019: not 10@ > 0
     856D: not actor 10@ defined
     0118: actor 10@ dead
+then
+    0A93: terminate_this_custom_script
+end
+
+// Check if Shion switched into Hitodama Form (-1) or was dismissed (0)
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+if
+    803B: not 29@ == 10@
 then
     0A93: terminate_this_custom_script
 end
@@ -98,8 +115,13 @@ then
                     25@ = 1
                 end
 
-                // Trigger B: Automatic Distance Catch-up (> 45.0m)
+                // Trigger B: Automatic Distance Catch-up (> 45.0m, only when NOT staying put)
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_STAY_PUT
+                0A8D: 1@ = read_memory 30@ size 4 virtual_protect 0
+
                 if and
+                    0039: 1@ == 0 // Shion is following (not ordered to stay put via [H])
                     23@ == 0
                     8818: not actor 10@ in_air
                 then
@@ -182,11 +204,22 @@ then
                             warp_char_into_car_as_passenger 10@ into_car 24@ passenger_seat 28@
                             task_enter_car_as_passenger 10@ enter_car 24@ passenger_seat 28@ time 5000
 
+                            // Arrival FX (Mode 1: Glued to Shion inside moving vehicle)
                             0A92: create_custom_thread "Shion\FX_Warp.c" 1 10@ 0.0 0.0
 
                             13@ = 1 // Latch riding together
                             14@ = 0 // Clear exit latch
                             018C: play_sound 1058 at 0.0 0.0 0.0
+
+                            // Warping her in clears Stay Put mode so she follows you out
+                            0085: 30@ = 31@
+                            000A: 30@ += MEM_SHION_STAY_PUT
+                            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+                            07AF: 1@ = player $PLAYER_CHAR group
+                            0631: put_actor 10@ in_group 1@
+                            0940: set_group 1@ enters_leaders_vehicle 1
+                            07B3: set_group 1@ give_command 0
                             
                             if
                                 25@ == 0 // Auto distance warp
@@ -213,6 +246,33 @@ then
                     end
                 end
             else
+                // -------------------------------------------------------------
+                // [H] Key In-Car: Tell Shion to Wait Inside Vehicle
+                // -------------------------------------------------------------
+                if and
+                    00DB: actor 10@ in_car 24@
+                    0AB0: is_key_pressed 72 // H Key
+                    8AB0: not is_key_pressed 2@ // ModifierKey (Y) NOT held
+                then
+                    :Wait_Vehicle_H_Rel
+                    wait 50
+                    if
+                        0AB0: is_key_pressed 72
+                    then
+                        goto @Wait_Vehicle_H_Rel
+                    end
+
+                    // Set Stay Put mode so she remains inside when Jo'on exits
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_SHION_STAY_PUT
+                    0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+                    0638: AS_actor 10@ stay_put 1
+
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0AD1: print_formatted_now "~b~Shion: ~s~\"Fine, I'll wait in the car...\"" 2500
+                end
                 // =============================================================
                 // ACTION 2: SHION IS ALREADY INSIDE -> CYCLE SEATS (0 -> 1 -> 2 -> 0)
                 // =============================================================
@@ -233,26 +293,28 @@ then
                     if
                         5@ > 1
                     then
-                        // If seat is unknown (e.g. boarded naturally on foot), detect current seat
+                        // If seat is unknown (e.g. boarded naturally on foot), identify exact seat by actor handle
                         if
-                            28@ < 0
+                            8029: not 28@ >= 0
                         then
+                            28@ = 0
+                            0432: 1@ = get_actor_handle_from_car 24@ passenger_seat 0
                             if
-                                8431: not car 24@ passenger_seat_free 0
+                                003B: 1@ == 10@
                             then
                                 28@ = 0
                             else
+                                0432: 1@ = get_actor_handle_from_car 24@ passenger_seat 1
                                 if
-                                    8431: not car 24@ passenger_seat_free 1
+                                    003B: 1@ == 10@
                                 then
                                     28@ = 1
                                 else
+                                    0432: 1@ = get_actor_handle_from_car 24@ passenger_seat 2
                                     if
-                                        8431: not car 24@ passenger_seat_free 2
+                                        003B: 1@ == 10@
                                     then
                                         28@ = 2
-                                    else
-                                        28@ = 0
                                     end
                                 end
                             end
@@ -376,7 +438,7 @@ then
         // Emergency! Car caught on fire
         0227: 29@ = car 27@ health
         if
-            29@ < 250
+            001A: 250 > 29@
         then
             8@ = 1
         end
@@ -387,7 +449,15 @@ then
             13@ == 1
             80DB: not actor $PLAYER_ACTOR in_car 27@
         then
-            8@ = 1
+            // Check if she was ordered to wait inside via [H]
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_STAY_PUT
+            0A8D: 1@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                0039: 1@ == 0
+            then
+                8@ = 1 // Not staying put: exit car with Jo'on
+            end
         end
 
         // They were riding together, and Jo'on just initiated vehicle exit
@@ -396,7 +466,15 @@ then
             13@ == 1
             0E4A: is_char_exiting_any_car $PLAYER_ACTOR
         then
-            8@ = 1
+            // Check if she was ordered to wait inside via [H]
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_STAY_PUT
+            0A8D: 1@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                0039: 1@ == 0
+            then
+                8@ = 1 // Not staying put: exit car with Jo'on
+            end
         end
 
         // Jo'on entered or hijacked a different vehicle
@@ -463,11 +541,10 @@ goto @ShionVehicle_Loop
 :Play_Warp_Catchup_Dialogue
 0209: 15@ = random_int_in_range 0 5
 
-// Silent Warp (20% chance)
+// Silent Warp (20% chance): Unblock thread immediately
 if
     15@ == 0
 then
-    wait 1000 // Brief quiet buffer
     gosub @Release_Channel_P3
     return
 end
@@ -534,7 +611,7 @@ if
     15@ == 4
 then
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_CW4A" text "~b~Shion: ~s~\"Warping's so much easier than chasing a car on bare feet... don't drive so fast, sis.\""
+    0ADF: add_text_label "Y_CW4A" text "~b~Shion: ~s~\"Warping is way easier than chasing a car on bare feet... don't drive so fast, Jo'on.\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_CW4A' time 3200 flag 1
     wait 3200
@@ -559,13 +636,29 @@ return
 :Check_Vehicle_Warp_Alive
 if or
     8256: not is_player_playing $PLAYER_CHAR
-    10@ <= 0
+    0117: player $PLAYER_CHAR wasted
+    0741: actor $PLAYER_ACTOR busted
+    8019: not 10@ > 0
     856D: not actor 10@ defined
     0118: actor 10@ dead
 then
     03EB: clear_small_messages_only
     gosub @Release_Channel_P3
     0A93: terminate_this_custom_script
+end
+
+// If the vehicle was totaled or sunk mid-dialogue, abort chatter without killing the script daemon
+if
+    056E: car 24@ defined
+then
+    if or
+        0119: car 24@ wrecked
+        02BF: car 24@ sunk
+    then
+        03EB: clear_small_messages_only
+        gosub @Release_Channel_P3
+        goto @ShionVehicle_Loop
+    end
 end
 return
 
