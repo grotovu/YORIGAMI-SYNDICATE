@@ -298,6 +298,104 @@ then
 end
 
 // =========================================================================
+// CHECK IF DETECTED FOOD CART HAS ITS VENDOR (ALIVE OR KILLED)
+// =========================================================================
+if
+    11@ == 5
+then
+    9@ = 0 // Vendor Found Latch (0 = Unattended, 1 = Attended)
+    23@ = 0
+
+    :Check_Vendor_Loop
+    if
+        0AE1: 24@ = random_char_near_point 12@ 13@ 14@ in_radius 5.0 find_next 23@ pass_deads 1
+    then
+        23@ = 1
+        if and
+            803B: not 24@ == $PLAYER_ACTOR
+            803B: not 24@ == 10@
+            056D: actor 24@ defined
+            8118: not actor 24@ dead
+        then
+            0665: get_actor 24@ model_to 25@
+
+            // Check if ped is any valid food vendor (168 Chili/Hotdog, 209 Noodles, 264 Ice Cream)
+            if or
+                25@ == 168
+                25@ == 209
+                25@ == 264
+            then
+                9@ = 1
+            end
+        end
+
+        if
+            9@ == 0
+        then
+            goto @Check_Vendor_Loop
+        end
+    end
+
+    if
+        9@ == 0
+    then
+        11@ = 6 // Unattended Food Cart (Default)
+
+        // Check if the vendor was killed by Jo'on or Shion
+        2@ = 0
+        23@ = 0
+
+        :Check_Dead_Vendor_Loop
+        if
+            0AE1: 24@ = random_char_near_point 12@ 13@ 14@ in_radius 5.0 find_next 23@ pass_deads 0
+        then
+            23@ = 1
+            if and
+                803B: not 24@ == $PLAYER_ACTOR
+                803B: not 24@ == 10@
+                056D: actor 24@ defined
+                0118: actor 24@ dead
+            then
+                0665: get_actor 24@ model_to 25@
+                9@ = 0
+
+                // Check if corpse is any street vendor
+                if or
+                    25@ == 168
+                    25@ == 209
+                    25@ == 264
+                then
+                    9@ = 1
+                end
+
+                if
+                    9@ == 1
+                then
+                    if or
+                        051A: actor 24@ damaged_by_actor $PLAYER_ACTOR
+                        051A: actor 24@ damaged_by_actor 10@
+                    then
+                        2@ = 1
+                    end
+                end
+            end
+
+            if
+                2@ == 0
+            then
+                goto @Check_Dead_Vendor_Loop
+            end
+        end
+
+        if
+            2@ == 1
+        then
+            11@ = 7 // Looting Vendor Killed By The Sisters!
+        end
+    end
+end
+
+// =========================================================================
 // CHECK IF TARGET WAS FOUND
 // =========================================================================
 if
@@ -393,6 +491,62 @@ then
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_CAP3' time 2500 flag 1
         end
+    end
+end
+
+// Unattended Food Carts & Hot Dog Van Approach
+if
+    11@ == 6
+then
+    0209: 23@ = random_int_in_ranges 0 3
+    if
+        23@ == 0
+    then
+        0ADF: add_text_label "Y_UAP0" text "~y~Jo'on: ~s~\"Hey, the cart's wide open and nobody's watchin' it! Go see what they left, Shion!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_UAP0' time 2500 flag 1
+    end
+    if
+        23@ == 1
+    then
+        0ADF: add_text_label "Y_UAP1" text "~b~Shion: ~s~\"The vendor walked away from the cart, Jo'on... I'll check under the counter.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_UAP1' time 2500 flag 1
+    end
+    if
+        23@ == 2
+    then
+        0ADF: add_text_label "Y_UAP2" text "~b~Shion: ~s~\"Nobody's standing by the cart... maybe there are still warm scraps in the trays.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_UAP2' time 2500 flag 1
+    end
+end
+
+// Dead Vendor Cart Approach (Killed by Jo'on or Shion)
+if
+    11@ == 7
+then
+    0209: 23@ = random_int_in_ranges 0 3
+    if
+        23@ == 0
+    then
+        0ADF: add_text_label "Y_DAP0" text "~y~Jo'on: ~s~\"AHAHAHA! See? Problem solved! Raid the cart, Shion! All of it's ours now!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DAP0' time 2500 flag 1
+    end
+    if
+        23@ == 1
+    then
+        0ADF: add_text_label "Y_DAP1" text "~b~Shion: ~s~\"That was unnecessary, Jo'on... but I guess nobody's charging us now.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DAP1' time 2500 flag 1
+    end
+    if
+        23@ == 2
+    then
+        0ADF: add_text_label "Y_DAP2" text "~b~Shion: ~s~\"He's dead on the ground... might as well take the food before the cops show up.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DAP2' time 2500 flag 1
     end
 end
 
@@ -497,6 +651,8 @@ goto @Wait_Shion_Walk
 if or
     11@ == 4
     11@ == 5
+    11@ == 6
+    11@ == 7
 then
     0173: set_actor 10@ Z_angle_to 8@ // Locks her exactly facing the front face
 else
@@ -603,6 +759,26 @@ then
     0605: actor 10@ perform_animation "prtial_gngtlkA" IFP "GANGS" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time 2000
     wait 2000
     04EF: release_animation "GANGS"
+end
+
+// Unattended or Dead Vendor Food Cart (Rummage Counter)
+if or
+    11@ == 6
+    11@ == 7
+then
+    04ED: load_animation "POLICE"
+
+    :Wait_Cart_Rummage_Anim
+    wait 0
+    if
+        84EE: not animation "POLICE" loaded
+    then
+        goto @Wait_Cart_Rummage_Anim
+    end
+
+    0605: actor 10@ perform_animation "plc_drgbst_01" IFP "POLICE" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time 2000
+    wait 2100
+    04EF: release_animation "POLICE"
 end
 
 // =========================================================================
