@@ -348,11 +348,10 @@ then
         end
 
         // -----------------------------------------------------------------
-        // [G] Key In-Car: Smart Seat Warp (Seat 0 First, Cascade to Rear)
+        // [G] Key In-Car: Initial Warp OR In-Car Seat Cycling (0 -> 1 -> 2 -> 0)
         // -----------------------------------------------------------------
         if and
             0449: actor $PLAYER_ACTOR in_a_car
-            8449: not actor 10@ in_a_car
             8818: not actor 10@ in_air
             0AB0: is_key_pressed 71 // G Key
             8AB0: not is_key_pressed 3@ // Y Key NOT held
@@ -378,27 +377,68 @@ then
             if
                 0019: 29@ > 0
             then
-                2@ = -1
-
-                // Check Seat 0 (Front passenger or Bike pillion)
+                // =========================================================
+                // CASE A: Shion is ALREADY inside the vehicle -> Cycle Seats!
+                // =========================================================
                 if
-                    0431: car 27@ passenger_seat_free 0
+                    00DB: actor 10@ in_car 27@
                 then
-                    2@ = 0
-                end
-
-                // If Seat 0 is occupied, check rear seats for multi-passenger vehicles
-                if
-                    2@ < 0
-                then
+                    // Only cycle if vehicle has at least 2 passenger seats
                     if
                         0019: 29@ > 1
                     then
+                        0A96: 25@ = ped 10@ struct
+                        0A97: 20@ = vehicle 27@ struct // Safe in 20@ (Preserves 26@ distance float!)
+
+                        // Determine Shion's current seat index (0, 1, or 2)
+                        24@ = 0 // Default: Seat 0
+
+                        0085: 21@ = 20@
+                        000A: 21@ += 0x468 // Offset for Seat 1
+                        0A8D: 22@ = read_memory 21@ size 4 virtual_protect 0
                         if
-                            0431: car 27@ passenger_seat_free 1
+                            003B: 22@ == 25@
                         then
-                            2@ = 1
-                        else
+                            24@ = 1
+                        end
+
+                        0085: 21@ = 20@
+                        000A: 21@ += 0x46C // Offset for Seat 2
+                        0A8D: 22@ = read_memory 21@ size 4 virtual_protect 0
+                        if
+                            003B: 22@ == 25@
+                        then
+                            24@ = 2
+                        end
+
+                        2@ = -1 // Target seat to cycle to
+
+                        // Circular progression based on current seat
+                        if
+                            0039: 24@ == 0
+                        then
+                            // Currently in Seat 0 -> Try Seat 1, then Seat 2
+                            if
+                                0431: car 27@ passenger_seat_free 1
+                            then
+                                2@ = 1
+                            else
+                                if
+                                    0019: 29@ > 2
+                                then
+                                    if
+                                        0431: car 27@ passenger_seat_free 2
+                                    then
+                                        2@ = 2
+                                    end
+                                end
+                            end
+                        end
+
+                        if
+                            0039: 24@ == 1
+                        then
+                            // Currently in Seat 1 -> Try Seat 2, then Seat 0
                             if
                                 0019: 29@ > 2
                             then
@@ -406,37 +446,120 @@ then
                                     0431: car 27@ passenger_seat_free 2
                                 then
                                     2@ = 2
+                                else
+                                    if
+                                        0431: car 27@ passenger_seat_free 0
+                                    then
+                                        2@ = 0
+                                    end
+                                end
+                            else
+                                if
+                                    0431: car 27@ passenger_seat_free 0
+                                then
+                                    2@ = 0
+                                end
+                            end
+                        end
+
+                        if
+                            0039: 24@ == 2
+                        then
+                            // Currently in Seat 2 -> Wrap around to Seat 0, then Seat 1
+                            if
+                                0431: car 27@ passenger_seat_free 0
+                            then
+                                2@ = 0
+                            else
+                                if
+                                    0431: car 27@ passenger_seat_free 1
+                                then
+                                    2@ = 1
+                                end
+                            end
+                        end
+
+                        // Shift Shion to the next available seat with Hitodama Warp FX
+                        if
+                            0029: 2@ >= 0
+                        then
+                            // Origin poof at the old seat
+                            00A0: store_actor 10@ position_to 23@ 24@ 25@
+                            0A92: create_custom_thread "Shion\FX_Warp.c" 0 23@ 24@ 25@
+
+                            warp_char_into_car_as_passenger 10@ into_car 27@ passenger_seat 2@
+                            task_enter_car_as_passenger 10@ enter_car 27@ passenger_seat 2@ time 5000
+
+                            // Destination burst at the new seat
+                            0A92: create_custom_thread "Shion\FX_Warp.c" 1 10@ 0.0 0.0
+                            018C: play_sound 1058 at 0.0 0.0 0.0
+                        end
+                    end
+                else
+                    // =========================================================
+                    // CASE B: Shion is OUTSIDE the vehicle -> Warp her in!
+                    // =========================================================
+                    2@ = -1
+
+                    // Priority 1: Seat 0 (Front passenger or Bike pillion)
+                    if
+                        0431: car 27@ passenger_seat_free 0
+                    then
+                        2@ = 0
+                    end
+
+                    // Priority 2: Seat 1 (Rear Left)
+                    if
+                        2@ < 0
+                    then
+                        if
+                            0019: 29@ > 1
+                        then
+                            if
+                                0431: car 27@ passenger_seat_free 1
+                            then
+                                2@ = 1
+                            else
+                                // Priority 3: Seat 2 (Rear Right)
+                                if
+                                    0019: 29@ > 2
+                                then
+                                    if
+                                        0431: car 27@ passenger_seat_free 2
+                                    then
+                                        2@ = 2
+                                    end
                                 end
                             end
                         end
                     end
-                end
 
-                // Warp into the assigned seat if one is available
-                if
-                    0029: 2@ >= 0
-                then
-                    00A0: store_actor 10@ position_to 23@ 24@ 25@
-                    0A92: create_custom_thread "Shion\FX_Warp.c" 0 23@ 24@ 25@
+                    // Warp Shion inside if a free seat exists
+                    if
+                        0029: 2@ >= 0
+                    then
+                        00A0: store_actor 10@ position_to 23@ 24@ 25@
+                        0A92: create_custom_thread "Shion\FX_Warp.c" 0 23@ 24@ 25@
 
-                    0687: clear_actor 10@ task
-                    0E96: clear_char_primary_tasks 10@
-                    0E97: clear_char_secondary_tasks 10@
-                    warp_char_into_car_as_passenger 10@ into_car 27@ passenger_seat 2@
+                        0687: clear_actor 10@ task
+                        0E96: clear_char_primary_tasks 10@
+                        0E97: clear_char_secondary_tasks 10@
+                        warp_char_into_car_as_passenger 10@ into_car 27@ passenger_seat 2@
 
-                    0A92: create_custom_thread "Shion\FX_Warp.c" 1 10@ 0.0 0.0
-                    018C: play_sound 1058 at 0.0 0.0 0.0
+                        0A92: create_custom_thread "Shion\FX_Warp.c" 1 10@ 0.0 0.0
+                        018C: play_sound 1058 at 0.0 0.0 0.0
 
-                    // Cancel Stay Put mode and restore group follow
-                    15@ = 0
-                    0085: 30@ = 31@
-                    000A: 30@ += MEM_SHION_STAY_PUT
-                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                        // Cancel Stay Put mode and restore group follow
+                        15@ = 0
+                        0085: 30@ = 31@
+                        000A: 30@ += MEM_SHION_STAY_PUT
+                        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
-                    07AF: 12@ = player $PLAYER_CHAR group
-                    0631: put_actor 10@ in_group 12@
-                    0940: set_group 12@ enters_leaders_vehicle 1
-                    07B3: set_group 12@ give_command 0
+                        07AF: 12@ = player $PLAYER_CHAR group
+                        0631: put_actor 10@ in_group 12@
+                        0940: set_group 12@ enters_leaders_vehicle 1
+                        07B3: set_group 12@ give_command 0
+                    end
                 end
             end
         end
