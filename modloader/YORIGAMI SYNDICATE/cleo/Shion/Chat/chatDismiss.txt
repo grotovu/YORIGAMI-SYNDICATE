@@ -776,7 +776,7 @@ end
 000A: 30@ += MEM_PRIORITY_LOCK
 0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
 if
-    0039: 16@ == 3
+    04B5: 16@ >= 2
 then
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
