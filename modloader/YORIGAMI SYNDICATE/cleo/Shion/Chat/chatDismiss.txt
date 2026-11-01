@@ -70,6 +70,7 @@ end
 
 // 0@ = Shion Actor Handle passed from Entourage.c
 0085: 10@ = 0@
+1@ = 0  // Dismissal Decision Maker Handle (Explicit Initialization)
 
 // Immediately decouple from group so engine group AI stops overriding her
 07AF: 12@ = player $PLAYER_CHAR group
@@ -339,7 +340,7 @@ end
 // DISMISSAL WALK-AWAY & STALKER WATCHDOG LOOP
 // =========================================================================
 :Dismiss_Walk_Loop
-0001: wait 250 ms
+0001: wait 50 ms
 
 // Bail immediately if Shion was recruited back into the party elsewhere!
 0085: 30@ = 31@
@@ -468,13 +469,25 @@ then
     end
 end
 
-// Combat & Panic Override: Abort any retaliation, gun fight, or fear tasks
+// Anti-Surrender Watchdog: Suppress hands-up and cowering while walking away
+if or
+    0E42: is_char_doing_task_id 10@ 206 // TASK_COMPLEX_COWER
+    0E42: is_char_doing_task_id 10@ 207 // TASK_COMPLEX_HANDS_UP
+    0E42: is_char_doing_task_id 10@ 208 // TASK_SIMPLE_HANDS_UP
+    0E42: is_char_doing_task_id 10@ 210 // TASK_SIMPLE_COWER
+then
+    0687: clear_actor 10@ task
+    0E96: clear_char_primary_tasks 10@
+    0E97: clear_char_secondary_tasks 10@
+    01B9: set_actor 10@ armed_weapon_to 0
+    05DE: AS_actor 10@ walk_around_ped_path
+end
+
+// Combat Override: Abort any retaliation or shooting tasks
 if or
     0E47: is_char_fighting 10@
     0E46: is_char_using_gun 10@
     02E0: actor 10@ firing_weapon
-    0E42: is_char_doing_task_id 10@ 206 // TASK_COMPLEX_COWER
-    0E42: is_char_doing_task_id 10@ 207 // TASK_COMPLEX_HANDS_UP
 then
     0687: clear_actor 10@ task
     0E96: clear_char_primary_tasks 10@
@@ -492,11 +505,11 @@ then
     18@ = 1
 end
 
-// Tick down stalker reaction cooldown
+// Tick down stalker reaction cooldown (adjusted for 50ms tick)
 if
     0019: 15@ > 0
 then
-    000E: 15@ -= 250
+    000E: 15@ -= 50
     if
         002B: 0 >= 15@
     then
@@ -517,7 +530,7 @@ then
 end
 
 // Despawn condition 2: Walk lifetime reached 60s AND player is not right next to her (> 25m)
-000A: 14@ += 250
+000A: 14@ += 50
 if and
     0029: 14@ >= 60000
     0021: 26@ > 25.0
@@ -650,6 +663,13 @@ then
     end
 end
 
+if
+    0019: 1@ > 0
+then
+    065C: release_decision_maker 1@ // Free dedicated handle cleanly
+    1@ = 0
+end
+
 // Only clear handle if it still points to the actor this thread managed
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_HANDLE
@@ -725,11 +745,18 @@ end
 0E97: clear_char_secondary_tasks 10@
 
 // Tough Mission Brain: Apply m_tough and reset gun aiming panic only
-060A: create_decision_maker_type 0 store_to 27@ // Type 0 = m_tough.ped
-0708: reset_decision_maker 27@ event 31         // Reset EVENT_GUN_AIMED_AT
-0708: reset_decision_maker 27@ event 15         // Reset EVENT_SHOT_FIRED
-0708: reset_decision_maker 27@ event 49         // Reset EVENT_SHOT_FIRED_WHIZZED_BY
-060B: set_actor 10@ decision_maker_to 27@
+if
+    0019: 1@ > 0
+then
+    065C: release_decision_maker 1@
+    1@ = 0
+end
+
+060A: create_decision_maker_type 0 store_to 1@ // Stored safely in dedicated 1@
+0708: reset_decision_maker 1@ event 31         // Reset EVENT_GUN_AIMED_AT
+0708: reset_decision_maker 1@ event 15         // Reset EVENT_SHOT_FIRED
+0708: reset_decision_maker 1@ event 49         // Reset EVENT_SHOT_FIRED_WHIZZED_BY
+060B: set_actor 10@ decision_maker_to 1@
 
 0350: set_actor 10@ maintain_position_when_attacked 1
 0816: set_actor 10@ dont_chase_victim 1
@@ -786,9 +813,9 @@ then
     end
 end
 
-0085: 18@ = TIMERA
+0085: 9@ = TIMERA
 if
-    001D: 19@ > 18@
+    001D: 19@ > 9@
 then
     0002: jump @Wait_Dismiss_Dialogue_Loop
 end
