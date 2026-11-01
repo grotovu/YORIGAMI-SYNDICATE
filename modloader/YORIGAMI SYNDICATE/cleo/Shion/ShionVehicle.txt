@@ -246,9 +246,9 @@ then
                     end
                 end
             else
-                // -------------------------------------------------------------
+                // =============================================================
                 // [H] Key In-Car: Tell Shion to Wait Inside Vehicle
-                // -------------------------------------------------------------
+                // =============================================================
                 if and
                     00DB: actor 10@ in_car 24@
                     0AB0: is_key_pressed 72 // H Key
@@ -269,9 +269,8 @@ then
 
                     0638: AS_actor 10@ stay_put 1
 
-                    018C: play_sound 1058 at 0.0 0.0 0.0
-                    03EB: clear_small_messages_only
-                    0AD1: print_formatted_now "~b~Shion: ~s~\"Fine, I'll wait in the car...\"" 2500
+                    // MODE 5: IN-CAR STAY PUT (JO'ON ORDERING SHION TO WAIT IN CAR)
+                    0A92: create_custom_thread "Shion\Chat\chatFollow.c" 5
                 end
                 // =============================================================
                 // ACTION 2: SHION IS ALREADY INSIDE -> CYCLE SEATS (0 -> 1 -> 2 -> 0)
@@ -408,6 +407,9 @@ then
                             // Destination burst at the new seat
                             0A92: create_custom_thread "Shion\FX_Warp.c" 1 10@ 0.0 0.0
                             018C: play_sound 1058 at 0.0 0.0 0.0
+
+                            // MODE 6: SEAT CYCLING (BOTH IN CAR, SHION SHIFTING SEATS)
+                            0A92: create_custom_thread "Shion\Chat\chatFollow.c" 6
                         end
                     end
                 end

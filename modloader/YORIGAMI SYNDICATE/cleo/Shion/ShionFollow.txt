@@ -162,7 +162,7 @@ then
     // Allow ShionDeathTracker to process the lethal frame and write weapon telemetry
     wait 100
 
-    // Trigger post-mortem banter now that Master Heap has accurate death data
+    // Trigger MODE 3: SHION DEAD REACTION
     0A92: create_custom_thread "Shion\Chat\chatFollow.c" 3
 
     0085: 30@ = 31@
@@ -383,6 +383,8 @@ then
             07AF: 12@ = player $PLAYER_CHAR group
             07B3: set_group 12@ give_command 1 // Group Stay Put / Hold Ground
             0638: AS_actor 10@ stay_put 1
+            
+            // Trigger MODE 1: ON-FOOT STAY PUT (H KEY)
             0A92: create_custom_thread "Shion\Chat\chatFollow.c" 1
         end
 
@@ -448,6 +450,9 @@ then
 
                         018C: play_sound 1058 at 0.0 0.0 0.0
                     end
+
+                    // Trigger MODE 4: EXIT CAR RECALL (JO'ON ON FOOT, SHION IN VEHICLE)
+                    0A92: create_custom_thread "Shion\Chat\chatFollow.c" 4
                 else
                     // Shion is already on foot outside:
                     // DOUBLE-TAP / SPAM G: Emergency Hitodama Warp right to Jo'on
@@ -480,10 +485,10 @@ then
                             018C: play_sound 1058 at 0.0 0.0 0.0
                         end
                     end
-                end
 
-                // Evaluate and play Jo'on recall banter via Sh_FolC
-                0A92: create_custom_thread "Shion\Chat\chatFollow.c" 0
+                    // Trigger MODE 0: ON-FOOT WALKING RECALL (G KEY)
+                    0A92: create_custom_thread "Shion\Chat\chatFollow.c" 0
+                end
             end
         end
         
@@ -508,6 +513,7 @@ then
         if
             0021: 26@ > 130.0
         then
+            // Trigger MODE 2: SHION LOST BANTER (> 130m AWAY)
             0A92: create_custom_thread "Shion\Chat\chatFollow.c" 2
 
             07AF: 12@ = player $PLAYER_CHAR group
