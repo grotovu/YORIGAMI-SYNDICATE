@@ -5,6 +5,10 @@
 0000: NOP
 03A4: script_name 'Sh_FolC'
 
+const
+    MEM_PRIORITY_LOCK = 20        // Banter / reaction dialogue lock
+end
+
 // 0@ = Mode: 0 = Recall (G), 1 = Stay Put (H), 2 = Lost (>130m), 3 = Dead
 0085: 10@ = 0@
 
@@ -56,25 +60,14 @@ end
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Star"
 
 // =========================================================================
-// MODE 0: RECALL BANTER (G KEY)
+// MODE 0: ON-FOOT WALKING RECALL (G KEY)
 // =========================================================================
 if
     0039: 10@ == 0
 then
-    // Priority channel must be completely free (0)
     0085: 30@ = 31@
-    000A: 30@ += 20 // MEM_PRIORITY_LOCK
-    0A8D: 3@ = read_memory 30@ size 4 virtual_protect 0
-    if
-        8039: not 3@ == 0
-    then
-        0A93: terminate_this_custom_script
-    end
-
-    // Claim Tier 1 Lock
-    0085: 30@ = 31@
-    000A: 30@ += 20
-    0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+    000A: 30@ += MEM_PRIORITY_LOCK // MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
 
     // Evaluate combat status
     4@ = 0
@@ -99,10 +92,10 @@ then
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
 
-    // Combat Recall
     if
         0039: 4@ == 1
     then
+        // Combat Recall
         0209: 1@ = random_int_in_ranges 0 5
         if
             0039: 1@ == 0
@@ -140,13 +133,14 @@ then
             00BC: show_text_highpriority GXT 'Y_RC_C4' time 2500 flag 1
         end
     else
-        // Check if Shion is close (<= 5.0m) or far (> 5.0m)
+        // Peaceful Proximity & Need Checks
         0085: 30@ = 31@
         000A: 30@ += 116 // MEM_SHION_HANDLE
         0A8D: 6@ = read_memory 30@ size 4 virtual_protect 0
+
         7@ = 0
         if and
-            6@ > 0
+            0019: 6@ > 0
             056D: actor 6@ defined
             0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 6@ radius 5.0
         then
@@ -156,21 +150,19 @@ then
         if
             0039: 7@ == 1
         then
-            // Check Shion's physical condition (< 800 HP = beat up / bloody)
+            // Close Range (<= 5.0m)
             0226: 22@ = actor 6@ health
             23@ = 0
             if
-                22@ < 800
+                001A: 800 > 22@
             then
                 23@ = 1
             end
 
-            // Check Shion's shared hunger state directly from master heap
             0085: 30@ = 31@
             000A: 30@ += 404 // MEM_SHION_HUNGRY
             0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
 
-            // Select contextual topic: 0 = Normal, 1 = Injured (20%), 2 = Hungry (10%)
             8@ = 0
             0209: 9@ = random_int_in_ranges 0 100
 
@@ -178,14 +170,13 @@ then
                 0039: 23@ == 1
                 0039: 24@ == 1
             then
-                // Both active: 0..19 (20% Injured), 20..29 (10% Hungry), 30..99 (70% Normal)
                 if
-                    9@ < 20
+                    001A: 20 > 9@
                 then
                     8@ = 1
                 else
                     if
-                        9@ < 30
+                        001A: 30 > 9@
                     then
                         8@ = 2
                     end
@@ -194,9 +185,8 @@ then
                 if
                     0039: 23@ == 1
                 then
-                    // Only Injured: 0..19 (20%), 20..99 (80% Normal)
                     if
-                        9@ < 20
+                        001A: 20 > 9@
                     then
                         8@ = 1
                     end
@@ -204,9 +194,8 @@ then
                 if
                     0039: 24@ == 1
                 then
-                    // Only Hungry: 0..9 (20%), 10..99 (80% Normal)
                     if
-                        9@ < 20
+                        001A: 20 > 9@
                     then
                         8@ = 2
                     end
@@ -297,7 +286,7 @@ then
                 end
             end
 
-            // Context 0: Standard Relaxed Recall
+            // Context 0: Standard Relaxed Close Recall
             if
                 0039: 8@ == 0
             then
@@ -333,13 +322,13 @@ then
                 if
                     0039: 1@ == 4
                 then
-                    0ADF: add_text_label "Y_RC_N4" text "~y~Jo'on: ~s~\"Eyes front, sis. Look like you've got somewhere to be.\""
+                    0ADF: add_text_label "Y_RC_N4" text "~y~Jo'on: ~s~\"Eyes front, Shion. Look like you've got somewhere to be.\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC_N4' time 2500 flag 1
                 end
             end
         else
-            // Relaxed Recall (Far > 5.0m)
+            // Far Range (> 5.0m)
             0209: 1@ = random_int_in_ranges 0 5
             if
                 0039: 1@ == 0
@@ -381,29 +370,20 @@ then
 
     0001: wait 2500 ms
     0085: 30@ = 31@
-    000A: 30@ += 20
+    000A: 30@ += MEM_PRIORITY_LOCK
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
     0A93: terminate_this_custom_script
 end
 
 // =========================================================================
-// MODE 1: STAY PUT BANTER (H KEY)
+// MODE 1: ON-FOOT STAY PUT (H KEY)
 // =========================================================================
 if
     0039: 10@ == 1
 then
     0085: 30@ = 31@
-    000A: 30@ += 20
-    0A8D: 3@ = read_memory 30@ size 4 virtual_protect 0
-    if
-        8039: not 3@ == 0
-    then
-        0A93: terminate_this_custom_script
-    end
-
-    0085: 30@ = 31@
-    000A: 30@ += 20
-    0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
 
     4@ = 0
     01C0: 5@ = player $PLAYER_CHAR wanted_level
@@ -430,6 +410,7 @@ then
     if
         0039: 4@ == 1
     then
+        // Combat Stay Put
         0209: 1@ = random_int_in_ranges 0 5
         if
             0039: 1@ == 0
@@ -467,6 +448,7 @@ then
             00BC: show_text_highpriority GXT 'Y_SP_C4' time 2500 flag 1
         end
     else
+        // Peaceful On-Foot Stay Put
         0209: 1@ = random_int_in_ranges 0 5
         if
             0039: 1@ == 0
@@ -507,7 +489,7 @@ then
 
     0001: wait 2500 ms
     0085: 30@ = 31@
-    000A: 30@ += 20
+    000A: 30@ += MEM_PRIORITY_LOCK
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
     0A93: terminate_this_custom_script
 end
@@ -519,7 +501,7 @@ if
     0039: 10@ == 2
 then
     0085: 30@ = 31@
-    000A: 30@ += 20
+    000A: 30@ += MEM_PRIORITY_LOCK
     0A8C: write_memory 30@ size 4 value 3 virtual_protect 0
     018C: play_sound 1057 at 0.0 0.0 0.0
 
@@ -548,7 +530,7 @@ then
 
     0001: wait 3500 ms
     0085: 30@ = 31@
-    000A: 30@ += 20
+    000A: 30@ += MEM_PRIORITY_LOCK
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
     0A93: terminate_this_custom_script
 end
@@ -559,24 +541,22 @@ end
 if
     0039: 10@ == 3
 then
-    // Terminate friendly fire daemon only now that Shion has died
     0ABA: terminate_all_custom_scripts_with_this_name "Sh_FF"
 
     0085: 30@ = 31@
-    000A: 30@ += 20
+    000A: 30@ += MEM_PRIORITY_LOCK
     0A8C: write_memory 30@ size 4 value 3 virtual_protect 0
     03EB: clear_small_messages_only
     018C: play_sound 1057 at 0.0 0.0 0.0
 
-    // Master Authority: Solely trust the synchronous frame-perfect telemetry from Death Tracker
     0085: 30@ = 31@
     000A: 30@ += 384 // MEM_SHION_KILLER_IS_JOON
     0A8D: 5@ = read_memory 30@ size 4 virtual_protect 0
 
-    // Friendly Fire Fatality (Jo'on killed her)
     if
         0039: 5@ == 1
     then
+        // Friendly Fire Fatality
         0209: 1@ = random_int_in_ranges 0 3
         if
             0039: 1@ == 0
@@ -624,7 +604,7 @@ then
             0001: wait 3500 ms
         end
     else
-        // Combat Fatality (Killed by enemies / world)
+        // Combat Fatality
         0209: 1@ = random_int_in_ranges 0 3
         if
             0039: 1@ == 0
@@ -653,7 +633,439 @@ then
     end
 
     0085: 30@ = 31@
-    000A: 30@ += 20
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A93: terminate_this_custom_script
+end
+
+// =========================================================================
+// MODE 4: EXIT VEHICLE RECALL (JO'ON ON FOOT, SHION IN VEHICLE)
+// =========================================================================
+if
+    0039: 10@ == 4
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+
+    // Detect if Shion was in/on a bike
+    0085: 30@ = 31@
+    000A: 30@ += 116 // MEM_SHION_HANDLE
+    0A8D: 6@ = read_memory 30@ size 4 virtual_protect 0
+
+    26@ = 0
+    24@ = -1
+    if and
+        0019: 6@ > 0
+        056D: actor 6@ defined
+    then
+        if
+            0449: actor 6@ in_a_car
+        then
+            03C0: 24@ = actor 6@ car
+        end
+    end
+
+    if
+        856E: not car 24@ defined
+    then
+        0AB5: store_char $PLAYER_ACTOR closest_vehicle_to 24@ closest_ped_to 23@
+    end
+
+    if
+        056E: car 24@ defined
+    then
+        0E12: get_vehicle 24@ subclass_to 25@
+        if
+            0039: 25@ == 9
+        then
+            26@ = 1
+        end
+    end
+
+    0209: 1@ = random_int_in_ranges 0 5
+
+    if
+        0039: 26@ == 1
+    then
+        // Motorbike Exit Lines
+        if
+            0039: 1@ == 0
+        then
+            0ADF: add_text_label "Y_ROB0" text "~y~Jo'on: ~s~\"Get off the bike, Shion! We're walkin' from here!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_ROB0' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 1
+        then
+            0ADF: add_text_label "Y_ROB1" text "~y~Jo'on: ~s~\"Hop off the rear seat, move it! Kickstand's down!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_ROB1' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 2
+        then
+            0ADF: add_text_label "Y_ROB2" text "~y~Jo'on: ~s~\"Dismount, slowpoke! I ain't lettin' ya sit there lookin' lazy!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_ROB2' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 3
+        then
+            0ADF: add_text_label "Y_ROB3" text "~y~Jo'on: ~s~\"Off the bike, right now! Don't drag your dirty feet on the chrome!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_ROB3' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 4
+        then
+            0ADF: add_text_label "Y_ROB4" text "~y~Jo'on: ~s~\"Hey, freeloader! Swing your legs off, we've got places to be!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_ROB4' time 2500 flag 1
+        end
+    else
+        // Car Exit Lines
+        if
+            0039: 1@ == 0
+        then
+            0ADF: add_text_label "Y_RC_O0" text "~y~Jo'on: ~s~\"Get out of the car, Shion! We're on foot from here!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RC_O0' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 1
+        then
+            0ADF: add_text_label "Y_RC_O1" text "~y~Jo'on: ~s~\"Quit loafin' in the passenger seat! Out, now!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RC_O1' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 2
+        then
+            0ADF: add_text_label "Y_RC_O2" text "~y~Jo'on: ~s~\"Out of the car, move it! I ain't burnin' gas for ya to sit around!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RC_O2' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 3
+        then
+            0ADF: add_text_label "Y_RC_O3" text "~y~Jo'on: ~s~\"Don't just sit there lookin' pretty! Haul your ass out of the car!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RC_O3' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 4
+        then
+            0ADF: add_text_label "Y_RC_O4" text "~y~Jo'on: ~s~\"Hey, free-loader! Unbuckle and get out, we've got places to be!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RC_O4' time 2500 flag 1
+        end
+    end
+
+    0001: wait 2500 ms
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A93: terminate_this_custom_script
+end
+
+// =========================================================================
+// MODE 5: IN-VEHICLE STAY PUT (JO'ON ORDERING SHION TO WAIT)
+// =========================================================================
+if
+    0039: 10@ == 5
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+
+    // Detect if Jo'on is on a motorbike
+    26@ = 0
+    if
+        047A: actor $PLAYER_ACTOR driving_bike
+    then
+        26@ = 1
+    else
+        if
+            0449: actor $PLAYER_ACTOR in_a_car
+        then
+            03C0: 24@ = actor $PLAYER_ACTOR car
+            0E12: get_vehicle 24@ subclass_to 25@
+            if
+                0039: 25@ == 9
+            then
+                26@ = 1
+            end
+        end
+    end
+
+    0209: 1@ = random_int_in_ranges 0 5
+
+    if
+        0039: 26@ == 1
+    then
+        // Motorbike Stay Put Lines
+        if
+            0039: 1@ == 0
+        then
+            0ADF: add_text_label "Y_SVB0" text "~y~Jo'on: ~s~\"Stay on the bike, Shion. Don't you dare touch the throttle.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SVB0' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 1
+        then
+            0ADF: add_text_label "Y_SVB1" text "~y~Jo'on: ~s~\"Wait on the rear seat. And don't tip my damn bike over!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SVB1' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 2
+        then
+            0ADF: add_text_label "Y_SVB2" text "~y~Jo'on: ~s~\"Plant yourself on the back. Mess with the handlebars and you're walkin'.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SVB2' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 3
+        then
+            0ADF: add_text_label "Y_SVB3" text "~y~Jo'on: ~s~\"Sit tight, keep your balance, and don't knock the kickstand loose.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SVB3' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 4
+        then
+            0ADF: add_text_label "Y_SVB4" text "~y~Jo'on: ~s~\"Hold the bike right there. Drop it and you're payin' for the paint!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SVB4' time 2500 flag 1
+        end
+    else
+        // Car Stay Put Lines
+        if
+            0039: 1@ == 0
+        then
+            0ADF: add_text_label "Y_SP_V0" text "~y~Jo'on: ~s~\"Stay in the car, Shion. Don't you dare touch the radio.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP_V0' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 1
+        then
+            0ADF: add_text_label "Y_SP_V1" text "~y~Jo'on: ~s~\"Wait in the passenger seat. Guard my ride while I'm out.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP_V1' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 2
+        then
+            0ADF: add_text_label "Y_SP_V2" text "~y~Jo'on: ~s~\"Plant yourself right there. Touch my glovebox and you're walkin'.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP_V2' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 3
+        then
+            0ADF: add_text_label "Y_SP_V3" text "~y~Jo'on: ~s~\"Stay inside, keep your head down, and don't drool on the seats.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP_V3' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 4
+        then
+            0ADF: add_text_label "Y_SP_V4" text "~y~Jo'on: ~s~\"Sit tight and don't move. I'll be back in a flash.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP_V4' time 2500 flag 1
+        end
+    end
+
+    0001: wait 2500 ms
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A93: terminate_this_custom_script
+end
+
+// =========================================================================
+// MODE 6: SEAT CYCLING (BOTH IN CAR, SHION SHIFTING SEATS)
+// =========================================================================
+if
+    0039: 10@ == 6
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+
+    0209: 1@ = random_int_in_ranges 0 5
+    if
+        0039: 1@ == 0
+    then
+        0ADF: add_text_label "Y_RC_S0" text "~y~Jo'on: ~s~\"Slide over! You're takin' up my purse space!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RC_S0' time 2500 flag 1
+    end
+    if
+        0039: 1@ == 1
+    then
+        0ADF: add_text_label "Y_RC_S1" text "~y~Jo'on: ~s~\"Switch seats, Shion! And don't get grease on the upholstery!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RC_S1' time 2500 flag 1
+    end
+    if
+        0039: 1@ == 2
+    then
+        0ADF: add_text_label "Y_RC_S2" text "~y~Jo'on: ~s~\"Move to the other side! You're blockin' my side mirror!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RC_S2' time 2500 flag 1
+    end
+    if
+        0039: 1@ == 3
+    then
+        0ADF: add_text_label "Y_RC_S3" text "~y~Jo'on: ~s~\"Shift over, idiot! Quit breathin' all over my neck!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RC_S3' time 2500 flag 1
+    end
+    if
+        0039: 1@ == 4
+    then
+        0ADF: add_text_label "Y_RC_S4" text "~y~Jo'on: ~s~\"Keep movin'! Find a seat and don't scuff my dashboard!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_RC_S4' time 2500 flag 1
+    end
+
+    0001: wait 2500 ms
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A93: terminate_this_custom_script
+end
+
+// =========================================================================
+// MODE 7: CALLING SHION TO BOARD VEHICLE
+// =========================================================================
+if
+    0039: 10@ == 7
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+
+    // Detect if Jo'on is on a motorbike
+    26@ = 0
+    if
+        047A: actor $PLAYER_ACTOR driving_bike
+    then
+        26@ = 1
+    else
+        if
+            0449: actor $PLAYER_ACTOR in_a_car
+        then
+            03C0: 24@ = actor $PLAYER_ACTOR car
+            0E12: get_vehicle 24@ subclass_to 25@
+            if
+                0039: 25@ == 9
+            then
+                26@ = 1
+            end
+        end
+    end
+
+    0209: 1@ = random_int_in_ranges 0 5
+
+    if
+        0039: 26@ == 1
+    then
+        // Motorbike Boarding Lines
+        if
+            0039: 1@ == 0
+        then
+            0ADF: add_text_label "Y_RBB0" text "~y~Jo'on: ~s~\"Get on the bike, Shion! I ain't revvin' here all day!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RBB0' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 1
+        then
+            0ADF: add_text_label "Y_RBB1" text "~y~Jo'on: ~s~\"Hop on the back, move it! I'm not idlin' in traffic for ya!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RBB1' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 2
+        then
+            0ADF: add_text_label "Y_RBB2" text "~y~Jo'on: ~s~\"On the bike, right now! Grab the rear bar and watch my paint!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RBB2' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 3
+        then
+            0ADF: add_text_label "Y_RBB3" text "~y~Jo'on: ~s~\"Swing your leg over and get on! We're burnin' daylight!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RBB3' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 4
+        then
+            0ADF: add_text_label "Y_RBB4" text "~y~Jo'on: ~s~\"Get your ass on the seat before I peel out without ya!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RBB4' time 2500 flag 1
+        end
+    else
+        // Car Boarding Lines
+        if
+            0039: 1@ == 0
+        then
+            0ADF: add_text_label "Y_RC_B0" text "~y~Jo'on: ~s~\"Get in the car, Shion! I ain't idlin' here all day!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RC_B0' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 1
+        then
+            0ADF: add_text_label "Y_RC_B1" text "~y~Jo'on: ~s~\"Hop in, move it! I'm not gettin' a ticket for double-parkin'!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RC_B1' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 2
+        then
+            0ADF: add_text_label "Y_RC_B2" text "~y~Jo'on: ~s~\"In the car, right now! Watch the paint with your filthy feet!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RC_B2' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 3
+        then
+            0ADF: add_text_label "Y_RC_B3" text "~y~Jo'on: ~s~\"Hurry up and get in! I ain't holdin' up traffic for ya!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RC_B3' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 4
+        then
+            0ADF: add_text_label "Y_RC_B4" text "~y~Jo'on: ~s~\"Get your ass in the seat before I floor it without ya!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RC_B4' time 2500 flag 1
+        end
+    end
+
+    0001: wait 2500 ms
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
     0A93: terminate_this_custom_script
 end

@@ -102,7 +102,7 @@ if
 then
     000E: 2@ -= 50
     if
-        001B: 0 >= 2@
+        002B: 0 >= 2@
     then
         2@ = 0
     end
@@ -146,34 +146,44 @@ then
                 7@ = 1 // Flag that we just aborted a fight
             end
 
-            // 2. MOVEMENT CORRECTION & STUCK WATCHDOG
+            // MOVEMENT CORRECTION & STUCK WATCHDOG
             0085: 30@ = 31@
             000A: 30@ += MEM_SHION_STAY_PUT
             0A8D: 17@ = read_memory 30@ size 4 virtual_protect 0
             if
                 0039: 17@ == 0 // Only run watchdog if NOT ordered to stay put via [H]!
             then
-                if
-                    0021: 26@ > 5.0
+                // Guard: Do not interrupt if Jo'on is in/entering/exiting a vehicle, or if Shion is boarding/exiting
+                if and
+                    8449: not actor $PLAYER_ACTOR in_a_car
+                    89DE: not actor $PLAYER_ACTOR entering_car
+                    8E4A: not is_char_exiting_any_car $PLAYER_ACTOR
+                    8E49: not is_char_entering_any_car 10@
+                    8E4A: not is_char_exiting_any_car 10@
                 then
                     if
-                        0039: 2@ == 0 // Debounce off cooldown
+                        0021: 26@ > 5.0
                     then
-                        // Trigger recall if she tried to fight OR if she is completely stuck
-                        if or
-                            0039: 7@ == 1
-                            02A0: actor 10@ stopped
+                        if
+                            0039: 2@ == 0 // Debounce off cooldown
                         then
-                            07AF: 27@ = player $PLAYER_CHAR group
-                            0631: put_actor 10@ in_group 27@
-                            07B3: set_group 27@ give_command 0
-                            05D9: AS_actor 10@ run_to_actor $PLAYER_ACTOR timelimit 3000 stop_within_radius 2.5
-                            2@ = 2000 // 2-second debounce prevents rapid task re-issuing
+                            // Trigger recall if she tried to fight OR if she is completely stuck on foot
+                            if or
+                                0039: 7@ == 1
+                                02A0: actor 10@ stopped
+                            then
+                                07AF: 27@ = player $PLAYER_CHAR group
+                                0631: put_actor 10@ in_group 27@
+                                0940: set_group 27@ enters_leaders_vehicle 1
+                                07B3: set_group 27@ give_command 0
+                                05D9: AS_actor 10@ run_to_actor $PLAYER_ACTOR timelimit 3000 stop_within_radius 2.5
+                                2@ = 2000 // Debounce prevents rapid task re-issuing
+                            end
                         end
+                    else
+                        // Within 5.0m: Keep her disarmed and standing her ground next to Jo'on
+                        0816: set_actor 10@ dont_chase_victim 1
                     end
-                else
-                    // Within 5.0m: Keep her disarmed and standing her ground next to Jo'on
-                    0816: set_actor 10@ dont_chase_victim 1
                 end
             else
                 // While in Stay Put mode: maintain disarmed stand-ground state
@@ -732,11 +742,11 @@ then
     16@ = 9999
 end
 
-0781: get_weapon_with_ID 15@ model_to 25@
+0781: get_weapon_with_ID 15@ model_to 29@
 if
-    25@ > 0
+    0019: 29@ > 0
 then
-    0247: load_model 25@
+    0247: load_model 29@
     038B: load_requested_models
 
     :Wait_Hostile_Weapon_Model
@@ -747,7 +757,7 @@ then
         return
     end
     if
-        8248: not model 25@ available
+        8248: not model 29@ available
     then
         goto @Wait_Hostile_Weapon_Model
     end
@@ -755,7 +765,7 @@ then
     01B2: give_actor 10@ weapon 15@ ammo 16@
     01B9: set_actor 10@ armed_weapon_to 15@
     017B: set_actor 10@ weapon 15@ ammo_to 16@ // Enforce exact ammo count
-    0249: release_model 25@
+    0249: release_model 29@
 end
 
 // Re-enable supporting fire and aggressive combat priorities
@@ -765,15 +775,16 @@ end
 0816: set_actor 10@ dont_chase_victim 0
 0770: set_actor 10@ target_priority 1
 
-// RESTORE COMBAT BRAIN & MOVEMENT FREEDOM
+// Restore combat brain and movement freedom
 060B: set_actor 10@ decision_maker_to 65543
 
-// FORCE AI TO RE-EVALUATE THREATS INSTANTLY
+// Force AI to re-evaluate threats instantly
 0687: clear_actor 10@ task
 0E96: clear_char_primary_tasks 10@
 0E97: clear_char_secondary_tasks 10@
 07AF: 27@ = player $PLAYER_CHAR group
 0631: put_actor 10@ in_group 27@
+0940: set_group 27@ enters_leaders_vehicle 1
 
 077A: set_actor 10@ acquaintance 4 to_actors_pedtype 6
 077A: set_actor 10@ acquaintance 3 to_actors_pedtype 6
