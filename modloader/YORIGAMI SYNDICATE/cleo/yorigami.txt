@@ -90,6 +90,7 @@ end
 0A92: create_custom_thread "Yorigami\FX_JoonFlames.c"
 0A92: create_custom_thread "Yorigami\FX_ShionFlames.c"
 0A92: create_custom_thread "Yorigami\YorigamiAimAlpha.c"
+0A92: create_custom_thread "Shion\shionHangoutIcon.c"
 
 // Read Keys & Configurable Threshold ($10,000 per point)
 0AF0: 9@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Settings" key "MainKey"
