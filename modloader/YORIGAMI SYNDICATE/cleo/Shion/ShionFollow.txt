@@ -267,6 +267,26 @@ then
         00A0: store_actor 10@ position_to 23@ 24@ 25@
         050A: 26@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 23@ 24@ 25@
 
+        // Anti-Fatigue Watchdog: Suppress "out of breath" tired animation (Infinite Stamina)
+        if or
+            0E42: is_char_doing_task_id 10@ 219 // TASK_SIMPLE_TIRED
+            0611: actor 10@ performing_animation "IDLE_TIRED"
+        then
+            0687: clear_actor 10@ task
+            0E96: clear_char_primary_tasks 10@
+            0E97: clear_char_secondary_tasks 10@
+            07AF: 12@ = player $PLAYER_CHAR group
+            0631: put_actor 10@ in_group 12@
+            if
+                0039: 15@ == 1
+            then
+                07B3: set_group 12@ give_command 1 // Stay Put
+                0638: AS_actor 10@ stay_put 1
+            else
+                07B3: set_group 12@ give_command 0 // Follow Leader
+            end
+        end
+
         // -----------------------------------------------------------------
         // [H] Key: Stay Put (Guarded so Y + H Hitodama Morph does not trigger it)
         // -----------------------------------------------------------------
