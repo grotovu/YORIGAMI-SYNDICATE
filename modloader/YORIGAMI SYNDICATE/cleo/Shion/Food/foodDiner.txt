@@ -15,6 +15,7 @@ const
     MEM_LAST_FED_HOURS = 228
     MEM_TIMES_TREATED = 248
     MEM_TOTAL_CASH_GIVEN = 252
+    MEM_SHION_HUNGRY = 404
 end
 
 :Connect_To_Brain
@@ -370,43 +371,10 @@ end
 // -------------------------------------------------------------------------
 gosub @Play_Pre_Meal_Dialogue
 
-24@ = -1
-if
-    0449: actor $PLAYER_ACTOR in_a_car
-then
-    03C0: 24@ = actor $PLAYER_ACTOR car
-else
-    if
-        0449: actor 10@ in_a_car
-    then
-        03C0: 24@ = actor 10@ car
-    end
-end
-
-if
-    24@ > 0
-then
-    05CD: AS_actor 10@ exit_car 24@
-else
-    0633: AS_actor 10@ exit_car
-end
-wait 1200
-
-if or
-    856D: not actor 10@ defined
-    0118: actor 10@ dead
-then
-    return
-end
-
-04C4: store_coords_to 16@ 17@ 18@ from_actor 10@ with_offset 0.0 8.0 0.0
-05D3: AS_actor 10@ goto_point 16@ 17@ 18@ mode 4 time 3000 ms
-wait 2500
-
 0169: set_fade_color_RGB 0 0 0
 016A: fade 0 time 750
 
-:Wait_Screen_Faded_Out
+:Wait_DriveThru_Faded_Out
 wait 50
 if
     8256: not player $PLAYER_CHAR defined
@@ -417,10 +385,10 @@ end
 if
     016B: fading
 then
-    goto @Wait_Screen_Faded_Out
+    goto @Wait_DriveThru_Faded_Out
 end
 
-wait 2000
+wait 1500
 
 if or
     8256: not player $PLAYER_CHAR defined
@@ -431,44 +399,9 @@ then
     return
 end
 
-if and
-    24@ > 0
-    056E: car 24@ defined
-    8119: not car 24@ wrecked
-then
-    // Find first available passenger seat (Seat 0 -> Seat 1 -> Seat 2)
-    26@ = 0
-    if
-        0431: car 24@ passenger_seat_free 0
-    then
-        26@ = 0
-    else
-        if
-            0431: car 24@ passenger_seat_free 1
-        then
-            26@ = 1
-        else
-            if
-                0431: car 24@ passenger_seat_free 2
-            then
-                26@ = 2
-            end
-        end
-    end
+018C: play_sound 1052 at 0.0 0.0 0.0
 
-    warp_char_into_car_as_passenger 10@ into_car 24@ passenger_seat 26@
-    task_enter_car_as_passenger 10@ enter_car 24@ passenger_seat 26@ time 5000
-    07AF: 25@ = player $PLAYER_CHAR group
-    0631: put_actor 10@ in_group 25@
-else
-    // Fallback: place on foot beside player if car was destroyed
-    04C4: store_coords_to 16@ 17@ 18@ from_actor $PLAYER_ACTOR with_offset 0.0 -1.2 0.0
-    000F: 18@ -= 1.0
-    00A1: put_actor 10@ at 16@ 17@ 18@
-    07AF: 25@ = player $PLAYER_CHAR group
-    0631: put_actor 10@ in_group 25@
-end
-
+// Restore Health and Top Up Armor
 0223: set_actor 10@ health_to 1000
 04DD: 27@ = actor 10@ armour
 if
@@ -488,12 +421,17 @@ end
 
 016A: fade 1 time 750
 
-:Wait_Screen_Faded_In
+:Wait_DriveThru_Faded_In
 wait 50
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    return
+end
 if
     016B: fading
 then
-    goto @Wait_Screen_Faded_In
+    goto @Wait_DriveThru_Faded_In
 end
 
 wait 500
@@ -510,6 +448,11 @@ return
 0085: 30@ = 31@
 000A: 30@ += MEM_LAST_FED_HOURS
 0A8C: write_memory 30@ size 4 value 22@ virtual_protect 0
+
+// Reset Shared Hunger State: Shion is fed and full!
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HUNGRY
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
 // Free busy flags so other scripts resume
 0085: 30@ = 31@

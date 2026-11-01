@@ -18,6 +18,7 @@ const
     MEM_LAST_FED_HOURS = 228
     MEM_SHION_DEATH_FLAG = 380
     MEM_SHION_RECRUITED = 400
+    MEM_SHION_HUNGRY = 404
 end
 
 :Connect_To_Brain
@@ -111,6 +112,9 @@ if
 then
     0@ = 0
     8@ = 0
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_HUNGRY
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
     goto @ShionFood_Loop
 end
 
@@ -202,6 +206,10 @@ then
     0085: 30@ = 31@
     000A: 30@ += MEM_LAST_FED_HOURS
     0A8C: write_memory 30@ size 4 value 29@ virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_HUNGRY
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
     goto @ShionFood_Loop
 end
@@ -347,11 +355,13 @@ end
 // DETERMINE IF SHION ACTUALLY NEEDS FOOD (Hungry or Hurt)
 // -------------------------------------------------------------------------
 12@ = 0 // 1 = Needs Food, 0 = Full & Healthy
+24@ = 0 // 1 = Hungry Flag
 
 if
     0029: 29@ >= 48 // 48+ hours passed
 then
     12@ = 1
+    24@ = 1
 end
 
 if
@@ -359,6 +369,11 @@ if
 then
     12@ = 1
 end
+
+// Update Shared Heap Hunger State
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HUNGRY
+0A8C: write_memory 30@ size 4 value 24@ virtual_protect 0
 
 // -------------------------------------------------------------------------
 // HANDLE SPAWN DELAY

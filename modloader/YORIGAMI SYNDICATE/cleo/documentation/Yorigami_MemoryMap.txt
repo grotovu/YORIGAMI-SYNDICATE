@@ -116,4 +116,5 @@ const
     MEM_SHION_DEATH_IN_CAR = 392     // Vehicle Explosion State (0 = On foot outside, 1 = Inside vehicle)
     MEM_SHION_STAY_PUT = 396      // Stay Put / Hold Ground state via [H] (0 = Follow, 1 = Stay Put)
     MEM_SHION_RECRUITED = 400     // 0 = Not in party / Loitering, 1 = Actively recruited
+    MEM_SHION_HUNGRY = 404        // Hunger state (0 = Fed / Full, 1 = Hungry / Starving)
 end
