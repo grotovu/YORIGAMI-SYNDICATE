@@ -1022,6 +1022,7 @@ then
 
         // Create as Pedtype 8, do not use 24 otherwise red marked ped with be imumune
         009A: 10@ = create_actor_pedtype 8 model 299 at 20@ 21@ 22@
+        03FE: set_actor 10@ money 0
         0085: 30@ = 31@
         000A: 30@ += MEM_SHION_HANDLE
         0A8C: write_memory 30@ size 4 value 10@ virtual_protect 0
@@ -1413,6 +1414,8 @@ end
 0860: link_actor 10@ to_interior 28@
 0296: unload_special_actor 10
 
+03FE: set_actor 10@ money 0
+
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_HANDLE
 0A8C: write_memory 30@ size 4 value 10@ virtual_protect 0
@@ -1518,6 +1521,7 @@ end
 000A: 30@ += MEM_SHION_HANDLE
 0A8C: write_memory 30@ size 4 value 10@ virtual_protect 0
 
+03FE: set_actor 10@ money 0
 0489: set_actor 10@ muted 1
 094E: set_actor 10@ mute_pain_audio 1
 08AF: set_actor 10@ max_health_to 1000
