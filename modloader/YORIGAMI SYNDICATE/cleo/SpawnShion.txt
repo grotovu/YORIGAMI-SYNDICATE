@@ -58,7 +58,9 @@ end
 // 31@ NOW HOLDS THE MASTER POINTER.
 
 // --- INITIALIZATION ---
+1@ = 0  // Hangout Decision Maker Handle (Dedicated & Safe)
 10@ = 0 // Shion Actor Handle
+11@ = 0 // Loiter State Machine (0 = Leaning, 1 = Walking)
 9@ = 0  // Encounter State: 0 = Searching, 1 = Loitering, 2 = Recruited in Party, 3 = Reunion Chat Active, 4 = Dismissal Lockout
 2@ = 0  // Active Hangout Spot ID (1 = Idlewood, 2 = Doherty, 3 = LV Strip)
 3@ = 89 // MainKey (Y)
@@ -603,62 +605,79 @@ then
             7@ = 0.0
         end
 
-        // Snap anchor Z firmly to the ground surface
-        02CE: 28@ = ground_z_at 16@ 17@ 18@
+        // Snap anchor Z firmly to the ground surface using float 27@ (protects integer 28@)
+        02CE: 27@ = ground_z_at 16@ 17@ 18@
         if
-            8043: not 28@ == 0.0
+            8043: not 27@ == 0.0
         then
-            0087: 18@ = 28@
+            0087: 18@ = 27@
             000B: 18@ += 0.05
         end
 
-        // Prevent Aim + G gang recruitment from interrupting her hangout lean
-        07AF: 24@ = player $PLAYER_CHAR group
-        if
-            06EE: actor 10@ in_group 24@
-        then
-            06C9: remove_actor 10@ from_group
-            0687: clear_actor 10@ task
-            048F: actor 10@ remove_weapons
-            01B9: set_actor 10@ armed_weapon_to 0
-            0173: set_actor 10@ Z_angle_to 7@
-            0605: actor 10@ perform_animation "M_SMKLEAN_LOOP" IFP "LOWRIDER" framedelta 4.0 loop 1 lockX 1 lockY 1 lockF 0 time -1
-        end
-
-        // Continuous Disarm Watchdog: Strip any weapon forced onto her while loitering
-        0470: 25@ = actor 10@ current_weapon
-        if
-            0019: 25@ > 0
-        then
-            048F: actor 10@ remove_weapons
-            01B9: set_actor 10@ armed_weapon_to 0
-        end
-
-        // Combat Override: Abort any retaliation task immediately
-        if or
-            0E47: is_char_fighting 10@
-            0E46: is_char_using_gun 10@
-            02E0: actor 10@ firing_weapon
-        then
-            0687: clear_actor 10@ task
-            0E96: clear_char_primary_tasks 10@
-            0E97: clear_char_secondary_tasks 10@
-            048F: actor 10@ remove_weapons
-            01B9: set_actor 10@ armed_weapon_to 0
-            11@ = 0
-        end
-
+        // Ensure Shion is strictly valid and alive before querying any ped tasks or weapons!
         if and
             10@ > 0
             056D: actor 10@ defined
             8118: not actor 10@ dead
         then
+            // Prevent Aim + G gang recruitment from interrupting her hangout lean
+            07AF: 24@ = player $PLAYER_CHAR group
+            if
+                06EE: actor 10@ in_group 24@
+            then
+                06C9: remove_actor 10@ from_group
+                0687: clear_actor 10@ task
+                048F: actor 10@ remove_weapons
+                01B9: set_actor 10@ armed_weapon_to 0
+                0173: set_actor 10@ Z_angle_to 7@
+                0605: actor 10@ perform_animation "M_SMKLEAN_LOOP" IFP "LOWRIDER" framedelta 4.0 loop 1 lockX 1 lockY 1 lockF 0 time -1
+            end
+
+            // Continuous Disarm Watchdog: Strip any weapon forced onto her while loitering
+            0470: 25@ = actor 10@ current_weapon
+            if
+                0019: 25@ > 0
+            then
+                048F: actor 10@ remove_weapons
+                01B9: set_actor 10@ armed_weapon_to 0
+            end
+
+            // Anti-Surrender Watchdog: Unconditionally abort hands-up and cower
+            if or
+                0E42: is_char_doing_task_id 10@ 206 // TASK_COMPLEX_COWER
+                0E42: is_char_doing_task_id 10@ 207 // TASK_COMPLEX_HANDS_UP
+                0E42: is_char_doing_task_id 10@ 208 // TASK_SIMPLE_HANDS_UP
+                0E42: is_char_doing_task_id 10@ 210 // TASK_SIMPLE_COWER
+            then
+                0687: clear_actor 10@ task
+                0E96: clear_char_primary_tasks 10@
+                0E97: clear_char_secondary_tasks 10@
+                0173: set_actor 10@ Z_angle_to 7@
+                0638: AS_actor 10@ stay_put 1
+                0605: actor 10@ perform_animation "M_SMKLEAN_LOOP" IFP "LOWRIDER" framedelta 4.0 loop 1 lockX 1 lockY 1 lockF 0 time -1
+                11@ = 0 // Instantly reset state machine to anchor lean
+            end
+
+            // Combat Override: Abort any retaliation task immediately
+            if or
+                0E47: is_char_fighting 10@
+                0E46: is_char_using_gun 10@
+                02E0: actor 10@ firing_weapon
+            then
+                0687: clear_actor 10@ task
+                0E96: clear_char_primary_tasks 10@
+                0E97: clear_char_secondary_tasks 10@
+                048F: actor 10@ remove_weapons
+                01B9: set_actor 10@ armed_weapon_to 0
+                11@ = 0
+            end
+
             00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
             00A0: store_actor 10@ position_to 23@ 24@ 25@
             050A: 26@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 23@ 24@ 25@
 
-            // Measure displacement from the wall anchor spot
-            050A: 27@ = distance_between_XYZ 23@ 24@ 25@ and_XYZ 16@ 17@ 18@
+            // Measure 2D horizontal displacement so ground slopes never falsely trigger walk
+            0509: 27@ = distance_between_XY 23@ 24@ and_XY 16@ 17@
 
             // -----------------------------------------------------------------
             // SUB-STATE 0: LEANING AT ANCHOR SPOT
@@ -666,7 +685,7 @@ then
             if
                 0039: 11@ == 0
             then
-                // Check if pushed or displaced away from the wall (> 1.2m)
+                // Check if pushed or displaced away from the wall (> 1.2m horizontally)
                 if
                     0021: 27@ > 1.2
                 then
@@ -689,6 +708,9 @@ then
                         8E47: not is_char_fighting 10@
                         8E4B: not is_char_playing_any_script_animation 10@ include_anims 1
                     then
+                        0687: clear_actor 10@ task
+                        0E96: clear_char_primary_tasks 10@
+                        0E97: clear_char_secondary_tasks 10@
                         0173: set_actor 10@ Z_angle_to 7@
                         0638: AS_actor 10@ stay_put 1
                         0605: actor 10@ perform_animation "M_SMKLEAN_LOOP" IFP "LOWRIDER" framedelta 4.0 loop 1 lockX 1 lockY 1 lockF 0 time -1
@@ -702,9 +724,9 @@ then
             if
                 0039: 11@ == 1
             then
-                // Has she arrived at the wall spot (<= 0.40m)?
+                // Has she arrived at the wall spot (<= 0.50m horizontally)?
                 if
-                    8021: not 27@ > 0.40
+                    8021: not 27@ > 0.50
                 then
                     // ONLY THEN: Stop, face the wall heading, and lean!
                     0687: clear_actor 10@ task
@@ -730,6 +752,12 @@ then
             then
                 0792: clear_char_tasks_immediately 10@
                 04EF: release_animation "LOWRIDER"
+                if
+                    0019: 1@ > 0
+                then
+                    065C: release_decision_maker 1@ // Safely release dedicated handle
+                    1@ = 0
+                end
                 009B: destroy_actor 10@
                 10@ = 0
                 0085: 30@ = 31@
@@ -1049,9 +1077,9 @@ then
         0489: set_actor 10@ muted 1
         094E: set_actor 10@ mute_pain_audio 1
 
-        0A96: 11@ = ped 10@ struct
-        000A: 11@ += 0x4D4
-        0A8C: write_memory 11@ size 4 value 54 virtual_protect 0
+        0A96: 29@ = ped 10@ struct
+        000A: 29@ += 0x4D4
+        0A8C: write_memory 29@ size 4 value 54 virtual_protect 0
 
         060B: set_actor 10@ decision_maker_to 65543
         07AF: 12@ = player $PLAYER_CHAR group
@@ -1070,7 +1098,7 @@ then
         077E: get_active_interior 28@
         0860: link_actor 10@ to_interior 28@
 
-        // Smooth Alpha Fade-In Loop (0 -> 255 over 300ms using isolated 16@, 17@, 18@)
+        // Smooth Alpha Fade-In Loop (0 -> 255 over 300ms using scratch 20@, 21@, 22@)
         TIMERA = 0
         :Shion_Warp_FadeIn
         wait 0
@@ -1078,33 +1106,33 @@ then
         if
             29@ < 300
         then
-            0093: 16@ = integer 29@ to_float
-            0017: 16@ /= 300.0
+            0093: 20@ = integer 29@ to_float
+            0017: 20@ /= 300.0
 
             if
-                16@ < 0.0
+                20@ < 0.0
             then
-                16@ = 0.0
+                20@ = 0.0
             end
             if
-                0021: 16@ > 1.0
+                0021: 20@ > 1.0
             then
-                16@ = 1.0
+                20@ = 1.0
             end
 
-            0087: 17@ = 16@
-            0013: 17@ *= 255.0
-            0092: 18@ = float 17@ to_integer
+            0087: 21@ = 20@
+            0013: 21@ *= 255.0
+            0092: 22@ = float 21@ to_integer
 
             if
-                18@ < 0
+                22@ < 0
             then
-                18@ = 0
+                22@ = 0
             end
             if
-                18@ > 255
+                22@ > 255
             then
-                18@ = 255
+                22@ = 255
             end
 
             if and
@@ -1112,7 +1140,7 @@ then
                 056D: actor 10@ defined
                 8118: not actor 10@ dead
             then
-                0D10: set_actor 10@ alpha 18@
+                0D10: set_actor 10@ alpha 22@
             end
 
             goto @Shion_Warp_FadeIn
@@ -1523,15 +1551,20 @@ end
 02AB: set_actor 10@ immunities BP 0 FP 1 EP 0 CP 0 MP 0
 0446: set_actor 10@ dismemberment_possible 0 // Immune to headshots/decapitation!
 
-// Tough Mission Brain: Re-apply m_tough to suppress default panic
-060A: create_decision_maker_type 0 store_to 25@ // Type 0 = m_tough.ped
-0708: reset_decision_maker 25@ event 31         // Reset EVENT_GUN_AIMED_AT
-0708: reset_decision_maker 25@ event 15         // Reset EVENT_SHOT_FIRED
-0708: reset_decision_maker 25@ event 49         // Reset EVENT_SHOT_FIRED_WHIZZED_BY
-0708: reset_decision_maker 25@ event 9          // Reset EVENT_DAMAGE
-060B: set_actor 10@ decision_maker_to 25@
+// Tough Mission Brain: Apply m_tough and reset gun aiming panic only
+if
+    0019: 1@ > 0
+then
+    065C: release_decision_maker 1@
+    1@ = 0
+end
 
-0946: set_actor 10@ actions_uninterupted_by_weapon_fire 1
+060A: create_decision_maker_type 0 store_to 1@ // Stored safely in dedicated 1@
+0708: reset_decision_maker 1@ event 31         // Reset EVENT_GUN_AIMED_AT
+0708: reset_decision_maker 1@ event 15         // Reset EVENT_SHOT_FIRED
+0708: reset_decision_maker 1@ event 49         // Reset EVENT_SHOT_FIRED_WHIZZED_BY
+060B: set_actor 10@ decision_maker_to 1@
+
 0350: set_actor 10@ maintain_position_when_attacked 1
 0816: set_actor 10@ dont_chase_victim 1
 07CB: set_actor 10@ supporting_fire 0
@@ -1539,7 +1572,7 @@ end
 0770: set_actor 10@ target_priority 0
 0638: AS_actor 10@ stay_put 1
 
-// Clear all hostility and set Like towards Player
+// Clear all hostility and set Respect towards Player
 077C: clear_actor 10@ acquaintance 4 to_all_pedtypes
 077C: clear_actor 10@ acquaintance 3 to_all_pedtypes
 // Set Acquaintance 0 (RESPECT) towards player so she never cowers or puts hands up when aimed at
@@ -1580,6 +1613,13 @@ return
 0792: clear_char_tasks_immediately 10@
 0687: clear_actor 10@ task
 04EF: release_animation "LOWRIDER" // Cleanly release now that she stopped leaning!
+
+if
+    0019: 1@ > 0
+then
+    065C: release_decision_maker 1@ // Free hangout brain slot cleanly
+    1@ = 0
+end
 
 07AF: 24@ = player $PLAYER_CHAR group
 0631: set_actor 10@ in_group 24@
