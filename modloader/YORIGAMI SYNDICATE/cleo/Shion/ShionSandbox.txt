@@ -202,8 +202,6 @@ then
                         // Verify physical reaction (Stumbling, Skidding, or Water Cannon Hit Tasks)
                         25@ = 0
                         if or
-                            0E42: is_char_doing_task_id 10@ 1018 // TASK_COMPLEX_HIT_BY_WATER_CANNON
-                            0E42: is_char_doing_task_id 10@ 1019 // TASK_SIMPLE_HIT_BY_WATER_CANNON
                             0E48: is_char_fallen_on_ground 10@
                             0611: actor 10@ performing_animation "KO_SKID_FRONT"
                             0611: actor 10@ performing_animation "KO_SKID_BACK"

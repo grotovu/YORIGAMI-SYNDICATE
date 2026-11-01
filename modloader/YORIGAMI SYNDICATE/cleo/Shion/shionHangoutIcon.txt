@@ -1,0 +1,190 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+script_name "Sh_Icon"
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (SCOPED TO HANGOUT ICON)
+// =========================================================================
+const
+    MEM_PLAYER_FORM = 12
+    MEM_SHION_RECRUITED = 400
+end
+
+// --- INITIALIZATION ---
+31@ = 0 // Brain Master Pointer (Acquired asynchronously)
+1@ = -1 // Spot 1 Marker Handle (Idlewood Pizza)
+2@ = -1 // Spot 2 Marker Handle (Doherty Firestation)
+3@ = -1 // Spot 3 Marker Handle (LV Food Plaza)
+13@ = 0 // Shion Recruited State (0 = Loitering, 1 = Recruited)
+14@ = 0 // Player Form Tracker (0 = CJ, 1 = Jo'on, 2 = Shion)
+28@ = 0 // Active Interior ID
+
+:HangoutIcon_Loop
+wait 100
+
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    goto @HangoutIcon_Loop
+end
+
+01F5: 0@ = get_player_actor 0
+
+// Non-blocking Brain Connection: Never freezes if Y_Brain is still booting
+if
+    31@ == 0
+then
+    0AAA: 31@ = get_script_struct_named 'Y_Brain'
+    if
+        8039: not 31@ == 0
+    then
+        000A: 31@ += 0x3C
+        0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0
+    end
+end
+
+// Form Watchdog: Suppress hangout icon if player is currently Shion
+if
+    8039: not 31@ == 0
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PLAYER_FORM
+    0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        14@ == 2
+    then
+        gosub @Remove_All_Markers
+        goto @HangoutIcon_Loop
+    end
+end
+
+// Recruitment Watchdog: Suppress icon if Shion is already recruited into entourage
+if
+    8039: not 31@ == 0
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_RECRUITED
+    0A8D: 13@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        13@ == 1
+    then
+        gosub @Remove_All_Markers
+        goto @HangoutIcon_Loop
+    end
+end
+
+// Interior Watchdog: Hangout spots are strictly outdoors
+077E: get_active_interior 28@
+if
+    8039: not 28@ == 0
+then
+    gosub @Remove_All_Markers
+    goto @HangoutIcon_Loop
+end
+
+// Doherty Safehouse Protection: Strip marker if player approaches the outside save disk
+if
+    00EC: actor 0@ sphere 0 near_point -2026.8 156.8 radius 15.0 15.0
+then
+    if
+        8039: not 2@ == -1
+    then
+        0164: disable_marker 2@
+        2@ = -1
+    end
+    goto @HangoutIcon_Loop
+end
+
+// =========================================================================
+// 1. CREATE SKULL ICONS IN PROXIMITY (Matches Shion Spawn Radius)
+// =========================================================================
+
+// Spot 1: Los Santos (Idlewood behind Pizza Stack)
+if and
+    00EC: actor 0@ sphere 0 near_point 2112.7 -1822.8 radius 250.0 250.0
+    1@ == -1
+then
+    04CE: 1@ = create_icon_marker 23 at 2112.7 -1822.8 13.5
+end
+
+// Spot 2: San Fierro (Firestation next to Doherty Garage)
+if and
+    00EC: actor 0@ sphere 0 near_point -2059.3 98.4 radius 250.0 250.0
+    2@ == -1
+then
+    04CE: 2@ = create_icon_marker 23 at -2059.3 98.4 28.3
+end
+
+// Spot 3: Las Venturas (Food Plaza / Old Strip Alley)
+if and
+    00EC: actor 0@ sphere 0 near_point 2636.4 1654.8 radius 250.0 250.0
+    3@ == -1
+then
+    04CE: 3@ = create_icon_marker 23 at 2636.4 1654.8 11.0
+end
+
+// =========================================================================
+// 2. REMOVE ICONS WHEN MOVING BEYOND DESPAWN PERIMETER
+// =========================================================================
+
+// Remove Spot 1
+if
+    8039: not 1@ == -1
+then
+    if
+        80EC: not actor 0@ sphere 0 near_point 2112.7 -1822.8 radius 250.0 250.0
+    then
+        0164: disable_marker 1@
+        1@ = -1
+    end
+end
+
+// Remove Spot 2
+if
+    8039: not 2@ == -1
+then
+    if
+        80EC: not actor 0@ sphere 0 near_point -2059.3 98.4 radius 250.0 250.0
+    then
+        0164: disable_marker 2@
+        2@ = -1
+    end
+end
+
+// Remove Spot 3
+if
+    8039: not 3@ == -1
+then
+    if
+        80EC: not actor 0@ sphere 0 near_point 2636.4 1654.8 radius 250.0 250.0
+    then
+        0164: disable_marker 3@
+        3@ = -1
+    end
+end
+
+goto @HangoutIcon_Loop
+
+:Remove_All_Markers
+if
+    8039: not 1@ == -1
+then
+    0164: disable_marker 1@
+    1@ = -1
+end
+if
+    8039: not 2@ == -1
+then
+    0164: disable_marker 2@
+    2@ = -1
+end
+if
+    8039: not 3@ == -1
+then
+    0164: disable_marker 3@
+    3@ = -1
+end
+return

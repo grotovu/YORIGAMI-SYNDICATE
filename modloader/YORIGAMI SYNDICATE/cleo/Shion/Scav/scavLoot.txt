@@ -75,11 +75,15 @@ gosub @Check_Loot_Alive_Or_Exit
 03EB: clear_small_messages_only
 
 010B: 20@ = player $PLAYER_CHAR money
-if and
+if
     20@ >= 2
-    11@ >= 4 // Vending or Cart
 then
-    goto @Execute_Paid_Street_Meal
+    if or
+        11@ == 4
+        11@ == 5
+    then
+        goto @Execute_Paid_Street_Meal
+    end
 end
 
 // =========================================================================
@@ -139,22 +143,41 @@ then
         // REJECTED: Vendor refuses, Shion cowers/sulks (NO eating!)
         018C: play_sound 1057 at 0.0 0.0 0.0
 
-        // Shion cowers back from the angry vendor
-        05C5: AS_actor 10@ cower 2000 ms
-
+        // Hot Dog Van (588)
         if
             15@ == 588
         then
             0ADF: add_text_label "Y_CRJ0" text "~r~Vendor: ~s~\"Scram, bum! I run a business here!\"~n~~b~Shion: ~s~\"He threatened to back the van over me, Jo'on...\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_CRJ0' time 4000 flag 1
-        else
-            0ADF: add_text_label "Y_CRJ1" text "~r~Vendor: ~s~\"No cash, no food! Beat it!\"~n~~b~Shion: ~s~\"He swung an oily spatula right at my face, sis...\""
+        end
+
+        // Chili Cart (1340)
+        if
+            15@ == 1340
+        then
+            0ADF: add_text_label "Y_CRJ1" text "~r~Vendor: ~s~\"Get lost, moocher!\"~n~~b~Shion: ~s~\"He swung a greasy chili ladle right at my face, Jo'on...\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_CRJ1' time 4000 flag 1
         end
 
-        wait 2000
+        // Ice Cream Cart (1341)
+        if
+            15@ == 1341
+        then
+            0ADF: add_text_label "Y_CRJ2" text "~r~Vendor: ~s~\"Buy something or walk!\"~n~~b~Shion: ~s~\"He slammed the freezer lid right on my fingers, Jo'on...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CRJ2' time 4000 flag 1
+        end
+
+        // Noodle Cart (1342)
+        if
+            15@ == 1342
+        then
+            0ADF: add_text_label "Y_CRJ3" text "~r~Vendor: ~s~\"No handouts! Move along!\"~n~~b~Shion: ~s~\"He splashed hot noodle water at my feet, Jo'on...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CRJ3' time 4000 flag 1
+        end
     else
         // ACCEPTED: Vendor gives pity food, Shion eats
         04ED: load_animation "FOOD"
@@ -568,6 +591,167 @@ then
 end
 
 // =========================================================================
+// UNATTENDED FOOD CART OUTCOME (50% CHANCE TO FIND FREE SCRAPS)
+// =========================================================================
+if
+    11@ == 6
+then
+    0209: 27@ = random_int_in_ranges 0 100
+    if
+        001B: 50 > 27@
+    then
+        // SUCCESS (50%): Found free food left behind
+        04ED: load_animation "FOOD"
+
+        :Wait_Unattended_Eat_Anim
+        wait 0
+        if
+            84EE: not animation "FOOD" loaded
+        then
+            jump @Wait_Unattended_Eat_Anim
+        end
+
+        0605: actor 10@ perform_animation "EAT_Burger" IFP "FOOD" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time 2200
+        wait 2200
+        04EF: release_animation "FOOD"
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        0226: 25@ = actor $PLAYER_ACTOR health
+        if
+            001B: 176 > 25@
+        then
+            0223: set_actor $PLAYER_ACTOR health_to 176
+        end
+        0A8C: write_memory 0xB7CEDC size 2 value 0 virtual_protect 0
+
+        gosub @Feed_Shion_From_Scavenge
+
+        if
+            15@ == 588
+        then
+            0ADF: add_text_label "Y_USC0" text "~b~Shion: ~s~\"The driver stepped away... snatched two warm hot dogs off the grill, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_USC0' time 3500 flag 1
+            gosub @Increment_Shared_Dumpster_Counter
+        end
+        if
+            15@ == 1340
+        then
+            0ADF: add_text_label "Y_USC1" text "~b~Shion: ~s~\"Pot was still simmering and nobody around... scooped us a bowl of chili, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_USC1' time 3500 flag 1
+            gosub @Increment_Shared_Dumpster_Counter
+        end
+        if
+            15@ == 1341
+        then
+            0ADF: add_text_label "Y_USC2" text "~b~Shion: ~s~\"Freezer lid was unlocked... grab an ice cream bar before someone sees, sis.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_USC2' time 3500 flag 1
+            gosub @Increment_Shared_Dumpster_Counter
+        end
+        if
+            15@ == 1342
+        then
+            0ADF: add_text_label "Y_USC3" text "~b~Shion: ~s~\"Left the steamer running... snagged a box of noodles without paying a cent.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_USC3' time 3500 flag 1
+            gosub @Increment_Shared_Dumpster_Counter
+        end
+    else
+        // FAILURE (50%): Unattended cart was completely wiped clean
+        018C: play_sound 1057 at 0.0 0.0 0.0
+        0209: 18@ = random_int_in_ranges 0 2
+        if
+            18@ == 0
+        then
+            0ADF: add_text_label "Y_UEM0" text "~b~Shion: ~s~\"Nothing under the counter, Jo'on... looks like they locked up tight before leaving.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_UEM0' time 3500 flag 1
+        else
+            0ADF: add_text_label "Y_UEM1" text "~b~Shion: ~s~\"Tins are scraped clean and the burner is cold... not even a single scrap left, sis.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_UEM1' time 3500 flag 1
+        end
+    end
+    jump @Finish_Scavenge_Sequence
+end
+
+// =========================================================================
+// DEAD VENDOR FOOD CART OUTCOME (100% GUARANTEED SPOILS)
+// =========================================================================
+if
+    11@ == 7
+then
+    04ED: load_animation "FOOD"
+
+    :Wait_Dead_Vendor_Eat_Anim
+    wait 0
+    if
+        84EE: not animation "FOOD" loaded
+    then
+        jump @Wait_Dead_Vendor_Eat_Anim
+    end
+
+    0605: actor 10@ perform_animation "EAT_Burger" IFP "FOOD" framedelta 4.0 loop 0 lockX 1 lockY 1 lockF 0 time 2200
+    wait 2200
+    04EF: release_animation "FOOD"
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    0226: 25@ = actor $PLAYER_ACTOR health
+    if
+        001B: 176 > 25@
+    then
+        0223: set_actor $PLAYER_ACTOR health_to 176
+    end
+    0A8C: write_memory 0xB7CEDC size 2 value 0 virtual_protect 0
+
+    gosub @Feed_Shion_From_Scavenge
+
+    // Hot Dog Van (588)
+    if
+        15@ == 588
+    then
+        0ADF: add_text_label "Y_DSC0" text "~b~Shion: ~s~\"Took the whole tray of hot dogs... still sizzling. Best haul we've had all week, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DSC0' time 3500 flag 1
+        gosub @Increment_Shared_Dumpster_Counter
+    end
+
+    // Chili Cart (1340)
+    if
+        15@ == 1340
+    then
+        0ADF: add_text_label "Y_DSC1" text "~b~Shion: ~s~\"Grabbed the whole chili pot and a stack of bowls... no spatula swinging this time.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DSC1' time 3500 flag 1
+        gosub @Increment_Shared_Dumpster_Counter
+    end
+
+    // Ice Cream Cart (1341)
+    if
+        15@ == 1341
+    then
+        0ADF: add_text_label "Y_DSC2" text "~b~Shion: ~s~\"Emptied the freezer box... brain freeze is better than starving, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DSC2' time 3500 flag 1
+        gosub @Increment_Shared_Dumpster_Counter
+    end
+
+    // Noodle Cart (1342)
+    if
+        15@ == 1342
+    then
+        0ADF: add_text_label "Y_DSC3" text "~b~Shion: ~s~\"Took the whole noodle basket and the broth ladle... free lunch, just like you promised.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_DSC3' time 3500 flag 1
+        gosub @Increment_Shared_Dumpster_Counter
+    end
+
+    jump @Finish_Scavenge_Sequence
+end
+
+// =========================================================================
 // REJOIN GROUP & CLEANUP
 // =========================================================================
 :Finish_Scavenge_Sequence
@@ -656,9 +840,17 @@ else
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_CPD0' time 3500 flag 1
     else
-        0ADF: add_text_label "Y_CPD1" text "~b~Shion: ~s~\"Hot food that didn't come out of a paper bag on the curb... tastes incredible, Jo'on.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_CPD1' time 3500 flag 1
+        if
+            15@ == 1341
+        then
+            0ADF: add_text_label "Y_CPD1" text "~b~Shion: ~s~\"Real ice cream that didn't melt all over the sidewalk... tastes incredible, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CPD1' time 3500 flag 1
+        else
+            0ADF: add_text_label "Y_CPD2" text "~b~Shion: ~s~\"Hot food that didn't come out of a paper bag on the curb... tastes incredible, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_CPD2' time 3500 flag 1
+        end
     end
 end
 

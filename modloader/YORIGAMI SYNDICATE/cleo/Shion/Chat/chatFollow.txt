@@ -1,0 +1,661 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+03A4: script_name 'Sh_FolC'
+
+// 0@ = Mode: 0 = Recall (G), 1 = Stay Put (H), 2 = Lost (>130m), 3 = Dead
+0085: 10@ = 0@
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0 
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+// 31@ NOW HOLDS THE MASTER POINTER.
+
+// Safety: Only Jo'on delivers companion follow banter
+0085: 30@ = 31@
+000A: 30@ += 12 // MEM_PLAYER_FORM
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+if
+    8039: not 2@ == 1
+then
+    0A93: terminate_this_custom_script
+end
+
+if or
+    8256: not is_player_playing $PLAYER_CHAR
+    0E25: is_on_cutscene
+    016B: fading
+then
+    0A93: terminate_this_custom_script
+end
+
+// Preempt low-tier ambient chat and combat chatter
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Star"
+
+// =========================================================================
+// MODE 0: RECALL BANTER (G KEY)
+// =========================================================================
+if
+    0039: 10@ == 0
+then
+    // Priority channel must be completely free (0)
+    0085: 30@ = 31@
+    000A: 30@ += 20 // MEM_PRIORITY_LOCK
+    0A8D: 3@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        8039: not 3@ == 0
+    then
+        0A93: terminate_this_custom_script
+    end
+
+    // Claim Tier 1 Lock
+    0085: 30@ = 31@
+    000A: 30@ += 20
+    0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+    // Evaluate combat status
+    4@ = 0
+    01C0: 5@ = player $PLAYER_CHAR wanted_level
+    if
+        0019: 5@ > 0
+    then
+        4@ = 1
+    end
+    if
+        4@ == 0
+    then
+        if or
+            0E47: is_char_fighting $PLAYER_ACTOR
+            0E46: is_char_using_gun $PLAYER_ACTOR
+            02E0: actor $PLAYER_ACTOR firing_weapon
+        then
+            4@ = 1
+        end
+    end
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+
+    // Combat Recall
+    if
+        0039: 4@ == 1
+    then
+        0209: 1@ = random_int_in_ranges 0 5
+        if
+            0039: 1@ == 0
+        then
+            0ADF: add_text_label "Y_RC_C0" text "~y~Jo'on: ~s~\"Get over here, Shion! Now!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RC_C0' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 1
+        then
+            0ADF: add_text_label "Y_RC_C1" text "~y~Jo'on: ~s~\"To me, Shion! Move your ass!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RC_C1' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 2
+        then
+            0ADF: add_text_label "Y_RC_C2" text "~y~Jo'on: ~s~\"Dammit, Shion! Get behind me!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RC_C2' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 3
+        then
+            0ADF: add_text_label "Y_RC_C3" text "~y~Jo'on: ~s~\"Here! Right now! Don't just stand there!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RC_C3' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 4
+        then
+            0ADF: add_text_label "Y_RC_C4" text "~y~Jo'on: ~s~\"Shion, fall in! Quit daydreamin' in a firefight!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RC_C4' time 2500 flag 1
+        end
+    else
+        // Check if Shion is close (<= 5.0m) or far (> 5.0m)
+        0085: 30@ = 31@
+        000A: 30@ += 116 // MEM_SHION_HANDLE
+        0A8D: 6@ = read_memory 30@ size 4 virtual_protect 0
+        7@ = 0
+        if and
+            6@ > 0
+            056D: actor 6@ defined
+            0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 6@ radius 5.0
+        then
+            7@ = 1
+        end
+
+        if
+            0039: 7@ == 1
+        then
+            // Check Shion's physical condition (< 800 HP = beat up / bloody)
+            0226: 22@ = actor 6@ health
+            23@ = 0
+            if
+                22@ < 800
+            then
+                23@ = 1
+            end
+
+            // Check Shion's shared hunger state directly from master heap
+            0085: 30@ = 31@
+            000A: 30@ += 404 // MEM_SHION_HUNGRY
+            0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+
+            // Select contextual topic: 0 = Normal, 1 = Injured (20%), 2 = Hungry (10%)
+            8@ = 0
+            0209: 9@ = random_int_in_ranges 0 100
+
+            if and
+                0039: 23@ == 1
+                0039: 24@ == 1
+            then
+                // Both active: 0..19 (20% Injured), 20..29 (10% Hungry), 30..99 (70% Normal)
+                if
+                    9@ < 20
+                then
+                    8@ = 1
+                else
+                    if
+                        9@ < 30
+                    then
+                        8@ = 2
+                    end
+                end
+            else
+                if
+                    0039: 23@ == 1
+                then
+                    // Only Injured: 0..19 (20%), 20..99 (80% Normal)
+                    if
+                        9@ < 20
+                    then
+                        8@ = 1
+                    end
+                end
+                if
+                    0039: 24@ == 1
+                then
+                    // Only Hungry: 0..9 (20%), 10..99 (80% Normal)
+                    if
+                        9@ < 20
+                    then
+                        8@ = 2
+                    end
+                end
+            end
+
+            // Context 1: Injured & Bleeding
+            if
+                0039: 8@ == 1
+            then
+                0209: 1@ = random_int_in_ranges 0 5
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_RC_I0" text "~y~Jo'on: ~s~\"Look at ya, bleedin' all over the place! Don't get blood on my shoes!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_I0' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_RC_I1" text "~y~Jo'on: ~s~\"You're all beat up, Shion! Quit leakin' on the sidewalk and walk it off!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_I1' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 2
+                then
+                    0ADF: add_text_label "Y_RC_I2" text "~y~Jo'on: ~s~\"Quit slouchin' and hold your cuts together! You're messin' up my vibe!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_I2' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_RC_I3" text "~y~Jo'on: ~s~\"Dammit, who beat ya up like that? Duck next time instead of catchin' hits!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_I3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_RC_I4" text "~y~Jo'on: ~s~\"You look like a chewed-up rag, Shion! Stop bleedin' on my clothes!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_I4' time 2500 flag 1
+                end
+            end
+
+            // Context 2: Starving & Stomach Growling
+            if
+                0039: 8@ == 2
+            then
+                0209: 1@ = random_int_in_ranges 0 5
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_RC_H0" text "~y~Jo'on: ~s~\"I can hear your stomach growlin' from over here! Shut it up, will ya?!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_H0' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_RC_H1" text "~y~Jo'on: ~s~\"Your belly's makin' a damn racket, Shion! Quit starin' at me like I'm food!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_H1' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 2
+                then
+                    0ADF: add_text_label "Y_RC_H2" text "~y~Jo'on: ~s~\"Quit rumblin' back there! You sound like a busted engine about to quit!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_H2' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_RC_H3" text "~y~Jo'on: ~s~\"Is that your guts groanin'?! Move faster and maybe we'll go grab grease!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_H3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_RC_H4" text "~y~Jo'on: ~s~\"Quit that loud-ass growlin', Shion! You're embarrassin' me on the street!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_H4' time 2500 flag 1
+                end
+            end
+
+            // Context 0: Standard Relaxed Recall
+            if
+                0039: 8@ == 0
+            then
+                0209: 1@ = random_int_in_ranges 0 5
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_RC_N0" text "~y~Jo'on: ~s~\"Hey, pay attention. You're startin' to space out.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_N0' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_RC_N1" text "~y~Jo'on: ~s~\"Still breathin'? Fix your posture, you're slouchin'.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_N1' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 2
+                then
+                    0ADF: add_text_label "Y_RC_N2" text "~y~Jo'on: ~s~\"Don't wander off. Stick close to me.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_N2' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_RC_N3" text "~y~Jo'on: ~s~\"Stop starin' at the cracks in the pavement, Shion.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_N3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_RC_N4" text "~y~Jo'on: ~s~\"Eyes front, sis. Look like you've got somewhere to be.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_N4' time 2500 flag 1
+                end
+            end
+        else
+            // Relaxed Recall (Far > 5.0m)
+            0209: 1@ = random_int_in_ranges 0 5
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_RC_F0" text "~y~Jo'on: ~s~\"Keep up, ya slowpoke!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_RC_F0' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_RC_F1" text "~y~Jo'on: ~s~\"Oi, Shion! Pick up the pace!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_RC_F1' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 2
+            then
+                0ADF: add_text_label "Y_RC_F2" text "~y~Jo'on: ~s~\"What'cha doin' starin' at nothin'? Walk!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_RC_F2' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 3
+            then
+                0ADF: add_text_label "Y_RC_F3" text "~y~Jo'on: ~s~\"Quit draggin' your feet back there! Move it!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_RC_F3' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 4
+            then
+                0ADF: add_text_label "Y_RC_F4" text "~y~Jo'on: ~s~\"I ain't waitin' around all day, Shion! Hurry up!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_RC_F4' time 2500 flag 1
+            end
+        end
+    end
+
+    0001: wait 2500 ms
+    0085: 30@ = 31@
+    000A: 30@ += 20
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A93: terminate_this_custom_script
+end
+
+// =========================================================================
+// MODE 1: STAY PUT BANTER (H KEY)
+// =========================================================================
+if
+    0039: 10@ == 1
+then
+    0085: 30@ = 31@
+    000A: 30@ += 20
+    0A8D: 3@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        8039: not 3@ == 0
+    then
+        0A93: terminate_this_custom_script
+    end
+
+    0085: 30@ = 31@
+    000A: 30@ += 20
+    0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+    4@ = 0
+    01C0: 5@ = player $PLAYER_CHAR wanted_level
+    if
+        0019: 5@ > 0
+    then
+        4@ = 1
+    end
+    if
+        4@ == 0
+    then
+        if or
+            0E47: is_char_fighting $PLAYER_ACTOR
+            0E46: is_char_using_gun $PLAYER_ACTOR
+            02E0: actor $PLAYER_ACTOR firing_weapon
+        then
+            4@ = 1
+        end
+    end
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+
+    if
+        0039: 4@ == 1
+    then
+        0209: 1@ = random_int_in_ranges 0 5
+        if
+            0039: 1@ == 0
+        then
+            0ADF: add_text_label "Y_SP_C0" text "~y~Jo'on: ~s~\"Stay down right there, Shion!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP_C0' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 1
+        then
+            0ADF: add_text_label "Y_SP_C1" text "~y~Jo'on: ~s~\"Take cover and don't move!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP_C1' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 2
+        then
+            0ADF: add_text_label "Y_SP_C2" text "~y~Jo'on: ~s~\"Hold that spot! Keep your head down!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP_C2' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 3
+        then
+            0ADF: add_text_label "Y_SP_C3" text "~y~Jo'on: ~s~\"Plant yourself! I'm handlin' this!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP_C3' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 4
+        then
+            0ADF: add_text_label "Y_SP_C4" text "~y~Jo'on: ~s~\"Don't you dare step into the line of fire! Stay!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP_C4' time 2500 flag 1
+        end
+    else
+        0209: 1@ = random_int_in_ranges 0 5
+        if
+            0039: 1@ == 0
+        then
+            0ADF: add_text_label "Y_SP_N0" text "~y~Jo'on: ~s~\"Stay right here, Shion. Don't wander off.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP_N0' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 1
+        then
+            0ADF: add_text_label "Y_SP_N1" text "~y~Jo'on: ~s~\"Hold it right there. Don't move a muscle.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP_N1' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 2
+        then
+            0ADF: add_text_label "Y_SP_N2" text "~y~Jo'on: ~s~\"Wait here. And quit starin' at strangers while I'm gone.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP_N2' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 3
+        then
+            0ADF: add_text_label "Y_SP_N3" text "~y~Jo'on: ~s~\"Plant your feet, Shion. I'll be right back.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP_N3' time 2500 flag 1
+        end
+        if
+            0039: 1@ == 4
+        then
+            0ADF: add_text_label "Y_SP_N4" text "~y~Jo'on: ~s~\"Don't move an inch. Stand there and guard the curb.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP_N4' time 2500 flag 1
+        end
+    end
+
+    0001: wait 2500 ms
+    0085: 30@ = 31@
+    000A: 30@ += 20
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A93: terminate_this_custom_script
+end
+
+// =========================================================================
+// MODE 2: SHION LOST BANTER (> 130m AWAY)
+// =========================================================================
+if
+    0039: 10@ == 2
+then
+    0085: 30@ = 31@
+    000A: 30@ += 20
+    0A8C: write_memory 30@ size 4 value 3 virtual_protect 0
+    018C: play_sound 1057 at 0.0 0.0 0.0
+
+    0209: 1@ = random_int_in_ranges 0 3
+    if
+        0039: 1@ == 0
+    then
+        0ADF: add_text_label "Y_LL0A" text "~y~Jo'on: ~s~\"Where'd she go?! Shion! Did ya get distracted by a shiny soda can again?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_LL0A' time 3500 flag 1
+    end
+    if
+        0039: 1@ == 1
+    then
+        0ADF: add_text_label "Y_LL0B" text "~y~Jo'on: ~s~\"Lost her again... Typical. If she got kidnapped, I'm billin' 'em for emotional damages!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_LL0B' time 3500 flag 1
+    end
+    if
+        0039: 1@ == 2
+    then
+        0ADF: add_text_label "Y_LL0C" text "~y~Jo'on: ~s~\"I turn my back for five seconds and she's gone! Pick up the pace, ya slowpoke!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_LL0C' time 3500 flag 1
+    end
+
+    0001: wait 3500 ms
+    0085: 30@ = 31@
+    000A: 30@ += 20
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A93: terminate_this_custom_script
+end
+
+// =========================================================================
+// MODE 3: SHION DEAD REACTION
+// =========================================================================
+if
+    0039: 10@ == 3
+then
+    // Terminate friendly fire daemon only now that Shion has died
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_FF"
+
+    0085: 30@ = 31@
+    000A: 30@ += 20
+    0A8C: write_memory 30@ size 4 value 3 virtual_protect 0
+    03EB: clear_small_messages_only
+    018C: play_sound 1057 at 0.0 0.0 0.0
+
+    // Master Authority: Solely trust the synchronous frame-perfect telemetry from Death Tracker
+    0085: 30@ = 31@
+    000A: 30@ += 384 // MEM_SHION_KILLER_IS_JOON
+    0A8D: 5@ = read_memory 30@ size 4 virtual_protect 0
+
+    // Friendly Fire Fatality (Jo'on killed her)
+    if
+        0039: 5@ == 1
+    then
+        0209: 1@ = random_int_in_ranges 0 3
+        if
+            0039: 1@ == 0
+        then
+            0ADF: add_text_label "Y_LSK0A" text "~y~Jo'on: ~s~\"Wait... oh shit, I killed her...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_LSK0A' time 3500 flag 1
+            0001: wait 3500 ms
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_LSK0B" text "~y~Jo'on: ~s~\"Shion?! Get up! You're a god, don't pin a murder rap on me!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_LSK0B' time 3500 flag 1
+            0001: wait 3500 ms
+        end
+        if
+            0039: 1@ == 1
+        then
+            0ADF: add_text_label "Y_LSK1A" text "~y~Jo'on: ~s~\"Oh shit, did I just do that?! Shion?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_LSK1A' time 3500 flag 1
+            0001: wait 3500 ms
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_LSK1B" text "~y~Jo'on: ~s~\"I was aimin' past ya! Get off the asphalt before someone calls the cops!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_LSK1B' time 3500 flag 1
+            0001: wait 3500 ms
+        end
+        if
+            0039: 1@ == 2
+        then
+            0ADF: add_text_label "Y_LSK2A" text "~y~Jo'on: ~s~\"Wait... she's not movin'. Oh shit, I actually clocked her...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_LSK2A' time 3500 flag 1
+            0001: wait 3500 ms
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_LSK2B" text "~y~Jo'on: ~s~\"Wake up, ya idiot! Who's gonna carry my shopping bags now?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_LSK2B' time 3500 flag 1
+            0001: wait 3500 ms
+        end
+    else
+        // Combat Fatality (Killed by enemies / world)
+        0209: 1@ = random_int_in_ranges 0 3
+        if
+            0039: 1@ == 0
+        then
+            0ADF: add_text_label "Y_LS0A" text "~y~Jo'on: ~s~\"Shion?! HEY! Don't just lie there! Who's supposed to take the bullets for me?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_LS0A' time 4000 flag 1
+            0001: wait 4000 ms
+        end
+        if
+            0039: 1@ == 1
+        then
+            0ADF: add_text_label "Y_LS0B" text "~y~Jo'on: ~s~\"Dammit, Shion! Why'd ya have to bring your rotten luck into a shootout?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_LS0B' time 4000 flag 1
+            0001: wait 4000 ms
+        end
+        if
+            0039: 1@ == 2
+        then
+            0ADF: add_text_label "Y_LS0C" text "~y~Jo'on: ~s~\"Shion?! Quit playin' dead on the asphalt! Get up, you're embarrassin' me!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_LS0C' time 4000 flag 1
+            0001: wait 4000 ms
+        end
+    end
+
+    0085: 30@ = 31@
+    000A: 30@ += 20
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A93: terminate_this_custom_script
+end
+
+0A93: terminate_this_custom_script

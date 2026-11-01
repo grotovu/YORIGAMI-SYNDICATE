@@ -18,6 +18,7 @@ const
     MEM_ALLOC_SMASHER = 40
     MEM_SHION_HANDLE = 116
     MEM_CAR_SMASH_SIGNAL = 372
+    MEM_SHION_DEATH_FLAG = 380
 end
 
 :Connect_To_Brain
@@ -128,6 +129,25 @@ then
                 01B9: set_actor $PLAYER_ACTOR armed_weapon_to 0
             end
         end
+    end
+end
+
+// -------------------------------------------------------------------------
+// CAR SMASHER SIGNAL EXPIRATION WATCHDOG
+// -------------------------------------------------------------------------
+if
+    0019: TIMERB > 4000
+then
+    // Only reset if Shion has NOT died (preserves signal for post-death complaint!)
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_DEATH_FLAG
+    0A8D: 26@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        0039: 26@ == 0
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_CAR_SMASH_SIGNAL
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
     end
 end
 
@@ -502,6 +522,7 @@ then
                         0085: 30@ = 31@
                         000A: 30@ += MEM_CAR_SMASH_SIGNAL
                         0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+                        TIMERB = 0 // Start 4000ms active window covering detonation & blast delay
 
                         if
                             002D: 28@ >= 18@
@@ -525,9 +546,8 @@ then
                         0EDE: set_script_event_char_damage 1 @OnBlingDamage 3@
                     else
                         0224: set_car 29@ health_to 27@
+                        9@ = 0 // Release lock only when the vehicle did NOT detonate
                     end
-
-                    9@ = 0 // Release lock
                 end
             end
         end
