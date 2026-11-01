@@ -47,6 +47,7 @@ end
 0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
 // Protected Doorway & Transition Registers
+1@ = 0    // Dedicated Non-blocking Recall Dialogue Lock Timer (ms)
 7@ = 0.0  // Doorway Arrival Z Angle (float)
 077E: get_active_interior_to 8@ // Seed with current interior so spawning indoors does not trigger a false transition
 13@ = 0   // Transition State (0 = Idle, 1 = Wait Mesh, 2 = Doorway Clearance)
@@ -82,6 +83,28 @@ then
     then
         9@ = 0
         11@ = 0
+    end
+end
+
+// Tick down recall dialogue priority lock timer
+if
+    0019: 1@ > 0
+then
+    000E: 1@ -= 50
+    if
+        002B: 0 >= 1@
+    then
+        1@ = 0
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+        if
+            2@ == 1
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+        end
     end
 end
 
@@ -267,23 +290,127 @@ then
         00A0: store_actor 10@ position_to 23@ 24@ 25@
         050A: 26@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 23@ 24@ 25@
 
-        // Anti-Fatigue Watchdog: Suppress "out of breath" tired animation (Infinite Stamina)
-        if or
-            0E42: is_char_doing_task_id 10@ 219 // TASK_SIMPLE_TIRED
-            0611: actor 10@ performing_animation "IDLE_TIRED"
+        // -----------------------------------------------------------------
+        // Vehicle Passive Watchdog: Clear Stay Put if Shion is in the Car
+        // -----------------------------------------------------------------
+        if
+            00DF: actor $PLAYER_ACTOR driving
         then
-            0687: clear_actor 10@ task
-            0E96: clear_char_primary_tasks 10@
-            0E97: clear_char_secondary_tasks 10@
-            07AF: 12@ = player $PLAYER_CHAR group
-            0631: put_actor 10@ in_group 12@
+            03C0: 27@ = actor $PLAYER_ACTOR car
             if
-                0039: 15@ == 1
+                00DB: actor 10@ in_car 27@
             then
-                07B3: set_group 12@ give_command 1 // Stay Put
-                0638: AS_actor 10@ stay_put 1
-            else
-                07B3: set_group 12@ give_command 0 // Follow Leader
+                if
+                    0039: 15@ == 1
+                then
+                    15@ = 0
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_SHION_STAY_PUT
+                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                    07AF: 12@ = player $PLAYER_CHAR group
+                    0631: put_actor 10@ in_group 12@
+                    07B3: set_group 12@ give_command 0
+                end
+            end
+        end
+
+        // -----------------------------------------------------------------
+        // [G] Key In-Car: Warp Shion into Passenger Seat & Clear Stay Put
+        // -----------------------------------------------------------------
+        if and
+            0449: actor $PLAYER_ACTOR in_a_car
+            8449: not actor 10@ in_a_car
+            8818: not actor 10@ in_air
+            0AB0: is_key_pressed 71 // G Key
+            8AB0: not is_key_pressed 3@ // Y Key NOT held
+        then
+            :Wait_G_InCar_Rel
+            wait 50
+            if or
+                0117: player $PLAYER_CHAR wasted
+                0741: actor $PLAYER_ACTOR busted
+                856D: not actor 10@ defined
+                0118: actor 10@ dead
+            then
+                jump @ShionFollow_Loop
+            end
+            if
+                0AB0: is_key_pressed 71
+            then
+                jump @Wait_G_InCar_Rel
+            end
+
+            03C0: 27@ = actor $PLAYER_ACTOR car
+            2@ = -1
+            01EA: 24@ = car 27@ max_passengers
+
+            // Prioritize Front Passenger Seat (Seat 0) if vehicle supports passengers
+            if
+                0019: 24@ > 0
+            then
+                25@ = -1
+                0432: 25@ = get_actor_handle_from_car 27@ passenger_seat 0
+                if or
+                    0039: 25@ == -1
+                    856D: not actor 25@ defined
+                then
+                    2@ = 0
+                else
+                    // Front seat is physically taken; check rear left (Seat 1)
+                    if
+                        0019: 24@ > 1
+                    then
+                        25@ = -1
+                        0432: 25@ = get_actor_handle_from_car 27@ passenger_seat 1
+                        if or
+                            0039: 25@ == -1
+                            856D: not actor 25@ defined
+                        then
+                            2@ = 1
+                        else
+                            // Check rear right (Seat 2)
+                            if
+                                0019: 24@ > 2
+                            then
+                                25@ = -1
+                                0432: 25@ = get_actor_handle_from_car 27@ passenger_seat 2
+                                if or
+                                    0039: 25@ == -1
+                                    856D: not actor 25@ defined
+                                then
+                                    2@ = 2
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+
+            if
+                0029: 2@ >= 0
+            then
+                00A0: store_actor 10@ position_to 23@ 24@ 25@
+                0A92: create_custom_thread "Shion\FX_Warp.c" 0 23@ 24@ 25@
+
+                0687: clear_actor 10@ task
+                0E96: clear_char_primary_tasks 10@
+                0E97: clear_char_secondary_tasks 10@
+                warp_char_into_car_as_passenger 10@ car 27@ seat 2@
+
+                0A92: create_custom_thread "Shion\FX_Warp.c" 1 10@ 0.0 0.0
+                018C: play_sound 1058 at 0.0 0.0 0.0
+
+                // Cancel Stay Put mode and re-link group
+                15@ = 0
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_STAY_PUT
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+                07AF: 12@ = player $PLAYER_CHAR group
+                0631: put_actor 10@ in_group 12@
+                07B3: set_group 12@ give_command 0
+
+                0A92: create_custom_thread "Shion\Chat\chatFollow.c" 0
             end
         end
 
@@ -327,97 +454,86 @@ then
             07B3: set_group 12@ give_command 1 // Group Stay Put / Hold Ground
             0638: AS_actor 10@ stay_put 1
 
-            // Trigger Jo'on Stay Put Dialogue via chatFollow
+            // Trigger Jo'on Stay Put Dialogue via Sh_FolC
             0A92: create_custom_thread "Shion\Chat\chatFollow.c" 1
         end
 
         // -----------------------------------------------------------------
-        // AUTO-CANCEL STAY PUT WHEN SHION ENTERS A VEHICLE
+        // [G] Key: Follow, Break Combat Freeze, or Free Shion from Car
         // -----------------------------------------------------------------
         if and
-            15@ == 1
-            0449: actor 10@ in_a_car
-        then
-            15@ = 0
-            0085: 30@ = 31@
-            000A: 30@ += MEM_SHION_STAY_PUT
-            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-            
-            07AF: 12@ = player $PLAYER_CHAR group
-            0631: put_actor 10@ in_group 12@
-            07B3: set_group 12@ give_command 0 // Force group follow leader
-        end
-
-        // -----------------------------------------------------------------
-        // [G] Key: Follow, Break Combat Freeze, or Double-Tap Instant Warp
-        // -----------------------------------------------------------------
-        if and
+            8449: not actor $PLAYER_ACTOR in_a_car // Jo'on on foot
             8818: not actor 10@ in_air
-            0AB0: is_key_pressed 71 // G Key
-            8AB0: not is_key_pressed 3@ // Y Key NOT held
         then
-            :Wait_G_Key_Rel
-            wait 50
-            if or
-                0117: player $PLAYER_CHAR wasted
-                0741: actor $PLAYER_ACTOR busted
-                856D: not actor 10@ defined
-                0118: actor 10@ dead
-            then
-                jump @ShionFollow_Loop
-            end
-            if
-                0AB0: is_key_pressed 71 // G Key
-            then
-                jump @Wait_G_Key_Rel
-            end
-
-            // G Key released cleanly: cancel Stay Put mode globally
-            15@ = 0
-            0085: 30@ = 31@
-            000A: 30@ += MEM_SHION_STAY_PUT
-            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-
-            // Reassert group follow command (Overrides Hold Position)
-            07AF: 12@ = player $PLAYER_CHAR group
-            0631: put_actor 10@ in_group 12@
-            07B3: set_group 12@ give_command 0 // Force group follow leader
-
-            // Process On-Foot Warping & Dialogue ONLY if both are on foot
             if and
-                8449: not actor $PLAYER_ACTOR in_a_car
-                8449: not actor 10@ in_a_car
+                0AB0: is_key_pressed 71 // G Key
+                8AB0: not is_key_pressed 3@ // Y Key NOT held
             then
+                :Wait_G_Key_Rel
+                wait 50
+                if or
+                    0117: player $PLAYER_CHAR wasted
+                    0741: actor $PLAYER_ACTOR busted
+                    856D: not actor 10@ defined
+                    0118: actor 10@ dead
+                then
+                    jump @ShionFollow_Loop
+                end
+                if
+                    0AB0: is_key_pressed 71 // G Key
+                then
+                    jump @Wait_G_Key_Rel
+                end
+
+                // G Key released cleanly: cancel Stay Put mode
+                15@ = 0
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_STAY_PUT
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
                 000A: 11@ += 1 // Increment tap counter
 
-                // DOUBLE-TAP / SPAM G: Emergency Hitodama Warp right to Jo'on
+                // If Shion is trapped in a vehicle, pull her out instantly
                 if
-                    0029: 11@ >= 2
+                    0449: actor 10@ in_a_car
                 then
                     11@ = 0
                     9@ = 0
                     gosub @Execute_Shion_OnFoot_Warp
                 else
-                    // SINGLE TAP G: Start 500ms double-tap window
-                    9@ = 500
-
-                    // If far away (> 15m), warp immediately
+                    // DOUBLE-TAP / SPAM G: Emergency Hitodama Warp right to Jo'on
                     if
-                        0021: 26@ > 15.0
+                        0029: 11@ >= 2
                     then
+                        11@ = 0
+                        9@ = 0
                         gosub @Execute_Shion_OnFoot_Warp
                     else
-                        // If nearby (<= 15m) but frozen by cops/enemies: forcibly break tasks and run to Jo'on
-                        0687: clear_actor 10@ task
-                        0E96: clear_char_primary_tasks 10@
-                        0E97: clear_char_secondary_tasks 10@
+                        // SINGLE TAP G: Start 500ms double-tap window
+                        9@ = 500
 
-                        05D9: AS_actor 10@ run_to_actor $PLAYER_ACTOR timelimit 4000 stop_within_radius 2.0
-                        018C: play_sound 1058 at 0.0 0.0 0.0
+                        // If far away (> 15m), warp immediately
+                        if
+                            0021: 26@ > 15.0
+                        then
+                            gosub @Execute_Shion_OnFoot_Warp
+                        else
+                            // Nearby (<= 15m): forcibly break tasks and run to Jo'on
+                            0687: clear_actor 10@ task
+                            0E96: clear_char_primary_tasks 10@
+                            0E97: clear_char_secondary_tasks 10@
+
+                            07AF: 12@ = player $PLAYER_CHAR group
+                            0631: put_actor 10@ in_group 12@
+                            07B3: set_group 12@ give_command 0 // Force group follow leader
+
+                            05D9: AS_actor 10@ run_to_actor $PLAYER_ACTOR timelimit 4000 stop_within_radius 2.0
+                            018C: play_sound 1058 at 0.0 0.0 0.0
+                        end
                     end
                 end
 
-                // Trigger Jo'on Recall Dialogue via chatFollow
+                // Evaluate and play Jo'on recall banter via Sh_FolC
                 0A92: create_custom_thread "Shion\Chat\chatFollow.c" 0
             end
         end
@@ -427,7 +543,6 @@ then
         // -----------------------------------------------------------------
         if and
             8449: not actor $PLAYER_ACTOR in_a_car
-            8449: not actor 10@ in_a_car
             15@ == 0 // Only when NOT in Stay Put mode!
             8818: not actor 10@ in_air
         then
@@ -456,7 +571,11 @@ then
 
             0085: 30@ = 31@
             000A: 30@ += MEM_SHION_HANDLE
-            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0 // Informs SpawnShion.cs!
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
             0A93: terminate_this_custom_script
         end
@@ -473,8 +592,16 @@ then
         if
             2@ == 1
         then
-            // Cleanly exit so chatDismiss.c can take full ownership of Shion's ped!
-            // Do NOT remove actor references or wipe MEM_SHION_HANDLE; chatDismiss owns them!
+            0085: 30@ = 31@
+            000A: 30@ += MEM_INTENTIONAL_DISM
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+            01C2: remove_references_to_actor 10@
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_HANDLE
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
             0A93: terminate_this_custom_script
         else
             0631: put_actor 10@ in_group 12@
@@ -505,6 +632,7 @@ goto @ShionFollow_Loop
 
 07AF: 12@ = player $PLAYER_CHAR group
 0631: put_actor 10@ in_group 12@
+07B3: set_group 12@ give_command 0
 
 0A92: create_custom_thread "Shion\FX_Warp.c" 1 10@ 0.0 0.0
 018C: play_sound 1058 at 0.0 0.0 0.0
