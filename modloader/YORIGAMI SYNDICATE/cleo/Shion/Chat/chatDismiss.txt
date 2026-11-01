@@ -817,9 +817,9 @@ then
     end
 end
 
-0085: 18@ = TIMERA
+0085: 8@ = TIMERA
 if
-    001D: 19@ > 18@
+    001D: 19@ > 8@
 then
     0002: jump @Wait_Dismiss_Dialogue_Loop
 end
