@@ -86,6 +86,8 @@ end
 
 // Permanently unlock 7-slot group capacity (bypasses zero-respect lockout on new games!)
 08F4: set_max_group_members 7
+07AF: 12@ = player $PLAYER_CHAR group
+0940: set_group 12@ enters_leaders_vehicle 1
 
 // =========================================================================
 // ENGINE PATCH: DISABLE GANG SIGN HAND ANIMATION & TEXTURE LOOKUP (0x0061AF60)
