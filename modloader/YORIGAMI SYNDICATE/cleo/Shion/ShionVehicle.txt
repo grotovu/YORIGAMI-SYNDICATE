@@ -547,6 +547,16 @@ goto @ShionVehicle_Loop
 // SUBROUTINE: RANDOMIZED WARP CATCH-UP DIALOGUE
 // =========================================================================
 :Play_Warp_Catchup_Dialogue
+// Filter out planes, helis, and boats (Car and Motorbike only)
+if or
+    04AB: actor $PLAYER_ACTOR driving_plane
+    04A9: actor $PLAYER_ACTOR driving_heli
+    04A7: actor $PLAYER_ACTOR driving_boat
+then
+    gosub @Release_Channel_P3
+    return
+end
+
 0209: 15@ = random_int_in_range 0 5
 
 // Silent Warp (20% chance): Unblock thread immediately
@@ -557,6 +567,16 @@ then
     return
 end
 
+// Check if driving a motorbike
+if
+    047A: actor $PLAYER_ACTOR driving_bike
+then
+    goto @Play_Warp_Bike_Dialogue
+end
+
+// -------------------------------------------------------------------------
+// CAR / AUTOMOBILE BANTER POOL
+// -------------------------------------------------------------------------
 // The Abandoned Jinx
 if
     15@ == 1
@@ -633,7 +653,89 @@ then
     wait 3000
 end
 
-// Unlock dialogue channel when dialogue finishes
+gosub @Release_Channel_P3
+return
+
+// -------------------------------------------------------------------------
+// MOTORBIKE BANTER POOL
+// -------------------------------------------------------------------------
+:Play_Warp_Bike_Dialogue
+// Pillion Coat Cling
+if
+    15@ == 1
+then
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_BW1A" text "~b~Shion: ~s~\"Don't swerve so hard... I have to hold your coat or I'll fly off.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_BW1A' time 3200 flag 1
+    wait 3200
+
+    gosub @Check_Vehicle_Warp_Alive
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_BW1B" text "~y~Jo'on: ~s~\"Hey! Hands off the designer silk, freeloader! Just grip the bar!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_BW1B' time 3000 flag 1
+    wait 3000
+end
+
+// Gas Waste
+if
+    15@ == 2
+then
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_BW2A" text "~b~Shion: ~s~\"You just wasted five dollars of gas trying to get away from me.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_BW2A' time 3200 flag 1
+    wait 3200
+
+    gosub @Check_Vehicle_Warp_Alive
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_BW2B" text "~y~Jo'on: ~s~\"Shut up! Next red light I'm kickin' ya off into the gutter!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_BW2B' time 3000 flag 1
+    wait 3000
+end
+
+// Mugging Panic
+if
+    15@ == 3
+then
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_BW3A" text "~y~Jo'on: ~s~\"AHH! WHAT GRABBED ME?! Get off my bike before I bust your head!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_BW3A' time 3200 flag 1
+    wait 3200
+
+    gosub @Check_Vehicle_Warp_Alive
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_BW3B" text "~b~Shion: ~s~\"Calm down, Jo'on. Nobody's carjacking you, it's just your sister.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_BW3B' time 3000 flag 1
+    wait 3000
+end
+
+// Ditching on Two Wheels
+if
+    15@ == 4
+then
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_BW4A" text "~b~Shion: ~s~\"You can't outrun poverty on two wheels, Jo'on. I'm already on the back.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_BW4A' time 3200 flag 1
+    wait 3200
+
+    gosub @Check_Vehicle_Warp_Alive
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_BW4B" text "~y~Jo'on: ~s~\"Tch! Next time I'm buyin' a bike with one seat! Lean into the turns!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_BW4B' time 3000 flag 1
+    wait 3000
+end
+
 gosub @Release_Channel_P3
 return
 
