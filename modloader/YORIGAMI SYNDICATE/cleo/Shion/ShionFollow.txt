@@ -495,6 +495,8 @@ then
                     then
                         11@ = 0
                         9@ = 0
+                        // Trigger Jo'on Recall Dialogue via chatFollow
+                        0A92: create_custom_thread "Shion\Chat\chatFollow.c" 8
                         gosub @Execute_Shion_OnFoot_Warp
                     else
                         // SINGLE TAP G: Start 500ms double-tap window
