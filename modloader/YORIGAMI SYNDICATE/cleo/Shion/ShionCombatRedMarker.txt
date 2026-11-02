@@ -6,6 +6,12 @@
 0000: NOP
 script_name 'Sh_RedM'
 
+const
+    MEM_SHION_HANDLE = 116
+    MEM_SHION_STANCE = 120
+    MEM_SHION_STAY_PUT = 396
+end
+
 0006: 10@ = -1 // 10@ = Best Target Handle (-1 = None)
 13@ = 0        // 13@ = Target Type (1 = Car, 2 = Ped)
 17@ = 0        // 17@ = HadTarget Combat State Flag (0 = Idle, 1 = Engaged)
@@ -287,32 +293,34 @@ end
 // CASE A: SHION IS INSIDE A VEHICLE (PASSENGER)
 // =========================================================================
 if
-    00DF: actor 11@ driving
+    0449: actor 11@ in_a_car
 then
-    // Jo'on stepped out onto the street -> Shion exits vehicle
+    // If Shion is ordered to wait in car, do not issue any driveby or combat tasks
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_STAY_PUT
+    0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+
     if
-        80DF: not actor $PLAYER_ACTOR driving
+        0039: 29@ == 0
     then
-        if
-            8E4A: not is_char_exiting_any_car 11@
-        then
-            0633: AS_actor 11@ exit_car
-        end
-    else
         // Jo'on is driving -> Driveby ONLY if in Hostile Mode (0@ == 1)
         if
-            0@ == 1
+            00DF: actor $PLAYER_ACTOR driving
         then
             if
-                13@ == 1 // Shoot Car
+                0@ == 1
             then
-                0713: actor 11@ driveby_actor -1 car 10@ point 0.0 0.0 0.0 radius 100.0 8 0 firing_rate 100
-            end
+                if
+                    13@ == 1 // Shoot Car
+                then
+                    0713: actor 11@ driveby_actor -1 car 10@ point 0.0 0.0 0.0 radius 100.0 8 0 firing_rate 100
+                end
 
-            if
-                13@ == 2 // Shoot Ped
-            then
-                0713: actor 11@ driveby_actor 10@ car -1 point 0.0 0.0 0.0 radius 100.0 8 0 firing_rate 100
+                if
+                    13@ == 2 // Shoot Ped
+                then
+                    0713: actor 11@ driveby_actor 10@ car -1 point 0.0 0.0 0.0 radius 100.0 8 0 firing_rate 100
+                end
             end
         end
     end
