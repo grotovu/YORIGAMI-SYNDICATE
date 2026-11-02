@@ -11,6 +11,12 @@ A mod that brings Jo'on and Shion Yorigami from *Touhou Project* into GTA San An
 
 I initially built this to fix the problem of money becoming completely useless in late-game San Andreas, but it ended up spiraling into a full-blown RPG-lite perk tree and an *Inigo*-inspired companion mod with about 3,000 lines of contextual banter.
 
+📺 **[Some clips of the mod (YouTube Playlist)](https://www.youtube.com/playlist?list=PLXo8zqvaGgzU)**
+
+---
+
+## ⚙️ Installation
+
 ---
 
 ## ⚙️ Installation
