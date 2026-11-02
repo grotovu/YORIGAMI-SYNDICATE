@@ -306,10 +306,10 @@ then
 end
 
 // =========================================================================
-// SHION'S INNATE MISFORTUNE AURA (1s Pacing, 25m Radius)
+// SHION'S INNATE MISFORTUNE AURA (5s Pacing, 25m Radius)
 // =========================================================================
 if
-    TIMERA > 1000
+    TIMERA > 5000
 then
     TIMERA = 0
     if
@@ -333,14 +333,14 @@ then
 end
 
 // =========================================================================
-// SHION'S INNATE TRAFFIC HEX (2.5s Pacing, 45m Radius, Style 5)
+// SHION'S INNATE TRAFFIC HEX (5s Pacing, 45m Radius, Style 5)
 // =========================================================================
 01C0: 26@ = player $PLAYER_CHAR wanted_level
 if
     26@ > 1
 then
     if
-        TIMERB >= 2500
+        TIMERB >= 5000
     then
         TIMERB = 0
         if
@@ -365,7 +365,7 @@ then
 end
 
 // =========================================================================
-// SHION'S INNATE AVIATION CALAMITY (4s Pacing, 300m Radius, Style 5)
+// SHION'S INNATE AVIATION CALAMITY (5s Pacing, 300m Radius, Style 5)
 // =========================================================================
 01C0: 26@ = player $PLAYER_CHAR wanted_level
 if
@@ -373,7 +373,7 @@ if
 then
     000A: 7@ += 50
     if
-        7@ >= 4000
+        7@ >= 5000
     then
         7@ = 0
         if

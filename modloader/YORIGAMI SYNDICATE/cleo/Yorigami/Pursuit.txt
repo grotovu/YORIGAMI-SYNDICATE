@@ -44,9 +44,9 @@ end
 // 31@ NOW HOLDS THE MASTER POINTER.
 
 0006: 1@ = -999
-0006: 7@ = 0  // Traffic Hex Timer (ms)
-0006: 10@ = 0 // Aviation Scan Timer (ms)
-0006: 18@ = 0 // Traffic Hex Audio Limiter
+0006: 7@ = 0   // Traffic Hex Timer (ms)
+0006: 10@ = 0  // Aviation Scan Timer (ms)
+0006: 18@ = 5000 // Traffic Hex Scan Interval (ms)
 
 :YPursuit_StartupWait
 wait 250
@@ -157,10 +157,10 @@ if and
 then
     000A: 7@ += 100
     if
-        7@ >= 2500
+        002D: 7@ >= 18@ // Scan interval check
     then
         0006: 7@ = 0
-        0006: 18@ = 0
+        0006: 20@ = 0 // Traffic Hex Audio Limiter
 
         // Calculate & clamp stall chance
         0085: 26@ = 8@
@@ -228,10 +228,10 @@ then
                                         
                                         if and
                                             15@ == 1
-                                            18@ == 0
+                                            20@ == 0
                                         then
                                             018C: play_sound 1147 at 0.0 0.0 0.0
-                                            0006: 18@ = 1
+                                            0006: 20@ = 1
                                         end
                                         
                                         if
@@ -253,10 +253,10 @@ then
                                             
                                             if and
                                                 15@ == 1
-                                                18@ == 0
+                                                20@ == 0
                                             then
                                                 018C: play_sound 1147 at 0.0 0.0 0.0
-                                                0006: 18@ = 1
+                                                0006: 20@ = 1
                                             end
                                             
                                             if
@@ -444,6 +444,15 @@ if
 then
     0006: 19@ = 20
 end
+
+0AF0: 18@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "TrafficHex" key "ScanIntervalSeconds"
+if
+    18@ == 0
+then
+    0006: 18@ = 5
+end
+0012: 18@ *= 1000
+
 0AF0: 28@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "AviationMisfortune" key "ChancePerPoint"
 if
     28@ == 0

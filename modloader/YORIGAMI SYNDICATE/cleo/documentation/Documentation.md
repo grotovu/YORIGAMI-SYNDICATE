@@ -1,0 +1,541 @@
+# System Architecture and Interconnection Documentation: Yorigami Mod Ecosystem
+
+---
+
+## 1. Master Heap & IPC Architecture
+
+Inter-process communication (IPC) across all compiled CLEO threads is mediated through a single unmanaged 1024-byte memory buffer allocated on boot by `Y_Brain.cs`.
+
+```
+                  +-----------------------------------+
+                  |         Y_Brain.cs (0AC8)         |
+                  | Allocates 1024-byte Shared Buffer |
+                  +-----------------+-----------------+
+                                    |
+                    0AAA Script Struct Lookup (+0x3C)
+                                    |
+            +-----------------------+-----------------------+
+            |                                               |
++-----------v-----------+                       +-----------v-----------+
+|    Joon.cs (Y_Joon)   |                       | SpawnShion.cs (Spw)   |
+| Controls Player Form, |                       | Manages Companion Ped |
+| Disarming & Gang Rel. |                       | Lifecycle & Spawning  |
++-----------+-----------+                       +-----------+-----------+
+            |                                               |
+            +-----------------------+-----------------------+
+                                    |
+                       Master Heap Pointer (31@)
+                                    |
+        +---------------------------+---------------------------+
+        |                           |                           |
++-------v-------+           +-------v-------+           +-------v-------+
+|  yorigami.cs  |           | Shion Systems |           | Perk Daemons  |
+| Point Economy |           | Combat, Gear, |           | Bling, Fever, |
+| & Save Events |           | Scav, Lore... |           | Danmaku, etc. |
++---------------+           +---------------+           +---------------+
+```
+
+### Memory Acquisition Protocol
+Every secondary script executes an identical connection routine upon initialization:
+1. `0AAA: 31@ = get_script_struct_named 'Y_Brain'`
+2. Reads the script structure's internal variable array at offset `+0x3C`: `0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0`
+3. Stores the returned base pointer in local variable `31@`.
+4. Reads/writes specific fields via pointer arithmetic: `BasePointer + Offset`.
+
+### Critical Memory Map Offsets
+
+| Offset | Constant Name | Type | Description | Primary Writers | Primary Readers |
+|---|---|---|---|---|---|
+| `0` | `MEM_SAVE_SLOT` | int | Active GTA SA save slot (0–8). | `yorigami.cs`, `Joon.cs` | All persistent scripts |
+| `4` | `MEM_SHION_BUSY` | int (bool) | Locks companion AI during atomic actions (scavenge, dine, parachute). | `ShionScav`, `ShionChute`, `ShionBurglary`, `foodDiner` | `SpawnShion`, `ShionControl`, `ShionFollow` |
+| `8` | `MEM_INTENTIONAL_DISM` | int (bool) | Flags that companion dismissal was intentional (suppresses death handling). | `Joon.cs`, `Entourage.cs` | `ShionFollow`, `SpawnShion` |
+| `12` | `MEM_PLAYER_FORM` | int | Active protagonist identity: `0` = CJ, `1` = Jo'on, `2` = Shion. | `Joon.cs` | `SpawnShion`, `yorigami`, `ShionCombat`, `ShionRetaliation` |
+| `16` | `MEM_QUICK_DISM_LATCH` | int (bool) | Window timer flag to catch rapid dismissals after spawn. | `SpawnShion` | `SpawnShion` |
+| `20` | `MEM_PRIORITY_LOCK` | int | Hierarchical audio/subtitle mutex (`0` to `4`). | Any dialogue/action script | `ShionChat`, `ShionSandbox`, `ShionLore`, `ShionControl` |
+| `24` | `MEM_LORE_MENU_SIGNAL` | int (bool) | One-frame trigger to open the Sister Talk Archive menu. | `ShionMenu` | `loreMenu` |
+| `28` | `MEM_TOTAL_POINTS` | int | Lifetime Y-Points accumulated for the active save slot. | `yorigami` | `Menu`, `yorigami` |
+| `32` | `MEM_AVAIL_POINTS` | int | Unallocated spendable Y-Points remaining. | `yorigami`, `Menu` | `Menu`, `yorigami` |
+| `36–64` | `MEM_ALLOC_*` | int | Allocated point ranks for Jo'on perks (Bling, Smasher, Taxi, Drip, Shakedown, Midas, Fever, Danmaku). | `Menu`, `yorigami` | `Bling`, `Lifestyle`, `Shakedown`, `Fever`, `Danmaku`, `Entourage` |
+| `68` | `MEM_CONTRACT_ESCROW` | int | Debt taken via Yorigami Contract, consumed by `yorigami.cs` to shield against wallet rollover exploits. | `Menu` | `yorigami` |
+| `72` | `MEM_DURGASTRA_FLAG` | int (bool) | Toggle for Limitless Debt protocol. | `ShionCombat`, `ShionMenu` | `ShionCombat`, `ShionControl` |
+| `76` | `MEM_DANMAKU_TOGGLE` | int (bool) | State of Money Danmaku mode (`1` = ON, `0` = OFF). | `Danmaku` | `FX_ShionMoneyDanmaku`, `FX_JoonFlames`, `FX_ShionFlames` |
+| `80–108` | `MEM_ALLOC_*` | int | Allocated point ranks for Shion perks (Resonance, Scavenger, Misfortune, TrafficHex, Aviation, DebtDet, GrimPity, Misery). | `Menu`, `yorigami` | `Misfortune`, `Pursuit`, `Scavenger`, `DebtDet`, `GrimPity`, `Misery` |
+| `112` | `MEM_GRIMPITY_BURST` | int (bool) | Signals `FX_GrimPity.cs` to trigger outer resurrection flame ring. | `GrimPity` | `FX_GrimPity` |
+| `116` | `MEM_SHION_HANDLE` | int | Entity state of Shion: `0` = Absent/Dead, `-1` = Hitodama Spirit, `>0` = Live Ped Handle. | `SpawnShion`, `ShionFollow`, `ShionRetaliation` | All Shion subsystems |
+| `120` | `MEM_SHION_STANCE` | int | Companion stance: `0` = Peaceful (unarmed), `1` = Hostile (armed). | `ShionControl`, `ShionCombat` | `ShionCombat`, `ShionGear`, `ShionControl`, `ShionCombatRedMarker` |
+| `124` | `MEM_SHION_WEAPON_ID` | int | Active assigned weapon ID for Shion. | `ShionGear`, `ShionControl`, `Joon` | `ShionControl`, `ShionCombat`, `Joon` |
+| `128` | `MEM_SHION_AMMO_COUNT` | int | Ammo count assigned to Shion's weapon. | `ShionGear`, `ShionControl`, `Joon` | `ShionControl`, `Joon` |
+| `132` | `MEM_COMBAT_RES_MODE` | int | `0` = Wallet Drain (infinite ammo, costs $/shot), `1` = Gear Swap (physical ammo). | `ShionMenu`, `ShionTrack` | `ShionCombat`, `ShionGear`, `ShionControl` |
+| `136` | `MEM_JOON_STASH_WEAPON`| int | Preserved weapon ID from Jo'on's shared slot during tag-team swaps. | `Joon`, `ShionGear` | `Joon` |
+| `140` | `MEM_JOON_STASH_AMMO` | int | Preserved ammo count from Jo'on's shared slot during tag-team swaps. | `Joon`, `ShionGear` | `Joon` |
+| `144–152` | `MEM_HITODAMA_X/Y/Z` | float | World coordinates of floating Hitodama spirit form. | `FX_ShionHitodama` | `SpawnShion`, `ShionFriendlyFire`, `FX_ShionMoneyDanmaku` |
+| `156` | `MEM_CMBT_HITODAMA_FX` | int (bool) | Toggle for decorative combat hitodama orbs around physical Shion. | `ShionMenu`, `ShionCombat` | `FX_Hitodama` |
+| `160` | `MEM_SHION_PRES_HP` | int | Preserved health for Shion across form dematerialization and rematerialization. | `SpawnShion`, `FX_ShionHitodama` | `SpawnShion`, `FX_ShionHitodama`, `ShionDebug` |
+| `164` | `MEM_SHION_PRES_ARMOUR`| int | Preserved armour for Shion across form changes. | `SpawnShion`, `Joon` | `SpawnShion`, `ShionDebug` |
+| `168–172` | `MEM_JOON_BASE_HP/ARM` | int | Baseline health/armour snapshot of Jo'on used to reverse damage when Hitodama absorbs hits. | `FX_ShionHitodama` | `FX_ShionHitodama` |
+| `176` | `MEM_HITO_DEFLECT_TMR` | int (ms) | Active countdown for blue electric deflection flare on Hitodama absorption. | `FX_ShionHitodama` | `FX_ShionHitodama` |
+| `180` | `MEM_HITO_SHIELD_BROKE`| int (bool) | Flag indicating Hitodama shield energy dropped to floor (100 HP). | `FX_ShionHitodama` | `FX_ShionHitodama` |
+| `184` | `MEM_DMG_RECURSION_LCK`| int (bool) | Global mutex preventing infinite script damage loops in `0851` damage callbacks. | `Misery`, `FX_ShionHitodama`, `ShionRetaliation` | `Misery`, `FX_ShionHitodama`, `ShionRetaliation` |
+| `220` | `MEM_JOON_CIGAR_OBJ` | int | Prop handle of attached cigarette object during idle smoking. | `JoonSmoke` | `Joon`, `JoonSmoke` |
+| `224` | `MEM_SPOKEN_TOPICS_BIT`| int (bitmask)| Tracks which of the 9 evaluation topics were discussed in the current safehouse review session. | `ShionMem` | `ShionMem`, `ShionTrack` |
+| `228` | `MEM_LAST_FED_HOURS` | int | Cumulative in-game world hours when Shion was last fed. | `ShionFood`, `foodDiner`, `scavLoot` | `ShionFood`, `ShionLore`, `ShionTrack` |
+| `232–328` | Performance Ledger | int | Metrics tracked for `ShionMemories.ini` (Kills, Wrecks, Fares, Cash Given, Bribes, Time Broke, etc.). | `ShionTrack`, `ShionCombat`, `ShionFollow` | `ShionMem`, `ShionLore`, `ShionTrack` |
+| `340` | `MEM_SAFEHOUSE_DOOR_ID`| int | ID (1–32) of the safehouse doorway EnEx marker currently entered. | `ShionFollow` | `ShionMenu`, `ShionLore` |
+| `344` | `MEM_ACTIVE_MARK` | int | Entity handle of the current High-Roller Mark. | `Mark` | `Shakedown`, `Mark` |
+| `348` | `MEM_HITO_PAIN_MUTED` | int (bool) | Tracks whether Jo'on's pain screams are suppressed during Hitodama shield absorption. | `FX_ShionHitodama` | `FX_ShionHitodama` |
+| `372` | `MEM_CAR_SMASH_SIGNAL` | int (bool) | Signals that a vehicle was detonated via Jo'on's Car Smasher melee punch. | `Bling` | `ShionDeathTracker`, `ShionSandbox` |
+| `376` | `MEM_FLEX_SIGNAL` | int (bool) | Signals that Jo'on performed a cash flex (`Y + J`). | `yorigami` | `ShionSandbox` |
+| `380` | `MEM_SHION_DEATH_FLAG` | int (bool) | Latch recording that Shion has died in the current session. | `ShionDeathTracker`, `SpawnShion` | `SpawnShion`, `Bling` |
+| `384` | `MEM_SHION_KILLER_IS_JOON`| int (bool) | Flag recording if Shion's killer was Jo'on. | `ShionDeathTracker` | `chatFollow` |
+| `388` | `MEM_SHION_DEATH_WEAPON`| int | Weapon ID that dealt the lethal blow to Shion. | `ShionDeathTracker` | `chatFollow` |
+| `392` | `MEM_SHION_DEATH_IN_CAR`| int (bool) | Flag recording if Shion died inside a vehicle. | `ShionDeathTracker` | `chatFollow` |
+| `396` | `MEM_SHION_STAY_PUT` | int | Stay-Put state: `0` = Follow, `1` = Ground Stay-Put (`H`), `2` = In-Vehicle Hold (`H`). | `ShionFollow`, `ShionVehicle` | `ShionFollow`, `ShionControl`, `ShionCombatRedMarker` |
+| `400` | `MEM_SHION_RECRUITED` | int (bool) | Recruitment state: `0` = Ambient Loiterer, `1` = Entourage Member. | `SpawnShion`, `Joon` | `ShionChat`, `shionHangoutIcon`, `ShionFood` |
+| `404` | `MEM_SHION_HUNGRY` | int (bool) | Starvation state: `0` = Satisfied, `1` = Starving / Injured. | `ShionFood`, `foodDiner` | `foodDiner`, `ShionFood` |
+
+---
+
+## 2. Priority Channel Arbitration (`MEM_PRIORITY_LOCK`)
+
+To prevent text corruption, audio overlaps, and conflicting subtitles across concurrent scripts, all dialogue and screen-space display routines arbitrate through `MEM_PRIORITY_LOCK` (Heap Offset `20`).
+
+```
+Tier 4 (Value: 4)  ──>  Sister Talk Theater, Diner, Safehouse Evaluation, Lore Menus
+                           ▲ Preempts
+Tier 3 (Value: 3)  ──>  Combat Reaction, Form Swap Quips, Friendly Fire, Scavenge Action
+                           ▲ Preempts
+Tier 2 (Value: 2)  ──>  Ambient World Banter, Idle Conversations, Vehicle Observations
+                           ▲ Preempts
+Tier 1 (Value: 1)  ──>  Idle Smoking Banter, Minor Quips
+                           ▲ Preempts
+Tier 0 (Value: 0)  ──>  Channel Clear / Available
+```
+
+* **Preemption Rule:** A lower-tier script cannot write to subtitles (`00BC`, `0AD1`, `03E5`) or play dialogue sound (`1058`) if `MEM_PRIORITY_LOCK` is set to a higher tier. A higher-tier script immediately terminates conflicting running threads (`Sh_Zone`, `Sh_Mny`, `Sh_Veh`, etc.) using `0ABA` and overrides the lock.
+* **Orphan Watchdog:** `ShionChat.txt` contains an automated watchdog polling every 250ms. If Tier 4 is claimed but no theater structs (`Sh_Thea`, `Sh_Dine`, `Sh_Mem`, `Sh_Menu`, `Sh_Reun`) exist in engine memory, it clears the lock to `0` to prevent softlocks. For Tiers 1–3, if no transient thread is identified, it enforces a 12-second timeout.
+
+---
+
+## 3. Core Orchestration Systems
+
+```
+                                 +-----------------------+
+                                 |       Y_Brain.cs      |
+                                 |  Master Heap Manager  |
+                                 +-----------+-----------+
+                                             |
+                     +-----------------------+-----------------------+
+                     |                                               |
+         +-----------v-----------+                       +-----------v-----------+
+         |      Joon.cs (Core)   |                       |    SpawnShion.cs      |
+         +-----------+-----------+                       +-----------+-----------+
+                     |                                               |
+     +---------------+---------------+               +---------------+---------------+
+     |               |               |               |               |               |
++----v----+     +----v----+     +----v----+     +----v----+     +----v----+     +----v----+
+| Skin/Tag|     | Weapons |     | Gangs & |     | Spawning|     | Form    |     | Worker  |
+| Swap    |     | Stash   |     | Audio   |     | & Blips |     | Toggles |     | Threads |
++---------+     +---------+     +---------+     +---------+     +---------+     +---------+
+```
+
+### `Joon.txt` (`Y_Joon`)
+* **State Machine:** Governs `MEM_PLAYER_FORM` (`0` = CJ, `1` = Jo'on, `2` = Shion).
+* **Tag-Team Swapping (`Y + L` / Cheats "JOON" & "POVERTY"):**
+  1. Records current weapon slot via `0470` and a 1-indexed lookup table into local `20@`.
+  2. If transforming to Shion: stashes Jo'on's current slot weapon and ammo into heap offsets `MEM_JOON_STASH_WEAPON` (`136`) and `MEM_JOON_STASH_AMMO` (`140`), purges player model with clothes rebuild, loads special actor `'shion'` into `#SPECIAL01`, gives designated weapon stored in `MEM_SHION_WEAPON_ID` (`124`), and restores target weapon slot.
+  3. If transforming to Jo'on: saves live weapon stats to Shion's heap pool (`MEM_SHION_WEAPON_ID` and `MEM_SHION_AMMO_COUNT`), strips weapon, reloads special actor `'joon'` into `#SPECIAL01`, restores stashed loadout from `MEM_JOON_STASH_*`, and launches `JoonSmoke.c`.
+  4. If reverting to CJ: drops special actors, restores clothes, clears muting, and executes `@Restore_CJ_Gang_Acquaintances`.
+* **Gang Hostility Matrix Neutralization:** While playing as Jo'on, snapshots native gang acquaintances to dynamic RAM (`7@`), then wipes hatred and dislike (`0747: clear_acquaintance 3` and `4`) between gangs (types 7–16) and the player (`0`), making rival gangs neutral unless attacked. Restores exact state upon revert to CJ or before writing to a save file.
+* **Girlfriend Suppression:** Sets `$391 bit 11` (native date/call suppression) and traverses radar trace memory `0xBA86F0` (175 entries), clearing display bits `0xFC` on sprite ID `21` (Pink Heart) to hide girlfriend blips.
+
+### `SpawnShion.txt` (`SpwShion`)
+* **Companion Lifecycle Engine:** Manages physical companion entity `10@` and Hitodama state.
+* **Ambient World Encounter Engine:** When Shion is unrecruited (`MEM_SHION_RECRUITED == 0`), she does not follow the player. The script scans a 50m radius around 3 preset coordinates:
+  * Los Santos: Idlewood (behind Well Stacked Pizza) `[2112.7, -1822.6, 13.5]`
+  * San Fierro: Doherty (beside Fire Station) `[-2059.3, 98.4, 28.3]`
+  * Las Venturas: Old Strip Alley `[2636.4, 1654.8, 11.0]`
+  Spawns ped model `299` (`#SPECIAL10`), assigns a custom non-panicking Decision Maker (`65543`), loads animation library `"LOWRIDER"`, and loops `"M_SMKLEAN_LOOP"`. Approaching and pressing `Y` triggers `chatReunion.c` and recruits her into the player's group (`MEM_SHION_RECRUITED = 1`).
+* **Hitodama Form Morphing (`Y + H`):**
+  * *Solid -> Spirit:* Stores current HP (`MEM_SHION_PRES_HP`) and armour (`MEM_SHION_PRES_ARMOUR`), snapshots weapon/ammo (if in Gear Swap mode), removes Shion from group, writes `-1` to `MEM_SHION_HANDLE`, destroys the ped, and creates `FX_ShionHitodama.c`.
+  * *Spirit -> Solid:* Checks vehicle occupancy (identifies free passenger seat 0, 1, or 2), recreates ped model `299` inside vehicle or on foot, writes new ped handle to `MEM_SHION_HANDLE`, restores preserved HP/armour, and reboots physical worker threads.
+* **Auto-Dematerialization:** Automatically forces Shion into Hitodama spirit form if the player boards any single-seater vehicle (Rhino, Hydra, Hunter, Rustler, Cropduster, Stuntplane, Sparrow, Seasparrow, Kart, Bandito, Quad, Vortex, Forklift, Mower, Sweeper, Dozer, Dumper, Baggage, Tug).
+
+### `yorigami.txt` (`YPrestige`)
+* **Economy Engine:** Monitors player money `010B`. Compares live cash to previous baseline.
+* **Universal Interior & Minigame Escrow:** Prevents gambling, clothes shopping, or betting exploits from generating false spending:
+  * Detects interior ID > 0, `$ONMISSION == 1`, or active `LOWRIDE` minigame.
+  * Freezes the baseline wallet snapshot into `22@`.
+  * Upon exiting to the outdoors, calculates net money delta (`Starting - Ending`). If positive, transfers the difference to the spent accumulator `3@`.
+* **Point Conversion:** When accumulated spending `3@ >= CashPerPoint` (default $10,000), increments `MEM_TOTAL_POINTS` (`28`) and `MEM_AVAIL_POINTS` (`32`), writing to `yorigami.ini`.
+* **Didier Sachs Cash Flex (`Y + J`):** Consumes `$CashPerPoint` from wallet, increments Y-Points directly by +1, triggers particle micro-thread `FX_FLEX.c`, and writes `MEM_FLEX_SIGNAL = 1` for sandbox reactions.
+
+---
+
+## 4. Companion Subsystems
+
+```
+                                  +-------------------+
+                                  |   SpawnShion.cs   |
+                                  +---------+---------+
+                                            |
+         +----------------------------------+----------------------------------+
+         |                                  |                                  |
++--------v--------+                +--------v--------+                +--------v--------+
+|   Navigation    |                | Combat & Stance |                | Social & Dialog |
+| ShionFollow     |                | ShionControl    |                | ShionChat       |
+| ShionVehicle    |                | ShionCombat     |                | ShionLore       |
+| ShionChute      |                | ShionGear       |                | ShionMenu       |
+| ShionBurglary   |                | RedMarker / Dth |                | ShionSandbox    |
++-----------------+                +-----------------+                +-----------------+
+```
+
+### Navigation & Space Management
+* **`ShionFollow.txt` (`Sh_Flw`):** 
+  * Controls physical companion following behavior, distance-keeping, and auto-catchup.
+  * Implements `H` on foot to trigger "Stay Put" mode (`MEM_SHION_STAY_PUT = 1`, removes from group, applies `0638: AS_actor stay_put 1`). Pressing `G` cancels Stay Put and recalls her.
+  * Single tap `G` sprints to player; double-tap `G` triggers an instant spatial warp (`FX_Warp.c`).
+  * Auto-warps Shion if distance > 45m; initiates despawn if distance > 130m.
+  * Detects interior changes via active interior `28@`. Enforces a 2150ms mesh loading delay before reading player coordinates, matching them against 32 known Safehouse EnEx doorways (`MEM_SAFEHOUSE_DOOR_ID`), and placing Shion inside.
+* **`ShionVehicle.txt` (`Sh_Sync`):**
+  * Controls vehicle passenger seat synchronization.
+  * If Shion is outside while player drives, pressing `G` checks vehicle passenger capacity (`01EA`) and warps her into seat 0 (front passenger), 1 (rear left), or 2 (rear right).
+  * If Shion is already inside, pressing `G` cycles her through open seats (0 -> 1 -> 2 -> 0) with Hitodama dissolve FX.
+  * Pressing `H` in-car sets `MEM_SHION_STAY_PUT = 2`, locks the car door via `039E`, and removes her from the group so she remains seated when the player exits.
+  * Monitors vehicle destruction/fire: forces immediate bailout or airborne parachute ejection if car health < 250, burning, or sinking.
+* **`ShionCombatRedMarker.txt` (`Sh_RedM`):**
+  * Reads the game engine's radar trace pool at address `0xBA86F0` (up to 175 blips).
+  * Filters for active red blips (colors 0, 5, 7; blip types 1 = Car, 2 = Ped; non-friendly).
+  * Directs Shion's AI tasks (`0672: attack_car` or `05E2: kill_actor`) toward the nearest marked target within 100m. If seated in a car driven by Jo'on, executes native drive-bys (`0713`).
+* **`ShionChute.txt` (`Sh_Chut`):**
+  * Triggers when Shion is in freefall outdoors > 15m altitude.
+  * Sets `MEM_SHION_BUSY = 1`, removes from group, grants fall damage immunity (`02AB`), and sets `0575: pinned_position 1` to disable falling flail tasks.
+  * Phase 1: High-speed freefall down to 65m altitude.
+  * Phase 2: Deducts $800 emergency parachute fee from player wallet (or takes debt), creates attached `#PARACHUTE` object, and glides downward at ~9 m/s.
+  * Phase 3: Touchdown landing, releases parachute object, re-adds to group, clears busy flag, and sets `MEM_SKYDIVE_LANDED = 1`.
+* **`ShionBurglary.txt` (`Sh_Burg`):**
+  * Active during Burglary missions (`$ONMISSION_BURGLARY == 1`).
+  * When Jo'on is carrying loot inside a residence, holding `TAB` near Shion initiates a hand-off.
+  * Jo'on's carrying task and BURGJB memory (`0xA48AD8`, `0xA48A24`) are cleared. Shion dissolves with Hitodama FX (`MEM_SHION_BUSY = 1`).
+  * Runs a 3-second background timer representing a run to the Boxville van, increments van loot memory (`0xA48A20`), plays chime `1058`, and rematerializes Shion beside Jo'on.
+
+### Combat, Stance & Weapons
+* **`ShionControl.txt` (`Sh_Ctrl`):**
+  * Listens for `Y + B`: toggles `MEM_SHION_STANCE` (`0` = Peaceful, `1` = Hostile).
+  * *Peaceful:* Strips all weapons (`048F`), sets target priority to 0, sets decision maker to passive `65540`, sets acquaintances to "Like" for cops, civilians, and gangs, and engages movement watchdog to break any attempted brawl tasks.
+  * *Hostile:* Checks resource mode. In Wallet Drain, equips designated weapon from `MEM_SHION_WEAPON_ID` with 9999 ammo cushion. In Gear Swap, equips exact assigned weapon and ammo from `MEM_SHION_AMMO_COUNT`. Restores aggressive decision maker `65543` and hostility towards rival ped types.
+* **`ShionCombat.txt` (`Sh_Cmbt`):**
+  * **Wallet Drain Mode (`MEM_COMBAT_RES_MODE == 0`):** Monitors live weapon ammo. Each time ammo decreases by `N` rounds, looks up the shot cost from an internal weapon cost table (e.g. 9mm = $7, Desert Eagle = $80, Shotgun = $40, Sniper = $500, Minigun = $7, Rockets = $300) and deducts `N * Cost` directly from player cash.
+  * **Bankruptcy Disarm:** If wallet drops <= $0 and cheat "DURGASTRA" is not active, disarms Shion immediately, sets stance to Peaceful (`MEM_SHION_STANCE = 0`), and displays `"CARD DECLINED"`.
+  * **Innate Misfortune Aura:** Scans hostiles within 25m every 1s. Rolls a 20% bad luck check: forces victim to suffer gun jams (cower animation) or slip and knockdown animations (`KO_SKID_FRONT/BACK`, `KO_SPIN_L/R`), and spawns an attached `FX_HexFlame.c`.
+  * **Innate Traffic Hex:** When wanted level > 1, scans police vehicles within 45m every 5s. Rolls 20% chance to force stall (`0477: action 1 time 3500`) and deflates front tires (`04FE`).
+  * **Innate Aviation Calamity:** When wanted level > 2, scans helicopters and jets within 300m every 5s. Rolls 20% chance to detonate pursuit aircraft (`020B: explode_car`).
+  * **Voodoo Damage Reflection (`OnShionDamage`):** Intercepts damage events on Shion; reflects incoming intensity back to the attacking ped or vehicle driver.
+  * **Kill Tracker:** Continuously tallies Shion's confirmed kills (`MEM_SHION_KILLS`) and Jo'on's kills with Shion (`MEM_JOON_KILLS_W_SHION`).
+* **`ShionGear.txt` (`Sh_Gear`):**
+  * **Gear Swap Mode (`MEM_COMBAT_RES_MODE == 1`):** Listens for `Y + R` on foot within 4m.
+  * If player is unarmed: strips Shion's weapon, pools remaining ammo with any sibling ammo Jo'on holds, restores weapon to Jo'on, and clears Shion's weapon in RAM.
+  * If player is holding a firearm (IDs 22–38): removes gun from Jo'on, transfers it to Shion with exact current ammo, updates `MEM_SHION_WEAPON_ID` and `MEM_SHION_AMMO_COUNT`, and switches her stance to Hostile.
+  * Continuously checks Shion's live ammo. If she expends all rounds, clears her inventory, sets `MEM_SHION_STANCE = 0`, and plays the out-of-ammo vocal dialogue.
+* **`ShionDeathTracker.txt` (`Sh_Dth`):**
+  * Attaches to `0EDE: set_script_event_char_damage` specifically targeting Shion's handle.
+  * Resolves damager entity: identifies whether damage originated from Jo'on directly, Jo'on's driven vehicle, an explosive weapon held by Jo'on, a Car Smasher punch detonation (`MEM_CAR_SMASH_SIGNAL`), or environmental drowning.
+  * Writes lethal telemetry to `MEM_SHION_DEATH_FLAG`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON`, and `MEM_SHION_DEATH_IN_CAR`.
+* **`ShionRetaliation.txt` (`Sh_Retal`):**
+  * Anti-abuse system active exclusively when player is CJ (`MEM_PLAYER_FORM == 0`).
+  * If CJ punches or attacks Shion, intercepts the damage event, applies recursion lock `MEM_DMG_RECURSION_LCK`, immediately deals 35 HP recoil damage back to CJ, forces him into a hit-stagger animation (`"hit_front"`), creates blue burst coronas, plays speech line, dissolves Shion via `FX_Warp.c`, and terminates companion daemons.
+
+### Sustenance, Scavenging & Dining
+* **`ShionFood.txt` (`Sh_Food`):**
+  * Calculates elapsed in-game hours: `(Days * 24 + CurrentHour) - MEM_LAST_FED_HOURS`.
+  * If elapsed >= 48 hours or Shion HP < 950, sets `MEM_SHION_HUNGRY = 1`.
+  * Monitors drive-thrus and restaurant counters. When parked near outdoor fast food locations or standing near indoor counters, presents `[TAB]` prompt. Pressing `TAB` claims Tier 4 priority and launches `foodDiner.c`.
+* **`foodDiner.txt` (`Sh_Dine`):**
+  * Creates native interactive menu panel with bill options: $1, $2, $5, $10, $20, $50, $100.
+  * Freezes player movement, deducts cash, increments `MEM_TIMES_TREATED` and `MEM_TOTAL_CASH_GIVEN`.
+  * Plays contextual pre-meal dialogue (varying based on hungry vs wounded). Fades screen to black (750ms), restores Shion's health to 1000 and armour to 500, resets player hunger timer (if >= $20 spent), fades in, plays post-meal dialogue, updates `MEM_LAST_FED_HOURS`, and clears `MEM_SHION_HUNGRY = 0`.
+* **`ShionScav.txt` (`Sh_Scav`) & `scavLoot.txt` (`Sh_Loot`):**
+  * Activated by pressing `Y + Z` or typing cheat "SCAV".
+  * `Sh_Scav` scans an 8m radius for dumpsters (1334, 1372, 3035), street cans (849, 1328, etc.), indoor bins, vending machines, and food carts (1340–1342, 588). Checks vendor presence/death status. Commands Shion to walk to the target and perform search/kick animations, then delegates to `Sh_Loot`.
+  * `Sh_Loot` rolls probability tables based on perk allocations. If successful, vending/carts grant immediate health refills (`0223: health_to 176`), reset hunger, and increment `MEM_TIMES_DUMPSTER`. Trash bins roll for food or dropped weapons (shotguns, SMGs, pistols, Molotovs) presented via interactive `[Y/N]` prompt.
+
+### Narrative, Menus & Social Dialogue
+* **`ShionChat.txt` (`Y_ShChat`):**
+  * Central dialogue router running an ambient timer (90–150s pacing) during peacetime free-roam and sub-missions.
+  * Listens for manual conversation prompt via `Y + T`.
+  * Evaluates health emergencies (critical health triggers high-priority panic lines).
+  * Evaluates context and dispatches to specialized sub-scripts: `chatWanted.c`, `chatSubMission.c`, `chatZone.c`, `chatRadio.c`, `chatVehicle.c`, `chatWeather.c`, `chatMoney.c`, `chatInterior.c`, `chatIdle.c`, `chatIdleSniper.c`.
+* **`ShionLore.txt` (`Sh_Lore`):**
+  * Milestone progression engine scanning the 31 bits of `MEM_LORE_PROGRESS_BIT`.
+  * Evaluates environmental conditions (e.g. Chiliad altitude, casino losses >= $10k, gas station lingering, train ride duration > 45s, high-roller cash thresholds).
+  * Prompts player `[Y: Listen | N: Busy]`. If accepted, streams `loreTheater.c` passing the unlocked episode index.
+* **`loreTheater.txt` (`Sh_Thea`):**
+  * Claims Tier 4 lock, executes multi-stage cutscene dialogue scripts for Episodes 0–30, and writes `MEM_LORE_PROGRESS_BIT` upon clean completion. Aborts gracefully if interrupted by cell phone calls or combat.
+* **`loreMenu.txt` (`Sh_LMen`):**
+  * Interactive archive browser (`Y_LMTIT`) displaying 4 pages of 8 episodes each.
+  * Reads unlocked state from `MEM_LORE_PROGRESS_BIT` (or debug bypass cheat "ALLORE"). Shows requirement tooltips. Selecting an episode streams `loreTheater.c` for replay.
+* **`ShionMenu.txt` (`Sh_Menu`):**
+  * Safehouse configuration terminal opened by holding `TAB` while inside any of the 32 safehouses (`MEM_SAFEHOUSE_DOOR_ID > 0`).
+  * Page 0 (Arsenal): Launches Safehouse Performance Review (`ShionMem.c`), toggles Combat Resource Mode (`MEM_COMBAT_RES_MODE`), toggles Durgastra Limitless Debt (`MEM_DURGASTRA_FLAG`), toggles Combat Hitodama FX (`MEM_CMBT_HITODAMA_FX`), toggles shot chimes, and bankrupt alerts.
+  * Page 1 (Lifestyle): Toggles Food Runs, Sister Talk episodes, opens Lore Archive (`MEM_LORE_MENU_SIGNAL = 1`), cycles startup character (`StartupPlayerCharacter`), and toggles idle smoking. Writes directly to `Shion.ini`.
+* **`ShionMem.txt` (`Sh_Mem`):**
+  * Safehouse retrospective conversation. Evaluates 9 career categories using performance telemetry:
+    * Law & Casualties: Arrest vs death ratio (`MEM_TIMES_WASTED`, `MEM_TIMES_BUSTED`).
+    * Combat Kill Share: Jo'on vs Shion kill ratio (`MEM_JOON_KILLS_W_SHION`, `MEM_SHION_KILLS`).
+    * Sustenance: Gourmet treats vs dumpster meals (`MEM_TIMES_TREATED`, `MEM_TIMES_DUMPSTER`).
+    * Wheels: Mod garage spending vs wrecked cars (`MEM_MOD_CASH_SPENT`, `MEM_CARS_WRECKED`, `MEM_FAV_CAR_MODEL`).
+    * Real Estate: Percentage of the state's $979,000 safehouse budget owned (`Property Budget` stat 15).
+    * Finances: Net casino table losses (`MEM_CASINO_LOSSES`) and poverty ratio (`MEM_TIME_BROKE_MIN`).
+    * Radio: Most and least favorite stations (`MEM_FAV_RADIO_STAT`, `MEM_WORST_RADIO_STAT`).
+    * Odd Jobs: Career effort distribution across Taxi, Paramedic, Firefighter, Vigilante, Pimping, and Burglary.
+    * Money Danmaku: Pay-to-win expenditure index (`MEM_DANMAKU_CASH_SPENT`).
+* **`ShionSandbox.txt` (`Sh_Sndb`):**
+  * Environmental event monitor:
+    * Detects firetruck water cannon sprayed on physical Shion.
+    * Detects vehicle sinking into ocean water (`02BF`).
+    * Detects swimming in deep water for > 5 seconds.
+    * Detects Pay 'n' Spray repair of a heavily damaged car (< 500 HP restored to >= 990 HP).
+    * Detects stunt flips (car flips upside down in air and recovers onto wheels).
+    * Intercepts punches or vehicular hit-and-runs on innocent, unarmed civilians.
+    * Detects continuous lowrider hydraulic hopping for > 3 seconds.
+    * Catches Car Smasher vehicle punch explosions (`MEM_CAR_SMASH_SIGNAL`).
+    * Catches cash flex events (`MEM_FLEX_SIGNAL`).
+* **`ShionFriendlyFire.txt` (`Sh_FF`):**
+  * Intercepts attacks from Jo'on against Shion via `OnCharDamageFF`.
+  * Maps damage to specific weapon categories (fists, brass knuckles, golf club, nightstick, knife, bat, shovel, pool cue, katana, chainsaw, dildo, flowers, cane, grenades, rocket launchers, satchel charges, pistols, shotguns, automatics, rifles, spray can, extinguisher).
+  * Detects camera viewfinder aim and snapshots on physical Shion or Hitodama spirit (`MEM_HITODAMA_X/Y/Z`) to trigger photo reactions.
+
+---
+
+## 5. Yorigami Prestige Perks
+
+```
+                                  +-------------------+
+                                  |    Menu.cs (UI)   |
+                                  +---------+---------+
+                                            |
+         +----------------------------------+----------------------------------+
+         |                                                                     |
++--------v--------+                                                   +--------v--------+
+|  Jo'on: Wealth  |                                                   |Shion: Misfortune|
+| Bling / Smasher |                                                   | Resonance / Pity|
+| Taxi Extortion  |                                                   | Traffic / Air   |
+| Drip Worship    |                                                   | Misfortune Aura |
+| Shakedown / Mark|                                                   | Debt Detonation |
+| Fever / Danmaku |                                                   | Misery (Voodoo) |
++-----------------+                                                   +-----------------+
+```
+
+### Allocation & Progression UI (`Menu.txt` / `Y_Menu`)
+* Bounded to `Y + M`. Provides interactive menu panels for point distribution.
+* **Hub Interface:** Routes to Jo'on Extravagance, Shion Misfortune, Yorigami Contract, Mod Preferences, and Respec.
+* **Stepping Logic:** Normal tap adjusts by ±1. Holding `Shift` adjusts by ±10. Holding `Ctrl` adjusts by ±100. Holding `Shift + Ctrl` for 2.5s dumps or refunds all points.
+* **Perk Caps:** Queries dynamic caps from `YorigamiPerks.ini`. If a perk has reached its cap, further increments are rejected with an error buzzer.
+* **Yorigami Contract:** Grants an instant loan of configurable points (`ContractPoints`, default 100) in exchange for equivalent negative debt (`Points * CashPerPoint`, default -$1,000,000). Writes to `MEM_CONTRACT_ESCROW` to prevent double-dipping on wallet spending.
+* **Respec:** Resets all 16 perk allocations to 0 and refunds all points back to `MEM_AVAIL_POINTS` without clearing current debt.
+
+### Jo'on: Wealth Perks
+* **`Bling.txt` (`Y_BLING`):**
+  * *Jo'on's Bling (`MEM_ALLOC_JOONBLING`):* Adds scaled melee damage (`Points * BonusDamagePerPoint`, soft-capped by `MaxDamageCap`) to fists and brass knuckles. In Jo'on mode, targeting a ped (> 1.5m, <= 50m) and attacking executes a high-speed 3D dash ("Zippity Zap") with golden afterimage coronas and particle trails, granting temporary bulletproof graze immunity (`FX_JoonGraze.c`). In Shion mode, executes an ethereal remote punch.
+  * *Car Smasher (`MEM_ALLOC_SMASHER`):* Punches deal scaled damage to vehicles (`Points * BonusDamage * CarDamageMultiplier`). If car HP drops <= 0, grants blast immunity (if points >= `BlastShieldUnlockPoints`), unhooks damage callbacks to protect the stack, detonates the vehicle, and writes `MEM_CAR_SMASH_SIGNAL = 1`.
+  * *Fist-Lock:* Forces unarmed/knuckles during combat approach, breaking out instantly on mouse wheel scroll.
+* **`Danmaku.txt` (`Y_Danm`):**
+  * Toggled via `Y + G` (`MEM_DANMAKU_TOGGLE`).
+  * Intercepts char and vehicle damage via `0EDE` and `0EDF`.
+  * Verifies shooter is Jo'on or armed companion Shion using a firearm (IDs 22–38).
+  * Deducts cash cost per bullet ($100 default) from player wallet, logs `MEM_DANMAKU_CASH_SPENT`, vaporizes enemy body armor on impact, applies bonus damage, deals 4x damage against vehicles, and creates golden impact sparks.
+* **`Fever.txt` (`Y_Fever`):**
+  * Activated via `Y + C` on a dynamic cooldown (60s down to 20s based on points).
+  * Affects pedestrians within an expanding radius (15m to 35m).
+  * Forces all non-gang/non-story peds to drop cash pickups (base $60 up to $300, doubled for businessmen and dealers), attach golden glitter particles, and flee in financial ruin (`05DD: flee_from_actor`).
+* **`Shakedown.txt` (`Y_Shake`):**
+  * Aim at a ped on foot within 2.8m and press `Y`.
+  * Forces both actors into robber/victim animations (`"ROB_Loop_Threat"` / `"SHP_Rob_React"`).
+  * Extorts base cash ($150–$400) + scaled bonus per point, plus archetype bonuses (Dealer +$2000, Rich +$1200, Criminal +$800).
+  * Calculates resistance rolls based on perk points. If target folds: drops cash pickups, awards respect if rival gang, forces gang members to drop their weapons as physical pickups, and makes target flee. If target resists: target draws weapons and attacks, placing an active bounty on their head.
+* **`Mark.txt` (`Y_Mark`):**
+  * Periodically spawns High-Roller Marks in free-roam outdoors (every 45–180s).
+  * Selects an ambient pedestrian, creates a gold radar blip, attaches a bright red flare (`"smoke_flare"`), and stores handle in `MEM_ACTIVE_MARK`.
+  * Extorting or eliminating the mark before escape timeout (60s) awards jackpot cash ($2,500 to $10,000) and bonus respect.
+* **`Entourage.txt` (`Y_TROOP`):**
+  * Unlocks 7-slot group capacity.
+  * Aim at ped and press `G`: rolls recruitment probability based on Drip Worship points. Can charm civilians (up to 90%), drug dealers (unlocked at 25 pts, up to 70%), and rival gang members (unlocked at 60 pts, up to 50%). Converts loyalties to Grove Street, equips with 9mm pistol if unarmed, and adds to group. Cops are immune.
+  * Aim at follower and press `N`: dismisses follower, returning them to ambient wander. Special handling for Shion sets `MEM_INTENTIONAL_DISM = 1` and streams `chatDismiss.c`.
+* **`Lifestyle.txt` (`Y_Life`):**
+  * *Taxi Extortion (`MEM_ALLOC_TAXIEXT`):* Intercepts taxi mission fares, awarding `Points * BonusPercentPerPoint` extra extortion cut on every drop-off.
+  * *Drip Worship (`MEM_ALLOC_DRIPWORSHIP`):* Injects calculated points directly into native memory address `12030948` (Sex Appeal stat), scaling up to 1000 (100% full bar).
+  * *Midas Magnet (`MEM_ALLOC_MIDAS`):* Scans the native pickup pool (`0x9788C0` to `0x97D620`, step 32 bytes) for natural cash drops (Type 8). Vacuums pickups within dynamic radius (8m to 35m) directly to CJ's wallet, applies bonus cash multiplier, destroys the pickup, and spawns golden glitter. Excludes scripted mission pickups (Type 19).
+
+### Shion: Misfortune Perks
+* **`Misfortune.txt` (`Y_Misfortune`):**
+  * *Shion Resonance (`MEM_ALLOC_RESONANCE`):* If allocated >= 5 points and player cash is $0 (or in debt), holding a 1-star wanted level on foot for 6 seconds causes police to lose interest and clears the wanted level (`"TOO BROKE TO PURSUE"`).
+  * *Misfortune Aura (`MEM_ALLOC_MISFORTUNE`):* Scans hostiles within 25m on a configurable pacing interval (`[ShionMisfortune] ScanIntervalSeconds`, default 5s, stored in `8@`). Rolls probability for physical stumble/knockdown animations or weapon jams.
+* **`Pursuit.txt` (`Y_Pursuit`):**
+  * *Police Bribe:* Type "BRIBE" to clear 1 wanted star for cash ($20,000 default), incrementing `MEM_BRIBES_PAID`.
+  * *Traffic Hex (`MEM_ALLOC_TRAFFICHEX`):* Scans 45m radius around player for pursuit cruisers and bikes when wanted level > 1 on a configurable interval (`[TrafficHex] ScanIntervalSeconds`, default 5s, stored in `18@`). Rolls stall chance, applies engine stall action, deflates tires on 4-wheel cruisers, and uses `20@` as a single-scan audio limiter.
+  * *Aviation Calamity (`MEM_ALLOC_AVIATION`):* Scans 300m radius for airborne pursuit aircraft when wanted level > 2 on a configurable interval (`[AviationMisfortune] ScanIntervalSeconds`, default 4s, stored in `11@`). Rolls explosion chance and detonates target.
+* **`DebtDet.txt` (`Y_DebtD`):**
+  * Triggers when player health drops below threshold (default 50% HP) while having points in Debt Detonation.
+  * Launches `FX_GrimBurst.c` (ethereal sapphire screen shockwave).
+  * Knocks down all peds within dynamic radius (30m to 60m), strips their weapons, creates ground pickups if `EnableDisarmDrops = 1`, forces back-skid and cower tasks, applies `FX_HexFlame.c`, and engages dynamic cooldown (60s down to 10s). Actively recruited squad members and special actors are protected.
+* **`GrimPity.txt` (`Y_PITY`):**
+  * Shion's lethal health gate / death defiance.
+  * Intercepts fatal damage via `OnGrimPityDamage` when player wallet is <= $0.
+  * Nullifies death: overwrites engine ped death state (`CPed + 0x530 = 1`), cancels `TASK_SIMPLE_DIE` via `0687: clear_actor task`, restores health to calculated percentage (25% to 75% max HP), grants 2.5s absolute invulnerability godmode (`BP 1 FP 1 EP 1 CP 1 MP 1`), launches `FX_GrimBurst.c`, triggers radial knockdown shockwave on hostiles, sets `MEM_GRIMPITY_BURST = 1` (igniting outer flame ring in `FX_GrimPity.c`), and increments `MEM_GRIMPITY_SAVES`. Cooldown: 300s down to 60s.
+* **`Misery.txt` (`Y_Misy`):**
+  * Intercepts incoming damage on CJ when broke/in debt via `OnCharDamage`.
+  * Identifies attacker entity (direct ped or vehicle driver).
+  * Uses recursion lock `MEM_DMG_RECURSION_LCK` (`184`) to prevent loopbacks.
+  * Calculates reflected damage (`BaseReflectionPercent + Points * ReflectionPerPoint`, soft-capped by `MaxReflectionCap`).
+  * Applies script damage (`0851`) to the attacker, plays impact audio, and spawns `shion_misfortune` particles.
+* **`Scavenger.txt` (`Y_Scav`):**
+  * Enables player on-foot scavenging of dumpsters, street cans, indoor bins, vending machines, and food carts when broke or in debt.
+  * Restores health to 176 and resets hunger clock.
+  * Handles item extraction and weapon drops with `[Y/N]` prompt.
+  * Jo'on identity check: if player is Jo'on, she refuses to scavenge and demands Shion do it.
+
+---
+
+## 6. Visual FX Pipeline
+
+```
+                                +-------------------+
+                                |    Game Engine    |
+                                +---------+---------+
+                                          |
+         +--------------------------------+--------------------------------+
+         |                                |                                |
++--------v--------+              +--------v--------+              +--------v--------+
+|  Flame Clusters |              | Burst Coronas   |              |  Combat Shields |
+| FX_JoonFlames   |              | FX_SwitchBurst  |              | FX_JoonGraze    |
+| FX_ShionFlames  |              | FX_GrimBurst    |              | FX_ShionHitodama|
+| FX_Hitodama     |              | FX_Warp         |              | FX_HexFlame     |
+| FX_GrimPity     |              | FX_FLEX         |              | FX_ShionMoney   |
++-----------------+              +-----------------+              +-----------------+
+```
+
+All persistent visual daemons run 0ms loop cycles normalized against `CTimer::ms_fTimeStep` (`0xB7CB5C * 0.6`) for 60 FPS framerate-independent rendering.
+
+* **`FX_SwitchBurst.txt` (`Sh_Swtc`):** Full-screen camera rumble and triple-layered explosive bloom coronas (Outer Aura, Mid Flare, Core Spark) centered on player torso over 400ms during character swaps. Mode 1 (Jo'on) renders deep gold/sunburst yellow; Mode 2 (Shion) renders electric sapphire/cyan.
+* **`FX_Warp.txt` (`Sh_Warp`):** 2-phase bloom and contract corona burst (500ms duration) used for spatial teleportation, companion recruitment, and Hitodama materialization. Supports static world coordinates (Mode 0) or attachment to moving vehicle actors (Mode 1).
+* **`FX_Hitodama.txt` (`Sh_Hito`):** 3 erratic teardrop flame clusters orbiting physical Shion. Active during combat or within 6 seconds of damage/shooting. Each cluster consists of 5 sub-coronas (Base Anchor, Radiant Belly, Tapered Neck, Flickering Tip, Diamond Core) modulated by sine/cosine harmonic wave clocks.
+* **`FX_ShionHitodama.txt` (`Sh_HitoF`):** Renders the floating Hitodama spirit form when Shion has no physical body (`MEM_SHION_HANDLE == -1`). Renders a central Mother Flame (4-layer corona cluster) and 3 satellite teardrop flames orbiting in 120-degree phase shifts. Follows Jo'on with an exponential 3D lerp. Intercepts incoming gunfire to act as an ablative shield.
+* **`FX_JoonFlames.txt` (`Y_FXJ`):** Golden spirit flames trailing Jo'on during combat, Money Danmaku mode, or skill casts, lingering for 3.5 seconds after combat actions.
+* **`FX_ShionFlames.txt` (`Y_FXS`):** Blue Hitodama spirit flames trailing player Shion (`MEM_PLAYER_FORM == 2`) during combat or Money Danmaku mode.
+* **`FX_GrimPity.txt` (`Y_FXG`):** Dual-layer orbital ring daemon. Inner Ring: 3 clockwise blue flames indicating low-HP debt danger. Outer Ring: 3 counter-clockwise high-speed flames ignited when Grim Pity resurrection activates (`MEM_GRIMPITY_BURST == 1`).
+* **`FX_GrimBurst.txt` (`Y_FXGB`):** 750ms 3-layer blinding sapphire/cyan/white shockwave corona bloom deployed at the instant of Grim Pity death defiance or Debt Detonation.
+* **`FX_HexFlame.txt` (`Y_HexF`):** Single blue Hitodama teardrop flame that attaches above the head of a hostile affected by Misfortune Aura, Debt Detonation, or Shion combat curses.
+* **`FX_JoonGraze.txt` (`Y_Graze`):** Spawns a translucent protective golden corona sphere (1.1m radius) around Jo'on during melee dashes, granting 2000ms bulletproof immunity (`BP 1`).
+* **`FX_ShionMoneyDanmaku.txt` (`Sh_FXDn`):** 3 golden satellite orbs orbiting Shion (player, ped, or Hitodama spirit) when Money Danmaku is active.
+* **`FX_FLEX.txt` (`Y_FXF`):** 4-wave staggered golden coin and spark burst (`"joon_gold"`) surrounding the player during cash flexing.
+* **`YorigamiAimAlpha.txt` (`Y_AIMTR`):** Reads aiming state at the Ammu-Nation shooting range (`$ONMISSION_Shooting == 1`). Sets player alpha to 0 while aiming down sights to prevent model obstruction, restoring alpha to 255 upon release.
+
+---
+
+## 7. Data Persistence Map
+
+```
+[Save Game Safehouse Floppy Disk]
+                |
+     0ED1 Event Callback
+                |
+   +------------+------------+
+   |                         |
++--v------------------+   +--v------------------+
+|    yorigami.cs      |   |    ShionTrack.cs    |
+| Writes:             |   | Writes:             |
+| - yorigami.ini      |   | - ShionMemories.ini |
+| - Yorigami_Ledger   |   | - ShionVehicles.ini |
+|                     |   | - ShionRadio.ini    |
++---------------------+   +---------------------+
+```
+
+Data persistence is segmented across dedicated INI files organized by save slot sections (`[Slot_0]` through `[Slot_8]`), flushed on safehouse floppy disk contact via `0ED1: set_script_event_save_confirmation`.
+
+### File Directory & Roles
+
+```
+cleo\
+├── Shion.ini                     # Master configuration for companion & controls
+├── YorigamiPerks.ini             # Master balancing knobs, caps, scan intervals, & perk rates
+└── savedata\
+    ├── yorigami.ini              # Progression save: points, buffer, perk ranks
+    ├── Yorigami_Ledger.txt       # Plain-text audit ledger: slot, day, points, wallet
+    ├── ShionMemories.ini         # Performance ledger: kills, treats, wrecks, stats, lore bits
+    ├── ShionVehicles.ini         # Dynamic vehicle odometer: minutes driven per model ID
+    ├── ShionRadio.ini            # Radio station listening minutes (Stations 0–12)
+    ├── ShionWeapon.ini           # Stashed weapon ID & ammo for Shion and Jo'on
+    ├── ShionFood.ini             # Custom registered restaurant/food coordinates
+    └── YorigamiBins.ini          # Custom registered dumpster/bin coordinates
+```
+
+### Save / Load Synchronization Flow
+1. **Save Game Execution (`OnGameSaved` / `OnTrackSaved`):**
+   * `0E2C: get_current_save_slot` identifies active slot (0–8).
+   * `yorigami.cs` synchronizes `MEM_TOTAL_POINTS`, `MEM_AVAIL_POINTS`, and `MEM_ALLOC_*` into `yorigami.ini`, writing an entry to `Yorigami_Ledger.txt`.
+   * `Joon.cs` snapshots Shion's designated weapon and ammo, zeroes Jo'on's temporary stash if not playing as Shion, and writes to `ShionWeapon.ini`.
+   * `ShionTrack.cs` flushes performance telemetry registers (`MEM_TIME_TOGETHER_MIN`, `MEM_SHION_KILLS`, `MEM_LORE_PROGRESS_BIT`, etc.) into `ShionMemories.ini`.
+   * `ShionTrack_World.cs` writes the dynamic vehicle odometer array to `ShionVehicles.ini` and radio minutes to `ShionRadio.ini`.
+2. **Load Game Execution (Boot / Death / Slot Change Watchdogs):**
+   * Scripts monitor `MEM_SAVE_SLOT` and detect when the slot index changes from previous baseline or when player despawns during load screens.
+   * `yorigami.cs` reads all perk allocations from `yorigami.ini`, calculates total spent points, sets available points, and synchronizes baseline cash tracker `1@` to live wallet.
+   * `Joon.cs` reads `StartupPlayerCharacter` from `Shion.ini`:
+     * Mode 0: Reverts player to CJ.
+     * Mode 1: Rebuilds player model into Jo'on (`#SPECIAL01`), clears gang hostility, and loads stashed weapon from `ShionWeapon.ini`.
+     * Mode 2: Rebuilds player model into Shion (`#SPECIAL01`), equips weapon from `ShionWeapon.ini`, and suppresses companion ped.
+   * `ShionTrack.cs` reads all lifetime metrics from `ShionMemories.ini` into master heap offsets `228–328`.
+   * `ShionTrack_World.cs` reads `ShionVehicles.ini` into its 4 KB RAM cache `1@`, evaluates the vehicle model with the highest minutes, and crowns it into `MEM_FAV_CAR_MODEL` (`312`). Evaluates radio stations from `ShionRadio.ini` and writes favorite and least favorite IDs to `MEM_FAV_RADIO_STAT` (`332`) and `MEM_WORST_RADIO_STAT` (`336`).
+
+---
+
+## 8. Complete System Interaction Matrix
+
+The following table details the cross-script dependencies for every component in the codebase:
+
+| Component | Source File | Triggers / Activators | Heap Writes | Heap Reads | Target Files / Worker Threads |
+|---|---|---|---|---|---|
+| **Master Heap** | `Y_Brain.txt` | CLEO boot | Base buffer allocated | None | Connects all scripts via struct `Y_Brain` |
+| **Identity & Form** | `Joon.txt` | `Y + L`, "JOON", "POVERTY", Boot | `MEM_PLAYER_FORM`, `MEM_JOON_STASH_*`, `MEM_INTENTIONAL_DISM` | `MEM_SAVE_SLOT`, `MEM_SHION_HANDLE`, `MEM_SHION_WEAPON_ID` | Spawns `FX_SwitchBurst`, `JoonSmoke`; drives `SpawnShion` |
+| **Companion Manager** | `SpawnShion.txt` | "SHION", Proximity to hangouts, `Y + H` | `MEM_SHION_HANDLE`, `MEM_SHION_RECRUITED`, `MEM_SHION_PRES_*` | `MEM_PLAYER_FORM`, `MEM_SHION_BUSY`, `MEM_PRIORITY_LOCK` | Spawns `FX_Warp`, `FX_ShionHitodama`, and all `Shion*.c` workers |
+| **Prestige Engine** | `yorigami.txt` | Wallet change, `Y + J` (Flex), Save disk | `MEM_SAVE_SLOT`, `MEM_TOTAL_POINTS`, `MEM_AVAIL_POINTS`, `MEM_FLEX_SIGNAL` | `MEM_CONTRACT_ESCROW`, `MEM_ALLOC_*` | Spawns `FX_FLEX`, launches all `Yorigami\*.c` perks |
+| **Prestige Menu** | `Yorigami\Menu.txt` | `Y + M` on foot | `MEM_ALLOC_*`, `MEM_AVAIL_POINTS`, `MEM_TOTAL_POINTS`, `MEM_CONTRACT_ESCROW` | `MEM_AVAIL_POINTS`, `MEM_TOTAL_POINTS` | Reads/writes `YorigamiPerks.ini`, communicates with `yorigami.cs` |
+| **Jo'on Bling** | `Yorigami\Bling.txt` | Fists/Knuckles melee attacks, Vehicle punches | `MEM_CAR_SMASH_SIGNAL` | `MEM_ALLOC_JOONBLING`, `MEM_ALLOC_SMASHER`, `MEM_PLAYER_FORM` | Spawns `FX_JoonGraze`, triggers `ShionSandbox` & `ShionDeathTracker` |
+| **Money Danmaku** | `Yorigami\Danmaku.txt` | `Y + G` toggle, Bullet impacts | `MEM_DANMAKU_TOGGLE`, `MEM_DANMAKU_CASH_SPENT` | `MEM_ALLOC_DANMAKU`, `MEM_SHION_HANDLE` | Triggers `FX_ShionMoneyDanmaku`, `FX_JoonFlames`, `FX_ShionFlames` |
+| **Pestilence Fever** | `Yorigami\Fever.txt` | `Y + C` active cast | None | `MEM_ALLOC_FEVER`, `MEM_SHION_HANDLE` | Spawns cash pickups, forces ped flee tasks |
+| **Street Shakedown** | `Yorigami\Shakedown.txt`| Aim + `Y` on ped | `MEM_LAST_EXTORTED_PED` | `MEM_ALLOC_SHAKEDOWN`, `MEM_ACTIVE_MARK` | Cooperates with `Mark.txt`, drops cash/weapons |
+| **High-Roller Mark** | `Yorigami\Mark.txt` | Free-roam timer | `MEM_ACTIVE_MARK` | `MEM_ALLOC_SHAKEDOWN`, `MEM_LAST_EXTORTED_PED` | Sets radar blips, communicates with `Shakedown.txt` |
+| **Drip Entourage** | `Yorigami\Entourage.txt`| Aim + `G` (recruit) / `N` (dismiss) | `MEM_INTENTIONAL_DISM` | `MEM_ALLOC_DRIPWORSHIP`, `MEM_SHION_HANDLE` | Manages player group capacity, triggers `chatDismiss.c` |
+| **Midas & Lifestyle** | `Yorigami\Lifestyle.txt`| Cash pickups near player, Taxi fares | None | `MEM_ALLOC_TAXIEXT`, `MEM_ALLOC_DRIPWORSHIP`, `MEM_ALLOC_MIDAS` | Injects Sex Appeal into engine memory, vacuums pickups |
+| **Debt Detonation** | `Yorigami\DebtDet.txt` | HP <= threshold while broke | `MEM_DMG_RECURSION_LCK` | `MEM_ALLOC_DEBTDET`, `MEM_SHION_HANDLE` | Spawns `FX_GrimBurst`, `FX_HexFlame`, shockwave disarms peds |
+| **Grim Pity** | `Yorigami\GrimPity.txt` | Lethal damage while wallet <= $0 | `MEM_GRIMPITY_BURST`, `MEM_GRIMPITY_SAVES` | `MEM_ALLOC_GRIMPITY`, `MEM_SHION_HANDLE`, `MEM_LORE_PROGRESS_BIT` | Spawns `FX_GrimBurst`, triggers `FX_GrimPity`, defies death |
+| **Misfortune Aura** | `Yorigami\Misfortune.txt`| 1-star wanted, Hostiles near player (timed via `ScanIntervalSeconds`) | None | `MEM_ALLOC_RESONANCE`, `MEM_ALLOC_MISFORTUNE`, `MEM_SHION_HANDLE` | Clears 1-star wanted, stumbles hostiles, spawns `FX_HexFlame` |
+| **Pursuit Hexes** | `Yorigami\Pursuit.txt` | "BRIBE", Wanted level > 1 or 2 (timed via `ScanIntervalSeconds`) | `MEM_BRIBES_PAID` | `MEM_ALLOC_TRAFFICHEX`, `MEM_ALLOC_AVIATION`, `MEM_SHION_HANDLE` | Stalls cruisers, pops tires, explodes aircraft |
+| **Voodoo Misery** | `Yorigami\Misery.txt` | Damage taken while broke | `MEM_DMG_RECURSION_LCK` | `MEM_ALLOC_MISERY`, `MEM_SHION_HANDLE` | Reflects damage to attacker via `0851` |
+| **Player Scavenging** | `Yorigami\Scavenger.txt`| `F` near bin/cart while broke, "ADDBIN" | None | `MEM_ALLOC_SCAVENGER`, `MEM_PLAYER_FORM`, `MEM_SHION_HANDLE` | Gives health/weapons; Jo'on refuses and defers to Shion |
+| **Aim Transparency** | `Yorigami\YorigamiAimAlpha.txt`| Aiming in shooting range mission | None | `MEM_PLAYER_FORM` | Toggles player alpha (`0` <-> `255`) |
+| **Companion Stance** | `Shion\ShionControl.txt`| `Y + B` (Stance), `Y + Z` (Scavenge) | `MEM_SHION_STANCE`, `MEM_SHION_WEAPON_ID`, `MEM_SHION_BUSY` | `MEM_COMBAT_RES_MODE`, `MEM_DURGASTRA_FLAG`, `MEM_SHION_STAY_PUT` | Spawns `ShionScav.c`, manages companion aggression |
+| **Companion Combat** | `Shion\ShionCombat.txt` | Firing weapons, "DURGASTRA" | `MEM_SHION_KILLS`, `MEM_JOON_KILLS_W_SHION`, `MEM_DURGASTRA_FLAG` | `MEM_COMBAT_RES_MODE`, `MEM_SHION_STANCE`, `MEM_SHION_WEAPON_ID` | Deducts shot costs, disarms on bankruptcy, reflects damage |
+| **Gear Swap** | `Shion\ShionGear.txt` | `Y + R` on foot near Shion | `MEM_SHION_WEAPON_ID`, `MEM_SHION_AMMO_COUNT`, `MEM_SHION_STANCE` | `MEM_COMBAT_RES_MODE`, `MEM_SHION_HANDLE` | Exchanges weapons between Jo'on and Shion, auto-disarms when dry |
+| **Death Telemetry** | `Shion\ShionDeathTracker.txt`| Shion takes damage or dies | `MEM_SHION_DEATH_FLAG`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON` | `MEM_CAR_SMASH_SIGNAL`, `MEM_SHION_HANDLE` | Logs cause of death for post-death quips and lockouts |
+| **CJ Retaliation** | `Shion\ShionRetaliation.txt`| CJ punches/attacks Shion | `MEM_SHION_HANDLE`, `MEM_DMG_RECURSION_LCK` | `MEM_PLAYER_FORM` | Damages CJ, staggers him, despawns Shion |
+| **Follow & Transit** | `Shion\ShionFollow.txt` | `H` (Stay Put), `G` (Recall/Warp), Doors | `MEM_SHION_STAY_PUT`, `MEM_SAFEHOUSE_DOOR_ID`, `MEM_TIMES_WASTED/BUSTED`| `MEM_SHION_BUSY`, `MEM_INTENTIONAL_DISM` | Warps Shion indoors/outdoors, spawns `FX_Warp` |
+| **Vehicle Seat Sync** | `Shion\ShionVehicle.txt` | Player driving, `G` (Board/Cycle), `H` | `MEM_SHION_STAY_PUT` | `MEM_SHION_BUSY`, `MEM_SHION_STAY_PUT` | Warps Shion into car seats, cycles seats, bails out on fire |
+| **Target Acquisition** | `Shion\ShionCombatRedMarker.txt`| Red blips on radar | None | `MEM_SHION_STANCE`, `MEM_SHION_STAY_PUT` | Commands Shion to attack red-marked targets or execute drive-bys |
+| **Hunger & Food** | `Shion\ShionFood.txt` | 48h elapsed, HP < 950, `TAB` at restaurant | `MEM_SHION_HUNGRY`, `MEM_LAST_FED_HOURS` | `MEM_SHION_RECRUITED`, `MEM_PRIORITY_LOCK` | Launches `foodDiner.c` (`MEM_PRIORITY_LOCK = 4`) |
+| **Dining Sequence** | `Shion\Food\foodDiner.txt`| Spawned by `ShionFood` | `MEM_LAST_FED_HOURS`, `MEM_TIMES_TREATED`, `MEM_TOTAL_CASH_GIVEN`, `MEM_SHION_HUNGRY` | None | Deducts cash, restores health/armour, resets hunger |
+| **Companion Scavenge** | `Shion\ShionScav.txt` | Spawned by `ShionControl` | `MEM_SHION_BUSY` | None | Locates target, plays search anim, spawns `scavLoot.c` |
+| **Scavenge Loot** | `Shion\Scav\scavLoot.txt` | Spawned by `ShionScav` | `MEM_TIMES_DUMPSTER`, `MEM_LAST_FED_HOURS`, `MEM_SHION_BUSY` | None | Resolves loot tables, heals Shion/CJ, grants weapons |
+| **Sister Talk Lore** | `Shion\ShionLore.txt` | Milestone triggers (Bits 0–30) | `MEM_PRIORITY_LOCK`, `MEM_SKYDIVE_LANDED`, `MEM_LOWRIDER_DONE` | `MEM_LORE_PROGRESS_BIT`, Performance ledger | Prompts `[Y/N]`, streams `loreTheater.c` |
+| **Lore Theater** | `Shion\Lore\loreTheater.txt`| Spawned by `ShionLore` or `loreMenu` | `MEM_LORE_PROGRESS_BIT`, `MEM_PRIORITY_LOCK` | None | Executes cutscene dialogue, sets progress bitmask |
+| **Lore Archive** | `Shion\Lore\loreMenu.txt`| "LORE", "ALLORE", or `ShionMenu` | `MEM_LORE_MENU_SIGNAL` | `MEM_LORE_PROGRESS_BIT` | UI panel for reviewing unlocked lore episodes |
+| **Safehouse Menu** | `Shion\ShionMenu.txt` | Hold `TAB` inside safehouse | `MEM_PRIORITY_LOCK`, `MEM_COMBAT_RES_MODE`, `MEM_DURGASTRA_FLAG`, `MEM_LORE_MENU_SIGNAL` | `MEM_SAFEHOUSE_DOOR_ID` | Safehouse configuration UI, launches `ShionMem` |
+| **Performance Review** | `Shion\ShionMem.txt` | Launched from `ShionMenu` | `MEM_SPOKEN_TOPICS_BIT`, `MEM_PRIORITY_LOCK` | Performance ledger (Kills, Fares, Wrecks, etc.) | Evaluates partnership stats across 9 interactive topics |
+| **Sandbox Banter** | `Shion\ShionSandbox.txt`| Water hose, sinking, stunts, civ punches | None | `MEM_SHION_BUSY`, `MEM_CARS_WRECKED`, `MEM_CAR_SMASH_SIGNAL`, `MEM_FLEX_SIGNAL` | Contextual reactions to sandbox actions |
+| **Friendly Fire & Cam**| `Shion\ShionFriendlyFire.txt`| Attacking Shion on foot, taking photo | `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_HITODAMA_X/Y/Z` | Reactive dialogue for physical attacks and camera snapshots |
+| **Pimping Mission** | `Shion\ShionPimp.txt` | `Y + 2` in 4-door car near prostitute | None | None | Launches native mission 127 (`pimp.sc`) |
+| **Hitodama Defense** | `Shion\FX_ShionHitodama.txt`| Shion in Hitodama form (`-1`) | `MEM_HITODAMA_X/Y/Z`, `MEM_SHION_PRES_HP`, `MEM_HITO_DEFLECT_TMR` | `MEM_PLAYER_FORM`, `MEM_JOON_BASE_HP/ARM` | Floats near Jo'on, absorbs bullet damage, grants bike shield |
+| **Jo'on Smoking** | `Shion\JoonSmoke.txt` | 10s idle on foot, F11 key | `MEM_JOON_CIGAR_OBJ`, `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_SAVE_SLOT` | Attaches cigarette prop, deducts $1, manages withdrawal lines |
+| **Telemetry (Playtime)**| `Shion\ShionTrack.txt` | 60s timer, Safehouse save | Writes all telemetry to `ShionMemories.ini` | `MEM_SHION_HANDLE`, Performance ledger | Spawns `ShionTrack_World` and `ShionTrack_Missions` |
+| **Telemetry (World)** | `Shion\ShionTrack_World.txt`| Driving cars, tuning, radio, casino | `MEM_CASINO_LOSSES`, `MEM_CARS_WRECKED`, `MEM_MOD_CASH_SPENT`, `MEM_FAV_CAR_*` | None | Updates `ShionVehicles.ini` and `ShionRadio.ini` |
+| **Telemetry (Jobs)** | `Shion\ShionTrack_Missions.txt`| Sub-missions (Taxi, Medic, Fire, etc.)| `MEM_PARAMEDIC_SAVES`, `MEM_FIREFIGHT_EXTING`, `MEM_VIGILANTE_KILLS`, `MEM_TAXI_FARES`, `MEM_PIMPING_LEVEL`, `MEM_BURGLARIES` | None | Tracks sub-mission milestones with Shion |
+| **Hangout Blip Markers**| `Shion\shionHangoutIcon.txt`| Proximity to hangout spots outdoors | None | `MEM_PLAYER_FORM`, `MEM_SHION_RECRUITED` | Manages map skull icons (Marker 23) |
+| **Debug Subsystem** | `Shion\ShionDebug.txt` | Cheat "KILLPOOR" | `MEM_SHION_PRES_HP`, `MEM_SHION_PRES_ARMOUR` | `MEM_SHION_HANDLE` | Sets Shion's HP to 5 and armour to 0 |
