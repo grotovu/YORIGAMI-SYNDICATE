@@ -506,6 +506,8 @@ then
                         if
                             0021: 26@ > 15.0
                         then
+                            // Trigger Jo'on Recall Dialogue via chatFollow
+                            0A92: create_custom_thread "Shion\Chat\chatFollow.c" 8
                             gosub @Execute_Shion_OnFoot_Warp
                         else
                             // Nearby: purge tasks and sprint to Jo'on
