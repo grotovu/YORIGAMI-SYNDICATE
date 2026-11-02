@@ -326,15 +326,16 @@ end
 // Read Group Forward Key (Default 71 = G) to detect manual recruitment attempts
 0AF0: 2@ = read_int_from_ini_file "cleo\Shion.ini" section "Controls" key "GroupForwardKey"
 if
-    2@ <= 0
+    002B: 0 >= 2@
 then
     2@ = 71 
 end
 
-15@ = 0  // Stalker reaction cooldown timer (ms)
-14@ = 0  // Total walk-away lifetime timer (ms)
-11@ = 0  // Stalker reaction complaint counter (max 3 times)
-13@ = -1 // Last spoken stalker variant index (anti-repetition)
+// Initial grace window so Shion walks away without immediately flagging Jo'on as a stalker
+15@ = 8000 // Stalker reaction grace/cooldown timer (ms)
+14@ = 0    // Total walk-away lifetime timer (ms)
+11@ = 0    // Stalker reaction complaint counter (max 3 times)
+13@ = -1   // Last spoken stalker variant index (anti-repetition)
 
 // =========================================================================
 // DISMISSAL WALK-AWAY & STALKER WATCHDOG LOOP
