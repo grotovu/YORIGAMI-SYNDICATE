@@ -744,7 +744,7 @@ then
             then
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_AM2A" text "~b~Shion: ~s~\"All these iron barrels on the wall... outside world spell cards look vicious, Jo'on.\""
+                0ADF: add_text_label "Y_AM2A" text "~b~Shion: ~s~\"All these iron barrels on the wall... mortals here really love their guns, Jo'on.\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_AM2A' time 3500 flag 1
                 0001: wait 3500 ms
@@ -752,7 +752,7 @@ then
 
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_AM2B" text "~y~Jo'on: ~s~\"You just yank a trigger and lead comes flyin' out! Isn't this where that psychic brat came from?!\""
+                0ADF: add_text_label "Y_AM2B" text "~y~Jo'on: ~s~\"You just yank a trigger and lead comes flyin' out! Even that psychic brat didn't pack heat like this!\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_AM2B' time 3700 flag 1
                 0001: wait 3700 ms

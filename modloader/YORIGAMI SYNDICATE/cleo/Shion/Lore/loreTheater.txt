@@ -381,22 +381,9 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L00A" text "~b~Shion: ~s~\"I've been staring at this crumpled green bill... feels so strange holding paper, Jo'on.\""
+0ADF: add_text_label "Y_L00A" text "~b~Shion: ~s~\"Watching people swipe plastic cards at the register... reminds me of Tokyo before the bubble burst.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L00A' time 4000 flag 1
-wait 4000
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L00B" text "~b~Shion: ~s~\"Back home, wealth had real weight to it. Heavy sacks of rice, copper coins, or clinking gold.\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L00B' time 4200 flag 1
+00BC: show_text_highpriority GXT 'Y_L00A' time 4200 flag 1
 wait 4200
 gosub @Check_Theater_Alive_Or_Exit
 if
@@ -407,10 +394,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L00C" text "~b~Shion: ~s~\"Out here, people just swap little scraps of paper and act like they're holding a fortune.\""
+0ADF: add_text_label "Y_L00B" text "~y~Jo'on: ~s~\"AHAHAHA! Except Americans take the scam to a whole new level, Shion!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L00C' time 4100 flag 1
-wait 4100
+00BC: show_text_highpriority GXT 'Y_L00B' time 3800 flag 1
+wait 3800
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -420,7 +407,20 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L00D" text "~y~Jo'on: ~s~\"Paper's light and easy to blow through, Shion! But cash ain't even the real genius part!\""
+0ADF: add_text_label "Y_L00C" text "~b~Shion: ~s~\"Back then, suits bought champagne on credit... and then the banks collapsed and everyone jumped off roofs.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L00C' time 4400 flag 1
+wait 4400
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L00D" text "~y~Jo'on: ~s~\"That's 'cause Japanese banks panicked! Out here, banks just print MORE plastic cards!\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L00D' time 4200 flag 1
 wait 4200
@@ -433,10 +433,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L00E" text "~b~Shion: ~s~\"You mean those shiny plastic cards people keep pulling out at the register?\""
+0ADF: add_text_label "Y_L00E" text "~y~Jo'on: ~s~\"They don't even wait for ya to have money! They give ya a card and practically BEG ya to spend it!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L00E' time 4100 flag 1
-wait 4100
+00BC: show_text_highpriority GXT 'Y_L00E' time 4300 flag 1
+wait 4300
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -446,7 +446,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L00F" text "~b~Shion: ~s~\"They swipe it through a box, take their groceries, and leave. Is it some outside-world sorcery?\""
+0ADF: add_text_label "Y_L00F" text "~b~Shion: ~s~\"And then the interest piles up... until repo trucks tow their cars away in the dead of night.\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L00F' time 4300 flag 1
 wait 4300
@@ -459,10 +459,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L00G" text "~y~Jo'on: ~s~\"Sorcery my ass! It's called credit, ya dummy! It's the greatest scam in history!\""
+0ADF: add_text_label "Y_L00G" text "~y~Jo'on: ~s~\"Who cares about repo trucks?! That's their problem! We swipe the card, take the loot, and peel out!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L00G' time 4000 flag 1
-wait 4000
+00BC: show_text_highpriority GXT 'Y_L00G' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -472,10 +472,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L00H" text "~y~Jo'on: ~s~\"They buy designer silk on cash they don't even have yet, promisin' some bank to pay up later!\""
+0ADF: add_text_label "Y_L00H" text "~b~Shion: ~s~\"Mortals never learn, do they? Whether it's Tokyo or Los Santos... people just love drowning in debt.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L00H' time 4200 flag 1
-wait 4200
+00BC: show_text_highpriority GXT 'Y_L00H' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -485,10 +485,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L00I" text "~b~Shion: ~s~\"Wait... so they sign up to go broke later just to walk around in fancy shoes today?\""
+0ADF: add_text_label "Y_L00I" text "~y~Jo'on: ~s~\"And that's why we're gonna own this town! Now spot me a sucker with a high credit limit so we can feast!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L00I' time 4100 flag 1
-wait 4100
+00BC: show_text_highpriority GXT 'Y_L00I' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -498,74 +498,9 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L00J" text "~b~Shion: ~s~\"Back home, if you ran out of coins, you starved. Out here, mortals drown in debt for clothes.\""
+0ADF: add_text_label "Y_L00J" text "~b~Shion: ~s~\"As long as you swipe that magic plastic for a double cheeseburger first, Jo'on... lead the way.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L00J' time 4300 flag 1
-wait 4300
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L00K" text "~y~Jo'on: ~s~\"Damn right! Cheapskates obsess over savin', but cash is meant to flow right into my purse!\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L00K' time 4200 flag 1
-wait 4200
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L00L" text "~y~Jo'on: ~s~\"These banks built an endless pit of free money, and I'm gonna spend every last cent! AHAHAHA!\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L00L' time 4200 flag 1
-wait 4200
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L00M" text "~b~Shion: ~s~\"A whole city running on unpaid bills... honestly, it's paradise for a poverty god.\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L00M' time 4200 flag 1
-wait 4200
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L00N" text "~y~Jo'on: ~s~\"For both of us, sis! Now let's spot some chump with an eight-hundred score and bleed 'em dry!\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L00N' time 4300 flag 1
-wait 4300
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L00O" text "~b~Shion: ~s~\"As long as you swipe that magic plastic for a double cheeseburger first, I'm with you, Jo'on.\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L00O' time 4200 flag 1
+00BC: show_text_highpriority GXT 'Y_L00J' time 4200 flag 1
 wait 4200
 return
 
@@ -2073,7 +2008,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L80A" text "~b~Shion: ~s~\"Back home, villagers guard every single grain of rice. Wasting food always made my stomach ache.\""
+0ADF: add_text_label "Y_L80A" text "~b~Shion: ~s~\"Even back in Tokyo, people didn't toss food like this...\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L80A' time 4200 flag 1
 wait 4200
@@ -2086,7 +2021,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L80B" text "~b~Shion: ~s~\"Out here... people buy a whole bucket of chicken, eat three wings, and chuck the rest in the trash.\""
+0ADF: add_text_label "Y_L80B" text "~b~Shion: ~s~\"Out here, mortals buy a whole bucket of chicken, take two bites, and throw the rest in the dumpster.\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L80B' time 4300 flag 1
 wait 4300

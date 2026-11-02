@@ -3673,7 +3673,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_SR0H" text "~b~Shion: ~s~\"Just line up the front sight, sis... this lane is way too loud.\""
+            0ADF: add_text_label "Y_SR0H" text "~b~Shion: ~s~\"Just look down the barrel, sis... this lane is way too loud.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_SR0H' time 3500 flag 1
             0001: wait 3500 ms
@@ -3805,7 +3805,7 @@ then
         then
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_SR2C" text "~y~Jo'on: ~s~\"'Fake knockoff designer brands', huh?! Take a load of twelve-gauge buckshot, ya psychic brat!\""
+            0ADF: add_text_label "Y_SR2C" text "~y~Jo'on: ~s~\"'Fake knockoff designer brands', huh?! Take a load of buckshot, ya psychic brat!\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_SR2C' time 3800 flag 1
             0001: wait 3800 ms

@@ -141,7 +141,7 @@ then
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_HV1B" text "~b~Shion: ~s~\"The backblast singed my skirt, Jo'on... watching that much money vanish into thin air hurts.\""
+        0ADF: add_text_label "Y_HV1B" text "~b~Shion: ~s~\"The explosion singed my skirt, Jo'on... watching that much money vanish into thin air hurts.\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_HV1B' time 3700 flag 1
         0001: wait 3700 ms
