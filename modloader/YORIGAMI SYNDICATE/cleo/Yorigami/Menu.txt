@@ -1027,23 +1027,22 @@ then
     if
         0039: 2@ == 0 // Jo'on's Bling
     then
-        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "JoonBling" key "BonusDamagePerPoint"
-        if
-            002B: 0 >= 10@
-        then
-            10@ = 1
-        end
-
         0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "JoonBling" key "MaxDamageCap"
         if
-            002B: 0 >= 11@
+            0019: 11@ > 0
         then
-            11@ = 40
+            0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "JoonBling" key "BonusDamagePerPoint"
+            if
+                002B: 0 >= 10@
+            then
+                10@ = 1
+            end
+            0085: 12@ = 11@
+            0072: 12@ /= 10@
+            0ACE: print_help_formatted "~y~Jo'on's Bling~n~~w~+1 Melee/Knuckle DMG per pt.~n~~g~Soft Cap: %d Pts (+%d DMG max)." 12@ 11@
+        else
+            0ACE: print_help_formatted "~y~Jo'on's Bling~n~~w~+1 Melee/Knuckle DMG per pt.~n~~g~Limitless Scaling (No Cap)."
         end
-
-        0085: 12@ = 11@
-        0072: 12@ /= 10@
-        0ACE: print_help_formatted "~y~Jo'on's Bling~n~~w~+1 Melee/Knuckle DMG per pt.~n~~g~Soft Cap: %d Pts (+%d DMG max)." 12@ 11@
     end
 
     if
@@ -1058,12 +1057,12 @@ then
 
         0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "JoonBling" key "MaxDamageCap"
         if
-            002B: 0 >= 11@
+            0019: 11@ > 0
         then
-            11@ = 40
+            0ACE: print_help_formatted "~y~Vehicle Smasher~n~~w~Punch & explode cars.~n~~y~Blast Shield: %d Pts ~w~| ~g~Max DMG: %d Pts." 10@ 11@
+        else
+            0ACE: print_help_formatted "~y~Vehicle Smasher~n~~w~Punch & explode cars.~n~~y~Blast Shield: %d Pts ~w~| ~g~Limitless Damage." 10@
         end
-
-        0ACE: print_help_formatted "~y~Vehicle Smasher~n~~w~Punch & explode cars.~n~~y~Blast Shield: %d Pts ~w~| ~g~Max DMG: %d Pts." 10@ 11@
     end
 
     if
@@ -1125,14 +1124,14 @@ then
 
         0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MidasMagnet" key "MaxBonusPercentCap"
         if
-            002B: 0 >= 11@
+            0019: 11@ > 0
         then
-            11@ = 100
+            0085: 12@ = 11@
+            0016: 12@ /= 2
+            0ACE: print_help_formatted "~y~Midas Magnet~n~~w~Vacuums nearby cash pickups.~n~~g~Caps: %d Pts (35m Reach) | %d Pts (+%d%%)." 10@ 12@ 11@
+        else
+            0ACE: print_help_formatted "~y~Midas Magnet~n~~w~Vacuums nearby cash pickups.~n~~g~Reach Cap: %d Pts (35m) | Limitless Mult." 10@
         end
-
-        0085: 12@ = 11@
-        0016: 12@ /= 2
-        0ACE: print_help_formatted "~y~Midas Magnet~n~~w~Vacuums nearby cash pickups.~n~~g~Caps: %d Pts (35m Reach) | %d Pts (+100%%)." 10@ 12@
     end
 
     if
@@ -1153,15 +1152,14 @@ then
 
         0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MoneyDanmaku" key "MaxDamageCap"
         if
-            002B: 0 >= 11@
+            0019: 11@ > 0
         then
-            11@ = 80
+            0085: 12@ = 11@
+            0072: 12@ /= 10@
+            0ACE: print_help_formatted "~y~Money Danmaku (Y + G)~n~~w~Bullets burn cash for lethal damage.~n~~g~Soft Cap: %d Pts (+%d DMG | Shreds Armor)." 12@ 11@
+        else
+            0ACE: print_help_formatted "~y~Money Danmaku (Y + G)~n~~w~Bullets burn cash for lethal damage.~n~~g~Limitless Damage Scaling (Shreds Armor)."
         end
-
-        0085: 12@ = 11@
-        0072: 12@ /= 10@
-
-        0ACE: print_help_formatted "~y~Money Danmaku (Y + G)~n~~w~Bullets burn cash for lethal damage.~n~~g~Soft Cap: %d Pts (+%d DMG | Shreds Armor)." 12@ 11@
     end
 end
 
@@ -1192,12 +1190,12 @@ then
     then
         0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionMisfortune" key "MaxBadLuckPercent"
         if
-            002B: 0 >= 10@
+            0019: 10@ > 0
         then
-            10@ = 20
+            0ACE: print_help_formatted "~y~Misfortune Aura~n~~w~Hostile stumble & weapon jam aura.~n~~g~Soft Cap: %d Pts (%d%% max chance)." 10@ 10@
+        else
+            0ACE: print_help_formatted "~y~Misfortune Aura~n~~w~Hostile stumble & weapon jam aura.~n~~g~Max Cap: 100 Pts (100%% Natural Guarantee)."
         end
-
-        0ACE: print_help_formatted "~y~Misfortune Aura~n~~w~Hostile stumble & weapon jam aura.~n~~g~Soft Cap: %d Pts (%d%% max chance)." 10@ 10@
     end
 
     if
@@ -1205,12 +1203,12 @@ then
     then
         0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "TrafficHex" key "MaxStallPercent"
         if
-            002B: 0 >= 10@
+            0019: 10@ > 0
         then
-            10@ = 20
+            0ACE: print_help_formatted "~y~Traffic Hex~n~~w~Pursuit cop cruisers stall out.~n~~g~Soft Cap: %d Pts (%d%% max chance)." 10@ 10@
+        else
+            0ACE: print_help_formatted "~y~Traffic Hex~n~~w~Pursuit cop cruisers stall out.~n~~g~Max Cap: 100 Pts (100%% Natural Guarantee)."
         end
-
-        0ACE: print_help_formatted "~y~Traffic Hex~n~~w~Pursuit cop cruisers stall out.~n~~g~Soft Cap: %d Pts (%d%% max chance)." 10@ 10@
     end
 
     if
@@ -1218,12 +1216,12 @@ then
     then
         0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "AviationMisfortune" key "MaxAviationChance"
         if
-            002B: 0 >= 10@
+            0019: 10@ > 0
         then
-            10@ = 20
+            0ACE: print_help_formatted "~y~Aviation Calamity~n~~w~Pursuit choppers explode mid-air.~n~~g~Soft Cap: %d Pts (%d%% max chance)." 10@ 10@
+        else
+            0ACE: print_help_formatted "~y~Aviation Calamity~n~~w~Pursuit choppers explode mid-air.~n~~g~Max Cap: 100 Pts (100%% Natural Guarantee)."
         end
-
-        0ACE: print_help_formatted "~y~Aviation Calamity~n~~w~Pursuit choppers explode mid-air.~n~~g~Soft Cap: %d Pts (%d%% max chance)." 10@ 10@
     end
 
     if
@@ -1248,24 +1246,22 @@ then
     if
         0039: 2@ == 7 // Misery Loves Company
     then
-        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MiseryLovesCompany" key "ReflectionPerPoint"
-        if
-            002B: 0 >= 10@
-        then
-            10@ = 2
-        end
-
         0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MiseryLovesCompany" key "MaxReflectionCap"
         if
-            002B: 0 >= 11@
+            0019: 11@ > 0
         then
-            11@ = 100
+            0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "MiseryLovesCompany" key "ReflectionPerPoint"
+            if
+                002B: 0 >= 10@
+            then
+                10@ = 2
+            end
+            0085: 12@ = 11@
+            0072: 12@ /= 10@
+            0ACE: print_help_formatted "~y~Misery Loves Company~n~~w~Reflects damage at $0 to attacker.~n~~g~Soft Cap: %d Pts (%d%% Voodoo Reflection)." 12@ 11@
+        else
+            0ACE: print_help_formatted "~y~Misery Loves Company~n~~w~Reflects damage at $0 to attacker.~n~~g~Limitless Spite Retribution (Over 100%%)."
         end
-
-        0085: 12@ = 11@
-        0072: 12@ /= 10@
-
-        0ACE: print_help_formatted "~y~Misery Loves Company~n~~w~Reflects damage at $0 to attacker.~n~~g~Soft Cap: %d Pts (%d%% Voodoo Reflection)." 12@ 11@
     end
 end
 
@@ -1598,7 +1594,7 @@ then
         return
     end
 
-    // Row 5: Midas Magnet (Cash Bonus Multiplier - True Limitless)
+    // Row 5: Midas Magnet (Whichever is higher: Reach vs Cash Bonus Cap)
     if
         0039: 2@ == 5
     then
@@ -1614,13 +1610,50 @@ then
             end
             0085: 23@ = 11@
             0072: 23@ /= 10@
+
+            // Reach Cap: (35.0 - 8.0) / 0.5 = 54 Pts
+            0AF2: 13@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "MidasMagnet" key "MaxRadiusCap"
+            if
+                0033: 0.0 >= 13@
+            then
+                13@ = 35.0
+            end
+
+            0AF2: 26@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "MidasMagnet" key "BaseRadius"
+            if
+                0033: 0.0 >= 26@
+            then
+                26@ = 8.0
+            end
+
+            0AF2: 27@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "MidasMagnet" key "RadiusPerPoint"
+            if
+                0033: 0.0 >= 27@
+            then
+                27@ = 0.5
+            end
+
+            0063: 13@ -= 26@
+            if
+                0023: 0.0 > 13@
+            then
+                13@ = 0.0
+            end
+            0073: 13@ /= 27@
+            008C: 11@ = float 13@ to_integer
+
+            if
+                001D: 11@ > 23@
+            then
+                0085: 23@ = 11@
+            end
         else
             23@ = 0 // -1 or <= 0: Limitless Cash Mult
         end
         return
     end
 
-    // Row 6: Pestilence Fever (Cash Drop Per Ped - True Limitless)
+    // Row 6: Pestilence Fever (Whichever is higher: Cash vs Cooldown vs Reach)
     if
         0039: 2@ == 6
     then
@@ -1643,6 +1676,79 @@ then
             end
             0072: 11@ /= 10@
             0085: 23@ = 11@
+
+            // Cooldown Floor Cap: (60 - 20) / 1 = 40 Pts
+            0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "PestilenceFever" key "BaseCooldownSeconds"
+            if
+                002B: 0 >= 11@
+            then
+                11@ = 60
+            end
+
+            0AF0: 12@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "PestilenceFever" key "MinCooldownFloor"
+            if
+                002B: 0 >= 12@
+            then
+                12@ = 20
+            end
+
+            0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "PestilenceFever" key "CooldownReductionPerPoint"
+            if
+                002B: 0 >= 10@
+            then
+                10@ = 1
+            end
+
+            0062: 11@ -= 12@
+            if
+                001B: 0 > 11@
+            then
+                11@ = 0
+            end
+            0072: 11@ /= 10@
+
+            if
+                001D: 11@ > 23@
+            then
+                0085: 23@ = 11@
+            end
+
+            // Radius Cap: (35.0 - 15.0) / 0.5 = 40 Pts
+            0AF2: 13@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "PestilenceFever" key "MaxRadiusCap"
+            if
+                0033: 0.0 >= 13@
+            then
+                13@ = 35.0
+            end
+
+            0AF2: 26@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "PestilenceFever" key "BaseRadius"
+            if
+                0033: 0.0 >= 26@
+            then
+                26@ = 15.0
+            end
+
+            0AF2: 27@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "PestilenceFever" key "RadiusPerPoint"
+            if
+                0033: 0.0 >= 27@
+            then
+                27@ = 0.5
+            end
+
+            0063: 13@ -= 26@
+            if
+                0023: 0.0 > 13@
+            then
+                13@ = 0.0
+            end
+            0073: 13@ /= 27@
+            008C: 11@ = float 13@ to_integer
+
+            if
+                001D: 11@ > 23@
+            then
+                0085: 23@ = 11@
+            end
         else
             23@ = 0 // -1 or <= 0: Limitless
         end
@@ -1690,16 +1796,17 @@ then
         return
     end
 
-    // Row 1: Scavenger Feast (Naturally Caps at 100% Probability)
+    // Row 1: Scavenger Feast (Whichever is higher: Vending vs Food Carts vs Trash)
     if
         0039: 2@ == 1
     then
+        // Vending Cap
         0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "VendingMaxChanceCap"
         if or
             001B: 0 >= 11@
             0019: 11@ > 100
         then
-            11@ = 100 // Natural Max
+            11@ = 100
         end
 
         0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "VendingChancePerPoint"
@@ -1718,10 +1825,41 @@ then
         end
         0072: 11@ /= 10@
         0085: 23@ = 11@
+
+        // Food Cart Cap
+        0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "FoodCartMaxChanceCap"
+        if or
+            001B: 0 >= 11@
+            0019: 11@ > 100
+        then
+            11@ = 100
+        end
+
+        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "FoodCartChancePerPoint"
+        if
+            002B: 0 >= 10@
+        then
+            10@ = 3
+        end
+
+        0AF0: 12@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ScavengerFeast" key "FoodCartBaseChance"
+        0062: 11@ -= 12@
+        if
+            001B: 0 > 11@
+        then
+            11@ = 0
+        end
+        0072: 11@ /= 10@
+
+        if
+            001D: 11@ > 23@
+        then
+            0085: 23@ = 11@
+        end
         return
     end
 
-    // Row 2: Misfortune Aura (Naturally Caps at 100% Probability)
+    // Row 2: Misfortune Aura (Natural Guarantee at 100 Pts)
     if
         0039: 2@ == 2
     then
@@ -1730,7 +1868,7 @@ then
             001B: 0 >= 11@
             0019: 11@ > 100
         then
-            11@ = 100 // Natural Max
+            11@ = 100 // -1 or 0 defaults to 100% guarantee
         end
 
         0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionMisfortune" key "ChancePerPoint"
@@ -1745,7 +1883,7 @@ then
         return
     end
 
-    // Row 3: Traffic Hex (Naturally Caps at 100% Probability)
+    // Row 3: Traffic Hex (Natural Guarantee at 100 Pts)
     if
         0039: 2@ == 3
     then
@@ -1754,7 +1892,7 @@ then
             001B: 0 >= 11@
             0019: 11@ > 100
         then
-            11@ = 100 // Natural Max
+            11@ = 100 // -1 or 0 defaults to 100% guarantee
         end
 
         0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "TrafficHex" key "StallChancePerPoint"
@@ -1769,7 +1907,7 @@ then
         return
     end
 
-    // Row 4: Aviation Calamity (Naturally Caps at 100% Probability)
+    // Row 4: Aviation Calamity (Natural Guarantee at 100 Pts)
     if
         0039: 2@ == 4
     then
@@ -1778,7 +1916,7 @@ then
             001B: 0 >= 11@
             0019: 11@ > 100
         then
-            11@ = 100 // Natural Max
+            11@ = 100 // -1 or 0 defaults to 100% guarantee
         end
 
         0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "AviationMisfortune" key "ChancePerPoint"
@@ -1793,7 +1931,7 @@ then
         return
     end
 
-    // Row 5: Debt Detonation (Cooldown Naturally Floors at 2s)
+    // Row 5: Debt Detonation (Whichever is higher: Cooldown Floor vs Shockwave Radius)
     if
         0039: 2@ == 5
     then
@@ -1801,7 +1939,7 @@ then
         if
             001B: 2 > 11@
         then
-            11@ = 2 // Natural Engine Cooldown Floor
+            11@ = 2
         end
 
         0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "CooldownReductionPerPoint"
@@ -1820,19 +1958,57 @@ then
         end
         0072: 12@ /= 10@
         0085: 23@ = 12@
+
+        // Shockwave Radius Cap: (60.0 - 30.0) / 1.5 = 20 Pts
+        0AF2: 13@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "MaxRadiusCap"
+        if
+            0033: 0.0 >= 13@
+        then
+            13@ = 60.0
+        end
+
+        0AF2: 26@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "BaseRadius"
+        if
+            0033: 0.0 >= 26@
+        then
+            26@ = 30.0
+        end
+
+        0AF2: 27@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "DebtDetonation" key "RadiusPerPoint"
+        if
+            0033: 0.0 >= 27@
+        then
+            27@ = 1.5
+        end
+
+        0063: 13@ -= 26@
+        if
+            0023: 0.0 > 13@
+        then
+            13@ = 0.0
+        end
+        0073: 13@ /= 27@
+        008C: 11@ = float 13@ to_integer
+
+        if
+            001D: 11@ > 23@
+        then
+            0085: 23@ = 11@
+        end
         return
     end
 
-    // Row 6: Grim Pity (Naturally Caps at 100% Health Bar)
+    // Row 6: Grim Pity (Whichever is higher: Heal Cap vs Cooldown Floor vs Shockwave Radius)
     if
         0039: 2@ == 6
     then
+        // Health % Cap
         0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "MaxReviveHealthCap"
         if or
             001B: 0 >= 11@
             0019: 11@ > 100
         then
-            11@ = 100 // Natural Max HP %
+            11@ = 100
         end
 
         0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "HealthPercentPerPoint"
@@ -1851,6 +2027,79 @@ then
         end
         0072: 11@ /= 10@
         0085: 23@ = 11@
+
+        // Cooldown Floor Cap
+        0AF0: 11@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "BaseCooldownSeconds"
+        if
+            002B: 0 >= 11@
+        then
+            11@ = 300
+        end
+
+        0AF0: 12@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "MinCooldownFloor"
+        if
+            002B: 0 >= 12@
+        then
+            12@ = 60
+        end
+
+        0AF0: 10@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "CooldownReductionPerPoint"
+        if
+            002B: 0 >= 10@
+        then
+            10@ = 5
+        end
+
+        0062: 11@ -= 12@
+        if
+            001B: 0 > 11@
+        then
+            11@ = 0
+        end
+        0072: 11@ /= 10@
+
+        if
+            001D: 11@ > 23@
+        then
+            0085: 23@ = 11@
+        end
+
+        // Shockwave Radius Cap
+        0AF2: 13@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "MaxRadiusCap"
+        if
+            0033: 0.0 >= 13@
+        then
+            13@ = 30.0
+        end
+
+        0AF2: 26@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "BaseShockwaveRadius"
+        if
+            0033: 0.0 >= 26@
+        then
+            26@ = 15.0
+        end
+
+        0AF2: 27@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "GrimPity" key "RadiusPerPoint"
+        if
+            0033: 0.0 >= 27@
+        then
+            27@ = 0.5
+        end
+
+        0063: 13@ -= 26@
+        if
+            0023: 0.0 > 13@
+        then
+            13@ = 0.0
+        end
+        0073: 13@ /= 27@
+        008C: 11@ = float 13@ to_integer
+
+        if
+            001D: 11@ > 23@
+        then
+            0085: 23@ = 11@
+        end
         return
     end
 
