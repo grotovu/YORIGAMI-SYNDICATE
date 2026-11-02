@@ -150,14 +150,8 @@ then
         if
             0039: 7@ == 1
         then
-            // Close Range (<= 3.0m)
+            // Close Range (<= 3.0m) Health & State Evaluation
             0226: 22@ = actor 6@ health
-            23@ = 0
-            if
-                001A: 800 > 22@
-            then
-                23@ = 1
-            end
 
             0085: 30@ = 31@
             000A: 30@ += 404 // MEM_SHION_HUNGRY
@@ -166,45 +160,102 @@ then
             8@ = 0
             0209: 9@ = random_int_in_ranges 0 100
 
-            if and
-                0039: 23@ == 1
-                0039: 24@ == 1
+            // Context determination based on health thresholds:
+            // 22@ < 350: Critical health (Rib sticking out / severe damage)
+            // 22@ < 800: Moderate injury (Scuffed up / bleeding)
+            // 22@ >= 800: High / Full health (You don't look too bad)
+            if
+                001A: 350 > 22@
             then
-                if
-                    001A: 20 > 9@
-                then
-                    8@ = 1
-                else
-                    if
-                        001A: 30 > 9@
-                    then
-                        8@ = 2
-                    end
-                end
+                // Severe emergency always takes top priority
+                8@ = 1
             else
                 if
-                    0039: 23@ == 1
+                    001A: 800 > 22@
                 then
+                    // Moderate injury
                     if
-                        001A: 20 > 9@
+                        0039: 24@ == 1
                     then
-                        8@ = 1
-                    end
-                end
-                if
-                    0039: 24@ == 1
-                then
-                    if
-                        001A: 20 > 9@
-                    then
+                        // Both scuffed and starving: 50/50 split
+                        if
+                            001A: 50 > 9@
+                        then
+                            8@ = 2
+                        else
+                            8@ = 3
+                        end
+                    else
                         8@ = 2
+                    end
+                else
+                    // High / Full health
+                    if
+                        0039: 24@ == 1
+                    then
+                        // Healthy but hungry: 50/50 split
+                        if
+                            001A: 50 > 9@
+                        then
+                            8@ = 0
+                        else
+                            8@ = 3
+                        end
+                    else
+                        8@ = 0
                     end
                 end
             end
 
-            // Context 1: Injured & Bleeding
+            // -------------------------------------------------------------
+            // Context 1: Critical / Heavy Damage (< 350 HP)
+            // -------------------------------------------------------------
             if
                 0039: 8@ == 1
+            then
+                0209: 1@ = random_int_in_ranges 0 5
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_RC_K0" text "~y~Jo'on: ~s~\"Is that a rib stickin' out?! Turn into an orb, you're embarrassin' me in public!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_K0' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_RC_K1" text "~y~Jo'on: ~s~\"You're barely holdin' together! Don't you dare drop dead on me!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_K1' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 2
+                then
+                    0ADF: add_text_label "Y_RC_K2" text "~y~Jo'on: ~s~\"Ugh, you're a walkin' massacre! Go ghost before the cops starts investigatin'!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_K2' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_RC_K3" text "~y~Jo'on: ~s~\"Don't you dare flatline on me! I'll buy ya a steak later, just stay on your feet!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_K3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_RC_K4" text "~y~Jo'on: ~s~\"You look like roadkill, Shion! Turn into a flame so I don't have to see you lookin' pathetic!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RC_K4' time 2500 flag 1
+                end
+            end
+
+            // -------------------------------------------------------------
+            // Context 2: Moderate Injury (350 - 799 HP)
+            // -------------------------------------------------------------
+            if
+                0039: 8@ == 2
             then
                 0209: 1@ = random_int_in_ranges 0 5
                 if
@@ -217,14 +268,14 @@ then
                 if
                     0039: 1@ == 1
                 then
-                    0ADF: add_text_label "Y_RC_I1" text "~y~Jo'on: ~s~\"You're all beat up, Shion! Quit leakin' on the sidewalk and walk it off!\""
+                    0ADF: add_text_label "Y_RC_I1" text "~y~Jo'on: ~s~\"You're covered in bruises! How're we supposed to shake people down if ya look like a victim?!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC_I1' time 2500 flag 1
                 end
                 if
                     0039: 1@ == 2
                 then
-                    0ADF: add_text_label "Y_RC_I2" text "~y~Jo'on: ~s~\"Quit slouchin' and hold your cuts together! You're messin' up my vibe!\""
+                    0ADF: add_text_label "Y_RC_I2" text "~y~Jo'on: ~s~\"You're covered in scrapes! Go ghost before people think I'm hangin' out with a zombie!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC_I2' time 2500 flag 1
                 end
@@ -238,15 +289,17 @@ then
                 if
                     0039: 1@ == 4
                 then
-                    0ADF: add_text_label "Y_RC_I4" text "~y~Jo'on: ~s~\"You look like a chewed-up rag, Shion! Stop bleedin' on my clothes!\""
+                    0ADF: add_text_label "Y_RC_I4" text "~y~Jo'on: ~s~\"You're takin' way too many punches today, Shion! Block with your arms, not your face!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC_I4' time 2500 flag 1
                 end
             end
 
-            // Context 2: Starving & Stomach Growling
+            // -------------------------------------------------------------
+            // Context 3: Starving & Stomach Growling
+            // -------------------------------------------------------------
             if
-                0039: 8@ == 2
+                0039: 8@ == 3
             then
                 0209: 1@ = random_int_in_ranges 0 5
                 if
@@ -259,21 +312,21 @@ then
                 if
                     0039: 1@ == 1
                 then
-                    0ADF: add_text_label "Y_RC_H1" text "~y~Jo'on: ~s~\"Your belly's makin' a damn racket, Shion! Quit starin' at me like I'm food!\""
+                    0ADF: add_text_label "Y_RC_H1" text "~y~Jo'on: ~s~\"Fleece first, grease later! You ain't seein' a single fry until we score some cash!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC_H1' time 2500 flag 1
                 end
                 if
                     0039: 1@ == 2
                 then
-                    0ADF: add_text_label "Y_RC_H2" text "~y~Jo'on: ~s~\"Quit rumblin' back there! You sound like a busted engine about to quit!\""
+                    0ADF: add_text_label "Y_RC_H2" text "~y~Jo'on: ~s~\"Don't ya dare eye that dumpster! I'm wearin' silk, we ain't eatin' outta the trash!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC_H2' time 2500 flag 1
                 end
                 if
                     0039: 1@ == 3
                 then
-                    0ADF: add_text_label "Y_RC_H3" text "~y~Jo'on: ~s~\"Is that your guts groanin'?! Move faster and maybe we'll go grab grease!\""
+                    0ADF: add_text_label "Y_RC_H3" text "~y~Jo'on: ~s~\"I can feel your poverty aura suckin' calories outta the air! Step on it, Shion!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC_H3' time 2500 flag 1
                 end
@@ -286,7 +339,9 @@ then
                 end
             end
 
-            // Context 0: Standard Relaxed Close Recall
+            // -------------------------------------------------------------
+            // Context 0: High / Full Health (>= 800 HP)
+            // -------------------------------------------------------------
             if
                 0039: 8@ == 0
             then
@@ -294,35 +349,35 @@ then
                 if
                     0039: 1@ == 0
                 then
-                    0ADF: add_text_label "Y_RC_N0" text "~y~Jo'on: ~s~\"Hey, pay attention. You're startin' to space out.\""
+                    0ADF: add_text_label "Y_RC_N0" text "~y~Jo'on: ~s~\"Look at that, you don't look too bad! Not a scratch on ya!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC_N0' time 2500 flag 1
                 end
                 if
                     0039: 1@ == 1
                 then
-                    0ADF: add_text_label "Y_RC_N1" text "~y~Jo'on: ~s~\"Still breathin'? Fix your posture, you're slouchin'.\""
+                    0ADF: add_text_label "Y_RC_N1" text "~y~Jo'on: ~s~\"Still in one piece? Good. Keep your guard up and stick close.\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC_N1' time 2500 flag 1
                 end
                 if
                     0039: 1@ == 2
                 then
-                    0ADF: add_text_label "Y_RC_N2" text "~y~Jo'on: ~s~\"Don't wander off. Stick close to me.\""
+                    0ADF: add_text_label "Y_RC_N2" text "~y~Jo'on: ~s~\"You don't look too beat up today, Shion. Try keepin' it that way.\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC_N2' time 2500 flag 1
                 end
                 if
                     0039: 1@ == 3
                 then
-                    0ADF: add_text_label "Y_RC_N3" text "~y~Jo'on: ~s~\"Stop starin' at the cracks in the pavement, Shion.\""
+                    0ADF: add_text_label "Y_RC_N3" text "~y~Jo'on: ~s~\"Look at ya, completely fine! Now stop space-in' out and stay sharp.\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC_N3' time 2500 flag 1
                 end
                 if
                     0039: 1@ == 4
                 then
-                    0ADF: add_text_label "Y_RC_N4" text "~y~Jo'on: ~s~\"Eyes front, Shion. Look like you've got somewhere to be.\""
+                    0ADF: add_text_label "Y_RC_N4" text "~y~Jo'on: ~s~\"No fresh holes in your rags? Amazing. Fix your posture and walk!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC_N4' time 2500 flag 1
                 end

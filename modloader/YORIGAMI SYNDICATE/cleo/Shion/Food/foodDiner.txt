@@ -530,158 +530,363 @@ end
 gosub @Play_Hunger_Pre_Meal_Dialogue
 return
 
+// =========================================================================
+// SUBROUTINE: WOUNDED PRE-MEAL DIALOGUE
+// Context: 28@ == 1 (Interior / Foot), 28@ == 0 (Drive-Thru / Car)
+// =========================================================================
 :Play_Wounded_Pre_Meal_Dialogue
-if
-    15@ == 0
-then
-    018C: play_sound 1058 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_PW0A" text "~b~Shion: ~s~\"A cold can of Sprunk... pressing it against my bruised ribs numbs the sting.\""
-    09C1: add_next_text_to_brief_history 1
-    00BC: show_text_highpriority GXT 'Y_PW0A' time 3400 flag 1
-    wait 3400
 
-    018C: play_sound 1058 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_PW0B" text "~y~Jo'on: ~s~\"Drink it down and stop bleedin' on the curb! I ain't carryin' ya!\""
-    09C1: add_next_text_to_brief_history 1
-    00BC: show_text_highpriority GXT 'Y_PW0B' time 3200 flag 1
-    wait 3200
+// -------------------------------------------------------------------------
+// $1 TIER (Vending Machine / Cold Soda)
+// -------------------------------------------------------------------------
+if
+    0039: 15@ == 0
+then
+    if
+        0039: 28@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW0FA" text "~y~Jo'on: ~s~\"Sit in that booth! I'm droppin' a buck in their can machine so ya can ice those cuts!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW0FA' time 3400 flag 1
+        wait 3400
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW0FB" text "~b~Shion: ~s~\"Get a cold Sprunk... pressing cold aluminum against my ribs numbs the ache.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW0FB' time 3300 flag 1
+        wait 3300
+    else
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW0CA" text "~y~Jo'on: ~s~\"Slump down in the seat! I'm grabbin' a one-dollar soda so ya can ice your face!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW0CA' time 3400 flag 1
+        wait 3400
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW0CB" text "~b~Shion: ~s~\"A cold can... rolling it over my bruised cheek feels so nice, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW0CB' time 3300 flag 1
+        wait 3300
+    end
     return
 end
 
-if or
-    15@ == 1
-    15@ == 2
+// -------------------------------------------------------------------------
+// $2 TIER (Warm Pastry / Roll)
+// -------------------------------------------------------------------------
+if
+    0039: 15@ == 1
 then
-    018C: play_sound 1058 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_PW1A" text "~b~Shion: ~s~\"Warm burger grease... feels like my scraped skin is stitching itself together.\""
-    09C1: add_next_text_to_brief_history 1
-    00BC: show_text_highpriority GXT 'Y_PW1A' time 3400 flag 1
-    wait 3400
+    if
+        0039: 28@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW1FA" text "~y~Jo'on: ~s~\"Stay in that corner! I'm runnin' to the warmer for a two-buck roll before ya faint!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW1FA' time 3400 flag 1
+        wait 3400
 
-    018C: play_sound 1058 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_PW1B" text "~y~Jo'on: ~s~\"Shovel the grease down and bounce back! We got marks to fleece today!\""
-    09C1: add_next_text_to_brief_history 1
-    00BC: show_text_highpriority GXT 'Y_PW1B' time 3200 flag 1
-    wait 3200
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW1FB" text "~b~Shion: ~s~\"Even a warm crust is fine, Jo'on... bleeding out makes my stomach feel hollow.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW1FB' time 3300 flag 1
+        wait 3300
+    else
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW1CA" text "~y~Jo'on: ~s~\"Lean back and keep low! I'll order a two-dollar warm biscuit through the window.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW1CA' time 3400 flag 1
+        wait 3400
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW1CB" text "~b~Shion: ~s~\"Warm biscuits sound good... just being out of the cold air helps the cuts close.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW1CB' time 3300 flag 1
+        wait 3300
+    end
     return
 end
 
+// -------------------------------------------------------------------------
+// $5 TIER (Fast-Food Burger)
+// -------------------------------------------------------------------------
 if
-    15@ == 3
+    0039: 15@ == 2
 then
-    018C: play_sound 1058 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_PW3A" text "~b~Shion: ~s~\"Ten dollars... a hot meat pie and gravy. My hands stopped shaking, Jo'on.\""
-    09C1: add_next_text_to_brief_history 1
-    00BC: show_text_highpriority GXT 'Y_PW3A' time 3400 flag 1
-    wait 3400
+    if
+        0039: 28@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW2FA" text "~y~Jo'on: ~s~\"Plant yourself in the booth! I'm buyin' a five-buck burger so ya stop leakin' on the floor!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW2FA' time 3400 flag 1
+        wait 3400
 
-    018C: play_sound 1058 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_PW3B" text "~y~Jo'on: ~s~\"Eat the whole plate! Can't have my meat-shield collapsin' in public!\""
-    09C1: add_next_text_to_brief_history 1
-    00BC: show_text_highpriority GXT 'Y_PW3B' time 3400 flag 1
-    wait 3400
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW2FB" text "~b~Shion: ~s~\"Warm burger grease... feels like the road rash is already stitching together.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW2FB' time 3300 flag 1
+        wait 3300
+    else
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW2CA" text "~y~Jo'on: ~s~\"Don't let the cashier see your blood! Keep your head down while I order a five-buck burger!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW2CA' time 3400 flag 1
+        wait 3400
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW2CB" text "~b~Shion: ~s~\"A double cheeseburger... greasy beef always makes my bruises fade faster, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW2CB' time 3300 flag 1
+        wait 3300
+    end
     return
 end
 
+// -------------------------------------------------------------------------
+// $10 TIER (Meat Pie / Hot Platter)
+// -------------------------------------------------------------------------
 if
-    15@ == 4
+    0039: 15@ == 3
 then
-    018C: play_sound 1058 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_PW4A" text "~b~Shion: ~s~\"Twenty dollars... I'll get the bucket of chicken and save your fries, Jo'on.\""
-    09C1: add_next_text_to_brief_history 1
-    00BC: show_text_highpriority GXT 'Y_PW4A' time 3400 flag 1
-    wait 3400
+    if
+        0039: 28@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW3FA" text "~y~Jo'on: ~s~\"Sit tight and press a napkin to your arm! I'm droppin' ten bucks on hot takeout for ya.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW3FA' time 3400 flag 1
+        wait 3400
 
-    018C: play_sound 1058 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_PW4B" text "~y~Jo'on: ~s~\"Consider it meat-shield maintenance! Don't ya dare drop my fries!\""
-    09C1: add_next_text_to_brief_history 1
-    00BC: show_text_highpriority GXT 'Y_PW4B' time 3200 flag 1
-    wait 3200
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW3FB" text "~b~Shion: ~s~\"Ten dollars... get a hot meat pie with gravy, Jo'on. My hands won't stop shaking.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW3FB' time 3300 flag 1
+        wait 3300
+    else
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW3CA" text "~y~Jo'on: ~s~\"Duck below the dashboard! I'm tellin' the speaker mic to load up ten bucks of hot food!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW3CA' time 3400 flag 1
+        wait 3400
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW3CB" text "~b~Shion: ~s~\"Order something with gravy, sis... having hot food inside me beats lead poisoning.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW3CB' time 3300 flag 1
+        wait 3300
+    end
     return
 end
 
+// -------------------------------------------------------------------------
+// $20 TIER (Family Chicken Bucket)
+// -------------------------------------------------------------------------
 if
-    15@ == 5
+    0039: 15@ == 4
 then
-    018C: play_sound 1058 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_PW5A" text "~b~Shion: ~s~\"Fifty dollars... I can buy every sandwich under the heat lamp. You do care, Jo'on.\""
-    09C1: add_next_text_to_brief_history 1
-    00BC: show_text_highpriority GXT 'Y_PW5A' time 3400 flag 1
-    wait 3400
+    if
+        0039: 28@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW4FA" text "~y~Jo'on: ~s~\"Stay in that booth and don't move! I'm blowin' a twenty on a chicken box so ya bounce back!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW4FA' time 3400 flag 1
+        wait 3400
 
-    018C: play_sound 1058 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_PW5B" text "~y~Jo'on: ~s~\"Quit makin' eyes at me! Shovel it in your face before I take the fifty back!\""
-    09C1: add_next_text_to_brief_history 1
-    00BC: show_text_highpriority GXT 'Y_PW5B' time 3400 flag 1
-    wait 3400
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW4FB" text "~b~Shion: ~s~\"Get the extra crispy, Jo'on... I'll save you the fries while I stop bleeding.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW4FB' time 3300 flag 1
+        wait 3300
+    else
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW4CA" text "~y~Jo'on: ~s~\"Wipe your cuts on your sleeve and stay low! I'm orderin' a twenty-dollar chicken bucket!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW4CA' time 3400 flag 1
+        wait 3400
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW4CB" text "~b~Shion: ~s~\"A whole bucket on your tab... you really are a good sister when I'm dying, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW4CB' time 3300 flag 1
+        wait 3300
+    end
     return
 end
 
-// $100 Tier (Wounded Pre-Meal Variations)
+// -------------------------------------------------------------------------
+// $50 TIER (Entire Heat Lamp / All Sandwiches)
+// -------------------------------------------------------------------------
 if
-    15@ == 6
+    0039: 15@ == 5
+then
+    if
+        0039: 28@ == 1
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW5FA" text "~y~Jo'on: ~s~\"Sit your ass down, you look like a corpse! I'm droppin' fifty bucks to clear out their warmer!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW5FA' time 3400 flag 1
+        wait 3400
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW5FB" text "~b~Shion: ~s~\"Fifty dollars... tell them to bring every sandwich under the heat lamp, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW5FB' time 3300 flag 1
+        wait 3300
+    else
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW5CA" text "~y~Jo'on: ~s~\"Duck down before the drive-thru mic hears ya wheezin'! I'm blowin' fifty bucks on everything!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW5CA' time 3400 flag 1
+        wait 3400
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_PW5CB" text "~b~Shion: ~s~\"Tell them to pack the biggest bags they have... my ribs feel shattered, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_PW5CB' time 3300 flag 1
+        wait 3300
+    end
+    return
+end
+
+// -------------------------------------------------------------------------
+// $100 TIER (Trauma Protocol - 3 Random Variations)
+// -------------------------------------------------------------------------
+if
+    0039: 15@ == 6
 then
     0209: 27@ = random_int_in_ranges 0 3
     if
-        27@ == 0
+        0039: 27@ == 0
     then
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_PW6A" text "~b~Shion: ~s~\"A hundred-dollar bill... you're a wonderful provider, Jo'on. I'll eat until I can't move.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_PW6A' time 3400 flag 1
-        wait 3400
+        if
+            0039: 28@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_PW6FA" text "~y~Jo'on: ~s~\"Sit tight and don't move! I'm throwin' a whole hundred-dollar bill at the counter for ya!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_PW6FA' time 3400 flag 1
+            wait 3400
 
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_PW6B" text "~y~Jo'on: ~s~\"Quit bein' weird! Ya looked pathetic bleedin' out! Go pig out and clean your face!\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_PW6B' time 3400 flag 1
-        wait 3400
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_PW6FB" text "~b~Shion: ~s~\"A hundred dollars... maybe I should take bullets for you more often, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_PW6FB' time 3300 flag 1
+            wait 3300
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_PW6CA" text "~y~Jo'on: ~s~\"Keep low so the drive-thru clerk don't panic! I'm droppin' a whole hundred at the window!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_PW6CA' time 3400 flag 1
+            wait 3400
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_PW6CB" text "~b~Shion: ~s~\"A hundred dollars... maybe I should take bullets for you more often, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_PW6CB' time 3300 flag 1
+            wait 3300
+        end
     end
     if
-        27@ == 1
+        0039: 27@ == 1
     then
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_PW6C" text "~b~Shion: ~s~\"A hundred dollars... maybe I should take bullets for you more often.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_PW6C' time 3500 flag 1
-        wait 3500
+        if
+            0039: 28@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_PW7FA" text "~y~Jo'on: ~s~\"Don't you dare collapse on their linoleum! I'm orderin' a hundred bucks of steak and soup!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_PW7FA' time 3400 flag 1
+            wait 3400
 
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_PW6D" text "~y~Jo'on: ~s~\"D-Don't get cocky, ya leech! That's hazard pay so ya don't rot on my nice seats!\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_PW6D' time 3500 flag 1
-        wait 3500
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_PW7FB" text "~b~Shion: ~s~\"A hundred-dollar bill... you're a wonderful provider, Jo'on. Bring back everything with meat.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_PW7FB' time 3400 flag 1
+            wait 3400
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_PW7CA" text "~y~Jo'on: ~s~\"Stay in your seat and stop leakin' on my upholstery! I'm buyin' out their whole kitchen!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_PW7CA' time 3400 flag 1
+            wait 3400
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_PW7CB" text "~b~Shion: ~s~\"A whole Ben Franklin... you're a great provider, Jo'on. Tell them to fill the seat with beef.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_PW7CB' time 3400 flag 1
+            wait 3400
+        end
     end
     if
-        27@ == 2
+        0039: 27@ == 2
     then
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_PW6E" text "~b~Shion: ~s~\"A hundred dollars for hot soup and roast beef... I'm buying out the whole kitchen counter.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_PW6E' time 3500 flag 1
-        wait 3500
+        if
+            0039: 28@ == 1
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_PW8FA" text "~y~Jo'on: ~s~\"Stay hidden in that back corner! I'm slammin' a Ben Franklin on the register right now!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_PW8FA' time 3400 flag 1
+            wait 3400
 
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_PW6F" text "~y~Jo'on: ~s~\"AHAHAHA! That's right! Clean 'em out! Yorigamis don't pinch pennies when we're hurtin'!\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_PW6F' time 3500 flag 1
-        wait 3500
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_PW8FB" text "~b~Shion: ~s~\"Hot broth and roast beef... I'll sit right here until you bring the trays over, sis.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_PW8FB' time 3300 flag 1
+            wait 3300
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_PW8CA" text "~y~Jo'on: ~s~\"Keep your head under the window line! I'm handin' 'em a hundred-dollar bill at the booth!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_PW8CA' time 3400 flag 1
+            wait 3400
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_PW8CB" text "~b~Shion: ~s~\"Take your time, sis... bleeding out doesn't hurt as much when a hundred dollars is coming.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_PW8CB' time 3400 flag 1
+            wait 3400
+        end
     end
     return
 end
@@ -867,14 +1072,14 @@ then
     then
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_PR6C" text "~b~Shion: ~s~\"A hundred dollars... I'm ordering thirty hot biscuits, six milkshakes, and four pies.\""
+        0ADF: add_text_label "Y_PR6C" text "~b~Shion: ~s~\"If I only spend five dollars, we can save the other ninety-five for two weeks of groceries, Jo'on...\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_PR6C' time 3400 flag 1
         wait 3400
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_PR6D" text "~y~Jo'on: ~s~\"Order the whole kitchen! Tell 'em to keep the change, big spenders don't wait on coins!\""
+        0ADF: add_text_label "Y_PR6D" text "~y~Jo'on: ~s~\"I don't do savin's accounts! Blow every single cent right now! We eat like royalty today!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_PR6D' time 3600 flag 1
         wait 3600
@@ -901,14 +1106,14 @@ then
     then
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_PR6G" text "~b~Shion: ~s~\"A hundred bucks... I'm getting four family buckets, eight apple pies, and two jugs of gravy.\""
+        0ADF: add_text_label "Y_PR6G" text "~b~Shion: ~s~\"A hundred dollars... does that mean I can say yes when they ask if I want extra bacon and cheese?\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_PR6G' time 3500 flag 1
         wait 3500
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_PR6H" text "~y~Jo'on: ~s~\"AHAHAHA! Now that's what I call livin' large! Go make those fry cooks sweat!\""
+        0ADF: add_text_label "Y_PR6H" text "~y~Jo'on: ~s~\"Order triple bacon! Extra cheese on everything! We're payin' with a Benjamin, flex on 'em!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_PR6H' time 3500 flag 1
         wait 3500
@@ -1046,7 +1251,7 @@ then
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_PS0B" text "~y~Jo'on: ~s~\"Crack the window! I don't want cheap soda burps stinkin' up my cabin!\""
+    0ADF: add_text_label "Y_PS0B" text "~y~Jo'on: ~s~\"Crush the can and let's roll! A single buck is all the charity ya get today!\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_PS0B' time 3200 flag 1
     wait 3200
@@ -1058,14 +1263,14 @@ if
 then
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_PS1A" text "~b~Shion: ~s~\"The bread crust was stale and tough, but yellow mustard makes everything taste real.\""
+    0ADF: add_text_label "Y_PS1A" text "~b~Shion: ~s~\"I licked every single crumb off the wax paper... didn't leave anything behind, Jo'on.\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_PS1A' time 3200 flag 1
     wait 3200
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_PS1B" text "~y~Jo'on: ~s~\"Ya got mustard smeared on your sleeve already! Typical Shion, zero class!\""
+    0ADF: add_text_label "Y_PS1B" text "~y~Jo'on: ~s~\"Gross! Quit lickin' greasy paper in public! You look like a starved pigeon!\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_PS1B' time 3000 flag 1
     wait 3000
@@ -1115,14 +1320,14 @@ if
 then
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_PS4A" text "~b~Shion: ~s~\"Here's your salted fries, Jo'on... and I finished an entire eight-piece box.\""
+    0ADF: add_text_label "Y_PS4A" text "~b~Shion: ~s~\"An eight-piece box gone in thirty seconds... my stomach finally stopped hurting, Jo'on.\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_PS4A' time 3200 flag 1
     wait 3200
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_PS4B" text "~y~Jo'on: ~s~\"Mmm, piping hot and salty! See? That's what happens when ya actually listen!\""
+    0ADF: add_text_label "Y_PS4B" text "~y~Jo'on: ~s~\"Thirty seconds?! You inhaled that like a vacuum! Hands off my fries, ya bottomless pit!\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_PS4B' time 3400 flag 1
     wait 3400
@@ -1192,14 +1397,14 @@ then
     then
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_PS6E" text "~b~Shion: ~s~\"They packed it in crates... my arms are full of fried chicken, biscuits, and pies.\""
+        0ADF: add_text_label "Y_PS6E" text "~b~Shion: ~s~\"My ribs are stretching, Jo'on... I ate so much warm meat my legs won't even work.\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_PS6E' time 3500 flag 1
         wait 3500
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_PS6F" text "~y~Jo'on: ~s~\"Load up the back seat! Tonight we feast like street queens! AHAHAHA!\""
+        0ADF: add_text_label "Y_PS6F" text "~y~Jo'on: ~s~\"Walk it off, ya sponge! I didn't drop a hundred bucks for ya to go into a food coma!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_PS6F' time 3500 flag 1
         wait 3500
