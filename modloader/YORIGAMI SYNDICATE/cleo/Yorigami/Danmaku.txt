@@ -79,7 +79,6 @@ end
 // -------------------------------------------------------------------------
 // TOGGLE LISTENER (Press Y + G to toggle Danmaku mode)
 // -------------------------------------------------------------------------
-01F5: 20@ = get_player_actor $PLAYER_CHAR
 if and
     2@ > 0                                // Has points in Money Danmaku
     816B: not fading
@@ -114,27 +113,37 @@ then
                 00BA: show_text_styled GXT 'Y_DNOFF' time 2000 style 5
             end
         else
-            10@ = 1
-            0085: 30@ = 31@
-            000A: 30@ += MEM_DANMAKU_TOGGLE
-            0A8C: write_memory 30@ size 4 value 1 virtual_protect 0 // Inform Jo'on Flames
-            018C: play_sound 1058 at 0.0 0.0 0.0
-
+            010B: 19@ = player $PLAYER_CHAR money
             if
-                9@ == 1
+                802D: not 19@ >= 5@
             then
-                0ADF: add_text_label "Y_DNON" text "~y~MONEY DANMAKU~n~~g~ACTIVATED ~w~(-$~1~/HIT)"
-                01E3: show_text_1number_styled GXT 'Y_DNON' number 5@ time 2500 style 5
-            end
+                // Player cannot afford even a single Danmaku shot
+                018C: play_sound 1051 at 0.0 0.0 0.0
+                0ADF: add_text_label "Y_DNBRO" text "~y~MONEY DANMAKU~n~~r~TOO BROKE TO ACTIVATE!"
+                00BA: show_text_styled GXT 'Y_DNBRO' time 2500 style 5
+            else
+                10@ = 1
+                0085: 30@ = 31@
+                000A: 30@ += MEM_DANMAKU_TOGGLE
+                0A8C: write_memory 30@ size 4 value 1 virtual_protect 0 // Inform Jo'on Flames
+                018C: play_sound 1058 at 0.0 0.0 0.0
 
-            // Read Shion's handle and trigger the new banter
-            0085: 30@ = 31@
-            000A: 30@ += MEM_SHION_HANDLE
-            0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
-            if
-                21@ > 0
-            then
-                0A92: create_custom_thread "Shion\Chat\chatDanmaku.c" 21@
+                if
+                    9@ == 1
+                then
+                    0ADF: add_text_label "Y_DNON" text "~y~MONEY DANMAKU~n~~g~ACTIVATED ~w~(-$~1~/HIT)"
+                    01E3: show_text_1number_styled GXT 'Y_DNON' number 5@ time 2500 style 5
+                end
+
+                // Read Shion's handle and trigger the banter
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_HANDLE
+                0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+                if
+                    21@ > 0
+                then
+                    0A92: create_custom_thread "Shion\Chat\chatDanmaku.c" 21@
+                end
             end
         end
     end
@@ -378,11 +387,12 @@ if and
 then
     0EB6: get_car_weapon_damage_last_frame 29@ char 26@ type 27@ intensity 17@
     01F5: 25@ = get_player_actor $PLAYER_CHAR
+    0A96: 28@ = ped 25@ struct
 
     // Check if Damager was CJ (ignore if CJ is inside the target car during drive-by)
     24@ = 0 // 1 = Valid Danmaku Shooter
     if
-        003B: 26@ == 25@
+        003B: 26@ == 28@
     then
         if
             80DB: not actor 25@ in_car 29@
@@ -403,8 +413,9 @@ then
             056D: actor 14@ defined
             8118: not actor 14@ dead
         then
+            0A96: 23@ = ped 14@ struct
             if
-                003B: 26@ == 14@ // Shion hit the car
+                003B: 26@ == 23@ // Shion hit the car
             then
                 // Ignore if Shion is inside the target car during drive-by
                 if
@@ -439,11 +450,11 @@ then
                 // Track total cash spent on Danmaku
                 0085: 30@ = 31@
                 000A: 30@ += MEM_DANMAKU_CASH_SPENT
-                0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
-                005A: 20@ += 5@ // Add the positive cost of the bullet
+                0A8D: 22@ = read_memory 30@ size 4 virtual_protect 0
+                005A: 22@ += 5@ // Add the positive cost of the bullet
                 0085: 30@ = 31@
                 000A: 30@ += MEM_DANMAKU_CASH_SPENT
-                0A8C: write_memory 30@ size 4 value 20@ virtual_protect 0
+                0A8C: write_memory 30@ size 4 value 22@ virtual_protect 0
 
                 // Calculate Bonus Damage: Points * BonusDamagePerPoint
                 0085: 18@ = 2@
