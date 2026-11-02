@@ -114,11 +114,12 @@ then
             end
         else
             010B: 19@ = player $PLAYER_CHAR money
+
             if
                 802D: not 19@ >= 5@
             then
                 // Player cannot afford even a single Danmaku shot
-                018C: play_sound 1051 at 0.0 0.0 0.0
+                018C: play_sound 1057 at 0.0 0.0 0.0
                 0ADF: add_text_label "Y_DNBRO" text "~y~MONEY DANMAKU~n~~r~TOO BROKE TO ACTIVATE!"
                 00BA: show_text_styled GXT 'Y_DNBRO' time 2500 style 5
             else
@@ -263,7 +264,7 @@ then
         then
             0EB5: get_char_damage_last_frame 16@ damager 26@ type 27@ part 28@ intensity 18@
             01F5: 20@ = get_player_actor $PLAYER_CHAR
-            0A96: 28@ = ped 20@ struct
+            0A96: 28@ = ped 20@ struct // do not do anything about ped struct leave it as is
 
             // Check if Damager was CJ or Shion
             24@ = 0 // 1 = Valid Danmaku Shooter
@@ -387,12 +388,11 @@ if and
 then
     0EB6: get_car_weapon_damage_last_frame 29@ char 26@ type 27@ intensity 17@
     01F5: 25@ = get_player_actor $PLAYER_CHAR
-    0A96: 28@ = ped 25@ struct
 
     // Check if Damager was CJ (ignore if CJ is inside the target car during drive-by)
     24@ = 0 // 1 = Valid Danmaku Shooter
     if
-        003B: 26@ == 28@
+        003B: 26@ == 25@
     then
         if
             80DB: not actor 25@ in_car 29@
@@ -413,9 +413,8 @@ then
             056D: actor 14@ defined
             8118: not actor 14@ dead
         then
-            0A96: 23@ = ped 14@ struct
             if
-                003B: 26@ == 23@ // Shion hit the car
+                003B: 26@ == 14@ // Shion hit the car
             then
                 // Ignore if Shion is inside the target car during drive-by
                 if
@@ -450,11 +449,11 @@ then
                 // Track total cash spent on Danmaku
                 0085: 30@ = 31@
                 000A: 30@ += MEM_DANMAKU_CASH_SPENT
-                0A8D: 22@ = read_memory 30@ size 4 virtual_protect 0
-                005A: 22@ += 5@ // Add the positive cost of the bullet
+                0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+                005A: 20@ += 5@ // Add the positive cost of the bullet
                 0085: 30@ = 31@
                 000A: 30@ += MEM_DANMAKU_CASH_SPENT
-                0A8C: write_memory 30@ size 4 value 22@ virtual_protect 0
+                0A8C: write_memory 30@ size 4 value 20@ virtual_protect 0
 
                 // Calculate Bonus Damage: Points * BonusDamagePerPoint
                 0085: 18@ = 2@
