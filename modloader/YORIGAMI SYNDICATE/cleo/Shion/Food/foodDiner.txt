@@ -826,7 +826,7 @@ then
         then
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_PW7FA" text "~y~Jo'on: ~s~\"Don't you dare collapse on their linoleum! I'm orderin' a hundred bucks of steak and soup!\""
+            0ADF: add_text_label "Y_PW7FA" text "~y~Jo'on: ~s~\"Don't you dare collapse on their sticky floors! I'm orderin' a hundred bucks of steak and soup!\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_PW7FA' time 3400 flag 1
             wait 3400
