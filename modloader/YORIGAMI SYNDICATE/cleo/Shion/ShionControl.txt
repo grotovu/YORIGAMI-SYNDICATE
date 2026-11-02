@@ -181,7 +181,7 @@ then
                             end
                         end
                     else
-                        // Within 5.0m: Keep her disarmed and standing her ground next to Jo'on
+                        // Within 3.0m: Keep her disarmed and standing her ground next to Jo'on
                         0816: set_actor 10@ dont_chase_victim 1
                     end
                 end
