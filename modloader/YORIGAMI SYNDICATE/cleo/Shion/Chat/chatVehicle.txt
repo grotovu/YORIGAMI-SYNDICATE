@@ -1157,7 +1157,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_VOR0B" text "~b~Shion: ~s~\"This thing doesn't have breaks, Jo'on... we're sliding sideways right into a concrete pier!\""
+            0ADF: add_text_label "Y_VOR0B" text "~b~Shion: ~s~\"This thing doesn't have brakes, Jo'on... we're sliding sideways right into a concrete pier!\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_VOR0B' time 3700 flag 1
             wait 3700

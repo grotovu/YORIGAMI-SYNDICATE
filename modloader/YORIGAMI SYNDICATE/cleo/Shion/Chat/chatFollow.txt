@@ -231,7 +231,7 @@ then
                 if
                     0039: 1@ == 2
                 then
-                    0ADF: add_text_label "Y_RC_K2" text "~y~Jo'on: ~s~\"Ugh, you're a walkin' massacre! Go ghost before the cops starts investigatin'!\""
+                    0ADF: add_text_label "Y_RC_K2" text "~y~Jo'on: ~s~\"Ugh, you're a walkin' massacre! Go ghost before the cops start investigatin'!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC_K2' time 2500 flag 1
                 end
@@ -370,7 +370,7 @@ then
                 if
                     0039: 1@ == 3
                 then
-                    0ADF: add_text_label "Y_RC_N3" text "~y~Jo'on: ~s~\"Look at ya, completely fine! Now stop space-in' out and stay sharp.\""
+                    0ADF: add_text_label "Y_RC_N3" text "~y~Jo'on: ~s~\"Look at ya, completely fine! Now stop spacin' out and stay sharp.\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC_N3' time 2500 flag 1
                 end

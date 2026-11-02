@@ -355,7 +355,7 @@ then
         then
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_W10AA" text "~b~Shion: ~s~\"We've got the cops after us, but we're a thousand feet up... what're they gonna do?\""
+            0ADF: add_text_label "Y_W10AA" text "~b~Shion: ~s~\"We've got the cops after us, but we're a thousand feet up... what are they gonna do?\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_W10AA' time 3600 flag 1
             wait 3600

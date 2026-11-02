@@ -184,7 +184,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_RNB0B" text "~b~Shion: ~s~\"You cracked a heavy stick across my collarbone until it snapped. Should've buried me in the dirt.\""
+            0ADF: add_text_label "Y_RNB0B" text "~b~Shion: ~s~\"You cracked a heavy stick across my shoulder until it snapped. Should've buried me in the dirt.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_RNB0B' time 3600 flag 1
             0001: wait 3600 ms
