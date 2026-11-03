@@ -328,6 +328,9 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 ### Allocation & Progression UI (`Menu.txt` / `Y_Menu`)
 * Bounded to `Y + M`. Provides interactive menu panels for point distribution.
 * **Hub Interface:** Routes to Jo'on Extravagance, Shion Misfortune, Yorigami Contract, Mod Preferences, and Respec.
+* **Interactive Tooltips & Tutorials:**
+  * *Dynamic Tooltips:* Scrolling over any perk row automatically samples `YorigamiPerks.ini` to display live stat bonuses, milestones, and soft/hard cap ceilings in the top-left text box.
+  * *Gameplay Tutorials (`Space` / `Sprint`):* Pressing `Space` over any allocated perk in the Jo'on or Shion menus displays a dedicated tutorial help box explaining practical in-game activation, required inputs, and combat mechanics (e.g., aiming + `G` recruitment for Drip Worship, `Y + G` toggle for Money Danmaku, pursuit conditions for Traffic Hex).
 * **Stepping Logic:** Normal tap adjusts by ±1. Holding `Shift` adjusts by ±10. Holding `Ctrl` adjusts by ±100. Holding `Shift + Ctrl` for 2.5s dumps or refunds all points.
 * **Perk Caps:** Queries dynamic caps from `YorigamiPerks.ini`. If a perk has reached its cap, further increments are rejected with an error buzzer.
 * **Yorigami Contract:** Grants an instant loan of configurable points (`ContractPoints`, default 100) in exchange for equivalent negative debt (`Points * CashPerPoint`, default -$1,000,000). Writes to `MEM_CONTRACT_ESCROW` to prevent double-dipping on wallet spending.
@@ -497,7 +500,7 @@ The following table details the cross-script dependencies for every component in
 | **Identity & Form** | `Joon.txt` | `Y + L`, "JOON", "POVERTY", Boot | `MEM_PLAYER_FORM`, `MEM_JOON_STASH_*`, `MEM_INTENTIONAL_DISM` | `MEM_SAVE_SLOT`, `MEM_SHION_HANDLE`, `MEM_SHION_WEAPON_ID` | Spawns `FX_SwitchBurst`, `JoonSmoke`; drives `SpawnShion` |
 | **Companion Manager** | `SpawnShion.txt` | "SHION", Proximity to hangouts, `Y + H` | `MEM_SHION_HANDLE`, `MEM_SHION_RECRUITED`, `MEM_SHION_PRES_*` | `MEM_PLAYER_FORM`, `MEM_SHION_BUSY`, `MEM_PRIORITY_LOCK` | Spawns `FX_Warp`, `FX_ShionHitodama`, and all `Shion*.c` workers |
 | **Prestige Engine** | `yorigami.txt` | Wallet change, `Y + J` (Flex), Save disk | `MEM_SAVE_SLOT`, `MEM_TOTAL_POINTS`, `MEM_AVAIL_POINTS`, `MEM_FLEX_SIGNAL` | `MEM_CONTRACT_ESCROW`, `MEM_ALLOC_*` | Spawns `FX_FLEX`, launches all `Yorigami\*.c` perks |
-| **Prestige Menu** | `Yorigami\Menu.txt` | `Y + M` on foot | `MEM_ALLOC_*`, `MEM_AVAIL_POINTS`, `MEM_TOTAL_POINTS`, `MEM_CONTRACT_ESCROW` | `MEM_AVAIL_POINTS`, `MEM_TOTAL_POINTS` | Reads/writes `YorigamiPerks.ini`, communicates with `yorigami.cs` |
+| **Prestige Menu** | `Yorigami\Menu.txt` | `Y + M` on foot, `Space`/`Sprint` for tutorials | `MEM_ALLOC_*`, `MEM_AVAIL_POINTS`, `MEM_TOTAL_POINTS`, `MEM_CONTRACT_ESCROW` | `MEM_AVAIL_POINTS`, `MEM_TOTAL_POINTS` | Reads/writes `YorigamiPerks.ini`, communicates with `yorigami.cs` |
 | **Jo'on Bling** | `Yorigami\Bling.txt` | Fists/Knuckles melee attacks, Vehicle punches | `MEM_CAR_SMASH_SIGNAL` | `MEM_ALLOC_JOONBLING`, `MEM_ALLOC_SMASHER`, `MEM_PLAYER_FORM` | Spawns `FX_JoonGraze`, triggers `ShionSandbox` & `ShionDeathTracker` |
 | **Money Danmaku** | `Yorigami\Danmaku.txt` | `Y + G` toggle, Bullet impacts | `MEM_DANMAKU_TOGGLE`, `MEM_DANMAKU_CASH_SPENT` | `MEM_ALLOC_DANMAKU`, `MEM_SHION_HANDLE` | Triggers `FX_ShionMoneyDanmaku`, `FX_JoonFlames`, `FX_ShionFlames` |
 | **Pestilence Fever** | `Yorigami\Fever.txt` | `Y + C` active cast | None | `MEM_ALLOC_FEVER`, `MEM_SHION_HANDLE` | Spawns cash pickups, forces ped flee tasks |

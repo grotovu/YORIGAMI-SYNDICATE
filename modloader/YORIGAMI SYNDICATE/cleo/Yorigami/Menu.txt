@@ -1361,7 +1361,7 @@ then
     if
         0039: 2@ == 2 // Taxi Extortion
     then
-        0ACE: print_help_formatted "~y~Taxi Extortion~n~~w~Drive taxis on duty.~n~~s~Every completed fare gives a massive bonus cash payout."
+        0ACE: print_help_formatted "~y~Taxi Extortion~n~~w~Drive taxis on duty.~n~~s~Every completed fare gives a bonus cash payout based on points allocated."
     end
 
     if
