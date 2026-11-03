@@ -1047,7 +1047,7 @@ then
     if
         26@ == 0
     then
-        0ADF: add_text_label "Y_SM1BH" text "~y~Jo'on: ~s~\"Spirits don't even have lungs, Shion! Quit fake-coughin' and act like an exhaust fan!\""
+        0ADF: add_text_label "Y_SM1BH" text "~y~Jo'on: ~s~\"Spirits don't have lungs, Shion! Quit the fake wheezin' and float closer so you can light my next one!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_SM1BH' time 3200 flag 1
     end
@@ -1088,7 +1088,7 @@ else
     if
         26@ == 2
     then
-        0ADF: add_text_label "Y_SM3B" text "~y~Jo'on: ~s~\"Then act like an exhaust fan and blow it away from my hair! Quit whinin'!\""
+        0ADF: add_text_label "Y_SM3B" text "~y~Jo'on: ~s~\"Then step two feet to the left, idiot! You've got legs! Stop standin' right where I'm blowin'!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_SM3B' time 3200 flag 1
     end
