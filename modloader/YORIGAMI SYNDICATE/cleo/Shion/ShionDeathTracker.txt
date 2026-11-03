@@ -95,6 +95,9 @@ then
                 then
                     13@ = 1  // Jo'on's fault
                     12@ = 51 // Car explosion from Car Smasher
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_SHION_DEATH_IN_CAR
+                    0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
                 end
             else
                 // Check if last damage timestamp was within 3000ms
@@ -232,7 +235,7 @@ then
             then
                 3@ = 51 // Car / Vehicle Explosion
 
-                // Check if Shion was inside a vehicle or on foot
+                // Check if Shion was inside a vehicle (1) or on foot outside (0)
                 18@ = 0
                 if
                     0449: actor 10@ in_a_car
@@ -256,6 +259,11 @@ then
                             001B: 2 > 23@ // Weapon 0 (Fists) or 1 (Brass Knuckles)
                         then
                             13@ = 1 // Jo'on detonated the car via Car Smasher punches
+                            if
+                                0039: 18@ == 0
+                            then
+                                18@ = 2 // Car Smasher Punch Detonation outside on foot
+                            end
                         end
                     end
                 end
@@ -279,7 +287,7 @@ then
                     end
                 end
 
-                // Sync vehicle presence latch to Master Heap
+                // Sync vehicle presence state to Master Heap (0 = Gunfire outside, 1 = Inside car, 2 = Car Smasher outside)
                 0085: 30@ = 31@
                 000A: 30@ += MEM_SHION_DEATH_IN_CAR
                 0A8C: write_memory 30@ size 4 value 18@ virtual_protect 0

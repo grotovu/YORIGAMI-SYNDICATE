@@ -854,7 +854,7 @@ then
             if
                 0039: 25@ == 1
             then
-                // Inside the car
+                // Case 1: Trapped inside the car when Jo'on drove it
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
                 0ADF: add_text_label "Y_REC0A" text "~y~Jo'on: ~s~\"There ya are! Back on your feet? See? Told ya that little dashboard fireball wouldn't leave a mark!\""
@@ -893,8 +893,12 @@ then
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_REC0E' time 3500 flag 1
                 0001: wait 3500 ms
-            else
-                // On foot outside (Jo'on punched / detonated the car)
+            end
+
+            if
+                0039: 25@ == 2
+            then
+                // Case 2: On foot outside - Jo'on punched / detonated the car via Car Smasher
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
                 0ADF: add_text_label "Y_REP0A" text "~y~Jo'on: ~s~\"AHAHAHA! Look who's back! Did ya see the fireball when I clocked that sedan?!\""
@@ -932,6 +936,50 @@ then
                 0ADF: add_text_label "Y_REP0E" text "~y~Jo'on: ~s~\"Fine, fine! Double bacon burgers! Just stay clear of my fists next time!\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_REP0E' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+
+            if
+                0039: 25@ == 0
+            then
+                // Case 3: On foot outside - Jo'on shot the car to death with firearms / minigun
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REG0A" text "~y~Jo'on: ~s~\"AHAHAHA! Look who's back! Did ya see that engine block fly when I lit up the gas tank?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REG0A' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REG0B" text "~b~Shion: ~s~\"You emptied hundreds of rounds into the engine while I was taking cover behind the bumper, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REG0B' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REG0C" text "~y~Jo'on: ~s~\"The car was blockin' my shootin' lane! You expect me to stop pullin' the trigger when I'm on a roll?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REG0C' time 3600 flag 1
+                0001: wait 3600 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REG0D" text "~b~Shion: ~s~\"The blast blew me across two lanes. You're buying me dinner for turning me into shrapnel.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REG0D' time 3500 flag 1
+                0001: wait 3500 ms
+                0050: gosub @Check_Reunion_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_REG0E" text "~y~Jo'on: ~s~\"Fine, fine! All-you-can-eat ribs on someone else's dime! Move those legs, we're stealin' a fresh ride!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_REG0E' time 3500 flag 1
                 0001: wait 3500 ms
             end
         else

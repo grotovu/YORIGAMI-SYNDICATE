@@ -88,7 +88,7 @@ Every secondary script executes an identical connection routine upon initializat
 | `380` | `MEM_SHION_DEATH_FLAG` | int (bool) | Latch recording that Shion has died in the current session. | `ShionDeathTracker`, `SpawnShion` | `SpawnShion`, `Bling` |
 | `384` | `MEM_SHION_KILLER_IS_JOON`| int (bool) | Flag recording if Shion's killer was Jo'on. | `ShionDeathTracker` | `chatFollow` |
 | `388` | `MEM_SHION_DEATH_WEAPON`| int | Weapon ID that dealt the lethal blow to Shion. | `ShionDeathTracker` | `chatFollow` |
-| `392` | `MEM_SHION_DEATH_IN_CAR`| int (bool) | Flag recording if Shion died inside a vehicle. | `ShionDeathTracker` | `chatFollow` |
+| `392` | `MEM_SHION_DEATH_IN_CAR`| int (enum) | Vehicle explosion context: `0` = On foot outside via gunfire/bullet detonation, `1` = Inside vehicle, `2` = On foot outside via Car Smasher punch detonation. | `ShionDeathTracker` | `chatFollow`, `chatReunion`, `chatSpawned` |
 | `396` | `MEM_SHION_STAY_PUT` | int | Stay-Put state: `0` = Follow, `1` = Ground Stay-Put (`H`), `2` = In-Vehicle Hold (`H`). | `ShionFollow`, `ShionVehicle` | `ShionFollow`, `ShionControl`, `ShionCombatRedMarker` |
 | `400` | `MEM_SHION_RECRUITED` | int (bool) | Recruitment state: `0` = Ambient Loiterer, `1` = Entourage Member. | `SpawnShion`, `Joon`, `Entourage` | `ShionChat`, `shionHangoutIcon`, `ShionFood`, `JoonSmoke` |
 | `404` | `MEM_SHION_HUNGRY` | int (bool) | Starvation state: `0` = Satisfied, `1` = Starving / Injured. | `ShionFood`, `foodDiner` | `foodDiner`, `ShionFood` |
@@ -239,6 +239,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 * **`ShionDeathTracker.txt` (`Sh_Dth`):**
   * Attaches to `0EDE: set_script_event_char_damage` specifically targeting Shion's handle.
   * Resolves damager entity: identifies whether damage originated from Jo'on directly, Jo'on's driven vehicle, an explosive weapon held by Jo'on, a Car Smasher punch detonation (`MEM_CAR_SMASH_SIGNAL`), or environmental drowning.
+  * For vehicle explosions (Weapon ID 51), classifies the blast circumstance into `MEM_SHION_DEATH_IN_CAR`: `1` (trapped inside vehicle), `2` (outside on foot via Car Smasher punch), or `0` (outside on foot via gunfire/minigun bullet detonation).
   * Writes lethal telemetry to `MEM_SHION_DEATH_FLAG`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON`, and `MEM_SHION_DEATH_IN_CAR`.
 * **`ShionRetaliation.txt` (`Sh_Retal`):**
   * Anti-abuse system active exclusively when player is CJ (`MEM_PLAYER_FORM == 0`).
@@ -524,7 +525,7 @@ The following table details the cross-script dependencies for every component in
 | **Companion Stance** | `Shion\ShionControl.txt`| `Y + B` (Stance), `Y + Z` (Scavenge) | `MEM_SHION_STANCE`, `MEM_SHION_WEAPON_ID`, `MEM_SHION_BUSY` | `MEM_COMBAT_RES_MODE`, `MEM_DURGASTRA_FLAG`, `MEM_SHION_STAY_PUT` | Spawns `ShionScav.c`, manages companion aggression |
 | **Companion Combat** | `Shion\ShionCombat.txt` | Firing weapons, "DURGASTRA" | `MEM_SHION_KILLS`, `MEM_JOON_KILLS_W_SHION`, `MEM_DURGASTRA_FLAG` | `MEM_COMBAT_RES_MODE`, `MEM_SHION_STANCE`, `MEM_SHION_WEAPON_ID` | Deducts shot costs, disarms on bankruptcy, reflects damage |
 | **Gear Swap** | `Shion\ShionGear.txt` | `Y + R` on foot near Shion | `MEM_SHION_WEAPON_ID`, `MEM_SHION_AMMO_COUNT`, `MEM_SHION_STANCE` | `MEM_COMBAT_RES_MODE`, `MEM_SHION_HANDLE` | Exchanges weapons between Jo'on and Shion, auto-disarms when dry |
-| **Death Telemetry** | `Shion\ShionDeathTracker.txt`| Shion takes damage or dies | `MEM_SHION_DEATH_FLAG`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON` | `MEM_CAR_SMASH_SIGNAL`, `MEM_SHION_HANDLE` | Logs cause of death for post-death quips and lockouts |
+| **Death Telemetry** | `Shion\ShionDeathTracker.txt`| Shion takes damage or dies | `MEM_SHION_DEATH_FLAG`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON`, `MEM_SHION_DEATH_IN_CAR` | `MEM_CAR_SMASH_SIGNAL`, `MEM_SHION_HANDLE` | Logs cause of death for post-death quips and lockouts |
 | **CJ Retaliation** | `Shion\ShionRetaliation.txt`| CJ punches/attacks Shion | `MEM_SHION_HANDLE`, `MEM_DMG_RECURSION_LCK` | `MEM_PLAYER_FORM` | Damages CJ, staggers him, despawns Shion |
 | **Follow & Transit** | `Shion\ShionFollow.txt` | `H` (Stay Put), `G` (Recall/Warp), Doors | `MEM_SHION_STAY_PUT`, `MEM_SAFEHOUSE_DOOR_ID`, `MEM_TIMES_WASTED/BUSTED`| `MEM_SHION_BUSY`, `MEM_INTENTIONAL_DISM` | Warps Shion indoors/outdoors, spawns `FX_Warp` |
 | **Vehicle Seat Sync** | `Shion\ShionVehicle.txt` | Player driving, `G` (Board/Cycle), `H` | `MEM_SHION_STAY_PUT` | `MEM_SHION_BUSY`, `MEM_SHION_STAY_PUT` | Warps Shion into car seats, cycles seats, bails out on fire |
