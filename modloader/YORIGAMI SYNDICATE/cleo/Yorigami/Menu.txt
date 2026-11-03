@@ -162,7 +162,7 @@ if or
     0039: 15@ == 1
     0039: 15@ == 2
 then
-    0AD1: print_formatted_now "~y~Avail: ~w~%d ~s~[A/D: 1 | SHIFT: 10 | CTRL: 100 | HOLD: ALL | ENTER: Back]" 100 1@
+    0AD1: print_formatted_now "~y~Avail: ~w~%d ~s~[SPACE: Help | A/D: Points | ENTER: Back]" 100 1@
     goto @Process_Sister_Menu
 end
 
@@ -300,6 +300,16 @@ if and
     8AB0: not is_key_pressed 37 // Left Arrow
 then
     18@ = 0
+end
+
+// --- SPACE OR SPRINT: SHOW PERK TUTORIAL HELP BOX ---
+if or
+    00E1: player 0 pressed_key 16 // Sprint
+    0AB0: is_key_pressed 32       // Space
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    gosub @Show_Perk_Tutorial_Box
+    goto @Wait_Sister_Select_Release
 end
 
 // --- D OR RIGHT ARROW: ADD POINTS ---
@@ -492,6 +502,17 @@ then
     goto @Wait_Sister_Back_Release
 end
 
+goto @Menu_Master_Loop
+
+:Wait_Sister_Select_Release
+wait 50
+if or
+    00E1: player 0 pressed_key 16
+    0AB0: is_key_pressed 32
+then
+    goto @Wait_Sister_Select_Release
+end
+wait 100
 goto @Menu_Master_Loop
 
 :Wait_Sister_Back_Release
@@ -1312,6 +1333,117 @@ then
         0039: 2@ == 8 // ShowSaveLoadMessage
     then
         0ACE: print_help_formatted "~y~Save/Load Confirmation~n~~w~On-screen banner when saving at safehouses.~n~~g~1 = Show banner | 0 = Silent saves."
+    end
+end
+return
+
+// =========================================================================
+// PERK GAMEPLAY TUTORIALS (Triggered via SPACEBAR)
+// =========================================================================
+:Show_Perk_Tutorial_Box
+03E6: remove_text_box
+
+if
+    0039: 15@ == 1 // JO'ON PERK TUTORIALS
+then
+    if
+        0039: 2@ == 0 // Jo'on's Bling
+    then
+        0ACE: print_help_formatted "~y~Jo'on's Bling~n~~w~Target a ped with fists and punch to dash.~n~~s~Grants a golden graze shield during dash."
+    end
+
+    if
+        0039: 2@ == 1 // Vehicle Smasher
+    then
+        0ACE: print_help_formatted "~y~Vehicle Smasher~n~~w~Punch vehicles to heavily damage them.~n~~s~Explodes cars on wreck. 10 pts gives blast shield."
+    end
+
+    if
+        0039: 2@ == 2 // Taxi Extortion
+    then
+        0ACE: print_help_formatted "~y~Taxi Extortion~n~~w~Drive taxis on duty.~n~~s~Every completed fare gives a massive bonus cash payout."
+    end
+
+    if
+        0039: 2@ == 3 // Drip Worship
+    then
+        0ACE: print_help_formatted "~y~Drip Worship~n~~w~Aim at peds with a gun and press G to recruit.~n~~s~Works on civilians, dealers, and rival gangs."
+    end
+
+    if
+        0039: 2@ == 4 // Street Shakedown
+    then
+        0ACE: print_help_formatted "~y~Street Shakedown~n~~w~Aim at peds on foot and press Y to extort.~n~~s~Dealers drop bonus cash. Gangs drop weapons."
+    end
+
+    if
+        0039: 2@ == 5 // Midas Magnet
+    then
+        0ACE: print_help_formatted "~y~Midas Magnet~n~~w~Nearby dropped cash pickups are pulled to you.~n~~s~Also multiplies collected cash value."
+    end
+
+    if
+        0039: 2@ == 6 // Pestilence Fever
+    then
+        0ACE: print_help_formatted "~y~Pestilence Fever~n~~w~Press Y + C on foot.~n~~s~Causes crowds to drop cash pickups and flee in panic."
+    end
+
+    if
+        0039: 2@ == 7 // Money Danmaku
+    then
+        0ACE: print_help_formatted "~y~Money Danmaku~n~~w~Press Y + G on foot to toggle.~n~~s~Bullets spend cash to shred armor and deal lethal damage."
+    end
+end
+
+if
+    0039: 15@ == 2 // SHION PERK TUTORIALS
+then
+    if
+        0039: 2@ == 0 // Shion Resonance
+    then
+        0ACE: print_help_formatted "~y~Shion Resonance~n~~w~Stay on foot unarmed at $0 with 1 wanted star.~n~~s~Police lose interest after 6 seconds."
+    end
+
+    if
+        0039: 2@ == 1 // Scavenger Feast
+    then
+        0ACE: print_help_formatted "~y~Scavenger Feast~n~~w~Interact with dumpsters, carts, and vending.~n~~s~Restores health and finds weapons when broke."
+    end
+
+    if
+        0039: 2@ == 2 // Misfortune Aura
+    then
+        0ACE: print_help_formatted "~y~Misfortune Aura~n~~w~Passive aura around you in combat.~n~~s~Nearby hostile enemies stumble, fall, or jam weapons."
+    end
+
+    if
+        0039: 2@ == 3 // Traffic Hex
+    then
+        0ACE: print_help_formatted "~y~Traffic Hex~n~~w~Active during 2+ star wanted pursuits.~n~~s~Police cruisers and bikes chasing you stall and blow tires."
+    end
+
+    if
+        0039: 2@ == 4 // Aviation Calamity
+    then
+        0ACE: print_help_formatted "~y~Aviation Calamity~n~~w~Active during 3+ star wanted pursuits.~n~~s~Pursuit helicopters and jets explode in the sky."
+    end
+
+    if
+        0039: 2@ == 5 // Debt Detonation
+    then
+        0ACE: print_help_formatted "~y~Debt Detonation~n~~w~Triggers when low HP while broke or in debt.~n~~s~Blasts a shockwave that disarms nearby enemies."
+    end
+
+    if
+        0039: 2@ == 6 // Grim Pity
+    then
+        0ACE: print_help_formatted "~y~Grim Pity~n~~w~Active when broke at $0 or in debt.~n~~s~Taking fatal damage revives you with temporary godmode."
+    end
+
+    if
+        0039: 2@ == 7 // Misery Loves Company
+    then
+        0ACE: print_help_formatted "~y~Misery Loves Company~n~~w~Active when broke at $0 or in debt.~n~~s~Reflects incoming combat damage back at attackers."
     end
 end
 return
