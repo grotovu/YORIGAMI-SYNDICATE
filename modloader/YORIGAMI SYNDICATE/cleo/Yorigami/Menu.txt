@@ -1431,7 +1431,7 @@ then
     if
         0039: 2@ == 5 // Debt Detonation
     then
-        0ACE: print_help_formatted "~y~Debt Detonation~n~~w~Triggers when low HP while broke or in debt.~n~~s~Blasts a shockwave that disarms nearby enemies."
+        0ACE: print_help_formatted "~y~Debt Detonation~n~~w~Triggers when low HP.~n~~s~Blasts a shockwave that disarms nearby enemies."
     end
 
     if
