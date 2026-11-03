@@ -183,7 +183,7 @@ All creative direction, systems architecture, mechanical balance (the prestige t
 
 ## 📖 Further Reading & Design Notes
 
-* [An explanation for Jo'on's dialogue:](https://eagleraviorange.bearblog.dev/the-choice-of-shitamachi-chain-smoker-joon-gutter-dialects-and-fake-rich-nuance/) 
+* [An explanation for Jo'on's dialogue:](https://eagleraviorange.bearblog.dev/explanation-and-ramblings-about-joons-dialogue-in-my-mod-yorigami-syndicate/) 
   *Ramblings about the linguistic inspirations, Japanese Shitamachi speech patterns, and character psychology behind Jo'on's street dialogue in this mod.*
   *(**Note:** This link leads to my personal blog. It contains unfiltered analysis and embraces the darker, messy, and taboo elements of Japanese doujin culture. Proceed accordingly.)*
 
