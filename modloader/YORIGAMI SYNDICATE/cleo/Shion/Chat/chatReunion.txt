@@ -827,7 +827,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_RNX1D" text "~b~Shion: ~s~\"Next time a missile flies in, you stand in front of the shockwave.\""
+            0ADF: add_text_label "Y_RNX1D" text "~b~Shion: ~s~\"Next time a missile flies in, you stand in front of the explosion.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_RNX1D' time 3400 flag 1
             0001: wait 3400 ms
@@ -921,7 +921,7 @@ then
 
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_REP0D" text "~b~Shion: ~s~\"The shockwave blew me into a lamppost. You're buying me dinner for that.\""
+                0ADF: add_text_label "Y_REP0D" text "~b~Shion: ~s~\"The explosion blew me into a lamppost. You're buying me dinner for that.\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_REP0D' time 3500 flag 1
                 0001: wait 3500 ms
