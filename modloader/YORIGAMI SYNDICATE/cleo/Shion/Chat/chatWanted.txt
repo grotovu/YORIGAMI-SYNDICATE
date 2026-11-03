@@ -355,7 +355,7 @@ then
         then
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_W10AA" text "~b~Shion: ~s~\"We've got the cops after us, but we're a thousand feet up... what're they gonna do?\""
+            0ADF: add_text_label "Y_W10AA" text "~b~Shion: ~s~\"We've got the cops after us, but we're a thousand feet up... what are they gonna do?\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_W10AA' time 3600 flag 1
             wait 3600
@@ -871,7 +871,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_W31AB" text "~y~Jo'on: ~s~\"Buckshot can't reach us up here! Point and laugh at their pathetic range, Shion!\""
+            0ADF: add_text_label "Y_W31AB" text "~y~Jo'on: ~s~\"Shotguns can't reach us up here! Point and laugh at their pathetic range, Shion!\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_W31AB' time 3500 flag 1
             0001: wait 3500 ms
@@ -886,7 +886,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_W31B" text "~y~Jo'on: ~s~\"Command revoked their bikes, Shion! Now the drivers are packin' heavy buckshot!\""
+            0ADF: add_text_label "Y_W31B" text "~y~Jo'on: ~s~\"Command revoked their bikes, Shion! Now the drivers are packin' heavy shotguns!\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_W31B' time 3500 flag 1
             0001: wait 3500 ms
@@ -1737,7 +1737,7 @@ then
         then
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_W61AA" text "~b~Shion: ~s~\"Don't fly in a straight line, Jo'on... those jets'll blow us out of the sky with missiles.\""
+            0ADF: add_text_label "Y_W61AA" text "~b~Shion: ~s~\"Don't fly in a straight line, Jo'on... those jets are gonna blow us out of the sky with missiles.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_W61AA' time 3600 flag 1
             0001: wait 3600 ms

@@ -477,7 +477,7 @@ then
 
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_W2F2" text "~b~Shion: ~s~\"If I sit on the sidewalk... maybe someone'll mistake me for roadkill and throw some scraps at me.\""
+                0ADF: add_text_label "Y_W2F2" text "~b~Shion: ~s~\"If I sit on the sidewalk... maybe someone will mistake me for roadkill and throw some scraps at me.\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_W2F2' time 3600 flag 1
                 0001: wait 3600 ms
@@ -530,7 +530,7 @@ then
                 00BC: show_text_highpriority GXT 'Y_W2C3H' time 3200 flag 1
                 0001: wait 3200 ms
             else
-                0ADF: add_text_label "Y_W2C0" text "~b~Shion: ~s~\"Cold air blowing out of the dashboard... how's this cheap car even doing that?\""
+                0ADF: add_text_label "Y_W2C0" text "~b~Shion: ~s~\"Dashboard AC cranked on high... at least this car has one working luxury, Jo'on.\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_W2C0' time 3700 flag 1
                 0001: wait 3700 ms
@@ -538,7 +538,7 @@ then
 
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_W2C1" text "~y~Jo'on: ~s~\"It's called air conditionin', Shion! Cranked all the way to max! Deluxe VIP luxury!\""
+                0ADF: add_text_label "Y_W2C1" text "~y~Jo'on: ~s~\"Cranked all the way to max! We ain't gonna be caught sweatin' out here!\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_W2C1' time 3700 flag 1
                 0001: wait 3700 ms

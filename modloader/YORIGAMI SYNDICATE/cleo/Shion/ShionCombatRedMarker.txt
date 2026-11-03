@@ -6,6 +6,12 @@
 0000: NOP
 script_name 'Sh_RedM'
 
+const
+    MEM_SHION_HANDLE = 116
+    MEM_SHION_STANCE = 120
+    MEM_SHION_STAY_PUT = 396
+end
+
 0006: 10@ = -1 // 10@ = Best Target Handle (-1 = None)
 13@ = 0        // 13@ = Target Type (1 = Car, 2 = Ped)
 17@ = 0        // 17@ = HadTarget Combat State Flag (0 = Idle, 1 = Engaged)
@@ -289,17 +295,30 @@ end
 if
     00DF: actor 11@ driving
 then
-    // Jo'on stepped out onto the street -> Shion exits vehicle
+    // Check if Shion was ordered to wait inside the vehicle via [H]
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_STAY_PUT
+    0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+
     if
-        80DF: not actor $PLAYER_ACTOR driving
+        0039: 29@ == 0 // Only exit if NOT ordered to stay put!
     then
+        // Jo'on stepped out onto the street -> Shion exits vehicle
         if
-            8E4A: not is_char_exiting_any_car 11@
+            80DF: not actor $PLAYER_ACTOR driving
         then
-            0633: AS_actor 11@ exit_car
+            if
+                8E4A: not is_char_exiting_any_car 11@
+            then
+                0633: AS_actor 11@ exit_car
+            end
         end
-    else
-        // Jo'on is driving -> Driveby ONLY if in Hostile Mode (0@ == 1)
+    end
+
+    // Jo'on is driving -> Driveby ONLY if in Hostile Mode (0@ == 1)
+    if
+        00DF: actor $PLAYER_ACTOR driving
+    then
         if
             0@ == 1
         then

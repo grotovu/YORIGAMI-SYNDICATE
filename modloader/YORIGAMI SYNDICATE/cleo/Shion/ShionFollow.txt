@@ -345,11 +345,11 @@ then
         end
 
         // -----------------------------------------------------------------
-        // [H] Key: Stay Put (On-Foot Only; In-Car is handled by Sh_Sync)
+        // [H] Key: On-Foot Stay Put (Strictly Outside Vehicles)
         // -----------------------------------------------------------------
         if and
-            80DF: not actor $PLAYER_ACTOR driving
-            8449: not actor $PLAYER_ACTOR in_a_car
+            8449: not actor $PLAYER_ACTOR in_a_car // On foot only
+            8449: not actor 10@ in_a_car
             8818: not actor 10@ in_air
             0AB0: is_key_pressed 72 // H Key
             8AB0: not is_key_pressed 3@ // Y Key NOT held
@@ -370,55 +370,67 @@ then
                 jump @Wait_H_Key_Rel
             end
 
-            // Only execute on-foot Stay Put if Shion is actually on foot outside
-            25@ = 0
-            24@ = -1
-            0AB5: store_char 10@ closest_vehicle_to 24@ closest_ped_to 23@
-            if
-                056E: car 24@ defined
-            then
-                if
-                    00DB: actor 10@ in_car 24@
-                then
-                    25@ = 1
-                end
-            end
-            if
-                0E49: is_char_entering_any_car 10@
-            then
-                25@ = 1
-            end
+            15@ = 1
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_STAY_PUT
+            0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
 
+            0687: clear_actor 10@ task
+            0E96: clear_char_primary_tasks 10@
+            0E97: clear_char_secondary_tasks 10@
+            07AF: 12@ = player $PLAYER_CHAR group
+            07B3: set_group 12@ give_command 1 // Group Hold Ground
+            0638: AS_actor 10@ stay_put 1
+
+            // Trigger Jo'on Stay Put Dialogue
+            0A92: create_custom_thread "Shion\Chat\chatFollow.c" 1
+        end
+
+        // -----------------------------------------------------------------
+        // VEHICLE STAY PUT MONITOR: Hazard Bailout (Burning or Flipped only)
+        // -----------------------------------------------------------------
+        if
+            0039: 15@ == 2
+        then
             if
-                0039: 25@ == 0
+                0449: actor 10@ in_a_car
             then
-                // Set Stay Put mode locally and in shared heap
-                15@ = 1
+                03C0: 24@ = actor 10@ car
+
+                // Emergency Bailout: Vehicle is burning or flipped
+                if or
+                    0495: car 24@ burning
+                    01F4: car 24@ flipped
+                then
+                    039E: set_actor 10@ locked 0 while_in_car
+                    0633: AS_actor 10@ exit_car
+                    15@ = 0
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_SHION_STAY_PUT
+                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+                    07AF: 12@ = player $PLAYER_CHAR group
+                    0631: put_actor 10@ in_group 12@
+                    07B3: set_group 12@ give_command 0
+                end
+            else
+                // Shion is no longer in vehicle: cancel car lock
+                039E: set_actor 10@ locked 0 while_in_car
+                15@ = 0
                 0085: 30@ = 31@
                 000A: 30@ += MEM_SHION_STAY_PUT
-                0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
-
-                // Clear on-foot tasks and anchor position
-                0687: clear_actor 10@ task
-                0E96: clear_char_primary_tasks 10@
-                0E97: clear_char_secondary_tasks 10@
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
                 07AF: 12@ = player $PLAYER_CHAR group
-                07B3: set_group 12@ give_command 1 // Group Stay Put / Hold Ground
-                0638: AS_actor 10@ stay_put 1
-                
-                // Trigger MODE 1: ON-FOOT STAY PUT (H KEY)
-                0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
-                0A92: create_custom_thread "Shion\Chat\chatFollow.c" 1
+                0631: put_actor 10@ in_group 12@
+                07B3: set_group 12@ give_command 0
             end
         end
 
         // -----------------------------------------------------------------
-        // [G] Key: Follow, Break Combat Freeze, or Free Shion from Car
+        // [G] Key: Follow, Exit Car, or Double-Tap Instant Warp
         // -----------------------------------------------------------------
         if and
-            80DF: not actor $PLAYER_ACTOR driving
-            8449: not actor $PLAYER_ACTOR in_a_car
             8818: not actor 10@ in_air
             0AB0: is_key_pressed 71 // G Key
             8AB0: not is_key_pressed 3@ // Y Key NOT held
@@ -439,126 +451,84 @@ then
                 jump @Wait_G_Key_Rel
             end
 
-            // G Key released cleanly: cancel Stay Put mode
+            // Capture previous stay-put state before resetting
+            0085: 8@ = 15@
+
+            // If Shion was locked waiting in a car: order her out!
+            if
+                0039: 8@ == 2
+            then
+                039E: set_actor 10@ locked 0 while_in_car
+                if
+                    0449: actor 10@ in_a_car
+                then
+                    0633: AS_actor 10@ exit_car
+                end
+            end
+
+            // G Key released cleanly: cancel Stay Put mode globally
             15@ = 0
             0085: 30@ = 31@
             000A: 30@ += MEM_SHION_STAY_PUT
             0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
-            000A: 11@ += 1 // Increment tap counter
+            0638: AS_actor 10@ stay_put 0
 
-            // Check if Shion is currently inside or boarding a vehicle
-            25@ = 0
-            24@ = -1
-            0AB5: store_char 10@ closest_vehicle_to 24@ closest_ped_to 23@
+            // Reassert group follow command
+            07AF: 12@ = player $PLAYER_CHAR group
+            0631: put_actor 10@ in_group 12@
+            07B3: set_group 12@ give_command 0
+
+            // Process On-Foot Warping & Movement ONLY if player is on foot
             if
-                056E: car 24@ defined
+                8449: not actor $PLAYER_ACTOR in_a_car
             then
+                // If she was just ordered out of a car, do not clear tasks or interrupt exit anim!
                 if
-                    00DB: actor 10@ in_car 24@
+                    8039: not 8@ == 2
                 then
-                    25@ = 1
-                end
-            end
-            if
-                0E49: is_char_entering_any_car 10@
-            then
-                25@ = 1
-            end
+                    000A: 11@ += 1 // Increment tap counter
 
-            if
-                0039: 25@ == 1
-            then
-                // DOUBLE-TAP G: Emergency Hitodama Warp right to Jo'on on foot
-                if
-                    0029: 11@ >= 2
-                then
-                    11@ = 0
-                    9@ = 0
-                    gosub @Execute_Shion_OnFoot_Warp
-
-                    // Trigger MODE 8: DOUBLE-TAP G FORCED WARP
-                    0085: 30@ = 31@
-                    000A: 30@ += MEM_PRIORITY_LOCK
-                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
-                    0A92: create_custom_thread "Shion\Chat\chatFollow.c" 8
-                else
-                    // SINGLE TAP G: Start 500ms window & order normal vehicle exit
-                    9@ = 500
-
-                    0687: clear_actor 10@ task
-                    0E96: clear_char_primary_tasks 10@
-                    0E97: clear_char_secondary_tasks 10@
-                    0633: AS_actor 10@ exit_car
-
-                    07AF: 12@ = player $PLAYER_CHAR group
-                    0631: put_actor 10@ in_group 12@
-                    0940: set_group 12@ enters_leaders_vehicle 1
-                    07B3: set_group 12@ give_command 0 // Form up with Jo'on
-
-                    018C: play_sound 1058 at 0.0 0.0 0.0
-
-                    // Trigger MODE 4: EXIT VEHICLE RECALL (JO'ON ON FOOT, SHION IN VEHICLE)
-                    0085: 30@ = 31@
-                    000A: 30@ += MEM_PRIORITY_LOCK
-                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
-                    0A92: create_custom_thread "Shion\Chat\chatFollow.c" 4
-                end
-            else
-                // Shion is already on foot outside
-                if
-                    0029: 11@ >= 2
-                then
-                    // DOUBLE-TAP G: Emergency Hitodama Warp right to Jo'on
-                    11@ = 0
-                    9@ = 0
-                    gosub @Execute_Shion_OnFoot_Warp
-
-                    // Trigger MODE 8: DOUBLE-TAP G FORCED WARP
-                    0085: 30@ = 31@
-                    000A: 30@ += MEM_PRIORITY_LOCK
-                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
-                    0A92: create_custom_thread "Shion\Chat\chatFollow.c" 8
-                else
-                    // SINGLE TAP G: Start 500ms double-tap window
-                    9@ = 500
-
+                    // DOUBLE-TAP / SPAM G: Emergency Hitodama Warp right to Jo'on
                     if
-                        0021: 26@ > 15.0
+                        0029: 11@ >= 2
                     then
-                        // Far catch-up warp (> 15m) triggers forced warp banter
-                        gosub @Execute_Shion_OnFoot_Warp
-
-                        // Trigger MODE 8: DOUBLE-TAP G FORCED WARP
-                        0085: 30@ = 31@
-                        000A: 30@ += MEM_PRIORITY_LOCK
-                        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
+                        11@ = 0
+                        9@ = 0
+                        // Trigger Jo'on Recall Dialogue via chatFollow
                         0A92: create_custom_thread "Shion\Chat\chatFollow.c" 8
+                        gosub @Execute_Shion_OnFoot_Warp
                     else
-                        // Nearby (<= 15m): Break combat lock and force native group follow
-                        0687: clear_actor 10@ task
-                        0E96: clear_char_primary_tasks 10@
-                        0E97: clear_char_secondary_tasks 10@
+                        // SINGLE TAP G: Start 500ms double-tap window
+                        9@ = 500
 
-                        07AF: 12@ = player $PLAYER_CHAR group
-                        0631: put_actor 10@ in_group 12@
-                        0940: set_group 12@ enters_leaders_vehicle 1
-                        07B3: set_group 12@ give_command 0 // Native group follow
+                        // If far away (> 15m), warp immediately
+                        if
+                            0021: 26@ > 15.0
+                        then
+                            // Trigger Jo'on Recall Dialogue via chatFollow
+                            0A92: create_custom_thread "Shion\Chat\chatFollow.c" 8
+                            gosub @Execute_Shion_OnFoot_Warp
+                        else
+                            // Nearby: purge tasks and sprint to Jo'on
+                            0687: clear_actor 10@ task
+                            0E96: clear_char_primary_tasks 10@
+                            0E97: clear_char_secondary_tasks 10@
 
-                        018C: play_sound 1058 at 0.0 0.0 0.0
-
-                        // Trigger MODE 0: ON-FOOT WALKING RECALL (G KEY)
-                        0085: 30@ = 31@
-                        000A: 30@ += MEM_PRIORITY_LOCK
-                        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
-                        0A92: create_custom_thread "Shion\Chat\chatFollow.c" 0
+                            if
+                                0021: 26@ > 1.0
+                            then
+                                05D9: AS_actor 10@ run_to_actor $PLAYER_ACTOR timelimit 4000 stop_within_radius 0.8
+                            else
+                                0639: AS_actor 10@ rotate_to_actor $PLAYER_ACTOR
+                            end
+                            018C: play_sound 1058 at 0.0 0.0 0.0
+                        end
                     end
                 end
+
+                // Trigger Jo'on Recall Dialogue via chatFollow
+                0A92: create_custom_thread "Shion\Chat\chatFollow.c" 0
             end
         end
         
@@ -578,10 +548,11 @@ then
         end
 
         // -----------------------------------------------------------------
-        // Hard Despawn Fallback (Distance > 130m)
+        // Hard Despawn Fallback (Distance > 130m, suppressed if waiting in car)
         // -----------------------------------------------------------------
-        if
+        if and
             0021: 26@ > 130.0
+            8039: not 15@ == 2
         then
             // Trigger MODE 2: SHION LOST BANTER (> 130m AWAY)
             0A92: create_custom_thread "Shion\Chat\chatFollow.c" 2
@@ -611,26 +582,33 @@ then
     if
         86EE: not actor 10@ in_group 12@
     then
+        // ADD THIS CHECK: If she is holding the car seat, DO NOT put her in the group!
         0085: 30@ = 31@
-        000A: 30@ += MEM_INTENTIONAL_DISM // Intentional Dismissal Flag
+        000A: 30@ += MEM_SHION_STAY_PUT
         0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
         if
-            2@ == 1
+            8039: not 2@ == 2
         then
             0085: 30@ = 31@
-            000A: 30@ += MEM_INTENTIONAL_DISM
-            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+            000A: 30@ += MEM_INTENTIONAL_DISM // Intentional Dismissal Flag
+            0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                2@ == 1
+            then
+                0085: 30@ = 31@
+                000A: 30@ += MEM_INTENTIONAL_DISM
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
-            01C2: remove_references_to_actor 10@
+                01C2: remove_references_to_actor 10@
 
-            0085: 30@ = 31@
-            000A: 30@ += MEM_SHION_HANDLE
-            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_HANDLE
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
-            0A93: terminate_this_custom_script
-        else
-            0631: put_actor 10@ in_group 12@
-            0940: set_group 12@ enters_leaders_vehicle 1
+                0A93: terminate_this_custom_script
+            else
+                0631: put_actor 10@ in_group 12@
+            end
         end
     end
 end

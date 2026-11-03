@@ -2801,7 +2801,7 @@ then
         then
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_9SH0A" text "~b~Shion: ~s~\"Cars are packed with petroleum, but detonating one with a bare fist is ridiculous...\""
+            0ADF: add_text_label "Y_9SH0A" text "~b~Shion: ~s~\"Cars are packed with petroleum, but blowing one up with a bare fist is ridiculous...\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_9SH0A' time 3500 flag 1
             wait 3500
@@ -2826,7 +2826,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_9SH1B" text "~y~Jo'on: ~s~\"AHAHAHA! Did ya see that!? That cheap petroleum detonates like fireworks!\""
+            0ADF: add_text_label "Y_9SH1B" text "~y~Jo'on: ~s~\"AHAHAHA! Did ya see that!? That cheap petroleum blows up like fireworks!\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_9SH1B' time 3400 flag 1
             wait 3400

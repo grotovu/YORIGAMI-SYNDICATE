@@ -162,7 +162,7 @@ then
                     8E4A: not is_char_exiting_any_car 10@
                 then
                     if
-                        0021: 26@ > 5.0
+                        0021: 26@ > 3.0
                     then
                         if
                             0039: 2@ == 0 // Debounce off cooldown
@@ -181,7 +181,7 @@ then
                             end
                         end
                     else
-                        // Within 5.0m: Keep her disarmed and standing her ground next to Jo'on
+                        // Within 3.0m: Keep her disarmed and standing her ground next to Jo'on
                         0816: set_actor 10@ dont_chase_victim 1
                     end
                 end

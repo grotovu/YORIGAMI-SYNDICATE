@@ -92,10 +92,12 @@ if
 then
     010B: 26@ = player $PLAYER_CHAR money
     01C0: 27@ = player $PLAYER_CHAR wanted_level
+    0470: 25@ = actor $PLAYER_ACTOR current_weapon
     if and
         26@ <= 0
         27@ == 1
         80DF: not actor $PLAYER_ACTOR driving
+        25@ <= 1      // Strictly Unarmed (0) or Brass Knuckles (1)
     then
         if
             6@ == 0
@@ -135,9 +137,10 @@ end
 // -------------------------------------------------------------------------
 // SHION'S MISFORTUNE AURA (Active if Alloc_MisfortuneAura > 0)
 // -------------------------------------------------------------------------
+0085: 25@ = TIMERA
 if and
     12@ > 0        // Misfortune chance > 0%
-    TIMERA > 1000  // Check every 1 second
+    002D: 25@ >= 8@
 then
     TIMERA = 0
     14@ = 0
@@ -185,6 +188,14 @@ if
 then
     15@ = 5
 end
+
+0AF0: 8@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionMisfortune" key "ScanIntervalSeconds"
+if
+    8@ <= 0
+then
+    8@ = 5
+end
+0012: 8@ *= 1000
 
 0AF0: 9@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "ShionMisfortune" key "EnableGunJams"
 if

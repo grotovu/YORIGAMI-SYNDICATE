@@ -184,7 +184,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_RNB0B" text "~b~Shion: ~s~\"You cracked a heavy stick across my collarbone until it snapped. Should've buried me in the dirt.\""
+            0ADF: add_text_label "Y_RNB0B" text "~b~Shion: ~s~\"You cracked a heavy stick across my shoulder until it snapped. Should've buried me in the dirt.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_RNB0B' time 3600 flag 1
             0001: wait 3600 ms
@@ -1046,7 +1046,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_RNP0D" text "~b~Shion: ~s~\"A stray alley dog has better trigger discipline than you. You're buying me a huge meal.\""
+            0ADF: add_text_label "Y_RNP0D" text "~b~Shion: ~s~\"A stray alley dog aims better than you. You're buying me a huge meal.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_RNP0D' time 3600 flag 1
             0001: wait 3600 ms
@@ -1282,7 +1282,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_RNG0B" text "~b~Shion: ~s~\"You fired a shotgun point-blank and blew my chest cavity into a dumpster, Jo'on.\""
+            0ADF: add_text_label "Y_RNG0B" text "~b~Shion: ~s~\"You fired a shotgun point-blank and blew my ribs into a dumpster, Jo'on.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_RNG0B' time 3600 flag 1
             0001: wait 3600 ms
@@ -1553,7 +1553,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_REX0E" text "~y~Jo'on: ~s~\"...Well! Better safe than sorry! The seats in my car aren't fireproof! Now keep up!\""
+            0ADF: add_text_label "Y_REX0E" text "~y~Jo'on: ~s~\"...Well! Better safe than sorry! The seats in my car ain't fireproof! Now keep up!\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_REX0E' time 3600 flag 1
             0001: wait 3600 ms
