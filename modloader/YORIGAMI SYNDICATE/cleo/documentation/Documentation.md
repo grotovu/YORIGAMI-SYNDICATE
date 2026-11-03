@@ -367,7 +367,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 
 ### Shion: Misfortune Perks
 * **`Misfortune.txt` (`Y_Misfortune`):**
-  * *Shion Resonance (`MEM_ALLOC_RESONANCE`):* If allocated >= 5 points and player cash is $0 (or in debt), holding a 1-star wanted level on foot for 6 seconds causes police to lose interest and clears the wanted level (`"TOO BROKE TO PURSUE"`).
+  * *Shion Resonance (`MEM_ALLOC_RESONANCE`):* If allocated >= 5 points and player cash is $0 (or in debt), holding a 1-star wanted level on foot while strictly unarmed or holding brass knuckles (weapon ID `<= 1`) for 6 seconds causes police to lose interest and clears the wanted level (`"TOO BROKE TO PURSUE"`). Drawing any other weapon immediately resets the 6-second timer.
   * *Misfortune Aura (`MEM_ALLOC_MISFORTUNE`):* Scans hostiles within 25m on a configurable pacing interval (`[ShionMisfortune] ScanIntervalSeconds`, default 5s, stored in `8@`). Rolls probability for physical stumble/knockdown animations or weapon jams.
 * **`Pursuit.txt` (`Y_Pursuit`):**
   * *Police Bribe:* Type "BRIBE" to clear 1 wanted star for cash ($20,000 default), incrementing `MEM_BRIBES_PAID`.
@@ -507,7 +507,7 @@ The following table details the cross-script dependencies for every component in
 | **Midas & Lifestyle** | `Yorigami\Lifestyle.txt`| Cash pickups near player, Taxi fares | None | `MEM_ALLOC_TAXIEXT`, `MEM_ALLOC_DRIPWORSHIP`, `MEM_ALLOC_MIDAS` | Injects Sex Appeal into engine memory, vacuums pickups |
 | **Debt Detonation** | `Yorigami\DebtDet.txt` | HP <= threshold while broke | `MEM_DMG_RECURSION_LCK` | `MEM_ALLOC_DEBTDET`, `MEM_SHION_HANDLE` | Spawns `FX_GrimBurst`, `FX_HexFlame`, shockwave disarms peds |
 | **Grim Pity** | `Yorigami\GrimPity.txt` | Lethal damage while wallet <= $0 | `MEM_GRIMPITY_BURST`, `MEM_GRIMPITY_SAVES` | `MEM_ALLOC_GRIMPITY`, `MEM_SHION_HANDLE`, `MEM_LORE_PROGRESS_BIT` | Spawns `FX_GrimBurst`, triggers `FX_GrimPity`, defies death |
-| **Misfortune Aura** | `Yorigami\Misfortune.txt`| 1-star wanted, Hostiles near player (timed via `ScanIntervalSeconds`) | None | `MEM_ALLOC_RESONANCE`, `MEM_ALLOC_MISFORTUNE`, `MEM_SHION_HANDLE` | Clears 1-star wanted, stumbles hostiles, spawns `FX_HexFlame` |
+| **Misfortune Aura** | `Yorigami\Misfortune.txt`| 1-star wanted while unarmed/knuckles, Hostiles near player (timed via `ScanIntervalSeconds`) | None | `MEM_ALLOC_RESONANCE`, `MEM_ALLOC_MISFORTUNE`, `MEM_SHION_HANDLE` | Clears 1-star wanted, stumbles hostiles, spawns `FX_HexFlame` |
 | **Pursuit Hexes** | `Yorigami\Pursuit.txt` | "BRIBE", Wanted level > 1 or 2 (timed via `ScanIntervalSeconds`) | `MEM_BRIBES_PAID` | `MEM_ALLOC_TRAFFICHEX`, `MEM_ALLOC_AVIATION`, `MEM_SHION_HANDLE` | Stalls cruisers, pops tires, explodes aircraft |
 | **Voodoo Misery** | `Yorigami\Misery.txt` | Damage taken while broke | `MEM_DMG_RECURSION_LCK` | `MEM_ALLOC_MISERY`, `MEM_SHION_HANDLE` | Reflects damage to attacker via `0851` |
 | **Player Scavenging** | `Yorigami\Scavenger.txt`| `F` near bin/cart while broke, "ADDBIN" | None | `MEM_ALLOC_SCAVENGER`, `MEM_PLAYER_FORM`, `MEM_SHION_HANDLE` | Gives health/weapons; Jo'on refuses and defers to Shion |
