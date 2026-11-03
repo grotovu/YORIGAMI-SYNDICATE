@@ -92,10 +92,12 @@ if
 then
     010B: 26@ = player $PLAYER_CHAR money
     01C0: 27@ = player $PLAYER_CHAR wanted_level
+    0470: 25@ = actor $PLAYER_ACTOR current_weapon
     if and
         26@ <= 0
         27@ == 1
         80DF: not actor $PLAYER_ACTOR driving
+        25@ <= 1      // Strictly Unarmed (0) or Brass Knuckles (1)
     then
         if
             6@ == 0
