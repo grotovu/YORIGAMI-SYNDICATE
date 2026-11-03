@@ -90,7 +90,7 @@ Every secondary script executes an identical connection routine upon initializat
 | `388` | `MEM_SHION_DEATH_WEAPON`| int | Weapon ID that dealt the lethal blow to Shion. | `ShionDeathTracker` | `chatFollow` |
 | `392` | `MEM_SHION_DEATH_IN_CAR`| int (bool) | Flag recording if Shion died inside a vehicle. | `ShionDeathTracker` | `chatFollow` |
 | `396` | `MEM_SHION_STAY_PUT` | int | Stay-Put state: `0` = Follow, `1` = Ground Stay-Put (`H`), `2` = In-Vehicle Hold (`H`). | `ShionFollow`, `ShionVehicle` | `ShionFollow`, `ShionControl`, `ShionCombatRedMarker` |
-| `400` | `MEM_SHION_RECRUITED` | int (bool) | Recruitment state: `0` = Ambient Loiterer, `1` = Entourage Member. | `SpawnShion`, `Joon` | `ShionChat`, `shionHangoutIcon`, `ShionFood` |
+| `400` | `MEM_SHION_RECRUITED` | int (bool) | Recruitment state: `0` = Ambient Loiterer, `1` = Entourage Member. | `SpawnShion`, `Joon`, `Entourage` | `ShionChat`, `shionHangoutIcon`, `ShionFood` |
 | `404` | `MEM_SHION_HUNGRY` | int (bool) | Starvation state: `0` = Satisfied, `1` = Starving / Injured. | `ShionFood`, `foodDiner` | `foodDiner`, `ShionFood` |
 
 ---
@@ -303,6 +303,11 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Intercepts attacks from Jo'on against Shion via `OnCharDamageFF`.
   * Maps damage to specific weapon categories (fists, brass knuckles, golf club, nightstick, knife, bat, shovel, pool cue, katana, chainsaw, dildo, flowers, cane, grenades, rocket launchers, satchel charges, pistols, shotguns, automatics, rifles, spray can, extinguisher).
   * Detects camera viewfinder aim and snapshots on physical Shion or Hitodama spirit (`MEM_HITODAMA_X/Y/Z`) to trigger photo reactions.
+* **`chatDismiss.txt` (`Sh_Dism`):**
+  * Governs dialogue delivery and post-dismissal ambient life when Shion is dismissed on foot via `Entourage.c`.
+  * Claims Tier 2 Priority Lock, launches `ShionFriendlyFire.c`, and plays quick-dismiss easter eggs or randomized banter lines (`Y_DS*`).
+  * On dialogue completion, releases Priority Lock, clears stay-put, and commands ambient walking paths (`05DE`).
+  * Runs a stalker proximity watchdog (speaks up to 3 complaints via `Y_STK*` if Jo'on tails her within 3m on foot), rejects re-recruitment attempts via `G` (`Y_NORE*`), cleans up actor and passed decision maker on distance (> 60m) or 60s timeout, and routes death telemetry to `chatFollow.c` if killed.
 
 ---
 
@@ -362,7 +367,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 * **`Entourage.txt` (`Y_TROOP`):**
   * Unlocks 7-slot group capacity.
   * Aim at ped and press `G`: rolls recruitment probability based on Drip Worship points. Can charm civilians (up to 90%), drug dealers (unlocked at 25 pts, up to 70%), and rival gang members (unlocked at 60 pts, up to 50%). Converts loyalties to Grove Street, equips with 9mm pistol if unarmed, and adds to group. Cops are immune.
-  * Aim at follower and press `N`: dismisses follower, returning them to ambient wander. Special handling for Shion sets `MEM_INTENTIONAL_DISM = 1` and streams `chatDismiss.c`.
+  * Aim at follower and press `N`: dismisses follower, returning them to ambient wander. Special handling for Shion immediately ungroups her, updates `MEM_SHION_RECRUITED = 0` and `MEM_INTENTIONAL_DISM = 1`, terminates all follower/combat worker daemons (`Sh_Flw`, `Sh_Ctrl`, `Sh_Cmbt`, `Sh_Sync`, `Sh_Chut`, `Sh_Pimp`, `Sh_Burg`, `Sh_RedM`), applies panic-immune decision maker (`EVENT_GUN_AIMED_AT`, `EVENT_SHOT_FIRED`, `EVENT_SHOT_FIRED_WHIZZED_BY` reset) and player respect acquaintances, locks her in place facing Jo'on, and streams `chatDismiss.c` passing actor and decision maker handles.
 * **`Lifestyle.txt` (`Y_Life`):**
   * *Taxi Extortion (`MEM_ALLOC_TAXIEXT`):* Intercepts taxi mission fares, awarding `Points * BonusPercentPerPoint` extra extortion cut on every drop-off.
   * *Drip Worship (`MEM_ALLOC_DRIPWORSHIP`):* Injects calculated points directly into native memory address `12030948` (Sex Appeal stat), scaling up to 1000 (100% full bar).
@@ -506,7 +511,8 @@ The following table details the cross-script dependencies for every component in
 | **Pestilence Fever** | `Yorigami\Fever.txt` | `Y + C` active cast | None | `MEM_ALLOC_FEVER`, `MEM_SHION_HANDLE` | Spawns cash pickups, forces ped flee tasks |
 | **Street Shakedown** | `Yorigami\Shakedown.txt`| Aim + `Y` on ped | `MEM_LAST_EXTORTED_PED` | `MEM_ALLOC_SHAKEDOWN`, `MEM_ACTIVE_MARK` | Cooperates with `Mark.txt`, drops cash/weapons |
 | **High-Roller Mark** | `Yorigami\Mark.txt` | Free-roam timer | `MEM_ACTIVE_MARK` | `MEM_ALLOC_SHAKEDOWN`, `MEM_LAST_EXTORTED_PED` | Sets radar blips, communicates with `Shakedown.txt` |
-| **Drip Entourage** | `Yorigami\Entourage.txt`| Aim + `G` (recruit) / `N` (dismiss) | `MEM_INTENTIONAL_DISM` | `MEM_ALLOC_DRIPWORSHIP`, `MEM_SHION_HANDLE` | Manages player group capacity, triggers `chatDismiss.c` |
+| **Drip Entourage** | `Yorigami\Entourage.txt`| Aim + `G` (recruit) / `N` (dismiss) | `MEM_INTENTIONAL_DISM`, `MEM_SHION_RECRUITED` | `MEM_ALLOC_DRIPWORSHIP`, `MEM_SHION_HANDLE` | Manages player group capacity, terminates companion daemons, streams `chatDismiss.c` |
+| **Dismissal Watchdog**| `Shion\Chat\chatDismiss.txt`| Streamed by `Entourage.c` on Shion dismiss | `MEM_SHION_HANDLE`, `MEM_SHION_DEATH_FLAG`, `MEM_INTENTIONAL_DISM`, `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_QUICK_DISM_LATCH`, `MEM_SHION_RECRUITED` | Runs dismissal dialogue, stalker watchdog, re-recruitment rejection, cleans up decision maker/actor |
 | **Midas & Lifestyle** | `Yorigami\Lifestyle.txt`| Cash pickups near player, Taxi fares | None | `MEM_ALLOC_TAXIEXT`, `MEM_ALLOC_DRIPWORSHIP`, `MEM_ALLOC_MIDAS` | Injects Sex Appeal into engine memory, vacuums pickups |
 | **Debt Detonation** | `Yorigami\DebtDet.txt` | HP <= threshold while broke | `MEM_DMG_RECURSION_LCK` | `MEM_ALLOC_DEBTDET`, `MEM_SHION_HANDLE` | Spawns `FX_GrimBurst`, `FX_HexFlame`, shockwave disarms peds |
 | **Grim Pity** | `Yorigami\GrimPity.txt` | Lethal damage while wallet <= $0 | `MEM_GRIMPITY_BURST`, `MEM_GRIMPITY_SAVES` | `MEM_ALLOC_GRIMPITY`, `MEM_SHION_HANDLE`, `MEM_LORE_PROGRESS_BIT` | Spawns `FX_GrimBurst`, triggers `FX_GrimPity`, defies death |
