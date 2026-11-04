@@ -280,9 +280,9 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Form-aware delivery: bifurcates lines between Physical Ped (`11@ == 0`) and floating Hitodama spirit form (`11@ == 1`), featuring Shion's spectral indifference to rain, desert heat, and soot while Jo'on exploits her chill as a personal air conditioner or hair shield.
   * **3-Tier Context Sensor**: Distinguishes between On-Foot (`26@ = 0`), Enclosed Cabin with Roof (`26@ = 1`), and Open-Top / Roofless (`26@ = 2`).
   * **Data-Driven Vehicle Roof Architecture**: Completely bypasses broken native `0EFB: is_car_convertible` handling flags (which erroneously flag 13 hardtop tuners/trucks as convertibles while omitting true convertibles). Queries `[VehicleRoofTypes]` in `ShionVehicles.ini`:
-    * *Mode 1 (Permanent Open-Top)*: Always roofless (Windsor, Comet, Bandito, Kart, Mower, Tug, Hotknife, etc.).
-    * *Mode 2 (Modular Lowriders)*: Open-top by default, inspects tuning slot 7 (`096D`) for installed hardtop/soft-top upgrades (Blade, Broadway, Remington, Savanna, Slamvan, Tornado).
-    * *Mode 3 (Dynamic Spawn Extras)*: Inspects the `"extra1"` frame node via `0E82: does_car_have_part_node`; treats vehicle as enclosed if spawned with a roof, or roofless if spawned open-top (Banshee, Feltzer, Stallion, Mesa).
+    * *Mode 1 (Permanent Open-Top)*: Always roofless (Comet, Bandito, Kart, Mower, etc.).
+    * *Mode 2 (Modular Lowriders)*: Open-top by default, inspects tuning slot 7 (`096D`) for installed hardtop/soft-top upgrades (Blade, Savanna).
+    * *Mode 3 (Dynamic Spawn Extras)*: Inspects the `"extra1"` frame node via `0E82: does_car_have_part_node`; treats vehicle as enclosed if spawned with a roof, or roofless if spawned open-top.
     * *Default (Unlisted)*: Enclosed cabin (`26@ = 1`).
 * **`ShionLore.txt` (`Sh_Lore`):**
   * Milestone progression engine scanning the 31 bits of `MEM_LORE_PROGRESS_BIT`.
