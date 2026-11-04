@@ -1654,6 +1654,31 @@ then
     000A: 30@ += MEM_PRIORITY_LOCK
     0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
 
+    // Read Stance (0 = Peaceful/Unarmed, 1 = Hostile/Armed)
+    0085: 30@ = 31@
+    000A: 30@ += 120 // MEM_SHION_STANCE
+    0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+
+    // Evaluate combat status
+    4@ = 0
+    01C0: 5@ = player $PLAYER_CHAR wanted_level
+    if
+        0019: 5@ > 0
+    then
+        4@ = 1
+    end
+    if
+        4@ == 0
+    then
+        if or
+            0E47: is_char_fighting $PLAYER_ACTOR
+            0E46: is_char_using_gun $PLAYER_ACTOR
+            02E0: actor $PLAYER_ACTOR firing_weapon
+        then
+            4@ = 1
+        end
+    end
+
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
 
@@ -1692,83 +1717,251 @@ then
         end
     end
 
-    0209: 1@ = random_int_in_ranges 0 5
-
     if
-        0039: 26@ == 1
+        0039: 4@ == 1
     then
-        // Motorbike Exit Lines
+        // Exit Vehicle Recall - Combat Active
+        0209: 1@ = random_int_in_ranges 0 5
         if
-            0039: 1@ == 0
+            0039: 26@ == 1
         then
-            0ADF: add_text_label "Y_ROB0" text "~y~Jo'on: ~s~\"Get off the bike, Shion! We're walkin' from here!\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_ROB0' time 2500 flag 1
-        end
-        if
-            0039: 1@ == 1
-        then
-            0ADF: add_text_label "Y_ROB1" text "~y~Jo'on: ~s~\"Hop off the rear seat, move it! Kickstand's down!\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_ROB1' time 2500 flag 1
-        end
-        if
-            0039: 1@ == 2
-        then
-            0ADF: add_text_label "Y_ROB2" text "~y~Jo'on: ~s~\"Dismount, slowpoke! I ain't lettin' ya sit there lookin' lazy!\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_ROB2' time 2500 flag 1
-        end
-        if
-            0039: 1@ == 3
-        then
-            0ADF: add_text_label "Y_ROB3" text "~y~Jo'on: ~s~\"Off the bike, right now! Don't drag your dirty feet on the chrome!\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_ROB3' time 2500 flag 1
-        end
-        if
-            0039: 1@ == 4
-        then
-            0ADF: add_text_label "Y_ROB4" text "~y~Jo'on: ~s~\"Hey, freeloader! Swing your legs off, we've got places to be!\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_ROB4' time 2500 flag 1
+            // Bike Combat Exit
+            if
+                0039: 28@ == 1
+            then
+                // Armed Bike Exit
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_ROBC0" text "~y~Jo'on: ~s~\"Dismount and draw your piece! We got heat!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_ROBC0' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_ROBC1" text "~y~Jo'on: ~s~\"Get off the bike and start blastin', Shion!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_ROBC1' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 2
+                then
+                    0ADF: add_text_label "Y_ROBC2" text "~y~Jo'on: ~s~\"Hop off the rear seat and cover my back!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_ROBC2' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_ROBC3" text "~y~Jo'on: ~s~\"Off the bike, now! Lay down some lead!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_ROBC3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_ROBC4" text "~y~Jo'on: ~s~\"Dismount! Don't just sit there on the chrome, shoot!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_ROBC4' time 2500 flag 1
+                end
+            else
+                // Unarmed Bike Exit
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_ROBU0" text "~y~Jo'on: ~s~\"Off the bike! You're an open target out here!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_ROBU0' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_ROBU1" text "~y~Jo'on: ~s~\"Dismount and hit the dirt! Move your ass!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_ROBU1' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 2
+                then
+                    0ADF: add_text_label "Y_ROBU2" text "~y~Jo'on: ~s~\"Hop off and dive for cover! Hurry!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_ROBU2' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_ROBU3" text "~y~Jo'on: ~s~\"Get off the bike and stay low behind me!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_ROBU3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_ROBU4" text "~y~Jo'on: ~s~\"Off the seat, Shion! You're gonna catch a stray!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_ROBU4' time 2500 flag 1
+                end
+            end
+        else
+            // Car Combat Exit
+            if
+                0039: 28@ == 1
+            then
+                // Armed Car Exit
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_RCOC0" text "~y~Jo'on: ~s~\"Bail out and start blastin', Shion! Move!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RCOC0' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_RCOC1" text "~y~Jo'on: ~s~\"Out of the car! Draw your piece and cover me!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RCOC1' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 2
+                then
+                    0ADF: add_text_label "Y_RCOC2" text "~y~Jo'on: ~s~\"Kick the door open and shoot! We got heat!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RCOC2' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_RCOC3" text "~y~Jo'on: ~s~\"Haul your ass out and lay down some lead!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RCOC3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_RCOC4" text "~y~Jo'on: ~s~\"Get out and take an angle! Drop these chumps!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RCOC4' time 2500 flag 1
+                end
+            else
+                // Unarmed Car Exit
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_RCOU0" text "~y~Jo'on: ~s~\"Bail out! This car's a magnet for bullets!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RCOU0' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_RCOU1" text "~y~Jo'on: ~s~\"Get out and take cover behind the chassis!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RCOU1' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 2
+                then
+                    0ADF: add_text_label "Y_RCOU2" text "~y~Jo'on: ~s~\"Ditch the car, Shion! It's gonna get shredded!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RCOU2' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_RCOU3" text "~y~Jo'on: ~s~\"Out of the car and stay low! Hit the dirt!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RCOU3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_RCOU4" text "~y~Jo'on: ~s~\"Scramble out and find cover! Move your ass!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RCOU4' time 2500 flag 1
+                end
+            end
         end
     else
-        // Car Exit Lines
+        // Peaceful Vehicle Exit
+        0209: 1@ = random_int_in_ranges 0 5
         if
-            0039: 1@ == 0
+            0039: 26@ == 1
         then
-            0ADF: add_text_label "Y_RC_O0" text "~y~Jo'on: ~s~\"Get out of the car, Shion! We're on foot from here!\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_RC_O0' time 2500 flag 1
-        end
-        if
-            0039: 1@ == 1
-        then
-            0ADF: add_text_label "Y_RC_O1" text "~y~Jo'on: ~s~\"Quit loafin' in the passenger seat! Out, now!\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_RC_O1' time 2500 flag 1
-        end
-        if
-            0039: 1@ == 2
-        then
-            0ADF: add_text_label "Y_RC_O2" text "~y~Jo'on: ~s~\"Out of the car, move it! I ain't burnin' gas for ya to sit around!\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_RC_O2' time 2500 flag 1
-        end
-        if
-            0039: 1@ == 3
-        then
-            0ADF: add_text_label "Y_RC_O3" text "~y~Jo'on: ~s~\"Don't just sit there lookin' pretty! Haul your ass out of the car!\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_RC_O3' time 2500 flag 1
-        end
-        if
-            0039: 1@ == 4
-        then
-            0ADF: add_text_label "Y_RC_O4" text "~y~Jo'on: ~s~\"Hey, free-loader! Unbuckle and get out, we've got places to be!\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_RC_O4' time 2500 flag 1
+            // Peaceful Motorbike Exit Lines
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_ROB0" text "~y~Jo'on: ~s~\"Get off the bike, Shion! We're walkin' from here!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ROB0' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_ROB1" text "~y~Jo'on: ~s~\"Hop off the rear seat, move it! Kickstand's down!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ROB1' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 2
+            then
+                0ADF: add_text_label "Y_ROB2" text "~y~Jo'on: ~s~\"Dismount, slowpoke! I ain't lettin' ya sit there lookin' lazy!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ROB2' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 3
+            then
+                0ADF: add_text_label "Y_ROB3" text "~y~Jo'on: ~s~\"Off the bike, right now! Don't drag your dirty feet on the chrome!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ROB3' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 4
+            then
+                0ADF: add_text_label "Y_ROB4" text "~y~Jo'on: ~s~\"Hey, freeloader! Swing your legs off, we've got places to be!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ROB4' time 2500 flag 1
+            end
+        else
+            // Peaceful Car Exit Lines
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_RC_O0" text "~y~Jo'on: ~s~\"Get out of the car, Shion! We're on foot from here!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_RC_O0' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_RC_O1" text "~y~Jo'on: ~s~\"Quit loafin' in the passenger seat! Out, now!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_RC_O1' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 2
+            then
+                0ADF: add_text_label "Y_RC_O2" text "~y~Jo'on: ~s~\"Out of the car, move it! I ain't burnin' gas for ya to sit around!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_RC_O2' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 3
+            then
+                0ADF: add_text_label "Y_RC_O3" text "~y~Jo'on: ~s~\"Don't just sit there lookin' pretty! Haul your ass out of the car!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_RC_O3' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 4
+            then
+                0ADF: add_text_label "Y_RC_O4" text "~y~Jo'on: ~s~\"Hey, free-loader! Unbuckle and get out, we've got places to be!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_RC_O4' time 2500 flag 1
+            end
         end
     end
 
@@ -1841,7 +2034,7 @@ then
         0039: 4@ == 1
     then
         // In-Vehicle Hold - Combat Active
-        0209: 1@ = random_int_in_ranges 0 3
+        0209: 1@ = random_int_in_ranges 0 5
         if
             0039: 26@ == 1
         then
@@ -1871,6 +2064,20 @@ then
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_SVBC2' time 2500 flag 1
                 end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_SVBC3" text "~y~Jo'on: ~s~\"Plant yourself on the seat and blast anyone that gets close!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SVBC3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_SVBC4" text "~y~Jo'on: ~s~\"Cover our ride! Drop any punk tryin' to flank us!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SVBC4' time 2500 flag 1
+                end
             else
                 // Unarmed Bike Hold
                 if
@@ -1893,6 +2100,20 @@ then
                     0ADF: add_text_label "Y_SVBU2" text "~y~Jo'on: ~s~\"Plant yourself on the seat and stay low!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_SVBU2' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_SVBU3" text "~y~Jo'on: ~s~\"Keep your head tucked! Don't make yourself an easy target!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SVBU3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_SVBU4" text "~y~Jo'on: ~s~\"Stay glued to the seat and don't peek until I clear 'em!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SVBU4' time 2500 flag 1
                 end
             end
         else
@@ -1922,6 +2143,20 @@ then
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_SPVC2' time 2500 flag 1
                 end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_SPVC3" text "~y~Jo'on: ~s~\"Lock the doors and shoot through the glass if you have to!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SPVC3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_SPVC4" text "~y~Jo'on: ~s~\"Hold down the interior! Don't let anyone lay a finger on my wheels!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SPVC4' time 2500 flag 1
+                end
             else
                 // Unarmed Car Hold
                 if
@@ -1944,6 +2179,20 @@ then
                     0ADF: add_text_label "Y_SPVU2" text "~y~Jo'on: ~s~\"Keep your head down! If the glass shatters, stay low!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_SPVU2' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_SPVU3" text "~y~Jo'on: ~s~\"Curl up in the footwell! Don't stick your neck out!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SPVU3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_SPVU4" text "~y~Jo'on: ~s~\"Stay beneath window level! I'll handle these clowns!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SPVU4' time 2500 flag 1
                 end
             end
         end
