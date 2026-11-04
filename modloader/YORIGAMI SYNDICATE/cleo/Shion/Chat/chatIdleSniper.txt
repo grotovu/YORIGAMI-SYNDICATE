@@ -426,13 +426,33 @@ then
 end
 
 01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
 if or
     0118: actor $PLAYER_ACTOR dead
     0741: actor $PLAYER_ACTOR busted
+    04AD: actor $PLAYER_ACTOR in_water
+    0965: actor $PLAYER_ACTOR swimming
 then
     03EB: clear_small_messages_only
     0050: gosub @Release_Tier2_Lock_Safely
     0A93: terminate_this_custom_script
+end
+
+if
+    8449: not actor $PLAYER_ACTOR in_a_car
+then
+    if
+        0818: actor $PLAYER_ACTOR in_air
+    then
+        0819: 26@ = actor $PLAYER_ACTOR distance_from_ground
+        if
+            0021: 26@ > 2.0
+        then
+            03EB: clear_small_messages_only
+            0050: gosub @Release_Tier2_Lock_Safely
+            0A93: terminate_this_custom_script
+        end
+    end
 end
 
 // Verify Shion handle and distance (stay within 30m)

@@ -636,6 +636,14 @@ then
         goto @ShionChat_Loop
     end
 
+    // Suppress prompted dialogue while swimming or falling
+    gosub @Check_Swimming_Or_Falling
+    if
+        0039: 15@ == 1
+    then
+        goto @ShionChat_Loop
+    end
+
     // Verify Shion is nearby (or in Hitodama form)
     26@ = 0
     if
@@ -844,25 +852,32 @@ then
     if
         TIMERB >= 30000
     then
-        000A: 1@ += 250
+        gosub @Check_Swimming_Or_Falling
         if
-            002D: 1@ >= 2@
+            0039: 15@ == 0
         then
-            1@ = 0
-            0209: 2@ = random_int_in_range 5@ 6@
-
-            // Only speak if channel is open (0) or holding Tier 1 smoking (1)
-            0085: 30@ = 31@
-            000A: 30@ += MEM_PRIORITY_LOCK
-            0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+            000A: 1@ += 250
             if
-                24@ <= 1
+                002D: 1@ >= 2@
             then
+                1@ = 0
+                0209: 2@ = random_int_in_range 5@ 6@
+
+                // Only speak if channel is open (0) or holding Tier 1 smoking (1)
                 0085: 30@ = 31@
                 000A: 30@ += MEM_PRIORITY_LOCK
-                0A8C: write_memory 30@ size 4 value 2 virtual_protect 0 // Claim Tier 2 Priority!
-                gosub @Dispatch_Shion_Thought
+                0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+                if
+                    24@ <= 1
+                then
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_PRIORITY_LOCK
+                    0A8C: write_memory 30@ size 4 value 2 virtual_protect 0 // Claim Tier 2 Priority!
+                    gosub @Dispatch_Shion_Thought
+                end
             end
+        else
+            1@ = 0 // Keep timer reset while in water or falling
         end
     end
 end
@@ -1414,6 +1429,17 @@ then
     return
 end
 
+// Failsafe: Suppress all free-roam ambient categories if swimming or falling
+gosub @Check_Swimming_Or_Falling
+if
+    0039: 15@ == 1
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    return
+end
+
 // WEATHER DISPATCH
 077E: get_active_interior 28@
 if
@@ -1555,6 +1581,113 @@ then
         16@ == 1
     then
         29@ = 1
+    end
+end
+return
+
+// =========================================================================
+// CHECK SWIMMING OR FALLING (Dedicated return in 15@: 1 = Active, 0 = Clear)
+// =========================================================================
+:Check_Swimming_Or_Falling
+15@ = 0
+
+// Check 1: Player Swimming or In Water on foot (Exempt active Triathlon!)
+if
+    8449: not actor $PLAYER_ACTOR in_a_car
+then
+    26@ = 0
+    if and
+        0038: $ONMISSION == 1
+        0018: $Mission_BeatTheCock_Type > 0
+    then
+        26@ = 1
+    end
+
+    if
+        0039: 26@ == 0
+    then
+        if or
+            04AD: actor $PLAYER_ACTOR in_water
+            0965: actor $PLAYER_ACTOR swimming
+        then
+            15@ = 1
+        end
+    end
+end
+
+// Check 2: Physical Shion Swimming or In Water on foot (Exempt active Triathlon!)
+if and
+    15@ == 0
+    10@ > 0
+then
+    if
+        056D: actor 10@ defined
+    then
+        if
+            8449: not actor 10@ in_a_car
+        then
+            26@ = 0
+            if and
+                0038: $ONMISSION == 1
+                0018: $Mission_BeatTheCock_Type > 0
+            then
+                26@ = 1
+            end
+
+            if
+                0039: 26@ == 0
+            then
+                if or
+                    04AD: actor 10@ in_water
+                    0965: actor 10@ swimming
+                then
+                    15@ = 1
+                end
+            end
+        end
+    end
+end
+
+// Check 3: Player Airborne / Falling on foot (excluding Jetpack)
+if and
+    15@ == 0
+    8449: not actor $PLAYER_ACTOR in_a_car
+    8A0C: not player $PLAYER_CHAR on_jetpack
+then
+    if
+        0818: actor $PLAYER_ACTOR in_air
+    then
+        0819: 25@ = actor $PLAYER_ACTOR distance_from_ground
+        if
+            0021: 25@ > 2.0
+        then
+            15@ = 1
+        end
+    end
+end
+
+// Check 4: Physical Shion Airborne / Falling on foot
+if and
+    15@ == 0
+    10@ > 0
+then
+    if
+        056D: actor 10@ defined
+    then
+        if
+            8449: not actor 10@ in_a_car
+        then
+            if
+                0818: actor 10@ in_air
+            then
+                0819: 25@ = actor 10@ distance_from_ground
+                if
+                    0021: 25@ > 2.0
+                then
+                    15@ = 1
+                end
+            end
+        end
     end
 end
 return

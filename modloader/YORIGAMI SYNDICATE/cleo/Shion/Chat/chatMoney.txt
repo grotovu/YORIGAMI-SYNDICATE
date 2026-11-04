@@ -685,6 +685,31 @@ then
     0002: jump @Finalize_Ambient_Chat
 end
 
+// Abort if swimming or falling
+if
+    8449: not actor $PLAYER_ACTOR in_a_car
+then
+    if or
+        04AD: actor $PLAYER_ACTOR in_water
+        0965: actor $PLAYER_ACTOR swimming
+    then
+        03EB: clear_small_messages_only
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    if
+        0818: actor $PLAYER_ACTOR in_air
+    then
+        0819: 25@ = actor $PLAYER_ACTOR distance_from_ground
+        if
+            0021: 25@ > 2.0
+        then
+            03EB: clear_small_messages_only
+            0002: jump @Finalize_Ambient_Chat
+        end
+    end
+end
+
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_HANDLE
 0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
