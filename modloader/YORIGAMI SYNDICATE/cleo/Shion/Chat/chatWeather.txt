@@ -174,20 +174,19 @@ else
             if
                 8019: not 23@ > 0
             then
-                26@ = 2 // No roof upgrade attached; treat as roofless open-top
+                26@ = 2
             end
         end
-    end
 
-    // Check C: Native Convertibles (Windsor, Stallion, Feltzer, Comet)
-    if
-        26@ == 1
-    then
-        if and
-            0EFB: is_car_convertible 24@
-            8039: not 25@ == 603 // Exclude Phoenix
+        // Mode 3: Dynamic Spawn Extras (Open unless extra1 roof node exists)
+        if
+            22@ == 3
         then
-            26@ = 2 // Context 2: Roofless Open-Top
+            if
+                8E82: not does_car_have_part_node 24@ "extra1"
+            then
+                26@ = 2
+            end
         end
     end
 end

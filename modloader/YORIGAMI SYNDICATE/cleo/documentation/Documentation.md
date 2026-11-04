@@ -274,6 +274,16 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Evaluates health emergencies (critical health triggers high-priority panic lines).
   * **Marine & Aerial Physics Gatekeeper (`Check_Swimming_Or_Falling`)**: Strictly inspects player and companion states for water immersion (`04AD`), active swimming (`0965`), and unassisted on-foot freefall (`0818` with ground clearance > 2.0m, explicitly exempting jetpack flight `0A0C`). Automatically disarms the manual `Y + T` prompt, holds the ambient timer at 0 to avoid immediate trigger spikes upon landing, and blocks out-of-context free-roam scripts (`chatIdle.c`, `chatIdleSniper.c`, `chatMoney.c`, `chatZone.c`, `chatWeather.c`) while explicitly exempting active *Beat the Cock* Triathlon swimming ($Mission_BeatTheCock_Type > 0) so aquatic sub-mission dialogue can be summoned.
   * Evaluates context and dispatches to specialized sub-scripts: `chatWanted.c`, `chatSubMission.c`, `chatZone.c`, `chatRadio.c`, `chatVehicle.c` (strictly partitioned by vehicle category, preventing generic car cruising lines from leaking into boats or planes), `chatWeather.c`, `chatMoney.c`, `chatInterior.c`, `chatIdle.c`, `chatIdleSniper.c`.
+* **`chatWeather.txt` (`Sh_Wthr`):**
+  * Environmental weather and atmospheric conversation routine arbitrating through Tier 2 Priority Lock (`MEM_PRIORITY_LOCK = 2`).
+  * Classifies live weather into 5 distinct atmospheric groups: Rain & Thunderstorms (IDs 8, 16), Clear Skies / Blistering Heatwave (IDs 0, 11, 13, 17, 18), Desert Sandstorms (ID 19), Dense Maritime Fog (ID 9), and Heavy City Smog (IDs 2, 3), split cleanly between daytime and nighttime (21:00–05:59).
+  * Form-aware delivery: bifurcates lines between Physical Ped (`11@ == 0`) and floating Hitodama spirit form (`11@ == 1`), featuring Shion's spectral indifference to rain, desert heat, and soot while Jo'on exploits her chill as a personal air conditioner or hair shield.
+  * **3-Tier Context Sensor**: Distinguishes between On-Foot (`26@ = 0`), Enclosed Cabin with Roof (`26@ = 1`), and Open-Top / Roofless (`26@ = 2`).
+  * **Data-Driven Vehicle Roof Architecture**: Completely bypasses broken native `0EFB: is_car_convertible` handling flags (which erroneously flag 13 hardtop tuners/trucks as convertibles while omitting true convertibles). Queries `[VehicleRoofTypes]` in `ShionVehicles.ini`:
+    * *Mode 1 (Permanent Open-Top)*: Always roofless (Windsor, Comet, Bandito, Kart, Mower, Tug, Hotknife, etc.).
+    * *Mode 2 (Modular Lowriders)*: Open-top by default, inspects tuning slot 7 (`096D`) for installed hardtop/soft-top upgrades (Blade, Broadway, Remington, Savanna, Slamvan, Tornado).
+    * *Mode 3 (Dynamic Spawn Extras)*: Inspects the `"extra1"` frame node via `0E82: does_car_have_part_node`; treats vehicle as enclosed if spawned with a roof, or roofless if spawned open-top (Banshee, Feltzer, Stallion, Mesa).
+    * *Default (Unlisted)*: Enclosed cabin (`26@ = 1`).
 * **`ShionLore.txt` (`Sh_Lore`):**
   * Milestone progression engine scanning the 31 bits of `MEM_LORE_PROGRESS_BIT`.
   * Evaluates environmental conditions (e.g. Chiliad altitude, casino losses >= $10k, gas station lingering, train ride duration > 45s, high-roller cash thresholds).
@@ -493,8 +503,8 @@ cleo\
 └── savedata\
     ├── yorigami.ini              # Progression save: points, buffer, perk ranks
     ├── Yorigami_Ledger.txt       # Plain-text audit ledger: slot, day, points, wallet
-    ├── ShionMemories.ini         # Performance ledger: kills, treats, wrecks, stats, lore bits
-    ├── ShionVehicles.ini         # Dynamic vehicle odometer: minutes driven per model ID
+	├── ShionMemories.ini         # Performance ledger: kills, treats, wrecks, stats, lore bits
+    ├── ShionVehicles.ini         # Vehicle odometer (minutes per model) & [VehicleRoofTypes] registry
     ├── ShionRadio.ini            # Radio station listening minutes (Stations 0–12)
     ├── ShionWeapon.ini           # Stashed weapon ID & ammo for Shion and Jo'on
     ├── ShionFood.ini             # Custom registered restaurant/food coordinates
@@ -576,4 +586,5 @@ The following table details the cross-script dependencies for every component in
 | **Post-Death Complaint**| `Shion\Chat\chatSpawned.txt`| Companion spawned while `MEM_SHION_DEATH_FLAG == 1` | `MEM_SHION_DEATH_FLAG`, `MEM_PRIORITY_LOCK` | `MEM_SHION_DEATH_WEAPON`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_IN_CAR` | Voices weapon-specific lethal complaint (including 3-way explosion routing), releases Tier 3 lock |
 | **Hangout Reunion**   | `Shion\Chat\chatReunion.txt`| Recruited via `Y` at ambient hangout spot | `MEM_SHION_DEATH_FLAG`, `MEM_REUNION_SIGNAL`, `MEM_PRIORITY_LOCK` | `MEM_SHION_DEATH_WEAPON`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_IN_CAR` | Claims Tier 4 theater lock, delivers post-death sister banter or peacetime hangout dialogue |
 | **Follow & Transit Vocalizer**| `Shion\Chat\chatFollow.txt`| Triggered by `ShionFollow.c`, `ShionVehicle.c`, or death events (Modes 0–8) | `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON`, `MEM_SHION_DEATH_IN_CAR` | Delivers Jo'on's movement orders, vehicle seat barks, and granular immediate death reactions |
-| **Debug Subsystem** | `Shion\ShionDebug.txt` | Cheat "KILLPOOR" | `MEM_SHION_PRES_HP`, `MEM_SHION_PRES_ARMOUR` | `MEM_SHION_HANDLE` | Sets Shion's HP to 5 and armour to 0 |
+| **Weather Banter**    | `Shion\Chat\chatWeather.txt`| Streamed by `ShionChat.c` on weather change/timer | `MEM_PRIORITY_LOCK`, `MEM_LAST_WEATHER_TIME` | `MEM_PRIORITY_LOCK`, `MEM_SHION_HANDLE`, `MEM_LAST_WEATHER_TIME` | Reads `[VehicleRoofTypes]` in `ShionVehicles.ini`, classifies open/enclosed cabins, delivers 5-group weather dialogue |
+| **Debug Subsystem**   | `Shion\ShionDebug.txt` | Cheat "KILLPOOR" | `MEM_SHION_PRES_HP`, `MEM_SHION_PRES_ARMOUR` | `MEM_SHION_HANDLE` | Sets Shion's HP to 5 and armour to 0 |
