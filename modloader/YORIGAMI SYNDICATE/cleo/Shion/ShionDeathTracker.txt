@@ -46,25 +46,121 @@ end
 :DeathTracker_Loop
 0001: wait 50 ms
 
+// Only pause if player actor is completely undefined (loading screens / boots)
 if
-    8256: not is_player_playing $PLAYER_CHAR
+    8256: not player $PLAYER_CHAR defined
 then
     0002: jump @DeathTracker_Loop
 end
+
+// Continuously refresh live player actor handle to prevent stale references
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
 
 // Read Live Shion Ped Handle
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_HANDLE
 0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
 
-// Reset latch if Shion is inactive (0) or in Hitodama spirit form (-1)
+// Reset active tracking latches if Shion is inactive (0) or in Hitodama spirit form (-1)
+// Note: Do NOT wipe 12@ or 13@ here so post-death respawn chat can read the true lethal cause!
 if
     001B: 1 > 10@
 then
     15@ = 0
-    12@ = -1
-    13@ = 0
+    17@ = 0
+    18@ = 0 // Clear vehicle state when handle is inactive/respawning!
+    27@ = 0
     0002: jump @DeathTracker_Loop
+end
+
+// Track vehicle occupancy while Shion is alive
+if and
+    0019: 10@ > 0
+    056D: actor 10@ defined
+    8118: not actor 10@ dead
+then
+    if
+        0449: actor 10@ in_a_car
+    then
+        03C0: 17@ = actor 10@ car
+        27@ = 0
+
+        // Crash-safe driver check: verify if Jo'on is driving this exact car
+        if
+            00DF: actor $PLAYER_ACTOR driving
+        then
+            03C0: 24@ = actor $PLAYER_ACTOR car
+            if
+                003B: 24@ == 17@
+            then
+                27@ = 1 // Jo'on is the driver of Shion's car
+            end
+        end
+
+        // Pre-arm telemetry if the car is currently burning, wrecked, or below 250.0 HP!
+        if
+            056E: car 17@ defined
+        then
+            0227: 21@ = car 17@ health // Returns FLOAT
+            if or
+                0495: car 17@ burning
+                0119: car 17@ wrecked
+                8021: not 21@ > 250.0 // Crash-safe float check (health <= 250.0)
+            then
+                12@ = 51           // Car / Vehicle Explosion
+                18@ = 1            // Inside vehicle
+                0085: 13@ = 27@    // Jo'on's fault if driving
+                0085: 14@ = TIMERA // Continuously refresh so 3s timeout never expires!
+
+                // Immediately sync to Master Heap so detonation can never be lost
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_DEATH_WEAPON
+                0A8C: write_memory 30@ size 4 value 12@ virtual_protect 0
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_DEATH_IN_CAR
+                0A8C: write_memory 30@ size 4 value 18@ virtual_protect 0
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_KILLER_IS_JOON
+                0A8C: write_memory 30@ size 4 value 13@ virtual_protect 0
+            end
+        end
+    else
+        // Shion is on foot outside. ONLY clear vehicle state if she exited a safe, undamaged car!
+        if
+            0019: 17@ > 0
+        then
+            23@ = 0 // Flag: Is the previous car doomed/wrecked?
+            if
+                056E: car 17@ defined
+            then
+                0227: 21@ = car 17@ health
+                if or
+                    0119: car 17@ wrecked
+                    0495: car 17@ burning
+                    8021: not 21@ > 250.0
+                then
+                    23@ = 1 // Car is doomed or blown up; DO NOT clear 17@ or 18@!
+                end
+            else
+                // Car entity already deleted by explosion on this frame
+                23@ = 1
+            end
+
+            // Only clear if she stepped out of a safe, healthy car onto the pavement
+            if
+                0039: 23@ == 0
+            then
+                17@ = 0
+                18@ = 0
+                27@ = 0
+            end
+        else
+            18@ = 0
+            27@ = 0
+        end
+    end
 end
 
 // Monitor Live Ped for Death
@@ -79,48 +175,105 @@ then
             0039: 15@ == 0
         then
             15@ = 1 // Prevent duplicate writes
+            22@ = 0 // Priority handled flag
 
-            // Check if Jo'on detonated a car with Car Smasher punches recently
-            0085: 30@ = 31@
-            000A: 30@ += MEM_CAR_SMASH_SIGNAL
-            0A8D: 26@ = read_memory 30@ size 4 virtual_protect 0
-            if and
-                0039: 26@ == 1
-                001B: 2 > 12@ // ONLY proc if fatal damage was untracked (-1), fists (0/1), or explosion (51)
+            // Priority 1: In-Vehicle Explosion Check (strictly for occupants inside an exploding car)
+            if or
+                0039: 18@ == 1
+                0019: 17@ > 0
             then
-                // Must be on foot and within melee proximity of the blast to confirm Jo'on's Car Smasher kill
-                if and
-                    80DF: not actor $PLAYER_ACTOR driving
-                    0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 15.0
+                if
+                    0039: 18@ == 1
                 then
-                    13@ = 1  // Jo'on's fault
-                    12@ = 51 // Car explosion from Car Smasher
-                    0085: 30@ = 31@
-                    000A: 30@ += MEM_SHION_DEATH_IN_CAR
-                    0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+                    // Successfully pre-armed while car was burning!
+                    12@ = 51
+                    0085: 13@ = 27@
+                    0085: 14@ = TIMERA
+                    22@ = 1
+                else
+                    if
+                        056E: car 17@ defined
+                    then
+                        0227: 21@ = car 17@ health
+                        if or
+                            0119: car 17@ wrecked
+                            0495: car 17@ burning
+                            8021: not 21@ > 250.0
+                        then
+                            12@ = 51        // Car / Vehicle Explosion
+                            18@ = 1         // Inside vehicle
+                            0085: 13@ = 27@ // Jo'on's fault if driving
+                            0085: 14@ = TIMERA
+                            22@ = 1
+                        end
+                    else
+                        // Car destroyed and purged from memory on lethal explosion frame
+                        12@ = 51
+                        18@ = 1
+                        0085: 13@ = 27@
+                        0085: 14@ = TIMERA
+                        22@ = 1
+                    end
                 end
-            else
-                // Check if last damage timestamp was within 3000ms
+            end
+
+            // Priority 2: Check if Jo'on detonated a car with Car Smasher punches recently
+            if
+                0039: 22@ == 0
+            then
+                0085: 30@ = 31@
+                000A: 30@ += MEM_CAR_SMASH_SIGNAL
+                0A8D: 26@ = read_memory 30@ size 4 virtual_protect 0
+                if
+                    0039: 26@ == 1
+                then
+                    if or
+                        001B: 2 > 12@   // Untracked (-1), Fists (0/1)
+                        0039: 12@ == 51 // Car explosion (51)
+                    then
+                        if and
+                            80DF: not actor $PLAYER_ACTOR driving
+                            0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 15.0
+                        then
+                            0470: 23@ = actor $PLAYER_ACTOR current_weapon
+                            if
+                                001B: 2 > 23@ // Weapon 0 (Fists) or 1 (Brass Knuckles)
+                            then
+                                13@ = 1  // Jo'on's fault
+                                12@ = 51 // Car explosion from Car Smasher
+                                18@ = 2  // Outside car via Car Smasher punch
+                                22@ = 1
+                            end
+                        end
+                    end
+                end
+            end
+
+            // Priority 3: Fallback check for expired damage timestamps
+            if
+                0039: 22@ == 0
+            then
                 0085: 20@ = TIMERA
                 0062: 20@ -= 14@
                 if
                     0029: 20@ >= 3000
                 then
-                    // Environmental or untracked death fallback
                     13@ = 0
                     12@ = -1
+                    18@ = 0
                 end
             end
 
-            // Water check: Drowning is strictly environmental (never blamed on Jo'on)
+            // Priority 4: Water check: Drowning is strictly environmental
             if
                 04AD: actor 10@ in_water
             then
                 13@ = 0
                 12@ = 53 // Drowned
+                18@ = 0
             end
 
-            // Write final telemetry to Master Heap
+            // Write verified telemetry to Master Heap
             0085: 30@ = 31@
             000A: 30@ += MEM_SHION_DEATH_FLAG
             0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
@@ -132,6 +285,10 @@ then
             0085: 30@ = 31@
             000A: 30@ += MEM_SHION_DEATH_WEAPON
             0A8C: write_memory 30@ size 4 value 12@ virtual_protect 0
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_DEATH_IN_CAR
+            0A8C: write_memory 30@ size 4 value 18@ virtual_protect 0
         end
     else
         // Ped is alive; clear latch if handle reused

@@ -237,9 +237,16 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * If player is holding a firearm (IDs 22–38): removes gun from Jo'on, transfers it to Shion with exact current ammo, updates `MEM_SHION_WEAPON_ID` and `MEM_SHION_AMMO_COUNT`, and switches her stance to Hostile.
   * Continuously checks Shion's live ammo. If she expends all rounds, clears her inventory, sets `MEM_SHION_STANCE = 0`, and plays the out-of-ammo vocal dialogue.
 * **`ShionDeathTracker.txt` (`Sh_Dth`):**
-  * Attaches to `0EDE: set_script_event_char_damage` specifically targeting Shion's handle.
+  * Attaches to `0EDE: set_script_event_char_damage` specifically targeting Shion's handle and runs an active watchdog loop operating continuously across player state transitions.
   * Resolves damager entity: identifies whether damage originated from Jo'on directly, Jo'on's driven vehicle, an explosive weapon held by Jo'on, a Car Smasher punch detonation (`MEM_CAR_SMASH_SIGNAL`), or environmental drowning.
-  * For vehicle explosions (Weapon ID 51), classifies the blast circumstance into `MEM_SHION_DEATH_IN_CAR`: `1` (trapped inside vehicle), `2` (outside on foot via Car Smasher punch), or `0` (outside on foot via gunfire/minigun bullet detonation).
+  * Continuously tracks Shion's vehicle occupancy and Jo'on's driver status while alive, cleanly distinguishing between safe on-foot disembarkation and catastrophic in-vehicle detonation ejections. If the vehicle catches fire, wrecks, or drops below 250.0 HP, it pre-arms telemetry to guarantee in-vehicle explosion attribution even if both sisters perish simultaneously or the engine bypasses standard damage callbacks.
+  * Comprehensive vehicular fatality classification:
+    * **Riding together and exploding**: `MEM_SHION_DEATH_IN_CAR = 1`, `MEM_SHION_KILLER_IS_JOON = 1` $\rightarrow$ Jo'on driving smoking wreck / unbuckle banter.
+    * **Waiting inside car and blown up**: `MEM_SHION_DEATH_IN_CAR = 1`, `MEM_SHION_KILLER_IS_JOON = 0` $\rightarrow$ Trapped in car / ears ringing banter.
+    * **On foot outside, car punched via Car Smasher**: `MEM_SHION_DEATH_IN_CAR = 2`, `MEM_SHION_KILLER_IS_JOON = 1` $\rightarrow$ Clocked sedan / fireball punch banter.
+    * **On foot outside, car detonated via gunfire/minigun**: `MEM_SHION_DEATH_IN_CAR = 0`, `MEM_SHION_KILLER_IS_JOON = 1` $\rightarrow$ Trigger-happy shooting / shrapnel banter.
+    * **On foot outside, world/enemy car explosion**: `MEM_SHION_DEATH_IN_CAR = 0`, `MEM_SHION_KILLER_IS_JOON = 0` $\rightarrow$ Sidewalk heat radiating banter.
+    * **On foot outside, run over by Jo'on**: Weapon ID 50, `MEM_SHION_KILLER_IS_JOON = 1` $\rightarrow$ Bones snapping like twigs banter.
   * Writes lethal telemetry to `MEM_SHION_DEATH_FLAG`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON`, and `MEM_SHION_DEATH_IN_CAR`.
 * **`ShionRetaliation.txt` (`Sh_Retal`):**
   * Anti-abuse system active exclusively when player is CJ (`MEM_PLAYER_FORM == 0`).
