@@ -133,7 +133,7 @@ if
 then
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DS0A" text "~y~Jo'on: ~s~\"Get lost, Shion! I've got real money to fleece today and you're stinkin' up the curb!\""
+    0ADF: add_text_label "Y_DS0A" text "~y~Jo'on: ~s~\"Get lost, Shion! Go find some dirty alley to rot in until I've got cash to blow!\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DS0A' time 3600 flag 1
     19@ = 3600
@@ -141,7 +141,7 @@ then
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DS0B" text "~b~Shion: ~s~\"Alright, Jo'on... I'll go check the dumpster behind the pizza shop for lunch.\""
+    0ADF: add_text_label "Y_DS0B" text "~b~Shion: ~s~\"Fine... I'll just go sit behind the pizza shop in the hood. Maybe someone tossed half a slice.\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DS0B' time 3500 flag 1
     19@ = 3500
@@ -165,7 +165,7 @@ then
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DS1B" text "~b~Shion: ~s~\"Understood, sis... at least the alleyway doesn't yell at my hoodie for existing.\""
+    0ADF: add_text_label "Y_DS1B" text "~b~Shion: ~s~\"Yeah yeah... Look for me around the dumpsters on the east side if you ever remember to feed me.\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DS1B' time 3400 flag 1
     19@ = 3400
@@ -205,7 +205,7 @@ if
 then
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DS3A" text "~y~Jo'on: ~s~\"Scram! Go find a quiet corner and don't move until I come lookin' for ya!\""
+    0ADF: add_text_label "Y_DS3A" text "~y~Jo'on: ~s~\"Scram! Go find a curb to haunt where I don't gotta look at ya!\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DS3A' time 3400 flag 1
     19@ = 3400
@@ -213,7 +213,7 @@ then
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DS3B" text "~b~Shion: ~s~\"Okay, sis... I'll just sit on some cardboard and count dry bread crusts.\""
+    0ADF: add_text_label "Y_DS3B" text "~b~Shion: ~s~\"I'm going, I'm going... The guys at the firehouse don't chase me off when I borrow their outdoor tap.\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DS3B' time 3300 flag 1
     19@ = 3300
@@ -237,7 +237,7 @@ then
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DS4B" text "~b~Shion: ~s~\"You blow all your cash anyway, Jo'on... but fine, I'll go wait by the bench.\""
+    0ADF: add_text_label "Y_DS4B" text "~b~Shion: ~s~\"You blow all your cash anyway, Jo'on... but fine, you already know my spots.\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DS4B' time 3600 flag 1
     19@ = 3600
@@ -261,7 +261,7 @@ then
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DS5B" text "~b~Shion: ~s~\"Fine, fine... I'll go hold out my cup until you need your meat shield again.\""
+    0ADF: add_text_label "Y_DS5B" text "~b~Shion: ~s~\"Fine, fine... I'll go hold out my cup by that takeout strip out east until you need your meat shield again.\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DS5B' time 3600 flag 1
     19@ = 3600
@@ -425,7 +425,7 @@ then
         if
             0039: 28@ == 3
         then
-            0ADF: add_text_label "Y_NORE4" text "~b~Shion: ~s~\"You need me back in your posse? Pray my name first.\""
+            0ADF: add_text_label "Y_NORE4" text "~b~Shion: ~s~\"You need me back in your posse? Beg on your knees first.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_NORE4' time 3200 flag 1
         end
