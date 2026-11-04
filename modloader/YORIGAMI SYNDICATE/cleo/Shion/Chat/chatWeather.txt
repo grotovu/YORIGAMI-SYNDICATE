@@ -156,6 +156,7 @@ else
     if
         26@ == 1
     then
+        22@ = 0 // Explicitly reset mode: 0 = unlisted / standard enclosed roof
         0ADB: 16@v = vehicle_model 25@ name
         0AF0: 22@ = read_int_from_ini_file "cleo\savedata\ShionVehicles.ini" section "VehicleRoofTypes" key 16@v
 
