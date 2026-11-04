@@ -878,7 +878,7 @@ then
                 if
                     0039: 1@ == 0
                 then
-                    0ADF: add_text_label "Y_DSM0A" text "~y~Jo'on: ~s~\"AHAHAHA! What a blast! Wait... where the hell did Shion fly off to?!\""
+                    0ADF: add_text_label "Y_DSM0A" text "~y~Jo'on: ~s~\"AHAHAHA! Wait... where the hell did Shion fly off to?!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_DSM0A' time 3500 flag 1
                     0001: wait 3500 ms
