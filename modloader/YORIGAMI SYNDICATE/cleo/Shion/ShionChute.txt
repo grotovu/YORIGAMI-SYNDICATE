@@ -13,6 +13,7 @@ const
     MEM_PRIORITY_LOCK = 20        // Formerly 765
     MEM_LORE_PROGRESS_BIT = 244   // Lore completion bitmask
     MEM_SKYDIVE_LANDED = 288      // Live session touchdown signal
+    MEM_SHION_CHUTE_OBJ = 408     // Parachute Canopy Object Handle
 end
 
 :Connect_To_Brain
@@ -307,6 +308,11 @@ end
 0107: 15@ = create_object #PARACHUTE at 20@ 21@ 22@
 069B: attach_object 15@ to_actor 10@ with_offset 0.0 0.0 0.0 rotation 0.0 0.0 0.0
 
+// Register canopy object to Master Heap
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_CHUTE_OBJ
+0A8C: write_memory 30@ size 4 value 15@ virtual_protect 0
+
 // Switch to upright canopy floating animation
 0812: AS_actor 10@ perform_animation "PARA_float" IFP "PARACHUTE" framedelta 2.0 loopA 1 lockX 0 lockY 0 lockF 0 time -1
 
@@ -391,6 +397,9 @@ then
     0682: detach_object 15@ 0.0 0.0 0.0 collision_detection 0
     0108: destroy_object 15@
     15@ = 0
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_CHUTE_OBJ
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 end
 
 // Play landing roll
@@ -445,6 +454,9 @@ then
     0682: detach_object 15@ 0.0 0.0 0.0 collision_detection 0
     0108: destroy_object 15@
     15@ = 0
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_CHUTE_OBJ
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 end
 
 // Restore group and clear busy flag

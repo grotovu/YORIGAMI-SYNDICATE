@@ -92,6 +92,7 @@ Every secondary script executes an identical connection routine upon initializat
 | `396` | `MEM_SHION_STAY_PUT` | int | Stay-Put state: `0` = Follow, `1` = Ground Stay-Put (`H`), `2` = In-Vehicle Hold (`H`). | `ShionFollow`, `ShionVehicle` | `ShionFollow`, `ShionControl`, `ShionCombatRedMarker` |
 | `400` | `MEM_SHION_RECRUITED` | int (bool) | Recruitment state: `0` = Ambient Loiterer, `1` = Entourage Member. | `SpawnShion`, `Joon`, `Entourage` | `ShionChat`, `shionHangoutIcon`, `ShionFood`, `JoonSmoke` |
 | `404` | `MEM_SHION_HUNGRY` | int (bool) | Starvation state: `0` = Satisfied, `1` = Starving / Injured. | `ShionFood`, `foodDiner` | `foodDiner`, `ShionFood` |
+| `408` | `MEM_SHION_CHUTE_OBJ` | int | Object handle of active parachute canopy (`#PARACHUTE` / `3131`). | `ShionChute`, `SpawnShion` | `SpawnShion`, `ShionChute` |
 
 ---
 
@@ -207,11 +208,11 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Filters for active red blips (colors 0, 5, 7; blip types 1 = Car, 2 = Ped; non-friendly).
   * Directs Shion's AI tasks (`0672: attack_car` or `05E2: kill_actor`) toward the nearest marked target within 100m. If seated in a car driven by Jo'on, executes native drive-bys (`0713`).
 * **`ShionChute.txt` (`Sh_Chut`):** 
-  * Triggers when Shion is in freefall outdoors > 15m altitude, strictly filtering against water immersion (`84AD`) and verifying elevation is > 15m above the local water surface (`092E: get_water_height_at`) to prevent misfires while swimming or treading water above deep seabeds.
+  * Triggers when Shion is in freefall outdoors > 15m altitude, strictly filtering against player/companion water immersion (`84AD`, `8965`) and verifying elevation is > 15m above the local water surface (`092E: get_water_height_at`) to prevent misfires while swimming or treading water above deep seabeds.
   * Sets `MEM_SHION_BUSY = 1`, removes from group, grants fall damage immunity (`02AB`), and sets `0575: pinned_position 1` to disable falling flail tasks.
   * Phase 1: High-speed freefall down to 65m altitude.
-  * Phase 2: Deducts $800 emergency parachute fee from player wallet (or takes debt), creates attached `#PARACHUTE` object, and glides downward at ~9 m/s.
-  * Phase 3: Touchdown landing, releases parachute object, re-adds to group, clears busy flag, and sets `MEM_SKYDIVE_LANDED = 1`.
+  * Phase 2: Deducts $800 emergency parachute fee from player wallet (or takes debt), creates attached `#PARACHUTE` object, registers handle in `MEM_SHION_CHUTE_OBJ` (`408`), and glides downward at ~9 m/s.
+  * Phase 3: Touchdown landing, releases and destroys canopy object, resets `MEM_SHION_CHUTE_OBJ = 0`, re-adds to group, clears busy flag, and sets `MEM_SKYDIVE_LANDED = 1`.
 * **`ShionBurglary.txt` (`Sh_Burg`):**
   * Active during Burglary missions (`$ONMISSION_BURGLARY == 1`).
   * When Jo'on is carrying loot inside a residence, holding `TAB` near Shion initiates a hand-off.
@@ -525,7 +526,7 @@ The following table details the cross-script dependencies for every component in
 |---|---|---|---|---|---|
 | **Master Heap** | `Y_Brain.txt` | CLEO boot | Base buffer allocated | None | Connects all scripts via struct `Y_Brain` |
 | **Identity & Form** | `Joon.txt` | `Y + L`, "JOON", "POVERTY", Boot | `MEM_PLAYER_FORM`, `MEM_JOON_STASH_*`, `MEM_INTENTIONAL_DISM` | `MEM_SAVE_SLOT`, `MEM_SHION_HANDLE`, `MEM_SHION_WEAPON_ID` | Spawns `FX_SwitchBurst`, `JoonSmoke`; drives `SpawnShion` |
-| **Companion Manager** | `SpawnShion.txt` | "SHION", Proximity to hangouts, `Y + H` | `MEM_SHION_HANDLE`, `MEM_SHION_RECRUITED`, `MEM_SHION_PRES_*` | `MEM_PLAYER_FORM`, `MEM_SHION_BUSY`, `MEM_PRIORITY_LOCK` | Spawns `FX_Warp`, `FX_ShionHitodama`, and all `Shion*.c` workers |
+| **Companion Manager** | `SpawnShion.txt` | "SHION", Proximity to hangouts, `Y + H` | `MEM_SHION_HANDLE`, `MEM_SHION_RECRUITED`, `MEM_SHION_PRES_*`, `MEM_SHION_CHUTE_OBJ` | `MEM_PLAYER_FORM`, `MEM_SHION_BUSY`, `MEM_PRIORITY_LOCK`, `MEM_SHION_CHUTE_OBJ` | Spawns `FX_Warp`, `FX_ShionHitodama`, purges stray parachutes, and runs all `Shion*.c` workers |
 | **Prestige Engine** | `yorigami.txt` | Wallet change, `Y + J` (Flex), Save disk | `MEM_SAVE_SLOT`, `MEM_TOTAL_POINTS`, `MEM_AVAIL_POINTS`, `MEM_FLEX_SIGNAL` | `MEM_CONTRACT_ESCROW`, `MEM_ALLOC_*` | Spawns `FX_FLEX`, launches all `Yorigami\*.c` perks |
 | **Prestige Menu** | `Yorigami\Menu.txt` | `Y + M` on foot, `Space`/`Sprint` for tutorials | `MEM_ALLOC_*`, `MEM_AVAIL_POINTS`, `MEM_TOTAL_POINTS`, `MEM_CONTRACT_ESCROW` | `MEM_AVAIL_POINTS`, `MEM_TOTAL_POINTS` | Reads/writes `YorigamiPerks.ini`, communicates with `yorigami.cs` |
 | **Jo'on Bling** | `Yorigami\Bling.txt` | Fists/Knuckles melee attacks, Vehicle punches | `MEM_CAR_SMASH_SIGNAL` | `MEM_ALLOC_JOONBLING`, `MEM_ALLOC_SMASHER`, `MEM_PLAYER_FORM` | Spawns `FX_JoonGraze`, triggers `ShionSandbox` & `ShionDeathTracker` |
