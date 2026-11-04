@@ -40,76 +40,470 @@ then
     0A93: terminate_this_custom_script
 end
 
+// Initialize Menu State
+15@ = 0 // Assassin Ped Handle (0 = None)
+16@ = -1 // Panel Handle (-1 = None)
+17@ = 0 // Menu State: 0 = Closed, 1 = Main Debug Menu, 2 = Chat Trigger Menu
+
 :Debug_Loop
 0001: wait 50 ms
 
 if
     8256: not is_player_playing $PLAYER_CHAR
 then
+    if
+        8039: not 16@ == -1
+    then
+        08DA: remove_panel 16@
+        16@ = -1
+        17@ = 0
+        04D7: set_actor $PLAYER_ACTOR locked 0
+        01B4: set_player $PLAYER_CHAR can_move 1
+    end
     0002: jump @Debug_Loop
 end
 
 // =========================================================================
-// CHEAT: KILLPOOR (Sets Shion's HP to 5 and Armour to 0)
+// ASSASSIN PED WATCHDOG (DESTROY WHEN SHION DIES OR CLEAN UP DEAD ASSASSIN)
 // =========================================================================
 if
-    0ADC: test_cheat "KILLPOOR"
+    0019: 15@ > 0
 then
-    0085: 30@ = 31@
-    000A: 30@ += MEM_SHION_HANDLE
-    0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
-
     if
-        0039: 10@ == 0
+        056D: actor 15@ defined
     then
-        018C: play_sound 1057 at 0.0 0.0 0.0
-        0AD1: print_formatted_now "~r~DEBUG: Shion is not summoned!" 2000
-    else
-        // Case 1: Hitodama Spirit Form
         if
-            0039: 10@ == -1
+            8118: not actor 15@ dead
         then
             0085: 30@ = 31@
-            000A: 30@ += MEM_SHION_PRES_HP
-            0A8C: write_memory 30@ size 4 value 5 virtual_protect 0
+            000A: 30@ += MEM_SHION_HANDLE
+            0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
 
-            0085: 30@ = 31@
-            000A: 30@ += MEM_SHION_PRES_ARMOUR
-            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-
-            018C: play_sound 1058 at 0.0 0.0 0.0
-            0AD1: print_formatted_now "~w~CHEAT: ~b~KILLPOOR ~y~(Hitodama HP: 5 / Armour: 0)" 2500
-        else
-            // Case 2: Physical Ped Form
-            if and
-                0019: 10@ > 0
-                056D: actor 10@ defined
-                8118: not actor 10@ dead
+            // Check if Shion died or despawned
+            if or
+                002B: 0 >= 10@
+                856D: not actor 10@ defined
+                0118: actor 10@ dead
             then
-                0223: set_actor 10@ health 5
-
-                // Strip Armour (Write 0.0f float to CPed+0x548)
-                0A96: 25@ = ped 10@ struct
-                000A: 25@ += 0x548
-                0A8C: write_memory 25@ size 4 value 0 virtual_protect 0
-
-                // Sync preserved values in Master Heap
-                0085: 30@ = 31@
-                000A: 30@ += MEM_SHION_PRES_HP
-                0A8C: write_memory 30@ size 4 value 5 virtual_protect 0
-
-                0085: 30@ = 31@
-                000A: 30@ += MEM_SHION_PRES_ARMOUR
-                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-
+                009B: destroy_actor 15@
+                15@ = 0
                 018C: play_sound 1058 at 0.0 0.0 0.0
-                0AD1: print_formatted_now "~w~CHEAT: ~b~KILLPOOR ~r~(HP: 5 / Armour: 0)" 2500
-            else
-                018C: play_sound 1057 at 0.0 0.0 0.0
-                0AD1: print_formatted_now "~r~DEBUG: Shion is dead or invalid!" 2000
+            end
+        else
+            // Assassin was killed: delete corpse so another can spawn cleanly
+            009B: destroy_actor 15@
+            15@ = 0
+        end
+    else
+        15@ = 0
+    end
+end
+
+// =========================================================================
+// CHEAT CODE LISTENERS (DIRECT ACTIVATION OUTSIDE MENU)
+// =========================================================================
+if
+    0039: 17@ == 0
+then
+    if
+        0ADC: test_cheat "KILLPOOR"
+    then
+        gosub @Action_Killpoor
+    end
+
+    if
+        0ADC: test_cheat "KILLTHEPOOR"
+    then
+        gosub @Action_Killthepoor
+    end
+
+    if
+        0ADC: test_cheat "TRIGGERCHAT"
+    then
+        gosub @Open_Chat_Menu
+    end
+
+    if or
+        0ADC: test_cheat "SHDBG"
+        0ADC: test_cheat "DEBUG"
+    then
+        gosub @Open_Main_Debug_Menu
+    end
+end
+
+// =========================================================================
+// INTERACTIVE DEBUG MENU HANDLER
+// =========================================================================
+if
+    0019: 17@ > 0
+then
+    // Enforce lock every frame menu is displayed so player cannot walk around
+    04D7: set_actor $PLAYER_ACTOR locked 1
+    01B4: set_player $PLAYER_CHAR can_move 0
+
+    // ---------------------------------------------------------------------
+    // 1. CANCEL / BACK: [ENTER] (KEY 13) ONLY
+    // ---------------------------------------------------------------------
+    if
+        0AB0: is_key_pressed 13 // Enter Key
+    then
+        :Wait_Debug_Enter_Rel
+        0001: wait 50 ms
+        if
+            0AB0: is_key_pressed 13
+        then
+            0002: jump @Wait_Debug_Enter_Rel
+        end
+
+        018C: play_sound 1057 at 0.0 0.0 0.0
+
+        if
+            0039: 17@ == 2
+        then
+            // Submenu -> Return to Main Menu
+            gosub @Open_Main_Debug_Menu
+        else
+            // Main Menu -> Close Menu
+            gosub @Close_Active_Menu
+        end
+        0002: jump @Debug_Loop
+    end
+
+    // ---------------------------------------------------------------------
+    // 2. SELECT: [SPACE] (KEY 32) ONLY
+    // ---------------------------------------------------------------------
+    if
+        0AB0: is_key_pressed 32 // Space Key
+    then
+        :Wait_Debug_Space_Rel
+        0001: wait 50 ms
+        if
+            0AB0: is_key_pressed 32
+        then
+            0002: jump @Wait_Debug_Space_Rel
+        end
+
+        08D7: 18@ = panel 16@ active_row
+        018C: play_sound 1058 at 0.0 0.0 0.0
+
+        // -----------------------------------------------------------------
+        // MAIN MENU SELECTIONS
+        // -----------------------------------------------------------------
+        if
+            0039: 17@ == 1
+        then
+            if
+                0039: 18@ == 0
+            then
+                gosub @Action_Killpoor
+            end
+            if
+                0039: 18@ == 1
+            then
+                gosub @Action_Killthepoor
+            end
+            if
+                0039: 18@ == 2
+            then
+                gosub @Open_Chat_Menu
+                0002: jump @Debug_Loop
+            end
+            if
+                0039: 18@ == 3
+            then
+                gosub @Close_Active_Menu
+                0002: jump @Debug_Loop
+            end
+        end
+
+        // -----------------------------------------------------------------
+        // CHAT TRIGGER MENU SELECTIONS
+        // -----------------------------------------------------------------
+        if
+            0039: 17@ == 2
+        then
+            if
+                0039: 18@ == 0
+            then
+                gosub @Close_Active_Menu
+                0A92: create_custom_thread "Shion\Chat\chatWeather.c"
+                0AD1: print_formatted_now "~g~DEBUG: Triggered chatWeather!" 2000
+                0002: jump @Debug_Loop
+            end
+            if
+                0039: 18@ == 1
+            then
+                gosub @Close_Active_Menu
+                0A92: create_custom_thread "Shion\Chat\chatMoney.c"
+                0AD1: print_formatted_now "~g~DEBUG: Triggered chatMoney!" 2000
+                0002: jump @Debug_Loop
+            end
+            if
+                0039: 18@ == 2
+            then
+                gosub @Close_Active_Menu
+                0A92: create_custom_thread "Shion\Chat\chatZone.c"
+                0AD1: print_formatted_now "~g~DEBUG: Triggered chatZone!" 2000
+                0002: jump @Debug_Loop
+            end
+            if
+                0039: 18@ == 3
+            then
+                gosub @Close_Active_Menu
+                0A92: create_custom_thread "Shion\Chat\chatVehicle.c"
+                0AD1: print_formatted_now "~g~DEBUG: Triggered chatVehicle!" 2000
+                0002: jump @Debug_Loop
+            end
+            if
+                0039: 18@ == 4
+            then
+                gosub @Close_Active_Menu
+                0A92: create_custom_thread "Shion\Chat\chatRadio.c"
+                0AD1: print_formatted_now "~g~DEBUG: Triggered chatRadio!" 2000
+                0002: jump @Debug_Loop
+            end
+            if
+                0039: 18@ == 5
+            then
+                gosub @Close_Active_Menu
+                0A92: create_custom_thread "Shion\Chat\chatIdle.c"
+                0AD1: print_formatted_now "~g~DEBUG: Triggered chatIdle!" 2000
+                0002: jump @Debug_Loop
+            end
+            if
+                0039: 18@ == 6
+            then
+                gosub @Close_Active_Menu
+                0A92: create_custom_thread "Shion\Chat\chatSpawned.c"
+                0AD1: print_formatted_now "~g~DEBUG: Triggered chatSpawned!" 2000
+                0002: jump @Debug_Loop
+            end
+            if
+                0039: 18@ == 7
+            then
+                gosub @Close_Active_Menu
+                0A92: create_custom_thread "Shion\Chat\chatGrimPity.c"
+                0AD1: print_formatted_now "~g~DEBUG: Triggered chatGrimPity!" 2000
+                0002: jump @Debug_Loop
+            end
+            if
+                0039: 18@ == 8
+            then
+                gosub @Open_Main_Debug_Menu
+                0002: jump @Debug_Loop
             end
         end
     end
 end
 
 0002: jump @Debug_Loop
+
+// =========================================================================
+// SUBROUTINE: ACTION KILLPOOR (5 HP / 0 ARMOUR)
+// =========================================================================
+:Action_Killpoor
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    0039: 10@ == 0
+then
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0AD1: print_formatted_now "~r~DEBUG: Shion is not summoned!" 2000
+    return
+end
+
+if
+    0039: 10@ == -1
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_PRES_HP
+    0A8C: write_memory 30@ size 4 value 5 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_PRES_ARMOUR
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    0AD1: print_formatted_now "~w~DEBUG: ~b~KILLPOOR ~y~(Hitodama HP: 5 / Armour: 0)" 2500
+else
+    if and
+        0019: 10@ > 0
+        056D: actor 10@ defined
+        8118: not actor 10@ dead
+    then
+        0223: set_actor 10@ health 5
+
+        // Strip Armour from CPed struct
+        0A96: 25@ = ped 10@ struct
+        000A: 25@ += 0x548
+        0A8C: write_memory 25@ size 4 value 0 virtual_protect 0
+
+        // Sync preserved values in Master Heap
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_PRES_HP
+        0A8C: write_memory 30@ size 4 value 5 virtual_protect 0
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_PRES_ARMOUR
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        0AD1: print_formatted_now "~w~DEBUG: ~b~KILLPOOR ~r~(HP: 5 / Armour: 0)" 2500
+    else
+        018C: play_sound 1057 at 0.0 0.0 0.0
+        0AD1: print_formatted_now "~r~DEBUG: Shion is dead or invalid!" 2000
+    end
+end
+return
+
+// =========================================================================
+// SUBROUTINE: ACTION KILLTHEPOOR (SPAWN ASSASSIN PED)
+// =========================================================================
+:Action_Killthepoor
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+if or
+    002B: 0 >= 10@
+    856D: not actor 10@ defined
+    0118: actor 10@ dead
+then
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0AD1: print_formatted_now "~r~DEBUG: Shion must be in physical ped form to summon assassin!" 2500
+    return
+end
+
+// Clean up existing assassin if one is already active
+if
+    0019: 15@ > 0
+then
+    if
+        056D: actor 15@ defined
+    then
+        009B: destroy_actor 15@
+    end
+    15@ = 0
+end
+
+// Spawn Assassin 6 meters in front of Shion
+04C4: store_coords_to 23@ 24@ 25@ from_actor 10@ with_offset 0.0 6.0 0.0
+
+0247: load_model #BALLAS1
+038B: load_requested_models
+
+:Wait_Assassin_Model
+0001: wait 0 ms
+if
+    8248: not model #BALLAS1 available
+then
+    0002: jump @Wait_Assassin_Model
+end
+
+// Use pedtype 8 (Gang 2 / Ballas) - pedtype 24 was out of bounds!
+009A: 15@ = create_actor_pedtype 8 model #BALLAS1 at 23@ 24@ 25@
+0249: release_model #BALLAS1
+
+// Read weapon currently in player's hand
+0470: 12@ = actor $PLAYER_ACTOR current_weapon
+if
+    0019: 12@ > 0
+then
+    0781: get_weapon_with_ID 12@ model_to 13@
+    if
+        0019: 13@ > 0
+    then
+        0247: load_model 13@
+        038B: load_requested_models
+
+        :Wait_Assassin_Wep_Model
+        0001: wait 0 ms
+        if
+            8248: not model 13@ available
+        then
+            0002: jump @Wait_Assassin_Wep_Model
+        end
+
+        01B2: give_actor 15@ weapon 12@ ammo 9999
+        01B9: set_actor 15@ armed_weapon_to 12@
+    end
+end
+
+// Configure aggressive combat targeting directly against Shion
+02E2: set_actor 15@ weapon_accuracy_to 95
+060B: set_actor 15@ decision_maker_to 65543
+0770: set_actor 15@ target_priority 1
+07DD: set_actor 15@ attack_rate 100
+05E2: AS_actor 15@ kill_actor 10@
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+0AD1: print_formatted_now "~r~DEBUG: Assassin spawned to kill Shion!" 2500
+return
+
+// =========================================================================
+// SUBROUTINE: MENU MANAGEMENT
+// =========================================================================
+:Open_Main_Debug_Menu
+if
+    8039: not 16@ == -1
+then
+    08DA: remove_panel 16@
+    16@ = -1
+end
+
+04D7: set_actor $PLAYER_ACTOR locked 1
+01B4: set_player $PLAYER_CHAR can_move 0
+
+0ADF: add_text_label "DB_TIT" text "Debug Menu"
+0ADF: add_text_label "DB_M0" text "Set Shion HP 5 / Arm 0"
+0ADF: add_text_label "DB_M1" text "Summon Assassin Ped"
+0ADF: add_text_label "DB_M2" text "Trigger Dialogue..."
+0ADF: add_text_label "DB_M3" text "Close Menu"
+
+08D4: 16@ = create_panel_with_title 'DB_TIT' position 29.0 145.0 width 210.0 columns 1 interactive 1 background 1 alignment 0
+08D6: set_panel 16@ column 0 alignment 0
+08DB: set_panel 16@ column 0 header 'DUMMY' data 'DB_M0' 'DB_M1' 'DB_M2' 'DB_M3' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY'
+17@ = 1
+return
+
+:Open_Chat_Menu
+if
+    8039: not 16@ == -1
+then
+    08DA: remove_panel 16@
+    16@ = -1
+end
+
+04D7: set_actor $PLAYER_ACTOR locked 1
+01B4: set_player $PLAYER_CHAR can_move 0
+
+0ADF: add_text_label "DB_CHT" text "Trigger Dialogue"
+0ADF: add_text_label "DB_C0" text "Weather Banter"
+0ADF: add_text_label "DB_C1" text "Money Banter"
+0ADF: add_text_label "DB_C2" text "Zone Banter"
+0ADF: add_text_label "DB_C3" text "Vehicle Banter"
+0ADF: add_text_label "DB_C4" text "Radio Banter"
+0ADF: add_text_label "DB_C5" text "Idle Banter"
+0ADF: add_text_label "DB_C6" text "Post-Death Complaint"
+0ADF: add_text_label "DB_C7" text "Grim Pity Banter"
+0ADF: add_text_label "DB_C8" text "Back"
+
+08D4: 16@ = create_panel_with_title 'DB_CHT' position 29.0 145.0 width 210.0 columns 1 interactive 1 background 1 alignment 0
+08D6: set_panel 16@ column 0 alignment 0
+08DB: set_panel 16@ column 0 header 'DUMMY' data 'DB_C0' 'DB_C1' 'DB_C2' 'DB_C3' 'DB_C4' 'DB_C5' 'DB_C6' 'DB_C7' 'DB_C8' 'DUMMY' 'DUMMY' 'DUMMY'
+17@ = 2
+return
+
+:Close_Active_Menu
+if
+    8039: not 16@ == -1
+then
+    08DA: remove_panel 16@
+    16@ = -1
+end
+17@ = 0
+04D7: set_actor $PLAYER_ACTOR locked 0
+01B4: set_player $PLAYER_CHAR can_move 1
+return
