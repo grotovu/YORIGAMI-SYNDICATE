@@ -577,24 +577,20 @@ then
 end
 
 // -------------------------------------------------------------------------
-// BIT 5: Episode 5 - Desert Outdoors Anytime
+// BIT 5: Episode 5 - Shion Kills >= 100
 // -------------------------------------------------------------------------
 if
     88B7: not test 3@ bit 5
 then
-    077E: get_active_interior_to 29@
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_KILLS
+    0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
     if
-        29@ == 0
+        28@ >= 100
     then
-        if or
-            0154: actor $PLAYER_ACTOR in_zone 'BONE'
-            0154: actor $PLAYER_ACTOR in_zone 'ROBAD'
-            0154: actor $PLAYER_ACTOR in_zone 'ELCA'
-        then
-            8@ = 5
-            gosub @Prompt_Lore_Conversation
-            return
-        end
+        8@ = 5
+        gosub @Prompt_Lore_Conversation
+        return
     end
 end
 

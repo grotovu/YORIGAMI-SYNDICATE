@@ -286,10 +286,14 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * *Default (Unlisted)*: Enclosed cabin (`26@ = 1`).
 * **`ShionLore.txt` (`Sh_Lore`):**
   * Milestone progression engine scanning the 31 bits of `MEM_LORE_PROGRESS_BIT`.
-  * Evaluates environmental conditions (e.g. Chiliad altitude, casino losses >= $10k, gas station lingering, train ride duration > 45s, high-roller cash thresholds).
+  * Evaluates non-linear gameplay, combat, financial, and environmental milestones across San Andreas:
+    * *Combat & Career Milestones*: Shion firearms kills (Ep 1: 25 kills; Ep 5: 100 kills - "The Drug of Poverty"), Pimping Level 5+ (Ep 2), Burglary deliveries (Ep 14), Paramedic saves (Ep 20), vehicle destruction together (Ep 15), and Grim Pity death-defiance saves (Ep 16).
+    * *Environmental & Atmospheric Conditions*: Mount Chiliad altitude on foot (Ep 4), dive bar lingering (Ep 12), gas station pump and tanker dwell (Ep 13), train passenger transit > 45s (Ep 22), late-night Rodeo commercial district walks (Ep 26), and alleyway walks in Idlewood/Doherty (Ep 27).
+    * *Financial Thresholds*: Casino table losses >= $10k (Ep 11), high-roller wealth thresholds ($100k at LS Tower in Ep 10; $1M along The Strip in Ep 7; $500k in Ep 25), post-wealth bankruptcies ($0 balance in Ep 23 & 28), and safehouse property portfolios >= $500k (Ep 29).
   * Prompts player `[Y: Listen | N: Busy]`. If accepted, streams `loreTheater.c` passing the unlocked episode index.
 * **`loreTheater.txt` (`Sh_Thea`):**
-  * Claims Tier 4 lock, executes multi-stage cutscene dialogue scripts for Episodes 0–30, and writes `MEM_LORE_PROGRESS_BIT` upon clean completion. Aborts gracefully if interrupted by cell phone calls or combat.
+  * Claims Tier 4 lock, executes multi-stage cutscene dialogue scripts for Episodes 0–30, and writes `MEM_LORE_PROGRESS_BIT` upon clean completion.
+  * Aborts gracefully with priority restoration if interrupted by cell phone calls, combat, player death, or water immersion.
 * **`loreMenu.txt` (`Sh_LMen`):**
   * Interactive archive browser (`Y_LMTIT`) displaying 4 pages of 8 episodes each.
   * Reads unlocked state from `MEM_LORE_PROGRESS_BIT` (or debug bypass cheat "ALLORE"). Shows requirement tooltips. Selecting an episode streams `loreTheater.c` for replay.

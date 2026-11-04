@@ -1378,10 +1378,10 @@ return
 
 
 // =========================================================================
-// EPISODE 5: "The Taste of Ancient Blood" (Bit 5)
+// EPISODE 5: "The Drug of Poverty" (Bit 5)
 // =========================================================================
 :Lore_Episode_5
-0ADF: add_text_label "Y_T05" text "~y~SISTER TALK~n~~w~THE TASTE OF ANCIENT BLOOD"
+0ADF: add_text_label "Y_T05" text "~y~SISTER TALK~n~~w~THE DRUG OF POVERTY"
 00BA: show_text_styled GXT 'Y_T05' time 3500 style 5
 wait 3500
 gosub @Check_Theater_Alive_Or_Exit
@@ -1393,10 +1393,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L50A" text "~y~Jo'on: ~s~\"Look at these iron pumpjacks noddin' away in the desert heat. Remind ya of anythin', Shion?\""
+0ADF: add_text_label "Y_L50A" text "~b~Shion: ~s~\"So this is what everyone in this city is killing and dying for...\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L50A' time 4200 flag 1
-wait 4200
+00BC: show_text_highpriority GXT 'Y_L50A' time 4100 flag 1
+wait 4100
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -1406,7 +1406,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L50B" text "~b~Shion: ~s~\"Rusty metal pumps nodding in the dirt... smells just like the oil fields in Former Hell.\""
+0ADF: add_text_label "Y_L50B" text "~b~Shion: ~s~\"A little rock of dirty powder... the quickest shortcut to poverty I've ever seen.\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L50B' time 4300 flag 1
 wait 4300
@@ -1419,10 +1419,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L50C1" text "~y~Jo'on: ~s~\"Ugh, don't bring that up!\""
+0ADF: add_text_label "Y_L50C" text "~b~Shion: ~s~\"One hit, and people give up everything they own. They pawn their clothes and forget to eat...\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L50C1' time 3000 flag 1
-wait 3000
+00BC: show_text_highpriority GXT 'Y_L50C' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -1432,9 +1432,22 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L50C2" text "~y~Jo'on: ~s~\"We strutted into that onsen town screamin' we were oil barons ready to buy out the underworld!\""
+0ADF: add_text_label "Y_L50D" text "~b~Shion: ~s~\"...until they're skin and bones like me.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L50C2' time 4300 flag 1
+00BC: show_text_highpriority GXT 'Y_L50D' time 3600 flag 1
+wait 3600
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L50E" text "~y~Jo'on: ~s~\"Eugh! Drop that nasty crap! Don't be pokin' through a dead pusher's stash with your bare hands!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L50E' time 4300 flag 1
 wait 4300
 gosub @Check_Theater_Alive_Or_Exit
 if
@@ -1445,10 +1458,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L50D1" text "~b~Shion: ~s~\"You made us wear men's white sheikh robes and headscarves... We looked like bootleg tycoons.\""
+0ADF: add_text_label "Y_L50F" text "~y~Jo'on: ~s~\"And quit ramblin' about some 'drug of poverty'! It's disgustin'!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L50D1' time 4400 flag 1
-wait 4400
+00BC: show_text_highpriority GXT 'Y_L50F' time 3800 flag 1
+wait 3800
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -1458,48 +1471,9 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L50D2" text "~y~Jo'on: ~s~\"Bootleg?! I glued emeralds to that sash! We looked like authentic Gulf royalty!\""
+0ADF: add_text_label "Y_L50G" text "~b~Shion: ~s~\"Why? You're always screaming about fast cash, Jo'on. Those corner pushers make thousands a day.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L50D2' time 4200 flag 1
-wait 4200
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L50E1" text "~b~Shion: ~s~\"Until that Toutetsu beast told us the black water was cursed prehistoric blood, and called us poor.\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L50E1' time 4400 flag 1
-wait 4400
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L50E2" text "~y~Jo'on: ~s~\"And that rancid hellfire sludge splashed all over my white silk! I had to burn the whole damn getup!\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L50E2' time 4400 flag 1
-wait 4400
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L50F" text "~b~Shion: ~s~\"It wasn't that foul... Had a heavy, burnt-sugar taste. Like roasted miso mixed with black molasses.\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L50F' time 4300 flag 1
+00BC: show_text_highpriority GXT 'Y_L50G' time 4300 flag 1
 wait 4300
 gosub @Check_Theater_Alive_Or_Exit
 if
@@ -1510,10 +1484,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L50G" text "~y~Jo'on: ~s~\"YOU SWALLOWED IT?! Shion, you chugged cursed underworld corpse grease outta your beggar bowl?!\""
+0ADF: add_text_label "Y_L50H" text "~y~Jo'on: ~s~\"'Cause it's cheap street garbage! Peddlin' nickel bags to broke junkies in dirty alleys?!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L50G' time 4400 flag 1
-wait 4400
+00BC: show_text_highpriority GXT 'Y_L50H' time 4300 flag 1
+wait 4300
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -1523,20 +1497,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L50H" text "~b~Shion: ~s~\"I was starving, Jo'on! When you're destitute, calories are calories. Food is food.\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L50H' time 4100 flag 1
-wait 4100
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L50I" text "~y~Jo'on: ~s~\"You're a god, not a sewer rat! If smoke starts blowin' outta your ears, you're walkin' the highway!\""
+0ADF: add_text_label "Y_L50I" text "~y~Jo'on: ~s~\"I fleece marks with fat bank accounts, credit cards, and sports cars! Squeezin' gutter dimes is tacky!\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L50I' time 4400 flag 1
 wait 4400
@@ -1549,9 +1510,22 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L50J" text "~b~Shion: ~s~\"...I didn't smoke. And my stomach felt full and warm for three whole days, sis.\""
+0ADF: add_text_label "Y_L50J" text "~y~Jo'on: ~s~\"Ya think an elite VIP like me is gonna stand on a windy curb like a common hood rat?! As IF!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L50J' time 4100 flag 1
+00BC: show_text_highpriority GXT 'Y_L50J' time 4300 flag 1
+wait 4300
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L50K" text "~b~Shion: ~s~\"...Heh. At least you've got some standards. You're a proud little sister, Jo'on.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L50K' time 4100 flag 1
 wait 4100
 gosub @Check_Theater_Alive_Or_Exit
 if
@@ -1562,10 +1536,49 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L50K" text "~y~Jo'on: ~s~\"Disgustin'! Step away from the car and don't breathe on me until I buy ya a triple burger! Move!\""
+0ADF: add_text_label "Y_L50L" text "~y~Jo'on: ~s~\"S-Shut up! Don't smile at me with those dead eyes, it's creepin' me out!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L50K' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L50L' time 3800 flag 1
+wait 3800
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L50M" text "~b~Shion: ~s~\"Okay, okay... Still, every dealer you have me shoot has wads of rolled-up twenties in their pockets.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L50M' time 4400 flag 1
+wait 4400
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L50N" text "~y~Jo'on: ~s~\"Well, duh! Robbin' pushers ain't dealin', it's pest control! Blast 'em and grab the roll! AHAHAHA!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L50N' time 4400 flag 1
+wait 4400
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L50O" text "~b~Shion: ~s~\"Good. As long as their dirty cash buys me clean burgers... I'm happy to pull the trigger.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L50O' time 4200 flag 1
+wait 4200
 return
 
 
