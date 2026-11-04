@@ -408,8 +408,10 @@ end
 if
     0@ == 1 // Currently Jo'on
 then
-    if
+    if or
         8@ == 0
+        07E8: acquaintance 4 of_actors_type 7 to_actors_type 0 set  // Ballas hates player
+        07E8: acquaintance 4 of_actors_type 10 to_actors_type 0 set // Rifa hates player
     then
         gosub @Snapshot_And_Neutralize_Gangs
     end
@@ -560,6 +562,9 @@ end
 0085: 30@ = 31@
 000A: 30@ += MEM_PLAYER_FORM
 0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+// Neutralize gangs immediately whenever Jo'on model is initialized
+gosub @Snapshot_And_Neutralize_Gangs
 
 // Launch Jo'on's exclusive idle smoking child thread cleanly
 gosub @Terminate_Joon_Smoking_Safely
@@ -773,30 +778,73 @@ then
     end
 end
 
+// Establish two-way friendly relations between Shion (16), Player (0), and Grove (8)
+0746: set_acquaintance 0 of_actors_pedtype 16 to_actors_pedtype 0
+0746: set_acquaintance 1 of_actors_pedtype 16 to_actors_pedtype 0
+0746: set_acquaintance 0 of_actors_pedtype 16 to_actors_pedtype 8
+0746: set_acquaintance 1 of_actors_pedtype 16 to_actors_pedtype 8
+
+0746: set_acquaintance 0 of_actors_pedtype 0 to_actors_pedtype 16
+0746: set_acquaintance 1 of_actors_pedtype 0 to_actors_pedtype 16
+0746: set_acquaintance 0 of_actors_pedtype 8 to_actors_pedtype 16
+0746: set_acquaintance 1 of_actors_pedtype 8 to_actors_pedtype 16
+
 for 25@ = 7 to 16
     // Clear aggressive on-sight hostility (Hate and Dislike) to player (0)
     0747: clear_acquaintance 3 of_actors_pedtype 25@ to_actors_pedtype 0
     0747: clear_acquaintance 4 of_actors_pedtype 25@ to_actors_pedtype 0
 
-    // Clear aggressive on-sight hostility (Hate and Dislike) to Grove / Shion (8)
+    // Clear aggressive on-sight hostility (Hate and Dislike) to Grove (8)
     0747: clear_acquaintance 3 of_actors_pedtype 25@ to_actors_pedtype 8
     0747: clear_acquaintance 4 of_actors_pedtype 25@ to_actors_pedtype 8
+
+    // Clear aggressive on-sight hostility (Hate and Dislike) from gangs to Shion (16)
+    0747: clear_acquaintance 3 of_actors_pedtype 25@ to_actors_pedtype 16
+    0747: clear_acquaintance 4 of_actors_pedtype 25@ to_actors_pedtype 16
+
+    // Clear aggressive on-sight hostility (Hate and Dislike) from Shion (16) to gangs
+    0747: clear_acquaintance 3 of_actors_pedtype 16 to_actors_pedtype 25@
+    0747: clear_acquaintance 4 of_actors_pedtype 16 to_actors_pedtype 25@
 
     if
         0039: 25@ == 8 // Grove Street Families
     then
-        // Keep Grove friendly and respectful to player and each other
+        // Keep Grove friendly and respectful to player, each other, and Shion
         0746: set_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 0
         0746: set_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 0
         0746: set_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 8
         0746: set_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 8
+        0746: set_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 16
+        0746: set_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 16
     else
-        // Rival gangs: Clear Like and Respect so they are strictly neutral.
-        // They will not shoot on sight, but will retaliate immediately if attacked!
-        0747: clear_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 0
-        0747: clear_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 0
-        0747: clear_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 8
-        0747: clear_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 8
+        if
+            8039: not 25@ == 16 // Prevent wiping Shion's own friendly status
+        then
+            // Rival gangs: Clear Like and Respect so they are strictly neutral.
+            // They will not shoot on sight, but will retaliate immediately if attacked!
+            0747: clear_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 0
+            0747: clear_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 0
+            0747: clear_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 8
+            0747: clear_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 8
+            0747: clear_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 16
+            0747: clear_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 16
+        end
+    end
+end
+
+// If Shion's live actor is spawned, ensure her individual entity is pacified
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0019: 2@ > 0
+then
+    if and
+        056D: actor 2@ defined
+        8118: not actor 2@ dead
+    then
+        077C: clear_actor 2@ acquaintance 3 to_all_pedtypes
+        077C: clear_actor 2@ acquaintance 4 to_all_pedtypes
     end
 end
 return
