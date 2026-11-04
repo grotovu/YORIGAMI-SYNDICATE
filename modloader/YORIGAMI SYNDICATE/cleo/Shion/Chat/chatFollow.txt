@@ -7,6 +7,9 @@
 
 const
     MEM_PRIORITY_LOCK = 20        // Banter / reaction dialogue lock
+    MEM_SHION_KILLER_IS_JOON = 384
+    MEM_SHION_DEATH_WEAPON = 388
+    MEM_SHION_DEATH_IN_CAR = 392
 end
 
 // 0@ = Mode: 0 = Recall (G), 1 = Stay Put (H), 2 = Lost (>130m), 3 = Dead
@@ -591,7 +594,7 @@ then
 end
 
 // =========================================================================
-// MODE 3: SHION DEAD REACTION
+// MODE 3: SHION DEAD REACTION (CONTEXTUAL SCENARIO DISPATCH)
 // =========================================================================
 if
     0039: 10@ == 3
@@ -604,15 +607,831 @@ then
     03EB: clear_small_messages_only
     018C: play_sound 1057 at 0.0 0.0 0.0
 
+    // Read Death Telemetry from Master Heap
     0085: 30@ = 31@
-    000A: 30@ += 384 // MEM_SHION_KILLER_IS_JOON
-    0A8D: 5@ = read_memory 30@ size 4 virtual_protect 0
+    000A: 30@ += MEM_SHION_KILLER_IS_JOON
+    0A8D: 5@ = read_memory 30@ size 4 virtual_protect 0 // 1 = Jo'on, 0 = World/Enemies
 
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_DEATH_WEAPON
+    0A8D: 6@ = read_memory 30@ size 4 virtual_protect 0 // Weapon ID
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_DEATH_IN_CAR
+    0A8D: 7@ = read_memory 30@ size 4 virtual_protect 0 // 0 = Gunfire outside, 1 = Inside car, 2 = Car Smasher
+
+    // -------------------------------------------------------------------------
+    // CATEGORY 1: VEHICULAR RUN-OVER (Weapon IDs 49, 50)
+    // -------------------------------------------------------------------------
+    if or
+        0039: 6@ == 49
+        0039: 6@ == 50
+    then
+        if
+            0039: 5@ == 1
+        then
+            0209: 1@ = random_int_in_ranges 0 3
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_DRO0A" text "~y~Jo'on: ~s~\"Wait... what was that heavy thump under the tire? Oh fuck...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DRO0A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DRO0B" text "~y~Jo'on: ~s~\"Shion?! Get out from under the chassis! You scratched my rims with your skull!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DRO0B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_DRO1A" text "~y~Jo'on: ~s~\"Holy shit! I put it in reverse, not drive! Shion?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DRO1A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DRO1B" text "~y~Jo'on: ~s~\"Why'd you stand right behind my bumper?! Scrape yourself up off the ground, Shion!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DRO1B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+            if
+                0039: 1@ == 2
+            then
+                0ADF: add_text_label "Y_DRO2A" text "~y~Jo'on: ~s~\"Crap... she didn't jump out of the way?! Did I just flatten her?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DRO2A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DRO2B" text "~y~Jo'on: ~s~\"Shion! Stop actin' like a damn speedbump and scrape yourself off the dirt!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DRO2B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+        else
+            0209: 1@ = random_int_in_ranges 0 3
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_ERO0" text "~y~Jo'on: ~s~\"Shion?! You let a car run you right over?! Watch where you're walkin', ya idiot!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ERO0' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_ERO1" text "~y~Jo'on: ~s~\"Get off the grill! You got flattened by a passin' car! How embarrassin' can ya get?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ERO1' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+            if
+                0039: 1@ == 2
+            then
+                0ADF: add_text_label "Y_ERO2" text "~y~Jo'on: ~s~\"Are you kiddin' me?! You got nailed by a car! Get your ass off the ground, Shion!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ERO2' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+        end
+        0002: jump @Finish_Follow_Death_Chat
+    end
+
+    // -------------------------------------------------------------------------
+    // CATEGORY 2: VEHICLE EXPLOSION (Weapon ID 51)
+    // -------------------------------------------------------------------------
+    if
+        0039: 6@ == 51
+    then
+        if
+            0039: 5@ == 1
+        then
+            // Case A-1: Trapped inside vehicle Jo'on drove
+            if
+                0039: 7@ == 1
+            then
+                0209: 1@ = random_int_in_ranges 0 2
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_DEX0A" text "~y~Jo'on: ~s~\"Wait... she didn't bail before the gas tank blew?! Oh fuck...\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DEX0A' time 3500 flag 1
+                    0001: wait 3500 ms
+
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_DEX0B" text "~y~Jo'on: ~s~\"Shion?! I told ya to tuck and roll! Stop layin' in the charcoal and get up!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DEX0B' time 3500 flag 1
+                    0001: wait 3500 ms
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_DEX1A" text "~y~Jo'on: ~s~\"Goddammit, was the door locked?! Shion?!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DEX1A' time 3500 flag 1
+                    0001: wait 3500 ms
+
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_DEX1B" text "~y~Jo'on: ~s~\"Don't you dare die over a burned-out car! Shake the soot off your rags and walk!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DEX1B' time 3500 flag 1
+                    0001: wait 3500 ms
+                end
+            end
+
+            // Case A-2: Car Smasher fist detonation
+            if
+                0039: 7@ == 2
+            then
+                0209: 1@ = random_int_in_ranges 0 2
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_DSM0A" text "~y~Jo'on: ~s~\"AHAHAHA! What a blast! Wait... where the hell did Shion fly off to?!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DSM0A' time 3500 flag 1
+                    0001: wait 3500 ms
+
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_DSM0B" text "~y~Jo'on: ~s~\"Shion?! I told ya to clear out when my fists glow! Pick yourself up off the dirt!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DSM0B' time 3500 flag 1
+                    0001: wait 3500 ms
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_DSM1A" text "~y~Jo'on: ~s~\"Clocked that engine into orbit! Wait... did she take the whole shockwave?! Crap!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DSM1A' time 3500 flag 1
+                    0001: wait 3500 ms
+
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_DSM1B" text "~y~Jo'on: ~s~\"Get off the ground! You're an immortal god, a little flyin' shrapnel shouldn't drop ya!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DSM1B' time 3500 flag 1
+                    0001: wait 3500 ms
+                end
+            end
+
+            // Case A-3: Gunfire / Bullet Detonation
+            if
+                0039: 7@ == 0
+            then
+                0209: 1@ = random_int_in_ranges 0 2
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_DGN0A" text "~y~Jo'on: ~s~\"Blew that radiator clean off! Wait... was she crouchin' behind that bumper?! Oh shit...\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DGN0A' time 3500 flag 1
+                    0001: wait 3500 ms
+
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_DGN0B" text "~y~Jo'on: ~s~\"Shion?! What were ya thinkin' hidin' near a cookin' gas tank?! Get up!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DGN0B' time 3500 flag 1
+                    0001: wait 3500 ms
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_DGN1A" text "~y~Jo'on: ~s~\"AHAHAHA! That car popped like a firecracker! Wait... what the fuck, Shion?!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DGN1A' time 3500 flag 1
+                    0001: wait 3500 ms
+
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_DGN1B" text "~y~Jo'on: ~s~\"Don't pin this on my shootin'! You had five whole seconds of black smoke to haul ass!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DGN1B' time 3500 flag 1
+                    0001: wait 3500 ms
+                end
+            end
+        else
+            // Enemy / World Car Explosion
+            if
+                0039: 7@ == 1
+            then
+                // Trapped inside car
+                0209: 1@ = random_int_in_ranges 0 2
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_WEX0" text "~y~Jo'on: ~s~\"Shion?! You stayed inside while the hood was on fire?! Unbuckle your belt next time, ya moron!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_WEX0' time 3800 flag 1
+                    0001: wait 3800 ms
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_WEX1" text "~y~Jo'on: ~s~\"Dammit, who blew up our ride?! Shion, roll out of the burnt wreckage right now!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_WEX1' time 3800 flag 1
+                    0001: wait 3800 ms
+                end
+            else
+                // Outside car on foot
+                0209: 1@ = random_int_in_ranges 0 2
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_WSO0" text "~y~Jo'on: ~s~\"Shion?! You let an explodin' wreck blow you into the dirt?! Shake the ash off and move!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_WSO0' time 3800 flag 1
+                    0001: wait 3800 ms
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_WSO1" text "~y~Jo'on: ~s~\"Great, now you're covered in soot and singed rags! Get off the ground, Shion!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_WSO1' time 3800 flag 1
+                    0001: wait 3800 ms
+                end
+            end
+        end
+        0002: jump @Finish_Follow_Death_Chat
+    end
+
+    // -------------------------------------------------------------------------
+    // CATEGORY 3: EXPLOSIVES & HEAVY ORDINANCES (IDs 16, 35, 36, 39)
+    // -------------------------------------------------------------------------
+    if or
+        0039: 6@ == 16
+        0039: 6@ == 35
+        0039: 6@ == 36
+        0039: 6@ == 39
+    then
+        if
+            0039: 5@ == 1
+        then
+            0209: 1@ = random_int_in_ranges 0 2
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_DXA0A" text "~y~Jo'on: ~s~\"Wait... she walked right into my blast radius?! What the fuck...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DXA0A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DXA0B" text "~y~Jo'on: ~s~\"Shion?! When you hear a fuse sizzle, you run! Quit playin' dead on the ground!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DXA0B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_DXA1A" text "~y~Jo'on: ~s~\"Crap! Did that rocket explode too close to her?! Shion?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DXA1A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DXA1B" text "~y~Jo'on: ~s~\"Get off the dirt! Don't you dare let some stray blast knock you out cold!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DXA1B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+        else
+            0209: 1@ = random_int_in_ranges 0 2
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_EEXP0" text "~y~Jo'on: ~s~\"Shion?! You caught a rocket with your chest?! Get down next time, idiot!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_EEXP0' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_EEXP1" text "~y~Jo'on: ~s~\"Dammit, they've got heavy explosives! Shion, pick yourself up and find some cover!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_EEXP1' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+        end
+        0002: jump @Finish_Follow_Death_Chat
+    end
+
+    // -------------------------------------------------------------------------
+    // CATEGORY 4: DIRECT GUNFIRE & SHOOTOUTS (IDs 22 - 34, 38)
+    // -------------------------------------------------------------------------
+    3@ = 0
+    if and
+        0029: 6@ >= 22
+        002B: 34 >= 6@
+    then
+        3@ = 1
+    end
+    if
+        0039: 6@ == 38
+    then
+        3@ = 1
+    end
+
+    if
+        0039: 3@ == 1
+    then
+        if
+            0039: 5@ == 1
+        then
+            0209: 1@ = random_int_in_ranges 0 2
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_DSHT0" text "~y~Jo'on: ~s~\"Wait... did she just cross right in front of my barrel?! Oh fuck me...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DSHT0' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DSHT1" text "~y~Jo'on: ~s~\"I was layin' down suppressin' fire! Don't walk into my line of lead, ya pest!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DSHT1' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_DSHT2" text "~y~Jo'on: ~s~\"Holy shit, did my minigun clip her?! Shion?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DSHT2' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DSHT3" text "~y~Jo'on: ~s~\"Get up, Shion! You're a god, a couple of stray rounds shouldn't put ya down!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DSHT3' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+        else
+            0209: 1@ = random_int_in_ranges 0 3
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_ESHT0" text "~y~Jo'on: ~s~\"Shion?! HEY! Who's supposed to take the heat while I flank 'em?! Get up!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ESHT0' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_ESHT1" text "~y~Jo'on: ~s~\"Dammit, Shion! Why'd ya bring your rotten luck into a shootout?! Shoot back!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ESHT1' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+            if
+                0039: 1@ == 2
+            then
+                0ADF: add_text_label "Y_ESHT2" text "~y~Jo'on: ~s~\"Dropped by small-time thugs?! You're embarrassin' me! Stand up and draw your gun!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ESHT2' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+        end
+        0002: jump @Finish_Follow_Death_Chat
+    end
+
+    // -------------------------------------------------------------------------
+    // CATEGORY 5: MELEE & GIFTS (IDs 0 - 15)
+    // -------------------------------------------------------------------------
+
+    // 5A. TOYS / DILDO / VIBRATOR (IDs 10, 11, 12, 13)
+    if and
+        0029: 6@ >= 10
+        002B: 13 >= 6@
+    then
+        if
+            0039: 5@ == 1
+        then
+            0209: 1@ = random_int_in_ranges 0 2
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_DTD0A" text "~y~Jo'on: ~s~\"Wait... she died from THAT?! What the fuck, Shion?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DTD0A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DTD0B" text "~y~Jo'on: ~s~\"Get up right now! Don't you dare let people see you gettin' taken out by rubber!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DTD0B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_DTD1A" text "~y~Jo'on: ~s~\"Crap! I was just swingin' it around to goof off! Shion?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DTD1A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DTD1B" text "~y~Jo'on: ~s~\"Wake up! You're an immortal god, you can't flatline from an adult toy!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DTD1B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+        else
+            0209: 1@ = random_int_in_ranges 0 2
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_ETD0" text "~y~Jo'on: ~s~\"Shion?! You got knocked cold by THAT?! What kind of freak are you fightin'?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ETD0' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_ETD1" text "~y~Jo'on: ~s~\"Get off the ground, Shion! You're embarrassin' both of us gettin' beat by rubber!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ETD1' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+        end
+        0002: jump @Finish_Follow_Death_Chat
+    end
+
+    // 5B. FLOWERS / BOUQUET (ID 14)
+    if
+        0039: 6@ == 14
+    then
+        if
+            0039: 5@ == 1
+        then
+            0209: 1@ = random_int_in_ranges 0 2
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_DFL0A" text "~y~Jo'on: ~s~\"Wait... did I really just kill her with flowers?! Are ya kiddin' me?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DFL0A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DFL0B" text "~y~Jo'on: ~s~\"Shion?! They're soft petals, ya fraud! Quit playin' dead and get up!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DFL0B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_DFL1A" text "~y~Jo'on: ~s~\"What the hell?! How fragile are you?! Did you choke on pollen?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DFL1A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DFL1B" text "~y~Jo'on: ~s~\"Get off the dirt! If anyone sees you droppin' from a bouquet, I'm never showin' my face again!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DFL1B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+        else
+            0209: 1@ = random_int_in_ranges 0 2
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_EFL0" text "~y~Jo'on: ~s~\"Shion?! You just got taken out by a bouquet of flowers?! How weak are ya?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_EFL0' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_EFL1" text "~y~Jo'on: ~s~\"Beaten down by floral arrangements?! Have some damn pride and get off the ground!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_EFL1' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+        end
+        0002: jump @Finish_Follow_Death_Chat
+    end
+
+    // 5C. CHAINSAW (ID 9)
+    if
+        0039: 6@ == 9
+    then
+        if
+            0039: 5@ == 1
+        then
+            0209: 1@ = random_int_in_ranges 0 2
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_DCS0A" text "~y~Jo'on: ~s~\"Holy shit! The throttle stuck! Shion?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DCS0A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DCS0B" text "~y~Jo'on: ~s~\"I told ya to back up when I pulled the cord! Don't pin a massacre on me!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DCS0B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_DCS1A" text "~y~Jo'on: ~s~\"Oh fuck... that was way too messy...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DCS1A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DCS1B" text "~y~Jo'on: ~s~\"Turn into an orb right now! You're leakin' all over my designer outfit!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DCS1B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+        else
+            0209: 1@ = random_int_in_ranges 0 2
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_ECS0" text "~y~Jo'on: ~s~\"Dammit, who gave that maniac power tools?! Shion, pull yourself together!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ECS0' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_ECS1" text "~y~Jo'on: ~s~\"Shion?! Duck when you hear an engine screamin'! Move your ass!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_ECS1' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+        end
+        0002: jump @Finish_Follow_Death_Chat
+    end
+
+    // 5D. BLADES & SWORDS (Knife 4, Katana 8)
+    if or
+        0039: 6@ == 4
+        0039: 6@ == 8
+    then
+        if
+            0039: 5@ == 1
+        then
+            0209: 1@ = random_int_in_ranges 0 2
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_DBL0A" text "~y~Jo'on: ~s~\"Wait... she walked right into my blade?! Oh fuck...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DBL0A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DBL0B" text "~y~Jo'on: ~s~\"I was swingin' at the enemy! Don't stand in my sweep, ya clumsy pest!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DBL0B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_DBL1A" text "~y~Jo'on: ~s~\"Crap! I didn't think this blade was actually that sharp! Shion?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DBL1A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DBL1B" text "~y~Jo'on: ~s~\"Get off the dirt! It's just a tiny nick, quit bleedin' for attention!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DBL1B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+        else
+            0209: 1@ = random_int_in_ranges 0 2
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_EBL0" text "~y~Jo'on: ~s~\"Shion?! You let some street punk slice you up?! Back away from blades next time!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_EBL0' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_EBL1" text "~y~Jo'on: ~s~\"Dammit, watch their hands! Don't just stand there catchin' edges!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_EBL1' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+        end
+        0002: jump @Finish_Follow_Death_Chat
+    end
+
+    // 5E. BLUNT BLUDGEONS (Golf Club 2, Nightstick 3, Bat 5, Shovel 6, Pool Cue 7, Cane 15)
+    3@ = 0
+    if or
+        0039: 6@ == 2
+        0039: 6@ == 3
+        0039: 6@ == 5
+        0039: 6@ == 6
+        0039: 6@ == 7
+        0039: 6@ == 15
+    then
+        3@ = 1
+    end
+
+    if
+        0039: 3@ == 1
+    then
+        if
+            0039: 5@ == 1
+        then
+            0209: 1@ = random_int_in_ranges 0 2
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_DWK0A" text "~y~Jo'on: ~s~\"Wait... did I follow through too hard on that swing?! Oh shit...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DWK0A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DWK0B" text "~y~Jo'on: ~s~\"Shion?! I was aimin' past ya! Duck your head when I'm windin' up!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DWK0B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_DWK1A" text "~y~Jo'on: ~s~\"Crap! That clunk sounded way too loud... Shion?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DWK1A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DWK1B" text "~y~Jo'on: ~s~\"Shake it off! It's just a little head bump, quit playin' dead on the ground!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DWK1B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+        else
+            0209: 1@ = random_int_in_ranges 0 2
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_EWK0" text "~y~Jo'on: ~s~\"Shion?! You got clobbered with a club?! Duck next time, idiot!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_EWK0' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_EWK1" text "~y~Jo'on: ~s~\"Taken out by a wooden stick?! Put your guard up instead of blockin' with your skull!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_EWK1' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+        end
+        0002: jump @Finish_Follow_Death_Chat
+    end
+
+    // 5F. BARE FISTS & STUDDED GOLD RINGS (IDs 0, 1)
+    if or
+        0039: 6@ == 0
+        0039: 6@ == 1
+    then
+        if
+            0039: 5@ == 1
+        then
+            0209: 1@ = random_int_in_ranges 0 2
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_DML0A" text "~y~Jo'on: ~s~\"Wait... did I really hit her that hard?! Crap...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DML0A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DML0B" text "~y~Jo'on: ~s~\"Shion?! Quit exaggeratin' and get off the ground! I barely even tapped ya!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DML0B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_DML1A" text "~y~Jo'on: ~s~\"Oh fuck... I forgot how heavy these gold rings hit...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DML1A' time 3500 flag 1
+                0001: wait 3500 ms
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_DML1B" text "~y~Jo'on: ~s~\"Wake up, ya idiot! Who's gonna carry my shopping bags now?!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_DML1B' time 3500 flag 1
+                0001: wait 3500 ms
+            end
+        else
+            0209: 1@ = random_int_in_ranges 0 2
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_EML0" text "~y~Jo'on: ~s~\"Shion?! You got knocked out in a fistfight?! Put your damn fists up next time!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_EML0' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_EML1" text "~y~Jo'on: ~s~\"Beaten down by random losers?! Have some self-respect and get off the dirt!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_EML1' time 3800 flag 1
+                0001: wait 3800 ms
+            end
+        end
+        0002: jump @Finish_Follow_Death_Chat
+    end
+
+    // -------------------------------------------------------------------------
+    // CATEGORY 6: DROWNING / WATER (Weapon ID 53)
+    // -------------------------------------------------------------------------
+    if
+        0039: 6@ == 53
+    then
+        0209: 1@ = random_int_in_ranges 0 2
+        if
+            0039: 1@ == 0
+        then
+            0ADF: add_text_label "Y_EDWN0" text "~y~Jo'on: ~s~\"Shion?! You sank like a bag of rocks! Spirits can float, why the hell did ya drown?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_EDWN0' time 3800 flag 1
+            0001: wait 3800 ms
+        end
+        if
+            0039: 1@ == 1
+        then
+            0ADF: add_text_label "Y_EDWN1" text "~y~Jo'on: ~s~\"Are you serious?! You dropped into the drink and forgot how to doggy-paddle?!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_EDWN1' time 3800 flag 1
+            0001: wait 3800 ms
+        end
+        0002: jump @Finish_Follow_Death_Chat
+    end
+
+    // -------------------------------------------------------------------------
+    // CATEGORY 7: GENERIC / FALL / UNTRACKED FALLBACK (Weapon ID -1)
+    // -------------------------------------------------------------------------
     if
         0039: 5@ == 1
     then
-        // Friendly Fire Fatality
-        0209: 1@ = random_int_in_ranges 0 3
+        0209: 1@ = random_int_in_ranges 0 2
         if
             0039: 1@ == 0
         then
@@ -631,62 +1450,39 @@ then
         if
             0039: 1@ == 1
         then
-            0ADF: add_text_label "Y_LSK1A" text "~y~Jo'on: ~s~\"Oh shit, did I just do that?! Shion?!\""
+            0ADF: add_text_label "Y_LSK1A" text "~y~Jo'on: ~s~\"What the hell did I just do?! Shion?!\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_LSK1A' time 3500 flag 1
             0001: wait 3500 ms
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_LSK1B" text "~y~Jo'on: ~s~\"I was aimin' past ya! Get off the asphalt before someone calls the cops!\""
+            0ADF: add_text_label "Y_LSK1B" text "~y~Jo'on: ~s~\"Get off the ground before someone calls the cops! Move it!\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_LSK1B' time 3500 flag 1
             0001: wait 3500 ms
         end
-        if
-            0039: 1@ == 2
-        then
-            0ADF: add_text_label "Y_LSK2A" text "~y~Jo'on: ~s~\"Wait... she's not movin'. Oh shit, I actually clocked her...\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_LSK2A' time 3500 flag 1
-            0001: wait 3500 ms
-
-            018C: play_sound 1058 at 0.0 0.0 0.0
-            03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_LSK2B" text "~y~Jo'on: ~s~\"Wake up, ya idiot! Who's gonna carry my shopping bags now?!\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_LSK2B' time 3500 flag 1
-            0001: wait 3500 ms
-        end
     else
-        // Combat Fatality
-        0209: 1@ = random_int_in_ranges 0 3
+        0209: 1@ = random_int_in_ranges 0 2
         if
             0039: 1@ == 0
         then
-            0ADF: add_text_label "Y_LS0A" text "~y~Jo'on: ~s~\"Shion?! HEY! Don't just lie there! Who's supposed to take the bullets for me?!\""
+            0ADF: add_text_label "Y_LS0A" text "~y~Jo'on: ~s~\"Shion?! Quit playin' dead in the dirt! Get up, you're embarrassin' me!\""
             09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_LS0A' time 4000 flag 1
-            0001: wait 4000 ms
+            00BC: show_text_highpriority GXT 'Y_LS0A' time 3800 flag 1
+            0001: wait 3800 ms
         end
         if
             0039: 1@ == 1
         then
-            0ADF: add_text_label "Y_LS0B" text "~y~Jo'on: ~s~\"Dammit, Shion! Why'd ya have to bring your rotten luck into a shootout?!\""
+            0ADF: add_text_label "Y_LS0B" text "~y~Jo'on: ~s~\"Ugh, dropped flat on your face again! Drag your bones up, we've got cash to steal!\""
             09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_LS0B' time 4000 flag 1
-            0001: wait 4000 ms
-        end
-        if
-            0039: 1@ == 2
-        then
-            0ADF: add_text_label "Y_LS0C" text "~y~Jo'on: ~s~\"Shion?! Quit playin' dead on the asphalt! Get up, you're embarrassin' me!\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_LS0C' time 4000 flag 1
-            0001: wait 4000 ms
+            00BC: show_text_highpriority GXT 'Y_LS0B' time 3800 flag 1
+            0001: wait 3800 ms
         end
     end
 
+    :Finish_Follow_Death_Chat
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0

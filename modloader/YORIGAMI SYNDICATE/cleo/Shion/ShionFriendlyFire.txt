@@ -505,7 +505,7 @@ then
     if
         26@ == 1
     then
-        0ADF: add_text_label "Y_FF04B" text "~b~Shion: ~s~\"That's a kitchen knife, sis! I'm not a cabbage!\""
+        0ADF: add_text_label "Y_FF04B" text "~b~Shion: ~s~\"Ow! Put the knife away, Jo'on! I don't have any money to mug!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF04B' time 2500 flag 1
     end
@@ -647,7 +647,7 @@ then
     if
         26@ == 1
     then
-        0ADF: add_text_label "Y_FF08B" text "~b~Shion: ~s~\"Put the sword away! You're a street con, not a samurai!\""
+        0ADF: add_text_label "Y_FF08B" text "~b~Shion: ~s~\"Where'd you even steal a sword from?! Put it down before you trip!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF08B' time 2500 flag 1
     end
@@ -686,14 +686,14 @@ then
     if
         26@ == 1
     then
-        0ADF: add_text_label "Y_FF09B" text "~b~Shion: ~s~\"Are you trying to turn your big sister into firewood?!\""
+        0ADF: add_text_label "Y_FF09B" text "~b~Shion: ~s~\"Are you crazy?! That spinning blade's gonna shred me to pieces!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF09B' time 2500 flag 1
     end
     if
         26@ == 2
     then
-        0ADF: add_text_label "Y_FF09C" text "~b~Shion: ~s~\"Put the power tool away before you saw your own designer dress!\""
+        0ADF: add_text_label "Y_FF09C" text "~b~Shion: ~s~\"Put the chainsaw down before you rip your own designer outfit to shreds!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF09C' time 2500 flag 1
     end
@@ -812,7 +812,7 @@ then
     if
         26@ == 3
     then
-        0ADF: add_text_label "Y_FF14D" text "~b~Shion: ~s~\"A bouquet?! For me?! ...Ow, wait, stop hitting me with it!\""
+        0ADF: add_text_label "Y_FF14D" text "~b~Shion: ~s~\"Ow! If Yuuka finds out you're using roses as a club, we're dead!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF14D' time 2500 flag 1
     end
@@ -1257,7 +1257,7 @@ then
     if
         26@ == 2
     then
-        0ADF: add_text_label "Y_FF41C" text "~b~Shion: ~s~\"Pffft-! Blue paint on my hoodie? I'm already blue enough!\""
+        0ADF: add_text_label "Y_FF41C" text "~b~Shion: ~s~\"Pffft-! Green paint in my hair? Now I look like pond scum, Jo'on...\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF41C' time 2500 flag 1
     end
@@ -1289,7 +1289,7 @@ then
     if
         26@ == 2
     then
-        0ADF: add_text_label "Y_FF42C" text "~b~Shion: ~s~\"Cough! You're turning my hair into a snowcone!\""
+        0ADF: add_text_label "Y_FF42C" text "~b~Shion: ~s~\"Cough-cough! Stop it, Jo'on! You're choking me with freezing smoke!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_FF42C' time 2500 flag 1
     end

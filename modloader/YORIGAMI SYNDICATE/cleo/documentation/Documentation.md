@@ -316,6 +316,20 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Claims Tier 2 Priority Lock, launches `ShionFriendlyFire.c`, and plays quick-dismiss easter eggs or randomized banter lines (`Y_DS*`).
   * On dialogue completion, releases Priority Lock, clears stay-put, and commands ambient walking paths (`05DE`).
   * Runs a stalker proximity watchdog (speaks up to 3 complaints via `Y_STK*` if Jo'on tails her within 3m on foot), rejects re-recruitment attempts via `G` (`Y_NORE*`), cleans up actor and passed decision maker on distance (> 60m) or 60s timeout, and routes death telemetry to `chatFollow.c` if killed.
+* **`chatSpawned.txt` (`Sh_Spwn`):**
+  * Streamed by `SpawnShion.cs` immediately upon companion ped materialization if `MEM_SHION_DEATH_FLAG == 1`.
+  * Claims Tier 3 Priority Lock, consumes and resets `MEM_SHION_DEATH_FLAG = 0`, and delivers weapon-specific post-death complaints across 17 damage categories.
+  * Contextual explosion routing: for vehicle detonations (Weapon ID 51), evaluates `MEM_SHION_DEATH_IN_CAR` to voice distinct complaints for being trapped inside an exploding wreck (`1`), getting caught in Jo'on's *Car Smasher* punch detonation (`2`), or being caught in Jo'on's gunfire detonation (`0`).
+* **`chatReunion.txt` (`Sh_Reun`):**
+  * Streamed when approaching an ambient loitering Shion at a hangout spot and pressing `Y` to recruit her.
+  * Claims Tier 4 Master Theater Lock, checks `MEM_SHION_DEATH_FLAG`, and delivers contextual two-person sister banter resolving how she died (including whether Jo'on was the killer).
+  * Evaluates vehicle explosions via `MEM_SHION_DEATH_IN_CAR` to debate driving a burning wreck (`1`), glowing Car Smasher fist strikes (`2`), or trigger-happy lead sprays (`0`).
+  * If Shion did not die earlier in the session, selects from 6 randomized peacetime free-roam reunion dialogues (`Y_RN0`–`Y_RN5`), sets `MEM_REUNION_SIGNAL = 1`, and releases Tier 4 priority.
+* **`chatFollow.txt` (`Sh_FolC`):**
+  * Dedicated vocal dispatcher for Jo'on governing movement commands, vehicle transit, and immediate on-scene death reactions across 9 operational modes (`0`–`8`).
+  * Modes 0–2 & 4–8: Delivers contextual orders for on-foot recall (`G`), stay-put (`H`), distance separation (> 130m), vehicle disembarkation, in-vehicle waiting, seat cycling, boarding calls, and spatial Hitodama warps.
+  * Mode 3 (Immediate Death Reaction): Claims Tier 3 Priority Lock the exact frame Shion perishes and executes a granular contextual reaction tree evaluating `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON`, and `MEM_SHION_DEATH_IN_CAR`.
+  * Features 2-stage reactive monologues when Jo'on is the killer (initial shock/expletive followed by selfish blame-shifting) and furious reprimands when enemies/world hazards take Shion down across 7 damage categories (Vehicular Run-Over, 3-way Vehicle Detonation, Heavy Explosives, Direct Shootouts, Granular Melee/Toys/Flowers/Blades/Bludgeons/Rings, Drowning, and Generic Fall/Impact).
 
 ---
 
@@ -555,4 +569,7 @@ The following table details the cross-script dependencies for every component in
 | **Telemetry (World)** | `Shion\ShionTrack_World.txt`| Driving cars, tuning, radio, casino | `MEM_CASINO_LOSSES`, `MEM_CARS_WRECKED`, `MEM_MOD_CASH_SPENT`, `MEM_FAV_CAR_*` | None | Updates `ShionVehicles.ini` and `ShionRadio.ini` |
 | **Telemetry (Jobs)** | `Shion\ShionTrack_Missions.txt`| Sub-missions (Taxi, Medic, Fire, etc.)| `MEM_PARAMEDIC_SAVES`, `MEM_FIREFIGHT_EXTING`, `MEM_VIGILANTE_KILLS`, `MEM_TAXI_FARES`, `MEM_PIMPING_LEVEL`, `MEM_BURGLARIES` | None | Tracks sub-mission milestones with Shion |
 | **Hangout Blip Markers**| `Shion\shionHangoutIcon.txt`| Proximity to hangout spots outdoors | None | `MEM_PLAYER_FORM`, `MEM_SHION_RECRUITED` | Manages map skull icons (Marker 23) |
+| **Post-Death Complaint**| `Shion\Chat\chatSpawned.txt`| Companion spawned while `MEM_SHION_DEATH_FLAG == 1` | `MEM_SHION_DEATH_FLAG`, `MEM_PRIORITY_LOCK` | `MEM_SHION_DEATH_WEAPON`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_IN_CAR` | Voices weapon-specific lethal complaint (including 3-way explosion routing), releases Tier 3 lock |
+| **Hangout Reunion**   | `Shion\Chat\chatReunion.txt`| Recruited via `Y` at ambient hangout spot | `MEM_SHION_DEATH_FLAG`, `MEM_REUNION_SIGNAL`, `MEM_PRIORITY_LOCK` | `MEM_SHION_DEATH_WEAPON`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_IN_CAR` | Claims Tier 4 theater lock, delivers post-death sister banter or peacetime hangout dialogue |
+| **Follow & Transit Vocalizer**| `Shion\Chat\chatFollow.txt`| Triggered by `ShionFollow.c`, `ShionVehicle.c`, or death events (Modes 0–8) | `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON`, `MEM_SHION_DEATH_IN_CAR` | Delivers Jo'on's movement orders, vehicle seat barks, and granular immediate death reactions |
 | **Debug Subsystem** | `Shion\ShionDebug.txt` | Cheat "KILLPOOR" | `MEM_SHION_PRES_HP`, `MEM_SHION_PRES_ARMOUR` | `MEM_SHION_HANDLE` | Sets Shion's HP to 5 and armour to 0 |
