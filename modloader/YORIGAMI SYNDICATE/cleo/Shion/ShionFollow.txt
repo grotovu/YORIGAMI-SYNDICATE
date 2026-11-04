@@ -451,18 +451,20 @@ then
                 jump @Wait_G_Key_Rel
             end
 
-            // Capture previous stay-put state before resetting
-            0085: 8@ = 15@
+            // Capture previous stay-put state into 29@ (DO NOT OVERWRITE 8@ INTERIOR REGISTER!)
+            0085: 29@ = 15@
 
             // If Shion was locked waiting in a car: order her out!
             if
-                0039: 8@ == 2
+                0039: 29@ == 2
             then
                 039E: set_actor 10@ locked 0 while_in_car
                 if
                     0449: actor 10@ in_a_car
                 then
                     0633: AS_actor 10@ exit_car
+                    // Trigger Jo'on Exit Car Recall Dialogue via chatFollow
+                    0A92: create_custom_thread "Shion\Chat\chatFollow.c" 4
                 end
             end
 
@@ -472,20 +474,25 @@ then
             000A: 30@ += MEM_SHION_STAY_PUT
             0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
+            // Clear Stay Put and previous tasks FIRST
             0638: AS_actor 10@ stay_put 0
+            0687: clear_actor 10@ task
+            0E96: clear_char_primary_tasks 10@
+            0E97: clear_char_secondary_tasks 10@
 
             // Reassert group follow command
             07AF: 12@ = player $PLAYER_CHAR group
             0631: put_actor 10@ in_group 12@
+            0940: set_group 12@ enters_leaders_vehicle 1
             07B3: set_group 12@ give_command 0
 
             // Process On-Foot Warping & Movement ONLY if player is on foot
             if
                 8449: not actor $PLAYER_ACTOR in_a_car
             then
-                // If she was just ordered out of a car, do not clear tasks or interrupt exit anim!
+                // If she was just ordered out of a car, do not interrupt exit anim!
                 if
-                    8039: not 8@ == 2
+                    8039: not 29@ == 2
                 then
                     000A: 11@ += 1 // Increment tap counter
 
@@ -510,25 +517,21 @@ then
                             0A92: create_custom_thread "Shion\Chat\chatFollow.c" 8
                             gosub @Execute_Shion_OnFoot_Warp
                         else
-                            // Nearby: purge tasks and sprint to Jo'on
-                            0687: clear_actor 10@ task
-                            0E96: clear_char_primary_tasks 10@
-                            0E97: clear_char_secondary_tasks 10@
-
+                            // Nearby: sprint to Jo'on
                             if
                                 0021: 26@ > 1.0
                             then
-                                05D9: AS_actor 10@ run_to_actor $PLAYER_ACTOR timelimit 4000 stop_within_radius 0.8
+                                05D9: AS_actor 10@ run_to_actor $PLAYER_ACTOR timelimit 4000 stop_within_radius 1.5
                             else
                                 0639: AS_actor 10@ rotate_to_actor $PLAYER_ACTOR
                             end
                             018C: play_sound 1058 at 0.0 0.0 0.0
+
+                            // Trigger Jo'on Recall Dialogue via chatFollow (Mode 0: On-foot recall)
+                            0A92: create_custom_thread "Shion\Chat\chatFollow.c" 0
                         end
                     end
                 end
-
-                // Trigger Jo'on Recall Dialogue via chatFollow
-                0A92: create_custom_thread "Shion\Chat\chatFollow.c" 0
             end
         end
         

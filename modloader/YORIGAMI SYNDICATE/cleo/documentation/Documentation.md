@@ -193,8 +193,11 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 ### Navigation & Space Management
 * **`ShionFollow.txt` (`Sh_Flw`):** 
   * Controls physical companion following behavior, distance-keeping, and auto-catchup.
-  * Implements `H` on foot to trigger "Stay Put" mode (`MEM_SHION_STAY_PUT = 1`, removes from group, applies `0638: AS_actor stay_put 1`). Pressing `G` cancels Stay Put and recalls her.
-  * Single tap `G` sprints to player; double-tap `G` triggers an instant spatial warp (`FX_Warp.c`).
+  * Implements `H` on foot to trigger "Stay Put" mode (`MEM_SHION_STAY_PUT = 1`, removes from group, applies `0638: AS_actor stay_put 1`). Pressing `G` cancels Stay Put globally and reasserts group follow.
+  * If Shion was locked waiting inside a vehicle (`MEM_SHION_STAY_PUT == 2`), pressing `G` on foot unlocks the doors, commands an orderly car exit (`0633: AS_actor exit_car`), and streams `chatFollow.c 4` (Mode 4: Exit Vehicle Recall).
+  * **Zero-Collision Recall Architecture**: Safely caches previous stay-put states into `29@` (preventing register collisions with the active interior tracker `8@` and eliminating false 2.15s doorway mesh freezes).
+  * **Strict Task Execution Ordering**: Clears stay-put and old tasks *prior* to re-registering group membership (`0631`) and follow commands (`07B3`), ensuring native group follow intelligence is never wiped.
+  * Single tap `G` triggers an on-foot sprint to Jo'on (`stop_within_radius 1.5m`) and streams Mode 0 recall dialogue; double-tap `G` or long-range recall (> 15m) streams Mode 8 warp dialogue and triggers an instant spatial warp (`FX_Warp.c`).
   * Auto-warps Shion if distance > 45m; initiates despawn if distance > 130m.
   * Detects interior changes via active interior `28@`. Enforces a 2150ms mesh loading delay before reading player coordinates, matching them against 32 known Safehouse EnEx doorways (`MEM_SAFEHOUSE_DOOR_ID`), and placing Shion inside.
 * **`ShionVehicle.txt` (`Sh_Sync`):**
@@ -224,6 +227,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Listens for `Y + B`: toggles `MEM_SHION_STANCE` (`0` = Peaceful, `1` = Hostile).
   * *Peaceful:* Strips all weapons (`048F`), sets target priority to 0, sets decision maker to passive `65540`, sets acquaintances to "Like" for cops, civilians, and gangs, and engages movement watchdog to break any attempted brawl tasks.
   * *Hostile:* Checks resource mode. In Wallet Drain, equips designated weapon from `MEM_SHION_WEAPON_ID` with 9999 ammo cushion. In Gear Swap, equips exact assigned weapon and ammo from `MEM_SHION_AMMO_COUNT`. Restores aggressive decision maker `65543` and hostility towards rival ped types.
+  * **Universal Out-of-Combat Movement Watchdog**: Continuously monitors Shion on foot across *both* Peaceful and Hostile stances. If Shion is out of combat, not ordered to Stay Put (`MEM_SHION_STAY_PUT == 0`), stopped (`02A0`), and > 3.0m away from Jo'on, automatically reasserts group follow commands (`07B3`) and issues a catch-up sprint (`05D9`), preventing armed companion braindeath and stuck states.
 * **`ShionCombat.txt` (`Sh_Cmbt`):**
   * **Wallet Drain Mode (`MEM_COMBAT_RES_MODE == 0`):** Monitors live weapon ammo. Each time ammo decreases by `N` rounds, looks up the shot cost from an internal weapon cost table (e.g. 9mm = $7, Desert Eagle = $80, Shotgun = $40, Sniper = $500, Minigun = $7, Rockets = $300) and deducts `N * Cost` directly from player cash.
   * **Bankruptcy Disarm:** If wallet drops <= $0 and cheat "DURGASTRA" is not active, disarms Shion immediately, sets stance to Peaceful (`MEM_SHION_STANCE = 0`), and displays `"CARD DECLINED"`.
