@@ -206,8 +206,8 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Reads the game engine's radar trace pool at address `0xBA86F0` (up to 175 blips).
   * Filters for active red blips (colors 0, 5, 7; blip types 1 = Car, 2 = Ped; non-friendly).
   * Directs Shion's AI tasks (`0672: attack_car` or `05E2: kill_actor`) toward the nearest marked target within 100m. If seated in a car driven by Jo'on, executes native drive-bys (`0713`).
-* **`ShionChute.txt` (`Sh_Chut`):**
-  * Triggers when Shion is in freefall outdoors > 15m altitude.
+* **`ShionChute.txt` (`Sh_Chut`):** 
+  * Triggers when Shion is in freefall outdoors > 15m altitude, strictly filtering against water immersion (`84AD`) and verifying elevation is > 15m above the local water surface (`092E: get_water_height_at`) to prevent misfires while swimming or treading water above deep seabeds.
   * Sets `MEM_SHION_BUSY = 1`, removes from group, grants fall damage immunity (`02AB`), and sets `0575: pinned_position 1` to disable falling flail tasks.
   * Phase 1: High-speed freefall down to 65m altitude.
   * Phase 2: Deducts $800 emergency parachute fee from player wallet (or takes debt), creates attached `#PARACHUTE` object, and glides downward at ~9 m/s.

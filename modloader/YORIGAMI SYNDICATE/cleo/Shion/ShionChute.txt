@@ -56,15 +56,58 @@ if and
     816B: not fading                  // Screen not fading through doors
     8E25: not is_on_cutscene          // Not in a cutscene
     8449: not actor 10@ in_a_car      // Outside any vehicle
+    84AD: not actor $PLAYER_ACTOR in_water // Player is not in water
+    84AD: not actor 10@ in_water      // Shion is not in water
+    8965: not actor 10@ swimming      // Shion is not swimming
 then
     if
         0818: actor 10@ in_air
     then
-        0819: 22@ = actor 10@ distance_from_ground
+        00A0: store_actor 10@ position_to 20@ 21@ 23@
+        29@ = 0 // 29@ = Water presence flag
+
         if
-            0021: 22@ > 15.0          // High in the open sky!
+            092E: get_water_height_at 20@ 21@ ignore_waves 1 store_to 24@
         then
-            gosub @Execute_Shion_Skydiving
+            29@ = 1
+        end
+
+        // Double check against player XY if Shion was just warped
+        if
+            0039: 29@ == 0
+        then
+            00A0: store_actor $PLAYER_ACTOR position_to 16@ 17@ 18@
+            if
+                092E: get_water_height_at 16@ 17@ ignore_waves 1 store_to 24@
+            then
+                29@ = 1
+            end
+        end
+
+        if
+            0039: 29@ == 1
+        then
+            // Water plane exists here!
+            0087: 25@ = 23@
+            0063: 25@ -= 24@          // Distance above water plane
+            if
+                0021: 25@ > 15.0      // Strictly high in the sky ABOVE water
+            then
+                0819: 22@ = actor 10@ distance_from_ground
+                if
+                    0021: 22@ > 15.0
+                then
+                    gosub @Execute_Shion_Skydiving
+                end
+            end
+        else
+            // Pure dry land - no water detected anywhere nearby
+            0819: 22@ = actor 10@ distance_from_ground
+            if
+                0021: 22@ > 15.0
+            then
+                gosub @Execute_Shion_Skydiving
+            end
         end
     end
 end
