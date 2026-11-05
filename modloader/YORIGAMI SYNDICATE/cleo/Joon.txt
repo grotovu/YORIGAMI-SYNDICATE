@@ -1761,7 +1761,7 @@ then
     then
         089F: get_actor 25@ pedtype_to 26@
         if
-            26@ == 21 // CIVFEMALE_PROSTITUTE
+            26@ == 22 // CIVFEMALE_PROSTITUTE
         then
             if or
                 0E42: is_char_doing_task_id 25@ 1309 // TASK_COMPLEX_PROSTITUTE_SOLICIT
