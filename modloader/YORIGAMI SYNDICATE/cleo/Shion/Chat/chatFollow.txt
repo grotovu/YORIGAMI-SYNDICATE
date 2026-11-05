@@ -1116,7 +1116,7 @@ then
             if
                 0039: 1@ == 1
             then
-                0ADF: add_text_label "Y_DSHT2" text "~y~Jo'on: ~s~\"Holy shit, did my minigun clip her?! Shion?!\""
+                0ADF: add_text_label "Y_DSHT2" text "~y~Jo'on: ~s~\"Holy shit, did my gun clip her?! Shion?!\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_DSHT2' time 3500 flag 1
                 0001: wait 3500 ms
