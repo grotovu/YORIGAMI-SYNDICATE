@@ -581,6 +581,13 @@ end
 // Neutralize gangs immediately whenever Jo'on model is initialized
 gosub @Snapshot_And_Neutralize_Gangs
 
+// Blank native prostitute dialogue subtitles while in Jo'on mode
+if
+    18@ >= 0
+then
+    gosub @Blank_Prostitute_Subtitles
+end
+
 // Launch Jo'on's exclusive idle smoking child thread cleanly
 gosub @Terminate_Joon_Smoking_Safely
 0A92: create_custom_thread "Shion\JoonSmoke.c"
@@ -590,6 +597,9 @@ return
 // SUBROUTINE: REVERT BACK TO NORMAL CJ
 // =========================================================================
 :Revert_Player_Back_To_CJ
+// Restore native prostitute subtitles for CJ
+gosub @Restore_Prostitute_Subtitles
+
 if
     0@ == 2
 then
@@ -1092,6 +1102,13 @@ else
     0489: set_actor $PLAYER_ACTOR muted 0
     0A09: set_actor $PLAYER_ACTOR muted 0
     094F: enable_actor $PLAYER_ACTOR pain_audio
+end
+
+// Blank native prostitute dialogue subtitles while in Shion mode
+if
+    18@ >= 0
+then
+    gosub @Blank_Prostitute_Subtitles
 end
 
 // Set State 2: Shion Mode Active
@@ -1796,6 +1813,7 @@ then
         then
             // Abort player prostitute session immediately and send her walking away
             0A43: get_rid_of_player_prostitute
+            03EB: clear_small_messages_only
             0687: clear_actor 25@ task
             0E96: clear_char_primary_tasks 25@
             0E97: clear_char_secondary_tasks 25@
@@ -1822,6 +1840,7 @@ then
                 26@ == 22 // PROSTITUTE
             then
                 0A43: get_rid_of_player_prostitute
+                03EB: clear_small_messages_only
                 0687: clear_actor 28@ task
                 0633: AS_actor 28@ exit_car
                 05DE: AS_actor 28@ walk_around_ped_path
@@ -1829,4 +1848,23 @@ then
         end
     end
 end
+return
+
+// =========================================================================
+// SUBROUTINES: DYNAMIC PROSTITUTE GXT BLANKING & RESTORATION
+// =========================================================================
+:Blank_Prostitute_Subtitles
+0ADF: add_text_label "PROS_04" text " "
+0ADF: add_text_label "PROS_05" text " "
+0ADF: add_text_label "PROS_06" text " "
+0ADF: add_text_label "PROS_07" text " "
+0ADF: add_text_label "PROS_09" text " "
+return
+
+:Restore_Prostitute_Subtitles
+0AE0: remove_text_label "PROS_04"
+0AE0: remove_text_label "PROS_05"
+0AE0: remove_text_label "PROS_06"
+0AE0: remove_text_label "PROS_07"
+0AE0: remove_text_label "PROS_09"
 return
