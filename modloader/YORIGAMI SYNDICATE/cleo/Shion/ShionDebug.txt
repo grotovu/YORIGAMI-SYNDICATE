@@ -123,9 +123,8 @@ then
         gosub @Open_Chat_Menu
     end
 
-    if or
+    if
         0ADC: test_cheat "SHDBG"
-        0ADC: test_cheat "DEBUG"
     then
         gosub @Open_Main_Debug_Menu
     end
