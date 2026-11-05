@@ -169,7 +169,7 @@ then
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DK3B" text "~b~Shion: ~s~\"If we go bankrupt because you wanted to look cool, you're buying me three lunches.\""
+    0ADF: add_text_label "Y_DK3B" text "~b~Shion: ~s~\"When we hit zero and you're starving, I'm not sharing my cardboard box.\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DK3B' time 3800 flag 1
     0001: wait 3800 ms
@@ -177,7 +177,7 @@ then
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DK3C" text "~y~Jo'on: ~s~\"Deal! Now keep your eyes open and let's rack up the body count!\""
+    0ADF: add_text_label "Y_DK3C" text "~y~Jo'on: ~s~\"AHAHAHA! We ain't hitting zero! We're gonna shake these chumps down for double what we spend!\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DK3C' time 3500 flag 1
     0001: wait 3500 ms

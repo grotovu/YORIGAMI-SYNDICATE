@@ -604,7 +604,7 @@ return
 0ADF: add_text_label "Y_E02" text "2: Midnight Shift"
 0ADF: add_text_label "Y_E03" text "3: The Temple Alms"
 0ADF: add_text_label "Y_E04" text "4: The Unbreakable Celestial"
-0ADF: add_text_label "Y_E05" text "5: Taste of Ancient Blood"
+0ADF: add_text_label "Y_E05" text "5: The Drug of Poverty"
 0ADF: add_text_label "Y_E06" text "6: The Great Equalizer"
 0ADF: add_text_label "Y_E07" text "7: The Oil Sisters"
 
@@ -754,9 +754,9 @@ then
     if
         8@ == 1
     then
-        0ACE: show_formatted_text_box "~g~[UNLOCKED] ~y~Milestone:~n~~w~Explore the desert regions of Bone County or Tierra Robada."
+        0ACE: show_formatted_text_box "~g~[UNLOCKED] ~y~Milestone:~n~~w~Score 100+ enemy kills with Shion."
     else
-        0ACE: show_formatted_text_box "~r~[LOCKED] ~y~Requirement:~n~~w~Explore the desert regions of Bone County or Tierra Robada."
+        0ACE: show_formatted_text_box "~r~[LOCKED] ~y~Requirement:~n~~w~Score 100+ enemy kills with Shion."
     end
     return
 end

@@ -1184,7 +1184,7 @@ then
     // Speedboats & Cruisers
     0209: 29@ = random_int_in_ranges 0 2
     if
-        29@ == 0
+        0039: 29@ == 0
     then
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
@@ -1208,8 +1208,12 @@ then
             00BC: show_text_highpriority GXT 'Y_BOT0B' time 3600 flag 1
         end
         wait 3600
-        gosub @Check_Alive_Or_Exit
+        goto @Finalize_Ambient_Chat
+    end
 
+    if
+        0039: 29@ == 1
+    then
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
         0ADF: add_text_label "Y_BOT1A" text "~y~Jo'on: ~s~\"Look back at our wake! No traffic lights, no parkin' meters, and zero cops on the water!\""
@@ -1226,6 +1230,8 @@ then
         wait 3700
         goto @Finalize_Ambient_Chat
     end
+
+    goto @Finalize_Ambient_Chat
 end
 
 // =========================================================================
@@ -1554,9 +1560,19 @@ else
 end
 
 // =========================================================================
-// GENERIC CAR CRUISING POOL (Jo'on Driving)
+// GENERIC CAR CRUISING POOL (Strictly Cars Only)
 // =========================================================================
 :Car_Cruising_Pool
+// Guard: Boats, planes, helis, and bikes must NEVER execute car-only lines
+if or
+    047A: actor $PLAYER_ACTOR driving_bike
+    04AB: actor $PLAYER_ACTOR driving_plane
+    04A9: actor $PLAYER_ACTOR driving_heli
+    04A7: actor $PLAYER_ACTOR driving_boat
+then
+    goto @Finalize_Ambient_Chat
+end
+
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
 

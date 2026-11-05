@@ -14,8 +14,12 @@ wait 1000
 const
     MEM_SAVE_SLOT = 0
     MEM_INTENTIONAL_DISM = 8
+    MEM_PRIORITY_LOCK = 20
     MEM_ALLOC_DRIPWORSHIP = 48
     MEM_SHION_HANDLE = 116
+    MEM_SHION_STANCE = 120
+    MEM_SHION_RECRUITED = 400
+    MEM_SHION_DM = 412            // Persistent Zero-Panic Decision Maker Handle
 end
 
 :Connect_To_Brain
@@ -514,25 +518,92 @@ return
 return
 
 // =========================================================================
-// SUBROUTINE: DISMISS SHION COMPANION (Safe Handoff to SpawnShion Watchdog)
+// SUBROUTINE: DISMISS SHION COMPANION (Safe Immediate Decouple & Tough Brain)
 // =========================================================================
 :Execute_Dismiss_Shion
-// Set intentional dismissal flag for the watchdog
+// Immediate Heap Telemetry Synchronization
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_RECRUITED
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
 0085: 30@ = 31@
 000A: 30@ += MEM_INTENTIONAL_DISM
 0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
 
-// Remove from player's group
+// Reset Shion stance to Peaceful (0) in Master Heap
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_STANCE
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+// Native Group Decoupling
 06C9: remove_actor 29@ from_group
 
-// Clear tasks & assign ambient wander task so she steps away
-0792: disembark_instantly_actor 29@
-0687: clear_actor 29@ task
-05DE: AS_actor 29@ walk_around_ped_path
+// Companion Worker Thread Termination (Immediate Party Purge)
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Flw"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Ctrl"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Cmbt"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sync"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Chut"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Pimp"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Burg"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_RedM"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_FF"
 
-// Launch dedicated dismissal conversation thread
+// Clear any stale Tier 3 aim/combat locks so chatDismiss is never blocked
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 23@ = read_memory 30@ size 4 virtual_protect 0
+if
+    001B: 4 > 23@
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+
+// Apply shared permanent Zero-Panic Decision Maker FIRST so she never flinches when disarmed
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_DM
+0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0019: 28@ > 0
+then
+    060B: set_actor 29@ decision_maker_to 28@
+end
+
+// Passive Temperament & Full Player Respect
+0946: set_actor 29@ actions_uninterupted_by_weapon_fire 1
+0350: set_actor 29@ maintain_position_when_attacked 1
+0816: set_actor 29@ dont_chase_victim 1
+07CB: set_actor 29@ supporting_fire 0
+07DD: set_actor 29@ attack_rate 0
+0770: set_actor 29@ target_priority 0
+077C: clear_actor 29@ acquaintance 4 to_all_pedtypes
+077C: clear_actor 29@ acquaintance 3 to_all_pedtypes
+077A: set_actor 29@ acquaintance 0 to_actors_pedtype 0 // Respect Player
+077A: set_actor 29@ acquaintance 1 to_actors_pedtype 0 // Like Player
+
+// Now safely disarm and apply defensive hardening
+048F: actor 29@ remove_weapons
+01B9: set_actor 29@ armed_weapon_to 0
+0446: set_actor 29@ dismemberment_possible 0
+08AF: set_actor 29@ max_health_to 1000
+0223: set_actor 29@ health 1000
+035F: actor 29@ armour += 500
+02AB: set_actor 29@ immunities BP 0 FP 1 EP 0 CP 0 MP 0
+
+// Clear All Active Tasks
+0687: clear_actor 29@ task
+0E96: clear_char_primary_tasks 29@
+0E97: clear_char_secondary_tasks 29@
+
+// Freeze in Conversational Stance Facing Player (Zero Stutter)
+0638: AS_actor 29@ stay_put 1
+0639: AS_actor 29@ rotate_to_actor $PLAYER_ACTOR
+
+// Launch Dismissal Conversation Thread (Passing Decision Maker 28@)
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Dism"
-0A92: stream_custom_script "Shion\Chat\chatDismiss.c" 29@
+0A92: stream_custom_script "Shion\Chat\chatDismiss.c" 29@ 28@
 return
 
 :Remember_Rejected_Ped

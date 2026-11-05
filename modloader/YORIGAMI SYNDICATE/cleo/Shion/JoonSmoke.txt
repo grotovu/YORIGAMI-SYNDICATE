@@ -18,6 +18,7 @@ const
     MEM_PRIORITY_LOCK = 20        // Formerly 765
     MEM_SHION_HANDLE = 116        // Formerly 703
     MEM_JOON_CIGAR_OBJ = 220      // Formerly 740
+    MEM_SHION_RECRUITED = 400
 end
 
 :Connect_To_Brain
@@ -593,26 +594,34 @@ if and
     8038: not $ONMISSION == 1
     8E1D: not is_on_mission
 then
+    // Only allow dialogue if Shion is actively recruited (suppresses dismissed / ambient)
     0085: 30@ = 31@
-    000A: 30@ += MEM_SHION_HANDLE
-    0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0 // Live Shion Handle
-    // Hitodama Form (-1) is always floating near Jo'on
+    000A: 30@ += MEM_SHION_RECRUITED
+    0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
     if
-        10@ == -1
+        0039: 14@ == 1
     then
-        29@ = 1
-    end
-
-    // Solid Ped Form (> 0) must be alive and within 15 meters
-    if
-        10@ > 0
-    then
-        if and
-            056D: actor 10@ defined
-            8118: not actor 10@ dead
-            0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 15.0
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_HANDLE
+        0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0 // Live Shion Handle
+        // Hitodama Form (-1) is always floating near Jo'on
+        if
+            10@ == -1
         then
             29@ = 1
+        end
+
+        // Solid Ped Form (> 0) must be alive and within 15 meters
+        if
+            10@ > 0
+        then
+            if and
+                056D: actor 10@ defined
+                8118: not actor 10@ dead
+                0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 15.0
+            then
+                29@ = 1
+            end
         end
     end
 end
@@ -1038,7 +1047,7 @@ then
     if
         26@ == 0
     then
-        0ADF: add_text_label "Y_SM1BH" text "~y~Jo'on: ~s~\"Spirits don't even have lungs, Shion! Quit fake-coughin' and act like an exhaust fan!\""
+        0ADF: add_text_label "Y_SM1BH" text "~y~Jo'on: ~s~\"Spirits don't have lungs, Shion! Quit the fake wheezin' and float closer so you can light my next one!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_SM1BH' time 3200 flag 1
     end
@@ -1079,7 +1088,7 @@ else
     if
         26@ == 2
     then
-        0ADF: add_text_label "Y_SM3B" text "~y~Jo'on: ~s~\"Then act like an exhaust fan and blow it away from my hair! Quit whinin'!\""
+        0ADF: add_text_label "Y_SM3B" text "~y~Jo'on: ~s~\"Then step two feet to the left, idiot! You've got legs! Stop standin' right where I'm blowin'!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_SM3B' time 3200 flag 1
     end
@@ -1198,24 +1207,32 @@ end
 000A: 30@ += MEM_PRIORITY_LOCK
 0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
 
+// Only qualify Shion if actively recruited into the entourage
 0085: 30@ = 31@
-000A: 30@ += MEM_SHION_HANDLE
-0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+000A: 30@ += MEM_SHION_RECRUITED
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
 29@ = 0 // Shion nearby flag (Swapped from 22@ to prevent render object collision)
 if
-    10@ == -1 // Hitodama floating with Jo'on
+    0039: 14@ == 1
 then
-    29@ = 1
-end
-if
-    10@ > 0
-then
-    if and
-        056D: actor 10@ defined
-        8118: not actor 10@ dead
-        0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 15.0
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_HANDLE
+    0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        10@ == -1 // Hitodama floating with Jo'on
     then
         29@ = 1
+    end
+    if
+        10@ > 0
+    then
+        if and
+            056D: actor 10@ defined
+            8118: not actor 10@ dead
+            0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 15.0
+        then
+            29@ = 1
+        end
     end
 end
 

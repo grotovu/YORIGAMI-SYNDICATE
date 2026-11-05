@@ -60,7 +60,32 @@ if or
     0118: actor $PLAYER_ACTOR dead
     0741: actor $PLAYER_ACTOR busted
 then
+    03EB: clear_small_messages_only
     0002: jump @Finalize_Ambient_Chat
+end
+
+if
+    8449: not actor $PLAYER_ACTOR in_a_car
+then
+    if or
+        04AD: actor $PLAYER_ACTOR in_water
+        0965: actor $PLAYER_ACTOR swimming
+    then
+        03EB: clear_small_messages_only
+        0002: jump @Finalize_Ambient_Chat
+    end
+
+    if
+        0818: actor $PLAYER_ACTOR in_air
+    then
+        0819: 25@ = actor $PLAYER_ACTOR distance_from_ground
+        if
+            0021: 25@ > 2.0
+        then
+            03EB: clear_small_messages_only
+            0002: jump @Finalize_Ambient_Chat
+        end
+    end
 end
 
 // -------------------------------------------------------------------------
@@ -131,6 +156,7 @@ else
     if
         26@ == 1
     then
+        22@ = 0 // Explicitly reset mode: 0 = unlisted / standard enclosed roof
         0ADB: 16@v = vehicle_model 25@ name
         0AF0: 22@ = read_int_from_ini_file "cleo\savedata\ShionVehicles.ini" section "VehicleRoofTypes" key 16@v
 
@@ -149,20 +175,19 @@ else
             if
                 8019: not 23@ > 0
             then
-                26@ = 2 // No roof upgrade attached; treat as roofless open-top
+                26@ = 2
             end
         end
-    end
 
-    // Check C: Native Convertibles (Windsor, Stallion, Feltzer, Comet)
-    if
-        26@ == 1
-    then
-        if and
-            0EFB: is_car_convertible 24@
-            8039: not 25@ == 603 // Exclude Phoenix
+        // Mode 3: Dynamic Spawn Extras (Open unless extra1 roof node exists)
+        if
+            22@ == 3
         then
-            26@ = 2 // Context 2: Roofless Open-Top
+            if
+                8E82: not does_car_have_part_node 24@ "extra1"
+            then
+                26@ = 2
+            end
         end
     end
 end

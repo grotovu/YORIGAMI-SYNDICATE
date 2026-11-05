@@ -15,9 +15,11 @@ const
     MEM_QUICK_DISM_LATCH = 16
     MEM_PRIORITY_LOCK = 20
     MEM_SHION_HANDLE = 116
+    MEM_SHION_STANCE = 120
     MEM_SHION_DEATH_FLAG = 380
     MEM_SHION_RECRUITED = 400
     MEM_SHION_KILLER_IS_JOON = 384
+    MEM_SHION_DM = 412            // Persistent Zero-Panic Decision Maker Handle
 end
 
 :Connect_To_Brain
@@ -37,18 +39,66 @@ then
 end
 // 31@ NOW HOLDS THE MASTER POINTER SAFELY.
 
+// 0@ = Shion Actor Handle passed from Entourage.c
+0085: 10@ = 0@
+
+if and
+    0019: 10@ > 0
+    056D: actor 10@ defined
+    8118: not actor 10@ dead
+then
+    // Apply shared permanent Zero-Panic Decision Maker
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_DM
+    0A8D: 18@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        0019: 18@ > 0
+    then
+        060B: set_actor 10@ decision_maker_to 18@
+    end
+
+    // Passive Temperament & Retaliation Lock
+    0946: set_actor 10@ actions_uninterupted_by_weapon_fire 1
+    0350: set_actor 10@ maintain_position_when_attacked 1
+    0816: set_actor 10@ dont_chase_victim 1
+    07CB: set_actor 10@ supporting_fire 0
+    07DD: set_actor 10@ attack_rate 0
+    0770: set_actor 10@ target_priority 0
+    077C: clear_actor 10@ acquaintance 4 to_all_pedtypes
+    077C: clear_actor 10@ acquaintance 3 to_all_pedtypes
+    077A: set_actor 10@ acquaintance 0 to_actors_pedtype 0 // Respect Player
+    077A: set_actor 10@ acquaintance 1 to_actors_pedtype 0 // Like Player
+
+    // Wipe any stuck task and freeze in conversation stance
+    0687: clear_actor 10@ task
+    0E96: clear_char_primary_tasks 10@
+    0E97: clear_char_secondary_tasks 10@
+    0638: AS_actor 10@ stay_put 1
+    0639: AS_actor 10@ rotate_to_actor $PLAYER_ACTOR
+end
+
 // =========================================================================
 // ANTI-DUPLICATION & PRIORITY GATE
-// Terminate if another dismissal thread (3) or Tier 4 theater (4) is already active!
+// Terminate ONLY if Tier 4 Master Theater is active!
 // =========================================================================
 0085: 30@ = 31@
 000A: 30@ += MEM_PRIORITY_LOCK
 0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
 if
-    04B5: 16@ >= 3
+    04B5: 16@ >= 4
 then
+    if
+        0019: 1@ > 0
+    then
+        1@ = 0
+    end
     0A93: terminate_this_custom_script
 end
+
+// Force Peaceful Stance in Master Heap
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_STANCE
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
 // Preempt lower tiers (Tier 1 & Tier 2) and claim Tier 3 Action Lock!
 0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Zone'
@@ -68,42 +118,9 @@ end
 000A: 30@ += MEM_PRIORITY_LOCK
 0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
 
-// 0@ = Shion Actor Handle passed from Entourage.c
-0085: 10@ = 0@
-1@ = 0  // Dismissal Decision Maker Handle (Explicit Initialization)
-
-// Immediately decouple from group so engine group AI stops overriding her
-07AF: 12@ = player $PLAYER_CHAR group
-06C9: remove_actor 10@ from_group
-
-0085: 30@ = 31@
-000A: 30@ += MEM_SHION_RECRUITED
-0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-
-0085: 30@ = 31@
-000A: 30@ += MEM_INTENTIONAL_DISM
-0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
-
-// Shut down follower and combat threads immediately
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Flw"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Ctrl"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Cmbt"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sync"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Chut"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Pimp"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Burg"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_RedM"
-
-// Apply tough mission brain AFTER removing from group so engine cannot wipe it!
-0050: gosub @Apply_Shion_Dismiss_Brain
-
 // Keep Friendly Fire active while dismissed so attacks trigger dialogue
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_FF"
 0A92: create_custom_thread "Shion\ShionFriendlyFire.c" 10@
-
-// Lock Shion in place facing Jo'on during the conversation
-0638: AS_actor 10@ stay_put 1
-0639: AS_actor 10@ rotate_to_actor $PLAYER_ACTOR
 
 0050: gosub @Check_Dismiss_Alive_Or_Exit
 
@@ -157,7 +174,7 @@ if
 then
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DS0A" text "~y~Jo'on: ~s~\"Get lost, Shion! I've got real money to fleece today and you're stinkin' up the curb!\""
+    0ADF: add_text_label "Y_DS0A" text "~y~Jo'on: ~s~\"Get lost, Shion! Go find some dirty alley to rot in until I've got cash to blow!\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DS0A' time 3600 flag 1
     19@ = 3600
@@ -165,7 +182,7 @@ then
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DS0B" text "~b~Shion: ~s~\"Alright, Jo'on... I'll go check the dumpster behind the pizza shop for lunch.\""
+    0ADF: add_text_label "Y_DS0B" text "~b~Shion: ~s~\"Fine... I'll just go sit behind the pizza shop in the hood. Maybe someone tossed half a slice.\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DS0B' time 3500 flag 1
     19@ = 3500
@@ -189,7 +206,7 @@ then
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DS1B" text "~b~Shion: ~s~\"Understood, sis... at least the alleyway doesn't yell at my hoodie for existing.\""
+    0ADF: add_text_label "Y_DS1B" text "~b~Shion: ~s~\"Yeah yeah... Look for me around the dumpsters on the east side if you ever remember to feed me.\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DS1B' time 3400 flag 1
     19@ = 3400
@@ -229,7 +246,7 @@ if
 then
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DS3A" text "~y~Jo'on: ~s~\"Scram! Go find a quiet corner and don't move until I come lookin' for ya!\""
+    0ADF: add_text_label "Y_DS3A" text "~y~Jo'on: ~s~\"Scram! Go find a curb to haunt where I don't gotta look at ya!\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DS3A' time 3400 flag 1
     19@ = 3400
@@ -237,7 +254,7 @@ then
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DS3B" text "~b~Shion: ~s~\"Okay, sis... I'll just sit on some cardboard and count dry bread crusts.\""
+    0ADF: add_text_label "Y_DS3B" text "~b~Shion: ~s~\"I'm going, I'm going... The guys at the firehouse don't chase me off when I borrow their outdoor tap.\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DS3B' time 3300 flag 1
     19@ = 3300
@@ -261,7 +278,7 @@ then
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DS4B" text "~b~Shion: ~s~\"You blow all your cash anyway, Jo'on... but fine, I'll go wait by the bench.\""
+    0ADF: add_text_label "Y_DS4B" text "~b~Shion: ~s~\"You blow all your cash anyway, Jo'on... but fine, you already know my spots.\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DS4B' time 3600 flag 1
     19@ = 3600
@@ -285,7 +302,7 @@ then
 
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DS5B" text "~b~Shion: ~s~\"Fine, fine... I'll go hold out my cup until you need your meat shield again.\""
+    0ADF: add_text_label "Y_DS5B" text "~b~Shion: ~s~\"Fine, fine... I'll go hold out my cup by that takeout strip out east until you need your meat shield again.\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DS5B' time 3600 flag 1
     19@ = 3600
@@ -310,18 +327,9 @@ then
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 end
 
-// Free her from conversation stay_put so she can walk
+// Free her from conversation stance and start ambient walk
 0638: AS_actor 10@ stay_put 0
-
-if
-    0449: actor 10@ in_a_car
-then
-    0633: AS_actor 10@ exit_car
-    18@ = 0 // Wait until on foot before pathing
-else
-    05DE: AS_actor 10@ walk_around_ped_path
-    18@ = 1 // Already walking on foot
-end
+05DE: AS_actor 10@ walk_around_ped_path
 
 // Read Group Forward Key (Default 71 = G) to detect manual recruitment attempts
 0AF0: 2@ = read_int_from_ini_file "cleo\Shion.ini" section "Controls" key "GroupForwardKey"
@@ -351,6 +359,15 @@ if
     0039: 16@ == 1
 then
     0050: gosub @Release_Tier3_Lock_Safely
+    if
+        0019: 1@ > 0
+    then
+        1@ = 0
+    end
+    0085: 30@ = 31@
+    000A: 30@ += MEM_INTENTIONAL_DISM
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_FF"
     0A93: terminate_this_custom_script
 end
 
@@ -448,7 +465,7 @@ then
         if
             0039: 28@ == 3
         then
-            0ADF: add_text_label "Y_NORE4" text "~b~Shion: ~s~\"You need me back in your posse? Pray my name first.\""
+            0ADF: add_text_label "Y_NORE4" text "~b~Shion: ~s~\"You need me back in your posse? Beg on your knees first.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_NORE4' time 3200 flag 1
         end
@@ -496,15 +513,6 @@ then
     0E97: clear_char_secondary_tasks 10@
     01B9: set_actor 10@ armed_weapon_to 0
     05DE: AS_actor 10@ walk_around_ped_path
-end
-
-// If Shion was in a car, task her to walk as soon as she steps onto the sidewalk
-if and
-    0039: 18@ == 0
-    8449: not actor 10@ in_a_car
-then
-    05DE: AS_actor 10@ walk_around_ped_path
-    18@ = 1
 end
 
 // Tick down stalker reaction cooldown (adjusted for 50ms tick)
@@ -668,7 +676,6 @@ end
 if
     0019: 1@ > 0
 then
-    065C: release_decision_maker 1@ // Free dedicated handle cleanly
     1@ = 0
 end
 
@@ -732,45 +739,6 @@ then
 end
 0051: return
 
-:Apply_Shion_Dismiss_Brain
-048F: actor 10@ remove_weapons
-01B9: set_actor 10@ armed_weapon_to 0
-
-0446: set_actor 10@ dismemberment_possible 0 // Immune to headshots/decapitation!
-08AF: set_actor 10@ max_health_to 1000
-0223: set_actor 10@ health 1000
-035F: actor 10@ armour += 500
-02AB: set_actor 10@ immunities BP 0 FP 1 EP 0 CP 0 MP 0
-
-0687: clear_actor 10@ task
-0E96: clear_char_primary_tasks 10@
-0E97: clear_char_secondary_tasks 10@
-
-// Tough Mission Brain: Apply m_tough and reset gun aiming panic only
-if
-    0019: 1@ > 0
-then
-    065C: release_decision_maker 1@
-    1@ = 0
-end
-
-060A: create_decision_maker_type 0 store_to 1@ // Stored safely in dedicated 1@
-0708: reset_decision_maker 1@ event 31         // Reset EVENT_GUN_AIMED_AT
-0708: reset_decision_maker 1@ event 15         // Reset EVENT_SHOT_FIRED
-0708: reset_decision_maker 1@ event 49         // Reset EVENT_SHOT_FIRED_WHIZZED_BY
-060B: set_actor 10@ decision_maker_to 1@
-
-0350: set_actor 10@ maintain_position_when_attacked 1
-0816: set_actor 10@ dont_chase_victim 1
-07CB: set_actor 10@ supporting_fire 0
-07DD: set_actor 10@ attack_rate 0
-0770: set_actor 10@ target_priority 0
-077C: clear_actor 10@ acquaintance 4 to_all_pedtypes
-077C: clear_actor 10@ acquaintance 3 to_all_pedtypes
-// Set Acquaintance 0 (RESPECT) towards player so aiming never triggers surrender
-077A: set_actor 10@ acquaintance 0 to_actors_pedtype 0
-0051: return
-
 :Release_Tier3_Lock_Safely
 03EB: clear_small_messages_only
 0085: 30@ = 31@
@@ -805,17 +773,12 @@ if or
     0E42: is_char_doing_task_id 10@ 413 // TASK_SIMPLE_HANDS_UP
     0E42: is_char_doing_task_id 10@ 412 // TASK_SIMPLE_COWER
     0E42: is_char_doing_task_id 10@ 512 // TASK_COMPLEX_EVASIVE_COWER
-    0457: player $PLAYER_CHAR aiming_at_actor 10@
 then
     0687: clear_actor 10@ task
     0E96: clear_char_primary_tasks 10@
     0E97: clear_char_secondary_tasks 10@
-    if
-        8449: not actor 10@ in_a_car
-    then
-        0638: AS_actor 10@ stay_put 1
-        0639: AS_actor 10@ rotate_to_actor $PLAYER_ACTOR
-    end
+    0638: AS_actor 10@ stay_put 1
+    0639: AS_actor 10@ rotate_to_actor $PLAYER_ACTOR
 end
 
 0085: 8@ = TIMERA

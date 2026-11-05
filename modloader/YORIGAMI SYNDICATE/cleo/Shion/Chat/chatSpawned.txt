@@ -317,11 +317,24 @@ then
             0ADF: add_text_label "Y_SP17A" text "~b~Shion: ~s~\"Next time the engine catches fire, let me unbuckle before it blows up, Jo'on.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_SP17A' time 3500 flag 1
-        else
-            // On foot outside when Jo'on punched / detonated the car
+        end
+
+        if
+            0039: 17@ == 2
+        then
+            // On foot outside when Jo'on punched / detonated the car via Car Smasher
             0ADF: add_text_label "Y_SP17B" text "~b~Shion: ~s~\"You punched a car into a fireball and blew me across the street, Jo'on...\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_SP17B' time 3500 flag 1
+        end
+
+        if
+            0039: 17@ == 0
+        then
+            // On foot outside when Jo'on shot the car with guns / minigun
+            0ADF: add_text_label "Y_SP17E" text "~b~Shion: ~s~\"You kept shooting that car like a maniac until the gas tank blew up, Jo'on...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SP17E' time 3500 flag 1
         end
     else
         // Case B: Enemy / World blew it up

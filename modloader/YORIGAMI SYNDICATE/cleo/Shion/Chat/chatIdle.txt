@@ -785,15 +785,34 @@ end
 
 01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
 
-// Abort if player dies, gets busted, enters water, or gets into a vehicle
+// Abort if player dies, gets busted, enters water, swims, or gets into a vehicle
 if or
     0118: actor $PLAYER_ACTOR dead
     0741: actor $PLAYER_ACTOR busted
     04AD: actor $PLAYER_ACTOR in_water
+    0965: actor $PLAYER_ACTOR swimming
     00DF: actor $PLAYER_ACTOR driving
 then
     0050: gosub @Release_Tier2_Lock_Safely
     0A93: terminate_this_custom_script
+end
+
+// Abort if player is falling on foot (excluding jetpack)
+if and
+    8449: not actor $PLAYER_ACTOR in_a_car
+    8A0C: not player $PLAYER_CHAR on_jetpack
+then
+    if
+        0818: actor $PLAYER_ACTOR in_air
+    then
+        0819: 25@ = actor $PLAYER_ACTOR distance_from_ground
+        if
+            0021: 25@ > 2.0
+        then
+            0050: gosub @Release_Tier2_Lock_Safely
+            0A93: terminate_this_custom_script
+        end
+    end
 end
 
 // Abort if player answered a phone call
