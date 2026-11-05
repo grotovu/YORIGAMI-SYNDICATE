@@ -49,6 +49,7 @@ end
 10@ = 76  // SwitchKey (Default: 76 = L)
 11@ = 0.0 // Last Tracked Fat Stat (float)
 12@ = 0.0 // Last Tracked Muscle Stat (float)
+18@ = 0   // Prostitute Suppression State (-1 = Disabled in INI, 0 = Enabled)
 19@ = 0   // Girlfriend Suppression State (-1 = Disabled in INI, 0 = CJ, 1 = Suppressed)
 20@ = 1   // Target Armed Weapon Slot (Default: 1 = Unarmed/Fists)
 29@ = 0   // Save Watchdog Reload Latch
@@ -66,8 +67,8 @@ gosub @Load_Joon_Settings
 // Ensure native player-ignore flag is completely cleared
 03BF: set_player $PLAYER_CHAR ignored_by_everyone 0
 
-// Register Save Confirmation Callback (Using isolated 18@ to protect 20@ TargetSlot)
-0ED1: set_script_event_save_confirmation 1 @OnSaveConfirmationCallback 18@
+// Register Save Confirmation Callback (Using scratch 2@ to free up 18@)
+0ED1: set_script_event_save_confirmation 1 @OnSaveConfirmationCallback 2@
 
 :Joon_MainLoop
 wait 50
@@ -465,6 +466,20 @@ then
     end
 end
 
+// =========================================================================
+// PROSTITUTE SOLICITATION WATCHDOG (Suppresses "Good Time Honey" in Jo'on Mode)
+// =========================================================================
+if and
+    18@ >= 0 // Feature enabled in Shion.ini (SuppressProstitutes != 0)
+    0@ > 0   // Jo'on (1) or Shion (2) active
+    8E1D: not is_on_mission
+    00DF: actor $PLAYER_ACTOR driving
+    TIMERA >= 200
+then
+    TIMERA = 0
+    gosub @Suppress_Nearby_Prostitutes
+end
+
 goto @Joon_MainLoop
 
 
@@ -566,6 +581,13 @@ end
 // Neutralize gangs immediately whenever Jo'on model is initialized
 gosub @Snapshot_And_Neutralize_Gangs
 
+// Blank native prostitute dialogue subtitles while in Jo'on mode
+if
+    18@ >= 0
+then
+    gosub @Blank_Prostitute_Subtitles
+end
+
 // Launch Jo'on's exclusive idle smoking child thread cleanly
 gosub @Terminate_Joon_Smoking_Safely
 0A92: create_custom_thread "Shion\JoonSmoke.c"
@@ -575,6 +597,9 @@ return
 // SUBROUTINE: REVERT BACK TO NORMAL CJ
 // =========================================================================
 :Revert_Player_Back_To_CJ
+// Restore native prostitute subtitles for CJ
+gosub @Restore_Prostitute_Subtitles
+
 if
     0@ == 2
 then
@@ -1077,6 +1102,13 @@ else
     0489: set_actor $PLAYER_ACTOR muted 0
     0A09: set_actor $PLAYER_ACTOR muted 0
     094F: enable_actor $PLAYER_ACTOR pain_audio
+end
+
+// Blank native prostitute dialogue subtitles while in Shion mode
+if
+    18@ >= 0
+then
+    gosub @Blank_Prostitute_Subtitles
 end
 
 // Set State 2: Shion Mode Active
@@ -1714,4 +1746,125 @@ then
 else
     19@ = 0 // Enable feature (Always reset to baseline 0 so reloaded saves re-suppress cleanly)
 end
+
+// Read Prostitute Suppression Setting (Tri-state 18@: -1 = Disabled, 0 = Enabled)
+0AF0: 2@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "SuppressProstitutes"
+if
+    2@ == 0
+then
+    18@ = -1 // Feature disabled in INI
+else
+    18@ = 0  // Enabled
+end
+return
+
+// =========================================================================
+// SUBROUTINE: SUPPRESS PROSTITUTE SOLICITATION (Task ID 1309 / 1216 / 1217)
+// =========================================================================
+:Suppress_Nearby_Prostitutes
+04C4: store_coords_to 21@ 22@ 23@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.0
+24@ = 0
+
+:Prostitute_Scan_Loop
+0AE1: 25@ = random_char_near_point 21@ 22@ 23@ in_radius 20.0 find_next 24@ pass_deads 1
+if
+    25@ > 0
+then
+    24@ = 1
+    if and
+        056D: actor 25@ defined
+        8118: not actor 25@ dead
+        803B: not 25@ == $PLAYER_ACTOR
+    then
+        089F: get_actor 25@ pedtype_to 26@
+
+        // Flag 27@ determines if this ped is executing a prostitute interaction
+        27@ = 0
+
+        // Direct solicitation tasks (1309 = Solicit, 1216 = Approach & Lean, 1217 = Lean on car)
+        if or
+            0E42: is_char_doing_task_id 25@ 1309
+            0E42: is_char_doing_task_id 25@ 1216
+            0E42: is_char_doing_task_id 25@ 1217
+        then
+            27@ = 1
+        end
+
+        // Boarding tasks on PedType 22 (Prostitutes attempting to enter passenger door)
+        if
+            27@ == 0
+        then
+            if
+                26@ == 22 // PROSTITUTE
+            then
+                if or
+                    0E42: is_char_doing_task_id 25@ 700  // ENTER_CAR_AS_PASSENGER
+                    0E42: is_char_doing_task_id 25@ 800  // GO_TO_CAR_DOOR_AND_STAND_STILL
+                    0E42: is_char_doing_task_id 25@ 802  // CAR_OPEN_DOOR_FROM_OUTSIDE
+                    0E42: is_char_doing_task_id 25@ 807  // CAR_GET_IN
+                then
+                    27@ = 1
+                end
+            end
+        end
+
+        if
+            27@ == 1
+        then
+            // Abort player prostitute session immediately and send her walking away
+            0A43: get_rid_of_player_prostitute
+            03EB: clear_small_messages_only
+            0687: clear_actor 25@ task
+            0E96: clear_char_primary_tasks 25@
+            0E97: clear_char_secondary_tasks 25@
+            05DE: AS_actor 25@ walk_around_ped_path
+        end
+    end
+    goto @Prostitute_Scan_Loop
+end
+
+// Failsafe: Eject any prostitute that managed to enter passenger seat 0
+03C0: 27@ = actor $PLAYER_ACTOR car
+if
+    056E: car 27@ defined
+then
+    0432: 28@ = get_actor_handle_from_car 27@ passenger_seat 0
+    if
+        28@ > 0
+    then
+        if
+            803B: not 28@ == 1@ // Strictly ignore companion Shion
+        then
+            089F: get_actor 28@ pedtype_to 26@
+            if
+                26@ == 22 // PROSTITUTE
+            then
+                0A43: get_rid_of_player_prostitute
+                03EB: clear_small_messages_only
+                0687: clear_actor 28@ task
+                0633: AS_actor 28@ exit_car
+                05DE: AS_actor 28@ walk_around_ped_path
+            end
+        end
+    end
+end
+return
+
+// =========================================================================
+// SUBROUTINES: DYNAMIC PROSTITUTE GXT BLANKING & RESTORATION
+// =========================================================================
+:Blank_Prostitute_Subtitles
+0ADF: add_text_label "PROS_04" text " "
+0ADF: add_text_label "PROS_05" text " "
+0ADF: add_text_label "PROS_06" text " "
+0ADF: add_text_label "PROS_07" text " "
+0ADF: add_text_label "PROS_09" text " "
+return
+
+:Restore_Prostitute_Subtitles
+0AE0: remove_text_label "PROS_04"
+0AE0: remove_text_label "PROS_05"
+0AE0: remove_text_label "PROS_06"
+0AE0: remove_text_label "PROS_07"
+0AE0: remove_text_label "PROS_09"
 return

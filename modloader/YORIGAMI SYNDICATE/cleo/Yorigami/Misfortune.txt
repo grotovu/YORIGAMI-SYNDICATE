@@ -110,6 +110,7 @@ then
                 7@ >= 6000
             then
                 0110: clear_player $PLAYER_CHAR wanted_level
+                gosub @Pacify_Nearby_Cops
                 6@ = 0
                 7@ = 0
                 if
@@ -305,29 +306,39 @@ end
 
 16@ = 0 // Hostile Flag
 
-// Check 1: Firing or actively fighting
+// Check 1: Firing or actively fighting (Cops rely strictly on wanted level)
+089F: get_actor 29@ pedtype_to 28@
 if
-    02E0: actor 29@ firing_weapon
+    8039: not 28@ == 6
 then
-    16@ = 1
-end
-
-if and
-    16@ == 0
-    0E47: is_char_fighting 29@
-then
-    16@ = 1
-end
-
-// Check 2: Direct combat damage exchange with player
-if
-    16@ == 0
-then
-    if or
-        051A: actor $PLAYER_ACTOR damaged_by_actor 29@
-        051A: actor 29@ damaged_by_actor $PLAYER_ACTOR
+    if
+        02E0: actor 29@ firing_weapon
     then
         16@ = 1
+    end
+
+    if and
+        16@ == 0
+        0E47: is_char_fighting 29@
+    then
+        16@ = 1
+    end
+end
+
+// Check 2: Direct combat damage exchange with player (Cops rely strictly on wanted level)
+if
+    16@ == 0
+then
+    089F: get_actor 29@ pedtype_to 28@
+    if
+        8039: not 28@ == 6
+    then
+        if or
+            051A: actor $PLAYER_ACTOR damaged_by_actor 29@
+            051A: actor 29@ damaged_by_actor $PLAYER_ACTOR
+        then
+            16@ = 1
+        end
     end
 end
 
@@ -419,27 +430,32 @@ then
                 // Attach Single Blue Hitodama Curse Flame above victim's head!
                 0A92: create_custom_thread "Yorigami\FX_HexFlame.c" 29@ 2600
 
-                // Determine if target should retaliate after recovering
+                // Determine if target should retaliate after recovering (Cops exempt)
                 18@ = 0
-                0E44: get_char_kill_target_char 29@ store_to 19@
+                089F: get_actor 29@ pedtype_to 19@
                 if
-                    003B: 19@ == $PLAYER_ACTOR
+                    8039: not 19@ == 6
                 then
-                    18@ = 1
-                end
-
-                if
-                    087A: gang_war_in_progress
-                then
-                    089F: get_actor 29@ pedtype_to 19@
-                    if and
-                        19@ >= 7
-                        16 >= 19@
+                    0E44: get_char_kill_target_char 29@ store_to 19@
+                    if
+                        003B: 19@ == $PLAYER_ACTOR
                     then
-                        if
-                            8039: not 19@ == 8
+                        18@ = 1
+                    end
+
+                    if
+                        087A: gang_war_in_progress
+                    then
+                        089F: get_actor 29@ pedtype_to 19@
+                        if and
+                            19@ >= 7
+                            16 >= 19@
                         then
-                            18@ = 1
+                            if
+                                8039: not 19@ == 8
+                            then
+                                18@ = 1
+                            end
                         end
                     end
                 end
@@ -541,6 +557,77 @@ then
                 end
             end
         end
+    end
+end
+return
+
+:Pacify_Nearby_Cops
+// Momentarily cycle cop ignore flag to wipe engine pursuit assignment
+01F7: set_player $PLAYER_CHAR ignored_by_cops 1
+01F7: set_player $PLAYER_CHAR ignored_by_cops 0
+
+04C4: store_coords_to 21@ 22@ 23@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.0
+24@ = 0
+
+:Pacify_Cops_Scan_Loop
+0AE1: 29@ = random_char_near_point 21@ 22@ 23@ in_radius 65.0 find_next 24@ pass_deads 1
+if
+    29@ > 0
+then
+    24@ = 1
+    gosub @Pacify_Single_Cop
+    goto @Pacify_Cops_Scan_Loop
+end
+return
+
+:Pacify_Single_Cop
+if
+    29@ <= 0
+then
+    return
+end
+
+if
+    856D: not actor 29@ defined
+then
+    return
+end
+
+if
+    0118: actor 29@ dead
+then
+    return
+end
+
+if
+    07D6: 29@ == $PLAYER_ACTOR
+then
+    return
+end
+
+// Check if actor is law enforcement (PedType 6)
+089F: get_actor 29@ pedtype_to 28@
+if
+    28@ == 6
+then
+    if
+        0449: actor 29@ in_a_car
+    then
+        03C0: 27@ = actor 29@ car
+        if
+            056E: car 27@ defined
+        then
+            00A9: set_car 27@ to_normal_driver
+            0397: enable_car 27@ siren 0
+        end
+        0E96: clear_char_primary_tasks 29@
+        0E97: clear_char_secondary_tasks 29@
+    else
+        // Clear primary/secondary combat and aim tasks, then assign ambient patrol
+        0792: clear_char_tasks_immediately 29@
+        0E96: clear_char_primary_tasks 29@
+        0E97: clear_char_secondary_tasks 29@
+        05DE: AS_actor 29@ walk_around_ped_path
     end
 end
 return
