@@ -778,57 +778,30 @@ then
     end
 end
 
-// Establish two-way friendly relations between Shion (16), Player (0), and Grove (8)
-0746: set_acquaintance 0 of_actors_pedtype 16 to_actors_pedtype 0
-0746: set_acquaintance 1 of_actors_pedtype 16 to_actors_pedtype 0
-0746: set_acquaintance 0 of_actors_pedtype 16 to_actors_pedtype 8
-0746: set_acquaintance 1 of_actors_pedtype 16 to_actors_pedtype 8
-
-0746: set_acquaintance 0 of_actors_pedtype 0 to_actors_pedtype 16
-0746: set_acquaintance 1 of_actors_pedtype 0 to_actors_pedtype 16
-0746: set_acquaintance 0 of_actors_pedtype 8 to_actors_pedtype 16
-0746: set_acquaintance 1 of_actors_pedtype 8 to_actors_pedtype 16
-
 for 25@ = 7 to 16
     // Clear aggressive on-sight hostility (Hate and Dislike) to player (0)
     0747: clear_acquaintance 3 of_actors_pedtype 25@ to_actors_pedtype 0
     0747: clear_acquaintance 4 of_actors_pedtype 25@ to_actors_pedtype 0
 
-    // Clear aggressive on-sight hostility (Hate and Dislike) to Grove (8)
+    // Clear aggressive on-sight hostility (Hate and Dislike) to Grove / Shion (8)
     0747: clear_acquaintance 3 of_actors_pedtype 25@ to_actors_pedtype 8
     0747: clear_acquaintance 4 of_actors_pedtype 25@ to_actors_pedtype 8
-
-    // Clear aggressive on-sight hostility (Hate and Dislike) from gangs to Shion (16)
-    0747: clear_acquaintance 3 of_actors_pedtype 25@ to_actors_pedtype 16
-    0747: clear_acquaintance 4 of_actors_pedtype 25@ to_actors_pedtype 16
-
-    // Clear aggressive on-sight hostility (Hate and Dislike) from Shion (16) to gangs
-    0747: clear_acquaintance 3 of_actors_pedtype 16 to_actors_pedtype 25@
-    0747: clear_acquaintance 4 of_actors_pedtype 16 to_actors_pedtype 25@
 
     if
         0039: 25@ == 8 // Grove Street Families
     then
-        // Keep Grove friendly and respectful to player, each other, and Shion
+        // Keep Grove friendly and respectful to player and each other
         0746: set_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 0
         0746: set_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 0
         0746: set_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 8
         0746: set_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 8
-        0746: set_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 16
-        0746: set_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 16
     else
-        if
-            8039: not 25@ == 16 // Prevent wiping Shion's own friendly status
-        then
-            // Rival gangs: Clear Like and Respect so they are strictly neutral.
-            // They will not shoot on sight, but will retaliate immediately if attacked!
-            0747: clear_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 0
-            0747: clear_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 0
-            0747: clear_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 8
-            0747: clear_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 8
-            0747: clear_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 16
-            0747: clear_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 16
-        end
+        // Rival gangs: Clear Like and Respect so they are strictly neutral.
+        // They will not shoot on sight, but will retaliate immediately if attacked!
+        0747: clear_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 0
+        0747: clear_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 0
+        0747: clear_acquaintance 0 of_actors_pedtype 25@ to_actors_pedtype 8
+        0747: clear_acquaintance 1 of_actors_pedtype 25@ to_actors_pedtype 8
     end
 end
 
