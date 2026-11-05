@@ -51,17 +51,43 @@ then
     0A93: terminate_this_custom_script
 end
 
-// Preempt low-tier ambient chat and combat chatter
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Star"
+// Priority Arbitration: Never interrupt or override active conversations
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0019: 16@ > 0
+then
+    // Only Mode 3 (Death) is allowed to interrupt active chatter
+    if
+        8039: not 10@ == 3
+    then
+        0A93: terminate_this_custom_script
+    end
+
+    // Tier 4 Master Theater / Menus are completely inviolable even on death
+    if
+        04B5: 16@ >= 4
+    then
+        0A93: terminate_this_custom_script
+    end
+end
+
+// Only preempt ambient chatter if reacting to Shion's death
+if
+    0039: 10@ == 3
+then
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Star"
+end
 
 // =========================================================================
 // MODE 0: ON-FOOT WALKING RECALL (G KEY)
@@ -500,7 +526,14 @@ then
     0001: wait 2500 ms
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
-    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        0039: 24@ == 2
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
     0A93: terminate_this_custom_script
 end
 
@@ -666,7 +699,14 @@ then
     0001: wait 2500 ms
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
-    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        0039: 24@ == 2
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
     0A93: terminate_this_custom_script
 end
 
@@ -707,7 +747,14 @@ then
     0001: wait 3500 ms
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
-    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        0039: 24@ == 3
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
     0A93: terminate_this_custom_script
 end
 
@@ -1640,7 +1687,14 @@ then
     :Finish_Follow_Death_Chat
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
-    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        0039: 24@ == 3
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
     0A93: terminate_this_custom_script
 end
 
@@ -1974,7 +2028,14 @@ then
     0001: wait 2500 ms
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
-    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        0039: 24@ == 2
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
     0A93: terminate_this_custom_script
 end
 
@@ -2272,7 +2333,14 @@ then
     0001: wait 2500 ms
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
-    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        0039: 24@ == 2
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
     0A93: terminate_this_custom_script
 end
 
@@ -2329,7 +2397,14 @@ then
     0001: wait 2500 ms
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
-    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        0039: 24@ == 2
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
     0A93: terminate_this_custom_script
 end
 
@@ -2586,7 +2661,14 @@ then
     0001: wait 2500 ms
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
-    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        0039: 24@ == 2
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
     0A93: terminate_this_custom_script
 end
 
@@ -2753,7 +2835,14 @@ then
     0001: wait 2500 ms
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
-    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        0039: 24@ == 2
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
     0A93: terminate_this_custom_script
 end
 
