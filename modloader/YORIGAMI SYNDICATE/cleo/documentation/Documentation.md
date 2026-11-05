@@ -93,6 +93,7 @@ Every secondary script executes an identical connection routine upon initializat
 | `400` | `MEM_SHION_RECRUITED` | int (bool) | Recruitment state: `0` = Ambient Loiterer, `1` = Entourage Member. | `SpawnShion`, `Joon`, `Entourage` | `ShionChat`, `shionHangoutIcon`, `ShionFood`, `JoonSmoke` |
 | `404` | `MEM_SHION_HUNGRY` | int (bool) | Starvation state: `0` = Satisfied, `1` = Starving / Injured. | `ShionFood`, `foodDiner` | `foodDiner`, `ShionFood` |
 | `408` | `MEM_SHION_CHUTE_OBJ` | int | Object handle of active parachute canopy (`#PARACHUTE` / `3131`). | `ShionChute`, `SpawnShion` | `SpawnShion`, `ShionChute` |
+| `412` | `MEM_SHION_DM` | int | Handle of persistent Zero-Panic Decision Maker allocated once on boot. | `SpawnShion` | `ShionControl`, `Entourage`, `chatDismiss`, `SpawnShion` |
 
 ---
 
@@ -229,7 +230,8 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 ### Combat, Stance & Weapons
 * **`ShionControl.txt` (`Sh_Ctrl`):**
   * Listens for `Y + B`: toggles `MEM_SHION_STANCE` (`0` = Peaceful, `1` = Hostile).
-  * *Peaceful:* Strips all weapons (`048F`), sets target priority to 0, sets decision maker to passive `65540`, sets acquaintances to "Like" for cops, civilians, and gangs, and engages movement watchdog to break any attempted brawl tasks.
+  * *Dismissal Bailout Watchdog:* Polls `MEM_SHION_RECRUITED` every 50ms and terminates immediately upon dismissal (`0A93`), preventing orphaned companion daemons from persisting.
+  * *Peaceful:* Strips all weapons (`048F`), sets target priority to 0, sets decision maker to the persistent Zero-Panic template (`MEM_SHION_DM`), sets acquaintances to "Like" for cops, civilians, and gangs, sets Acquaintance 0 (Respect) to Player, and engages anti-cower and movement watchdogs.
   * *Hostile:* Checks resource mode. In Wallet Drain, equips designated weapon from `MEM_SHION_WEAPON_ID` with 9999 ammo cushion. In Gear Swap, equips exact assigned weapon and ammo from `MEM_SHION_AMMO_COUNT`. Restores aggressive decision maker `65543` and hostility towards rival ped types.
   * **Universal Out-of-Combat Movement Watchdog**: Continuously monitors Shion on foot across *both* Peaceful and Hostile stances. If Shion is out of combat, not ordered to Stay Put (`MEM_SHION_STAY_PUT == 0`), stopped (`02A0`), and > 3.0m away from Jo'on, automatically reasserts group follow commands (`07B3`) and issues a catch-up sprint (`05D9`), preventing armed companion braindeath and stuck states.
 * **`ShionCombat.txt` (`Sh_Cmbt`):**
@@ -241,6 +243,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * **Voodoo Damage Reflection (`OnShionDamage`):** Intercepts damage events on Shion; reflects incoming intensity back to the attacking ped or vehicle driver.
   * **Kill Tracker:** Continuously tallies Shion's confirmed kills (`MEM_SHION_KILLS`) and Jo'on's kills with Shion (`MEM_JOON_KILLS_W_SHION`).
 * **`ShionGear.txt` (`Sh_Gear`):**
+  * *Dismissal Dormancy:* Polls `MEM_SHION_RECRUITED` and `MEM_SHION_HANDLE`. If Shion is unrecruited or dismissed (`MEM_SHION_RECRUITED == 0`), enters a low-frequency 250ms sleep state that halts real-time ammo tracking and suppresses `[Y + R]` interactions on dismissed wanderers.
   * **Gear Swap Mode (`MEM_COMBAT_RES_MODE == 1`):** Listens for `Y + R` on foot within 4m.
   * If player is unarmed: strips Shion's weapon, pools remaining ammo with any sibling ammo Jo'on holds, restores weapon to Jo'on, and clears Shion's weapon in RAM.
   * If player is holding a firearm (IDs 22–38): removes gun from Jo'on, transfers it to Shion with exact current ammo, updates `MEM_SHION_WEAPON_ID` and `MEM_SHION_AMMO_COUNT`, and switches her stance to Hostile.
@@ -337,9 +340,11 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Detects camera viewfinder aim and snapshots on physical Shion or Hitodama spirit (`MEM_HITODAMA_X/Y/Z`) to trigger photo reactions.
 * **`chatDismiss.txt` (`Sh_Dism`):**
   * Governs dialogue delivery and post-dismissal ambient life when Shion is dismissed on foot via `Entourage.c`.
+  * Immediately applies the shared Zero-Panic Decision Maker (`MEM_SHION_DM`) and locks passive temperament attributes (`actions_uninterupted_by_weapon_fire 1`, `maintain_position_when_attacked 1`, `attack_rate 0`).
+  * Priority Arbitration: Gated strictly behind Tier 4 Master Theater (`>= 4`), preventing combat audio locks from killing dismissal dialogue.
   * Claims Tier 2 Priority Lock, launches `ShionFriendlyFire.c`, and plays quick-dismiss easter eggs or randomized banter lines (`Y_DS*`).
   * On dialogue completion, releases Priority Lock, clears stay-put, and commands ambient walking paths (`05DE`).
-  * Runs a stalker proximity watchdog (speaks up to 3 complaints via `Y_STK*` if Jo'on tails her within 3m on foot), rejects re-recruitment attempts via `G` (`Y_NORE*`), cleans up actor and passed decision maker on distance (> 60m) or 60s timeout, and routes death telemetry to `chatFollow.c` if killed.
+  * Runs a stalker proximity watchdog (speaks up to 3 complaints via `Y_STK*` if Jo'on tails her within 3m on foot), rejects re-recruitment attempts via `G` (`Y_NORE*`), cleans up actor reference on distance (> 60m) or 60s timeout, and routes death telemetry to `chatFollow.c` if killed.
 * **`chatSpawned.txt` (`Sh_Spwn`):**
   * Streamed by `SpawnShion.cs` immediately upon companion ped materialization if `MEM_SHION_DEATH_FLAG == 1`.
   * Claims Tier 3 Priority Lock, consumes and resets `MEM_SHION_DEATH_FLAG = 0`, and delivers weapon-specific post-death complaints across 17 damage categories.
@@ -417,7 +422,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 * **`Entourage.txt` (`Y_TROOP`):**
   * Unlocks 7-slot group capacity.
   * Aim at ped and press `G`: rolls recruitment probability based on Drip Worship points. Can charm civilians (up to 90%), drug dealers (unlocked at 25 pts, up to 70%), and rival gang members (unlocked at 60 pts, up to 50%). Converts loyalties to Grove Street, equips with 9mm pistol if unarmed, and adds to group. Cops are immune.
-  * Aim at follower and press `N`: dismisses follower, returning them to ambient wander. Special handling for Shion immediately ungroups her, updates `MEM_SHION_RECRUITED = 0` and `MEM_INTENTIONAL_DISM = 1`, terminates all follower/combat worker daemons (`Sh_Flw`, `Sh_Ctrl`, `Sh_Cmbt`, `Sh_Sync`, `Sh_Chut`, `Sh_Pimp`, `Sh_Burg`, `Sh_RedM`), applies panic-immune decision maker (`EVENT_GUN_AIMED_AT`, `EVENT_SHOT_FIRED`, `EVENT_SHOT_FIRED_WHIZZED_BY` reset) and player respect acquaintances, locks her in place facing Jo'on, and streams `chatDismiss.c` passing actor and decision maker handles.
+  * Aim at follower and press `N`: dismisses follower, returning them to ambient wander. Special handling for Shion immediately ungroups her, updates `MEM_SHION_RECRUITED = 0`, `MEM_INTENTIONAL_DISM = 1`, and `MEM_SHION_STANCE = 0`, terminates all follower/combat worker daemons (`Sh_Flw`, `Sh_Ctrl`, `Sh_Cmbt`, `Sh_Sync`, `Sh_Chut`, `Sh_Pimp`, `Sh_Burg`, `Sh_RedM`, `Sh_FF`), clears stale priority audio locks (< Tier 4), installs the shared Zero-Panic Decision Maker (`MEM_SHION_DM`) **before** stripping her weapon to prevent unarmed-aim flinches in Hostile mode, zeroes combat aggression parameters, freezes her in place facing Jo'on, and streams `chatDismiss.c`.	
 * **`Lifestyle.txt` (`Y_Life`):**
   * *Taxi Extortion (`MEM_ALLOC_TAXIEXT`):* Intercepts taxi mission fares, awarding `Points * BonusPercentPerPoint` extra extortion cut on every drop-off.
   * *Drip Worship (`MEM_ALLOC_DRIPWORSHIP`):* Injects calculated points directly into native memory address `12030948` (Sex Appeal stat), scaling up to 1000 (100% full bar).
@@ -562,8 +567,8 @@ The following table details the cross-script dependencies for every component in
 | **Pestilence Fever** | `Yorigami\Fever.txt` | `Y + C` active cast | None | `MEM_ALLOC_FEVER`, `MEM_SHION_HANDLE` | Spawns cash pickups, forces ped flee tasks |
 | **Street Shakedown** | `Yorigami\Shakedown.txt`| Aim + `Y` on ped | `MEM_LAST_EXTORTED_PED` | `MEM_ALLOC_SHAKEDOWN`, `MEM_ACTIVE_MARK` | Cooperates with `Mark.txt`, drops cash/weapons |
 | **High-Roller Mark** | `Yorigami\Mark.txt` | Free-roam timer | `MEM_ACTIVE_MARK` | `MEM_ALLOC_SHAKEDOWN`, `MEM_LAST_EXTORTED_PED` | Sets radar blips, communicates with `Shakedown.txt` |
-| **Drip Entourage** | `Yorigami\Entourage.txt`| Aim + `G` (recruit) / `N` (dismiss) | `MEM_INTENTIONAL_DISM`, `MEM_SHION_RECRUITED` | `MEM_ALLOC_DRIPWORSHIP`, `MEM_SHION_HANDLE` | Manages player group capacity, terminates companion daemons, streams `chatDismiss.c` |
-| **Dismissal Watchdog**| `Shion\Chat\chatDismiss.txt`| Streamed by `Entourage.c` on Shion dismiss | `MEM_SHION_HANDLE`, `MEM_SHION_DEATH_FLAG`, `MEM_INTENTIONAL_DISM`, `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_QUICK_DISM_LATCH`, `MEM_SHION_RECRUITED` | Runs dismissal dialogue, stalker watchdog, re-recruitment rejection, cleans up decision maker/actor |
+| **Drip Entourage** | `Yorigami\Entourage.txt`| Aim + `G` (recruit) / `N` (dismiss) | `MEM_INTENTIONAL_DISM`, `MEM_SHION_RECRUITED`, `MEM_SHION_STANCE`, `MEM_PRIORITY_LOCK` | `MEM_ALLOC_DRIPWORSHIP`, `MEM_SHION_HANDLE`, `MEM_SHION_DM` | Manages player group capacity, terminates companion daemons, installs `MEM_SHION_DM`, streams `chatDismiss.c` |
+| **Dismissal Watchdog**| `Shion\Chat\chatDismiss.txt`| Streamed by `Entourage.c` on Shion dismiss | `MEM_SHION_HANDLE`, `MEM_SHION_DEATH_FLAG`, `MEM_INTENTIONAL_DISM`, `MEM_PRIORITY_LOCK`, `MEM_SHION_STANCE` | `MEM_PLAYER_FORM`, `MEM_QUICK_DISM_LATCH`, `MEM_SHION_RECRUITED`, `MEM_SHION_DM` | Runs dismissal dialogue, stalker watchdog, re-recruitment rejection, cleans up actor references |
 | **Midas & Lifestyle** | `Yorigami\Lifestyle.txt`| Cash pickups near player, Taxi fares | None | `MEM_ALLOC_TAXIEXT`, `MEM_ALLOC_DRIPWORSHIP`, `MEM_ALLOC_MIDAS` | Injects Sex Appeal into engine memory, vacuums pickups |
 | **Debt Detonation** | `Yorigami\DebtDet.txt` | HP <= threshold while broke | `MEM_DMG_RECURSION_LCK` | `MEM_ALLOC_DEBTDET`, `MEM_SHION_HANDLE` | Spawns `FX_GrimBurst`, `FX_HexFlame`, shockwave disarms peds |
 | **Grim Pity** | `Yorigami\GrimPity.txt` | Lethal damage while wallet <= $0 | `MEM_GRIMPITY_BURST`, `MEM_GRIMPITY_SAVES` | `MEM_ALLOC_GRIMPITY`, `MEM_SHION_HANDLE`, `MEM_LORE_PROGRESS_BIT` | Spawns `FX_GrimBurst`, `FX_GrimPity`, streams `chatGrimPity.c` on calm |

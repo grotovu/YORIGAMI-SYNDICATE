@@ -118,4 +118,5 @@ const
     MEM_SHION_RECRUITED = 400     // 0 = Not in party / Loitering, 1 = Actively recruited
     MEM_SHION_HUNGRY = 404        // Hunger state (0 = Fed / Full, 1 = Hungry / Starving)
     MEM_SHION_CHUTE_OBJ = 408     // Parachute Canopy Object Handle (0 = None, >0 = Live Object)
+    MEM_SHION_DM = 412            // Persistent Zero-Panic Decision Maker Handle
 end

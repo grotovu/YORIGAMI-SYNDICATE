@@ -21,6 +21,7 @@ const
     MEM_COMBAT_RES_MODE = 132
     MEM_JOON_STASH_WEAPON = 136
     MEM_JOON_STASH_AMMO = 140
+    MEM_SHION_RECRUITED = 400
 end
 
 :Connect_To_Brain
@@ -92,14 +93,19 @@ then
     gosub @Load_Weapon_Slot_From_Ini
 end
 
-// Read Live Handle from Shared Memory
+// Read Live Handle & Recruitment state from Shared Memory
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_HANDLE
 0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
 
-// If dismissed or in Hitodama form: sleep without touching actor opcodes
-if
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_RECRUITED
+0A8D: 17@ = read_memory 30@ size 4 virtual_protect 0
+
+// If dismissed, unrecruited, or in Hitodama form: sleep without touching actor opcodes
+if or
     10@ <= 0
+    0039: 17@ == 0
 then
     7@ = 0
     8@ = 0

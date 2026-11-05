@@ -17,6 +17,8 @@ const
     MEM_SHION_AMMO_COUNT = 128    // Formerly 732
     MEM_COMBAT_RES_MODE = 132     // Formerly 733
     MEM_SHION_STAY_PUT = 396      // Stay Put / Hold Ground state via [H] (0 = Follow, 1 = Stay Put)
+    MEM_SHION_RECRUITED = 400
+    MEM_SHION_DM = 412            // Persistent Zero-Panic Decision Maker Handle
 end
 
 :Connect_To_Brain
@@ -61,6 +63,16 @@ end
 
 :ShionControl_Loop
 wait 50
+
+// Bail immediately if Shion was dismissed from the party
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_RECRUITED
+0A8D: 18@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 18@ == 0
+then
+    0A93: terminate_this_custom_script
+end
 
 if or
     8256: not is_player_playing $PLAYER_CHAR
@@ -144,6 +156,20 @@ then
                 0E97: clear_char_secondary_tasks 10@
                 01B9: set_actor 10@ armed_weapon_to 0
                 7@ = 1 // Flag that we just aborted a fight
+            end
+
+            // Anti-Surrender Watchdog: Instantly kill any aim panic or cower tasks in Peaceful Mode
+            if or
+                0E42: is_char_doing_task_id 10@ 601 // TASK_COMPLEX_REACT_TO_GUN_AIMED_AT
+                0E42: is_char_doing_task_id 10@ 413 // TASK_SIMPLE_HANDS_UP
+                0E42: is_char_doing_task_id 10@ 412 // TASK_SIMPLE_COWER
+                0E42: is_char_doing_task_id 10@ 512 // TASK_COMPLEX_EVASIVE_COWER
+                0E42: is_char_doing_task_id 10@ 415 // TASK_SIMPLE_DUCK
+            then
+                0687: clear_actor 10@ task
+                0E96: clear_char_primary_tasks 10@
+                0E97: clear_char_secondary_tasks 10@
+                0816: set_actor 10@ dont_chase_victim 1
             end
 
             // MOVEMENT CORRECTION & STUCK WATCHDOG
@@ -752,10 +778,18 @@ end
 07DD: set_actor 10@ attack_rate 0
 0770: set_actor 10@ target_priority 0
 0816: set_actor 10@ dont_chase_victim 1
-0946: set_actor 10@ actions_uninterupted_by_weapon_fire 1 // Ignore gunfire
 
-// Switch to native passive/empty decision maker (65540 disables combat stance)
-060B: set_actor 10@ decision_maker_to 65540
+// Apply shared permanent Zero-Panic Decision Maker
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_DM
+0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0019: 27@ > 0
+then
+    060B: set_actor 10@ decision_maker_to 27@
+end
+0946: set_actor 10@ actions_uninterupted_by_weapon_fire 1
+0350: set_actor 10@ maintain_position_when_attacked 1
 
 // Make Shion completely passive to all factions
 077C: clear_actor 10@ acquaintance 4 to_all_pedtypes
