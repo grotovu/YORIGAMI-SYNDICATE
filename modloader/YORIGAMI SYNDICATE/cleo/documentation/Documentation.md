@@ -365,9 +365,15 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Evaluates vehicle explosions via `MEM_SHION_DEATH_IN_CAR` to debate driving a burning wreck (`1`), glowing Car Smasher fist strikes (`2`), or trigger-happy lead sprays (`0`).
   * If Shion did not die earlier in the session, selects from 6 randomized peacetime free-roam reunion dialogues (`Y_RN0`–`Y_RN5`), sets `MEM_REUNION_SIGNAL = 1`, and releases Tier 4 priority.
 * **`ShionDebug.txt` (`Sh_Dbg`):**
-  * Quality assurance and testing harness gated behind `[Debug] DebugMode = 1` in `Shion.ini`.
-  * Summoned in-game via cheats `SHDBG`, running an interactive native panel (`08D4`) strictly controlled via `[SPACE]` (Select) and `[ENTER]` (Cancel/Back), with full actor motion locking (`04D7`) while browsing.
-  * Features direct cheat and menu actions: `KILLPOOR` (strips Shion to 5 HP and 0 Armour across ped and Hitodama forms), `KILLTHEPOOR` (spawns an aggressive assassin ped equipped with Jo'on's current weapon and monitored by an active thread watchdog that destroys the assassin once Shion dies), and `TRIGGERCHAT` (an interactive testing submenu to stream dialogue scripts on demand).
+  * Centralized quality assurance and testing harness gated behind `[Debug] DebugMode = 1` in `Shion.ini`. Automatically terminates on boot if disabled, ensuring zero testing cheats can conflict during regular gameplay.
+  * Summoned in-game via cheat `SHDBG`, running an interactive native panel (`08D4`) strictly controlled via `[SPACE]` (Select) and `[ENTER]` (Cancel/Back), with full actor motion locking (`04D7`) while browsing.
+  * Features direct cheat and menu actions:
+    * `KILLPOOR`: Strips Shion to 5 HP and 0 Armour across ped and Hitodama forms.
+    * `HUNGRY` / `FOOD`: Rewinds `MEM_LAST_FED_HOURS` by 48 hours and asserts `MEM_SHION_HUNGRY = 1` to trigger starvation.
+    * `INJURED`: Drops physical Shion to 200 HP and strips armour to test wounded state reactions.
+    * `LORE`: Signals `MEM_LORE_MENU_SIGNAL = 1` to open the Sister Talk Archive on demand.
+    * `KILLTHEPOOR`: Spawns an aggressive assassin ped equipped with Jo'on's current weapon, monitored by an active thread watchdog that destroys the assassin once Shion dies.
+    * `TRIGGERCHAT`: Interactive submenu to stream all chat scripts directly on demand.
 * **`chatFollow.txt` (`Sh_FolC`):**
   * Dedicated vocal dispatcher for Jo'on governing movement commands, vehicle transit, and immediate on-scene death reactions across 9 operational modes (`0`–`8`).
   * **Strict Priority Arbitration**: Movement and command bark modes (0–2, 4–8) instantly self-terminate if *any* priority lock (`> 0`) is active, ensuring Jo'on's tactical orders never stomp on ambient world banter, radio chats, or weather observations. 
@@ -608,7 +614,7 @@ The following table details the cross-script dependencies for every component in
 | **Scavenge Loot** | `Shion\Scav\scavLoot.txt` | Spawned by `ShionScav` | `MEM_TIMES_DUMPSTER`, `MEM_LAST_FED_HOURS`, `MEM_SHION_BUSY` | None | Resolves loot tables, heals Shion/CJ, grants weapons |
 | **Sister Talk Lore** | `Shion\ShionLore.txt` | Milestone triggers (Bits 0–30) | `MEM_PRIORITY_LOCK`, `MEM_SKYDIVE_LANDED`, `MEM_LOWRIDER_DONE` | `MEM_LORE_PROGRESS_BIT`, Performance ledger | Prompts `[Y/N]`, streams `loreTheater.c` |
 | **Lore Theater** | `Shion\Lore\loreTheater.txt`| Spawned by `ShionLore` or `loreMenu` | `MEM_LORE_PROGRESS_BIT`, `MEM_PRIORITY_LOCK` | None | Executes cutscene dialogue, sets progress bitmask |
-| **Lore Archive** | `Shion\Lore\loreMenu.txt`| "LORE", "ALLORE", or `ShionMenu` | `MEM_LORE_MENU_SIGNAL` | `MEM_LORE_PROGRESS_BIT` | UI panel for reviewing unlocked lore episodes |
+| **Lore Archive** | `Shion\Lore\loreMenu.txt`| "ALLORE", `ShionMenu`, or `ShionDebug` ("LORE") | `MEM_LORE_MENU_SIGNAL` | `MEM_LORE_PROGRESS_BIT` | UI panel for reviewing unlocked lore episodes |
 | **Safehouse Menu** | `Shion\ShionMenu.txt` | Hold `TAB` inside safehouse | `MEM_PRIORITY_LOCK`, `MEM_COMBAT_RES_MODE`, `MEM_DURGASTRA_FLAG`, `MEM_LORE_MENU_SIGNAL` | `MEM_SAFEHOUSE_DOOR_ID` | Safehouse configuration UI, launches `ShionMem` |
 | **Performance Review** | `Shion\ShionMem.txt` | Launched from `ShionMenu` | `MEM_SPOKEN_TOPICS_BIT`, `MEM_PRIORITY_LOCK` | Performance ledger (Kills, Fares, Wrecks, etc.) | Evaluates partnership stats across 9 interactive topics |
 | **Sandbox Banter** | `Shion\ShionSandbox.txt`| Water hose, sinking, stunts, civ punches | None | `MEM_SHION_BUSY`, `MEM_CARS_WRECKED`, `MEM_CAR_SMASH_SIGNAL`, `MEM_FLEX_SIGNAL` | Contextual reactions to sandbox actions |
@@ -624,4 +630,4 @@ The following table details the cross-script dependencies for every component in
 | **Hangout Reunion**   | `Shion\Chat\chatReunion.txt`| Recruited via `Y` at ambient hangout spot | `MEM_SHION_DEATH_FLAG`, `MEM_REUNION_SIGNAL`, `MEM_PRIORITY_LOCK` | `MEM_SHION_DEATH_WEAPON`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_IN_CAR` | Claims Tier 4 theater lock, delivers post-death sister banter or peacetime hangout dialogue |
 | **Follow & Transit Vocalizer**| `Shion\Chat\chatFollow.txt`| Triggered by `ShionFollow.c`, `ShionVehicle.c`, or death events (Modes 0–8) | `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_SHION_STANCE`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON`, `MEM_SHION_DEATH_IN_CAR` | Delivers Jo'on's combat/peaceful movement orders, vehicle transit barks, and stance-aware death reactions |
 | **Weather Banter**    | `Shion\Chat\chatWeather.txt`| Streamed by `ShionChat.c` on weather change/timer | `MEM_PRIORITY_LOCK`, `MEM_LAST_WEATHER_TIME` | `MEM_PRIORITY_LOCK`, `MEM_SHION_HANDLE`, `MEM_LAST_WEATHER_TIME` | Reads `[VehicleRoofTypes]` in `ShionVehicles.ini`, classifies open/enclosed cabins, delivers 5-group weather dialogue |
-| **Debug Subsystem**   | `Shion\ShionDebug.txt` | Cheats "SHDBG", "KILLPOOR", "KILLTHEPOOR", "TRIGGERCHAT" | `MEM_SHION_PRES_HP`, `MEM_SHION_PRES_ARMOUR` | `MEM_SHION_HANDLE` | Interactive in-game debug panel, sets Shion HP/armour, spawns weapon-synchronized assassin ped, triggers dialogue testing |
+| **Debug Subsystem**   | `Shion\ShionDebug.txt` | Cheats "SHDBG", "KILLPOOR", "HUNGRY", "FOOD", "INJURED", "LORE", "KILLTHEPOOR", "TRIGGERCHAT" | `MEM_SHION_PRES_HP`, `MEM_SHION_PRES_ARMOUR`, `MEM_LAST_FED_HOURS`, `MEM_SHION_HUNGRY`, `MEM_LORE_MENU_SIGNAL` | `MEM_SHION_HANDLE` | Centralized QA harness gated by `DebugMode`, sets HP/armour, triggers hunger, opens lore archive, spawns assassin ped, tests dialogue |

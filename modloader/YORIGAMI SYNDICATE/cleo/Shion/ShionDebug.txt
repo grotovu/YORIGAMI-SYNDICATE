@@ -10,9 +10,12 @@
 // YORIGAMI MASTER HEAP DICTIONARY (SCOPED TO SHIONDEBUG)
 // =========================================================================
 const
+    MEM_LORE_MENU_SIGNAL = 24
     MEM_SHION_HANDLE = 116
     MEM_SHION_PRES_HP = 160
     MEM_SHION_PRES_ARMOUR = 164
+    MEM_LAST_FED_HOURS = 228
+    MEM_SHION_HUNGRY = 404
 end
 
 :Connect_To_Brain
@@ -112,6 +115,30 @@ then
     end
 
     if
+        0ADC: test_cheat "HUNGRY"
+    then
+        gosub @Action_Hungry
+    end
+
+    if
+        0ADC: test_cheat "FOOD"
+    then
+        gosub @Action_Hungry
+    end
+
+    if
+        0ADC: test_cheat "INJURED"
+    then
+        gosub @Action_Injured
+    end
+
+    if
+        0ADC: test_cheat "LORE"
+    then
+        gosub @Action_Lore
+    end
+
+    if
         0ADC: test_cheat "KILLTHEPOOR"
     then
         gosub @Action_Killthepoor
@@ -199,16 +226,33 @@ then
             if
                 0039: 18@ == 1
             then
-                gosub @Action_Killthepoor
+                gosub @Action_Hungry
             end
             if
                 0039: 18@ == 2
+            then
+                gosub @Action_Injured
+            end
+            if
+                0039: 18@ == 3
+            then
+                gosub @Action_Killthepoor
+            end
+            if
+                0039: 18@ == 4
+            then
+                gosub @Close_Active_Menu
+                gosub @Action_Lore
+                0002: jump @Debug_Loop
+            end
+            if
+                0039: 18@ == 5
             then
                 gosub @Open_Chat_Menu
                 0002: jump @Debug_Loop
             end
             if
-                0039: 18@ == 3
+                0039: 18@ == 6
             then
                 gosub @Close_Active_Menu
                 0002: jump @Debug_Loop
@@ -457,14 +501,105 @@ end
 
 0ADF: add_text_label "DB_TIT" text "Debug Menu"
 0ADF: add_text_label "DB_M0" text "Set Shion HP 5 / Arm 0"
-0ADF: add_text_label "DB_M1" text "Summon Assassin Ped"
-0ADF: add_text_label "DB_M2" text "Trigger Dialogue..."
-0ADF: add_text_label "DB_M3" text "Close Menu"
+0ADF: add_text_label "DB_M1" text "Trigger Hunger"
+0ADF: add_text_label "DB_M2" text "Set Shion Wounded"
+0ADF: add_text_label "DB_M3" text "Summon Assassin Ped"
+0ADF: add_text_label "DB_M4" text "Open Lore Archive"
+0ADF: add_text_label "DB_M5" text "Trigger Dialogue..."
+0ADF: add_text_label "DB_M6" text "Close Menu"
 
-08D4: 16@ = create_panel_with_title 'DB_TIT' position 29.0 145.0 width 210.0 columns 1 interactive 1 background 1 alignment 0
+08D4: 16@ = create_panel_with_title 'DB_TIT' position 29.0 145.0 width 230.0 columns 1 interactive 1 background 1 alignment 0
 08D6: set_panel 16@ column 0 alignment 0
-08DB: set_panel 16@ column 0 header 'DUMMY' data 'DB_M0' 'DB_M1' 'DB_M2' 'DB_M3' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY'
+08DB: set_panel 16@ column 0 header 'DUMMY' data 'DB_M0' 'DB_M1' 'DB_M2' 'DB_M3' 'DB_M4' 'DB_M5' 'DB_M6' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY' 'DUMMY'
 17@ = 1
+return
+
+// =========================================================================
+// SUBROUTINE: ACTION HUNGRY (TRIGGER SHION STARVATION)
+// =========================================================================
+:Action_Hungry
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    0039: 10@ == 0
+then
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0AD1: print_formatted_now "~r~DEBUG: Shion is not summoned!" 2000
+    return
+end
+
+// Recalculate global hours to 48 hours ago
+0652: 9@ = integer_stat 134
+0012: 9@ *= 24
+00BF: 2@ = current_time_hours, 3@ = current_time_minutes
+005A: 9@ += 2@
+000E: 9@ -= 48
+if
+    001B: 0 > 9@
+then
+    9@ = 0
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_LAST_FED_HOURS
+0A8C: write_memory 30@ size 4 value 9@ virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HUNGRY
+0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0AD1: print_formatted_now "~w~DEBUG: ~b~HUNGRY ~y~(Starvation triggered)" 2500
+return
+
+// =========================================================================
+// SUBROUTINE: ACTION INJURED (DROP SHION TO 200 HP)
+// =========================================================================
+:Action_Injured
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+if or
+    002B: 0 >= 10@
+    856D: not actor 10@ defined
+    0118: actor 10@ dead
+then
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0AD1: print_formatted_now "~r~DEBUG: Shion must be a physical ped!" 2000
+    return
+end
+
+0223: set_actor 10@ health 200
+035F: actor 10@ armour += -5000
+
+// Sync preserved values in Master Heap
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_PRES_HP
+0A8C: write_memory 30@ size 4 value 200 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_PRES_ARMOUR
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0AD1: print_formatted_now "~w~DEBUG: ~b~INJURED ~r~(HP: 200 / Armour: 0)" 2500
+return
+
+// =========================================================================
+// SUBROUTINE: ACTION LORE (OPEN SISTER TALK ARCHIVE)
+// =========================================================================
+:Action_Lore
+0085: 30@ = 31@
+000A: 30@ += MEM_LORE_MENU_SIGNAL
+0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+0AD1: print_formatted_now "~w~DEBUG: ~b~LORE ~g~Signal Sent" 2000
 return
 
 :Open_Chat_Menu

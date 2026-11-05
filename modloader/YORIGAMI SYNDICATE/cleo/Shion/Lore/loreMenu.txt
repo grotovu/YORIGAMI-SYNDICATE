@@ -76,25 +76,13 @@ then
     end
 end
 
-// Main Trigger: Type "LORE" or Signal from Shion Menu
+// Main Trigger: Signal from Shion Menu or ShionDebug
 0085: 30@ = 31@
 000A: 30@ += MEM_LORE_MENU_SIGNAL
 0A8D: 15@ = read_memory 30@ size 4 virtual_protect 0
 
-11@ = 0
 if
-    0ADC: test_cheat "LORE"
-then
-    11@ = 1
-end
-if
-    15@ == 1
-then
-    11@ = 1
-end
-
-if
-    11@ == 1
+    0039: 15@ == 1
 then
     0085: 30@ = 31@
     000A: 30@ += MEM_LORE_MENU_SIGNAL
