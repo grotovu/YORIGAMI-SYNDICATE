@@ -620,17 +620,23 @@ then
 end
 
 28@ = 0
+089F: get_ped_type 29@ 26@
 if
-    02E0: actor 29@ firing_weapon
+    8039: not 26@ == 6
 then
-    28@ = 1
+    if
+        02E0: actor 29@ firing_weapon
+    then
+        28@ = 1
+    end
+    if and
+        28@ == 0
+        0E47: is_char_fighting 29@
+    then
+        28@ = 1
+    end
 end
-if and
-    28@ == 0
-    0E47: is_char_fighting 29@
-then
-    28@ = 1
-end
+
 if
     28@ == 0
 then
@@ -666,27 +672,32 @@ then
         // Attach Single Blue Hitodama Curse Flame above victim's head!
         0A92: create_custom_thread "Yorigami\FX_HexFlame.c" 29@ 2600
 
-        // Determine if target should retaliate after recovering
+        // Determine if target should retaliate after recovering (Cops exempt)
         18@ = 0
-        0E44: get_char_kill_target_char 29@ store_to 17@
+        089F: get_actor 29@ pedtype_to 23@
         if
-            003B: 17@ == $PLAYER_ACTOR
+            8039: not 23@ == 6
         then
-            18@ = 1
-        end
-
-        if
-            087A: gang_war_in_progress
-        then
-            089F: get_actor 29@ pedtype_to 17@
-            if and
-                17@ >= 7
-                14 >= 17@
+            0E44: get_char_kill_target_char 29@ store_to 23@
+            if
+                003B: 23@ == $PLAYER_ACTOR
             then
-                if
-                    8039: not 17@ == 8
+                18@ = 1
+            end
+
+            if
+                087A: gang_war_in_progress
+            then
+                089F: get_actor 29@ pedtype_to 23@
+                if and
+                    23@ >= 7
+                    16 >= 23@
                 then
-                    18@ = 1
+                    if
+                        8039: not 23@ == 8
+                    then
+                        18@ = 1
+                    end
                 end
             end
         end
@@ -697,23 +708,23 @@ then
             26@ == 1
         then
             // Gun Jam Outcome: Cower in Panic
-            0615: define_AS_pack_begin 12@
+            0615: define_AS_pack_begin 20@
             05C5: AS_actor -1 cower 2500 ms
             if
                 18@ == 1
             then
                 05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
             end
-            0616: define_AS_pack_end 12@
-            0618: assign_actor 29@ to_AS_pack 12@
-            061B: remove_references_to_AS_pack 12@
+            0616: define_AS_pack_end 20@
+            0618: assign_actor 29@ to_AS_pack 20@
+            061B: remove_references_to_AS_pack 20@
         else
             0209: 25@ = random_int_in_range 0 4
 
             if
                 25@ == 0
             then
-                0615: define_AS_pack_begin 12@
+                0615: define_AS_pack_begin 20@
                 0812: AS_actor -1 perform_animation "KO_SKID_FRONT" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 1 time 1500
                 0812: AS_actor -1 perform_animation "GETUP_FRONT" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
                 if
@@ -721,15 +732,15 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 end
-                0616: define_AS_pack_end 12@
-                0618: assign_actor 29@ to_AS_pack 12@
-                061B: remove_references_to_AS_pack 12@
+                0616: define_AS_pack_end 20@
+                0618: assign_actor 29@ to_AS_pack 20@
+                061B: remove_references_to_AS_pack 20@
             end
 
             if
                 25@ == 1
             then
-                0615: define_AS_pack_begin 12@
+                0615: define_AS_pack_begin 20@
                 0812: AS_actor -1 perform_animation "KO_SKID_BACK" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 1 time 1500
                 0812: AS_actor -1 perform_animation "GETUP" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
                 if
@@ -737,15 +748,15 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 end
-                0616: define_AS_pack_end 12@
-                0618: assign_actor 29@ to_AS_pack 12@
-                061B: remove_references_to_AS_pack 12@
+                0616: define_AS_pack_end 20@
+                0618: assign_actor 29@ to_AS_pack 20@
+                061B: remove_references_to_AS_pack 20@
             end
 
             if
                 25@ == 2
             then
-                0615: define_AS_pack_begin 12@
+                0615: define_AS_pack_begin 20@
                 0812: AS_actor -1 perform_animation "KO_SPIN_L" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 1 time 1500
                 0812: AS_actor -1 perform_animation "GETUP" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
                 if
@@ -753,15 +764,15 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 end
-                0616: define_AS_pack_end 12@
-                0618: assign_actor 29@ to_AS_pack 12@
-                061B: remove_references_to_AS_pack 12@
+                0616: define_AS_pack_end 20@
+                0618: assign_actor 29@ to_AS_pack 20@
+                061B: remove_references_to_AS_pack 20@
             end
 
             if
                 25@ == 3
             then
-                0615: define_AS_pack_begin 12@
+                0615: define_AS_pack_begin 20@
                 0812: AS_actor -1 perform_animation "KO_SPIN_R" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 1 time 1500
                 0812: AS_actor -1 perform_animation "GETUP" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
                 if
@@ -769,9 +780,9 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 end
-                0616: define_AS_pack_end 12@
-                0618: assign_actor 29@ to_AS_pack 12@
-                061B: remove_references_to_AS_pack 12@
+                0616: define_AS_pack_end 20@
+                0618: assign_actor 29@ to_AS_pack 20@
+                061B: remove_references_to_AS_pack 20@
             end
         end
     end

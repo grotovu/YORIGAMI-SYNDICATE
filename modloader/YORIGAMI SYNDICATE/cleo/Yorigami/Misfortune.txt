@@ -306,29 +306,39 @@ end
 
 16@ = 0 // Hostile Flag
 
-// Check 1: Firing or actively fighting
+// Check 1: Firing or actively fighting (Cops rely strictly on wanted level)
+089F: get_actor 29@ pedtype_to 28@
 if
-    02E0: actor 29@ firing_weapon
+    8039: not 28@ == 6
 then
-    16@ = 1
-end
-
-if and
-    16@ == 0
-    0E47: is_char_fighting 29@
-then
-    16@ = 1
-end
-
-// Check 2: Direct combat damage exchange with player
-if
-    16@ == 0
-then
-    if or
-        051A: actor $PLAYER_ACTOR damaged_by_actor 29@
-        051A: actor 29@ damaged_by_actor $PLAYER_ACTOR
+    if
+        02E0: actor 29@ firing_weapon
     then
         16@ = 1
+    end
+
+    if and
+        16@ == 0
+        0E47: is_char_fighting 29@
+    then
+        16@ = 1
+    end
+end
+
+// Check 2: Direct combat damage exchange with player (Cops rely strictly on wanted level)
+if
+    16@ == 0
+then
+    089F: get_actor 29@ pedtype_to 28@
+    if
+        8039: not 28@ == 6
+    then
+        if or
+            051A: actor $PLAYER_ACTOR damaged_by_actor 29@
+            051A: actor 29@ damaged_by_actor $PLAYER_ACTOR
+        then
+            16@ = 1
+        end
     end
 end
 
@@ -420,27 +430,32 @@ then
                 // Attach Single Blue Hitodama Curse Flame above victim's head!
                 0A92: create_custom_thread "Yorigami\FX_HexFlame.c" 29@ 2600
 
-                // Determine if target should retaliate after recovering
+                // Determine if target should retaliate after recovering (Cops exempt)
                 18@ = 0
-                0E44: get_char_kill_target_char 29@ store_to 19@
+                089F: get_actor 29@ pedtype_to 19@
                 if
-                    003B: 19@ == $PLAYER_ACTOR
+                    8039: not 19@ == 6
                 then
-                    18@ = 1
-                end
-
-                if
-                    087A: gang_war_in_progress
-                then
-                    089F: get_actor 29@ pedtype_to 19@
-                    if and
-                        19@ >= 7
-                        16 >= 19@
+                    0E44: get_char_kill_target_char 29@ store_to 19@
+                    if
+                        003B: 19@ == $PLAYER_ACTOR
                     then
-                        if
-                            8039: not 19@ == 8
+                        18@ = 1
+                    end
+
+                    if
+                        087A: gang_war_in_progress
+                    then
+                        089F: get_actor 29@ pedtype_to 19@
+                        if and
+                            19@ >= 7
+                            16 >= 19@
                         then
-                            18@ = 1
+                            if
+                                8039: not 19@ == 8
+                            then
+                                18@ = 1
+                            end
                         end
                     end
                 end

@@ -238,6 +238,8 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * **Wallet Drain Mode (`MEM_COMBAT_RES_MODE == 0`):** Monitors live weapon ammo. Each time ammo decreases by `N` rounds, looks up the shot cost from an internal weapon cost table (e.g. 9mm = $7, Desert Eagle = $80, Shotgun = $40, Sniper = $500, Minigun = $7, Rockets = $300) and deducts `N * Cost` directly from player cash.
   * **Bankruptcy Disarm:** If wallet drops <= $0 and cheat "DURGASTRA" is not active, disarms Shion immediately, sets stance to Peaceful (`MEM_SHION_STANCE = 0`), and displays `"CARD DECLINED"`.
   * **Innate Misfortune Aura:** Scans hostiles within 25m every 1s. Rolls a 20% bad luck check: forces victim to suffer gun jams (cower animation) or slip and knockdown animations (`KO_SKID_FRONT/BACK`, `KO_SPIN_L/R`), and spawns an attached `FX_HexFlame.c`.
+    * **Cop Retaliation Exemption:** Cops (`PedType 6`) are strictly exempt from both peacetime hostile targeting (`wanted_level == 0`) and post-recovery retaliation assignments (`18@ = 0`), preventing scripted `05E2: kill_actor` orders from re-aggroing pacified officers.
+    * **Task Pack Register Isolation:** Uses dedicated scratch register `20@` for AS pack construction (`0615`), fully decoupling sequence creation from the vehicle iterators (`12@`) used in Traffic Hex and Aviation Calamity.
   * **Innate Traffic Hex:** When wanted level > 1, scans police vehicles within 45m every 5s. Rolls 20% chance to force stall (`0477: action 1 time 3500`) and deflates front tires (`04FE`).
   * **Innate Aviation Calamity:** When wanted level > 2, scans helicopters and jets within 300m every 5s. Rolls 20% chance to detonate pursuit aircraft (`020B: explode_car`).
   * **Voodoo Damage Reflection (`OnShionDamage`):** Intercepts damage events on Shion; reflects incoming intensity back to the attacking ped or vehicle driver.
@@ -436,6 +438,8 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * **Vehicle Cruisers:** Switches squad cars to normal driving behavior (`00A9`) and immediately silences sirens (`0397: enable_car siren 0`).
     * **Foot Officers:** Clears primary and secondary tasks (`0792`, `0E96`, `0E97`), aborting active firearm aiming, pursuit sprints, and arrest attempts, then assigns ambient patrol navigation (`05DE: AS_actor walk_around_ped_path`).
   * *Misfortune Aura (`MEM_ALLOC_MISFORTUNE`):* Scans hostiles within 25m on a configurable pacing interval (`[ShionMisfortune] ScanIntervalSeconds`, default 5s, stored in `8@`). Rolls probability for physical stumble/knockdown animations or weapon jams.
+    * **Law Enforcement Combat Decoupling:** In peacetime (`wanted_level == 0`), cops (`PedType 6`) are excluded from firing/fighting checks (Check 1) and historical damage memory via `051A` (Check 2), relying strictly on active pursuit stars (Check 3).
+    * **Retaliation Suppression:** After recovering from a stumble or weapon jam, cops are filtered out of the kill-target check (`0E44`), guaranteeing `05E2: kill_actor $PLAYER_ACTOR` is never assigned to them.
 * **`Pursuit.txt` (`Y_Pursuit`):**
   * *Police Bribe:* Type "BRIBE" to clear 1 wanted star for cash ($20,000 default), incrementing `MEM_BRIBES_PAID`.
   * *Traffic Hex (`MEM_ALLOC_TRAFFICHEX`):* Scans 45m radius around player for pursuit cruisers and bikes when wanted level > 1 on a configurable interval (`[TrafficHex] ScanIntervalSeconds`, default 5s, stored in `18@`). Rolls stall chance, applies engine stall action, deflates tires on 4-wheel cruisers, and uses `20@` as a single-scan audio limiter.
