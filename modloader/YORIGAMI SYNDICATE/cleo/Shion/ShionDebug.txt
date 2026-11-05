@@ -556,7 +556,7 @@ end
 return
 
 // =========================================================================
-// SUBROUTINE: ACTION INJURED (DROP SHION TO 200 HP)
+// SUBROUTINE: ACTION INJURED (DROP SHION TO 500 HP)
 // =========================================================================
 :Action_Injured
 0085: 30@ = 31@
@@ -573,13 +573,13 @@ then
     return
 end
 
-0223: set_actor 10@ health 200
+0223: set_actor 10@ health 500
 035F: actor 10@ armour += -5000
 
 // Sync preserved values in Master Heap
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_PRES_HP
-0A8C: write_memory 30@ size 4 value 200 virtual_protect 0
+0A8C: write_memory 30@ size 4 value 500 virtual_protect 0
 
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_PRES_ARMOUR
@@ -587,7 +587,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0AD1: print_formatted_now "~w~DEBUG: ~b~INJURED ~r~(HP: 200 / Armour: 0)" 2500
+0AD1: print_formatted_now "~w~DEBUG: ~b~INJURED ~r~(HP: 500 / Armour: 0)" 2500
 return
 
 // =========================================================================

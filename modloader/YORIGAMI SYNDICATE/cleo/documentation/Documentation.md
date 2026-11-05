@@ -370,7 +370,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Features direct cheat and menu actions:
     * `KILLPOOR`: Strips Shion to 5 HP and 0 Armour across ped and Hitodama forms.
     * `HUNGRY` / `FOOD`: Rewinds `MEM_LAST_FED_HOURS` by 48 hours and asserts `MEM_SHION_HUNGRY = 1` to trigger starvation.
-    * `INJURED`: Drops physical Shion to 200 HP and strips armour to test wounded state reactions.
+    * `INJURED`: Drops physical Shion to 500 HP and strips armour to test wounded state reactions.
     * `LORE`: Signals `MEM_LORE_MENU_SIGNAL = 1` to open the Sister Talk Archive on demand.
     * `KILLTHEPOOR`: Spawns an aggressive assassin ped equipped with Jo'on's current weapon, monitored by an active thread watchdog that destroys the assassin once Shion dies.
     * `TRIGGERCHAT`: Interactive submenu to stream all chat scripts directly on demand.
