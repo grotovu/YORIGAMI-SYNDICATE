@@ -360,9 +360,10 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Features direct cheat and menu actions: `KILLPOOR` (strips Shion to 5 HP and 0 Armour across ped and Hitodama forms), `KILLTHEPOOR` (spawns an aggressive assassin ped equipped with Jo'on's current weapon and monitored by an active thread watchdog that destroys the assassin once Shion dies), and `TRIGGERCHAT` (an interactive testing submenu to stream dialogue scripts on demand).
 * **`chatFollow.txt` (`Sh_FolC`):**
   * Dedicated vocal dispatcher for Jo'on governing movement commands, vehicle transit, and immediate on-scene death reactions across 9 operational modes (`0`–`8`).
-  * Modes 0–2 & 4–8: Delivers contextual orders for on-foot recall (`G`), stay-put (`H`), distance separation (> 130m), vehicle disembarkation, in-vehicle waiting, seat cycling, boarding calls, and spatial Hitodama warps.
-  * Mode 3 (Immediate Death Reaction): Claims Tier 3 Priority Lock the exact frame Shion perishes and executes a granular contextual reaction tree evaluating `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON`, and `MEM_SHION_DEATH_IN_CAR`.
-  * Features 2-stage reactive monologues when Jo'on is the killer (initial shock/expletive followed by selfish blame-shifting) and furious reprimands when enemies/world hazards take Shion down across 7 damage categories (Vehicular Run-Over, 3-way Vehicle Detonation, Heavy Explosives, Direct Shootouts, Granular Melee/Toys/Flowers/Blades/Bludgeons/Rings, Drowning, and Generic Fall/Impact).
+  * **Strict Priority Arbitration**: Movement and command bark modes (0–2, 4–8) instantly self-terminate if *any* priority lock (`> 0`) is active, ensuring Jo'on's tactical orders never stomp on ambient world banter, radio chats, or weather observations. 
+  * Mode 3 (Immediate Death Reaction): Claims Tier 3 Priority Lock the exact frame Shion perishes. This is the only mode permitted to forcefully preempt lower-tier ambient chats, though it safely yields to Tier 4 Master Theater events. Executes a granular contextual reaction tree evaluating `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON`, and `MEM_SHION_DEATH_IN_CAR`.
+  * Safe Lock Releases: Guarantees audio channel safety by explicitly verifying its own claimed tier level (`2` for commands, `3` for deaths) before releasing the lock back to `0`, preventing accidental clearing of higher-priority events.
+  * Features 2-stage reactive monologues when Jo'on is the killer.
 
 ---
 
