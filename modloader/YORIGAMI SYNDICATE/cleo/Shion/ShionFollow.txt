@@ -383,6 +383,7 @@ then
             0638: AS_actor 10@ stay_put 1
 
             // Trigger Jo'on Stay Put Dialogue
+            0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
             0A92: create_custom_thread "Shion\Chat\chatFollow.c" 1
         end
 
@@ -471,6 +472,8 @@ then
                     0449: actor 10@ in_a_car
                 then
                     0633: AS_actor 10@ exit_car
+
+                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
                     // Trigger Jo'on Exit Car Recall Dialogue via chatFollow (Mode 4)
                     0A92: create_custom_thread "Shion\Chat\chatFollow.c" 4
                 end
@@ -501,6 +504,8 @@ then
                 then
                     11@ = 0
                     9@ = 0
+
+                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
                     // Trigger Jo'on Recall Dialogue via chatFollow (Mode 8: Warp)
                     0A92: create_custom_thread "Shion\Chat\chatFollow.c" 8
                     gosub @Execute_Shion_OnFoot_Warp
@@ -512,6 +517,7 @@ then
                     if
                         0021: 26@ > 15.0
                     then
+                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
                         // Trigger Jo'on Recall Dialogue via chatFollow (Mode 8: Warp)
                         0A92: create_custom_thread "Shion\Chat\chatFollow.c" 8
                         gosub @Execute_Shion_OnFoot_Warp
@@ -526,6 +532,7 @@ then
                         end
                         018C: play_sound 1058 at 0.0 0.0 0.0
 
+                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_FolC"
                         // Trigger Jo'on Recall Dialogue via chatFollow (Mode 0: On-foot recall)
                         0A92: create_custom_thread "Shion\Chat\chatFollow.c" 0
                     end
