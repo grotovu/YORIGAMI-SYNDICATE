@@ -49,6 +49,7 @@ end
 10@ = 76  // SwitchKey (Default: 76 = L)
 11@ = 0.0 // Last Tracked Fat Stat (float)
 12@ = 0.0 // Last Tracked Muscle Stat (float)
+18@ = 0   // Prostitute Suppression State (-1 = Disabled in INI, 0 = Enabled)
 19@ = 0   // Girlfriend Suppression State (-1 = Disabled in INI, 0 = CJ, 1 = Suppressed)
 20@ = 1   // Target Armed Weapon Slot (Default: 1 = Unarmed/Fists)
 29@ = 0   // Save Watchdog Reload Latch
@@ -66,8 +67,8 @@ gosub @Load_Joon_Settings
 // Ensure native player-ignore flag is completely cleared
 03BF: set_player $PLAYER_CHAR ignored_by_everyone 0
 
-// Register Save Confirmation Callback (Using isolated 18@ to protect 20@ TargetSlot)
-0ED1: set_script_event_save_confirmation 1 @OnSaveConfirmationCallback 18@
+// Register Save Confirmation Callback (Using scratch 2@ to free up 18@)
+0ED1: set_script_event_save_confirmation 1 @OnSaveConfirmationCallback 2@
 
 :Joon_MainLoop
 wait 50
@@ -463,6 +464,20 @@ then
             gosub @Restore_Girlfriend_Radar_Blips
         end
     end
+end
+
+// =========================================================================
+// PROSTITUTE SOLICITATION WATCHDOG (Suppresses "Good Time Honey" in Jo'on Mode)
+// =========================================================================
+if and
+    18@ >= 0 // Feature enabled in Shion.ini (SuppressProstitutes != 0)
+    0@ > 0   // Jo'on (1) or Shion (2) active
+    8E1D: not is_on_mission
+    00DF: actor $PLAYER_ACTOR driving
+    TIMERA >= 200
+then
+    TIMERA = 0
+    gosub @Suppress_Nearby_Prostitutes
 end
 
 goto @Joon_MainLoop
@@ -1713,5 +1728,54 @@ then
     19@ = -1 // Feature disabled in INI
 else
     19@ = 0 // Enable feature (Always reset to baseline 0 so reloaded saves re-suppress cleanly)
+end
+
+// Read Prostitute Suppression Setting (Tri-state 18@: -1 = Disabled, 0 = Enabled)
+0AF0: 2@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "SuppressProstitutes"
+if
+    2@ == 0
+then
+    18@ = -1 // Feature disabled in INI
+else
+    18@ = 0  // Enabled
+end
+return
+
+// =========================================================================
+// SUBROUTINE: SUPPRESS PROSTITUTE SOLICITATION (Task ID 1309)
+// =========================================================================
+:Suppress_Nearby_Prostitutes
+04C4: store_coords_to 21@ 22@ 23@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.0
+24@ = 0
+
+:Prostitute_Scan_Loop
+0AE1: 25@ = random_char_near_point 21@ 22@ 23@ in_radius 12.0 find_next 24@ pass_deads 1
+if
+    25@ > 0
+then
+    24@ = 1
+    if and
+        056D: actor 25@ defined
+        8118: not actor 25@ dead
+        803B: not 25@ == $PLAYER_ACTOR
+    then
+        089F: get_actor 25@ pedtype_to 26@
+        if
+            26@ == 21 // CIVFEMALE_PROSTITUTE
+        then
+            if or
+                0E42: is_char_doing_task_id 25@ 1309 // TASK_COMPLEX_PROSTITUTE_SOLICIT
+                0E42: is_char_doing_task_id 25@ 700  // TASK_COMPLEX_ENTER_CAR_AS_PASSENGER
+            then
+                // Abort prostitute solicitation immediately before dialogue or window approach
+                0A43: get_rid_of_player_prostitute
+                0792: clear_char_tasks_immediately 25@
+                0E96: clear_char_primary_tasks 25@
+                0E97: clear_char_secondary_tasks 25@
+                05DE: AS_actor 25@ walk_around_ped_path
+            end
+        end
+    end
+    goto @Prostitute_Scan_Loop
 end
 return
