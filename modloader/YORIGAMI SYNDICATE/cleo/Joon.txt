@@ -1742,14 +1742,14 @@ end
 return
 
 // =========================================================================
-// SUBROUTINE: SUPPRESS PROSTITUTE SOLICITATION (Task ID 1309)
+// SUBROUTINE: SUPPRESS PROSTITUTE SOLICITATION (Task ID 1309 / 1216 / 1217)
 // =========================================================================
 :Suppress_Nearby_Prostitutes
 04C4: store_coords_to 21@ 22@ 23@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.0
 24@ = 0
 
 :Prostitute_Scan_Loop
-0AE1: 25@ = random_char_near_point 21@ 22@ 23@ in_radius 12.0 find_next 24@ pass_deads 1
+0AE1: 25@ = random_char_near_point 21@ 22@ 23@ in_radius 20.0 find_next 24@ pass_deads 1
 if
     25@ > 0
 then
@@ -1760,22 +1760,73 @@ then
         803B: not 25@ == $PLAYER_ACTOR
     then
         089F: get_actor 25@ pedtype_to 26@
-        if
-            26@ == 22 // CIVFEMALE_PROSTITUTE
+
+        // Flag 27@ determines if this ped is executing a prostitute interaction
+        27@ = 0
+
+        // Direct solicitation tasks (1309 = Solicit, 1216 = Approach & Lean, 1217 = Lean on car)
+        if or
+            0E42: is_char_doing_task_id 25@ 1309
+            0E42: is_char_doing_task_id 25@ 1216
+            0E42: is_char_doing_task_id 25@ 1217
         then
-            if or
-                0E42: is_char_doing_task_id 25@ 1309 // TASK_COMPLEX_PROSTITUTE_SOLICIT
-                0E42: is_char_doing_task_id 25@ 700  // TASK_COMPLEX_ENTER_CAR_AS_PASSENGER
+            27@ = 1
+        end
+
+        // Boarding tasks on PedType 22 (Prostitutes attempting to enter passenger door)
+        if
+            27@ == 0
+        then
+            if
+                26@ == 22 // PROSTITUTE
             then
-                // Abort prostitute solicitation immediately before dialogue or window approach
-                0A43: get_rid_of_player_prostitute
-                0792: clear_char_tasks_immediately 25@
-                0E96: clear_char_primary_tasks 25@
-                0E97: clear_char_secondary_tasks 25@
-                05DE: AS_actor 25@ walk_around_ped_path
+                if or
+                    0E42: is_char_doing_task_id 25@ 700  // ENTER_CAR_AS_PASSENGER
+                    0E42: is_char_doing_task_id 25@ 800  // GO_TO_CAR_DOOR_AND_STAND_STILL
+                    0E42: is_char_doing_task_id 25@ 802  // CAR_OPEN_DOOR_FROM_OUTSIDE
+                    0E42: is_char_doing_task_id 25@ 807  // CAR_GET_IN
+                then
+                    27@ = 1
+                end
             end
+        end
+
+        if
+            27@ == 1
+        then
+            // Abort player prostitute session immediately and send her walking away
+            0A43: get_rid_of_player_prostitute
+            0687: clear_actor 25@ task
+            0E96: clear_char_primary_tasks 25@
+            0E97: clear_char_secondary_tasks 25@
+            05DE: AS_actor 25@ walk_around_ped_path
         end
     end
     goto @Prostitute_Scan_Loop
+end
+
+// Failsafe: Eject any prostitute that managed to enter passenger seat 0
+03C0: 27@ = actor $PLAYER_ACTOR car
+if
+    056E: car 27@ defined
+then
+    0432: 28@ = get_actor_handle_from_car 27@ passenger_seat 0
+    if
+        28@ > 0
+    then
+        if
+            803B: not 28@ == 1@ // Strictly ignore companion Shion
+        then
+            089F: get_actor 28@ pedtype_to 26@
+            if
+                26@ == 22 // PROSTITUTE
+            then
+                0A43: get_rid_of_player_prostitute
+                0687: clear_actor 28@ task
+                0633: AS_actor 28@ exit_car
+                05DE: AS_actor 28@ walk_around_ped_path
+            end
+        end
+    end
 end
 return
