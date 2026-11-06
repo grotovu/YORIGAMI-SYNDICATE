@@ -274,7 +274,8 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Writes lethal telemetry to `MEM_SHION_DEATH_FLAG`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON`, and `MEM_SHION_DEATH_IN_CAR`.
 * **`ShionRetaliation.txt` (`Sh_Retal`):**
   * Anti-abuse system active exclusively when player is CJ (`MEM_PLAYER_FORM == 0`).
-  * If CJ punches or attacks Shion, intercepts the damage event, applies recursion lock `MEM_DMG_RECURSION_LCK`, immediately deals 35 HP recoil damage back to CJ, forces him into a hit-stagger animation (`"hit_front"`), creates blue burst coronas, plays speech line, dissolves Shion via `FX_Warp.c`, and terminates companion daemons.
+  * **On-Foot Retaliation**: If CJ punches or shoots Shion on foot, intercepts the damage event via `0EDE`, engages recursion lock `MEM_DMG_RECURSION_LCK`, deals 35 HP recoil damage back to CJ, forces him into a hit-stagger animation (`"hit_front"`), renders sapphire burst coronas, displays priority subtitle (`Y_CJRET`), dissolves Shion via `FX_Warp.c`, and terminates companion daemons.
+  * **Vehicular Run-Over Retaliation**: Intercepts vehicular damage when CJ is driving (`00DF`), evaluating vehicle pointers, car damage status (`051B`), and impact damage types (`49` *Rammed*, `50` *Run Over*). If CJ attempts to ram or run Shion over, Shion instantly dissolves with hitodama warp FX (`FX_Warp.c`), CJ's vehicle is immediately set ablaze (`health_to 240` and `0325` fire attachment), and companion daemons are cleanly flushed.
 
 ### Sustenance, Scavenging & Dining
 * **`ShionFood.txt` (`Sh_Food`):**
@@ -606,7 +607,7 @@ The following table details the cross-script dependencies for every component in
 | **Companion Combat** | `Shion\ShionCombat.txt` | Firing weapons, "DURGASTRA" | `MEM_SHION_KILLS`, `MEM_JOON_KILLS_W_SHION`, `MEM_DURGASTRA_FLAG` | `MEM_COMBAT_RES_MODE`, `MEM_SHION_STANCE`, `MEM_SHION_WEAPON_ID` | Deducts shot costs, disarms on bankruptcy, reflects damage |
 | **Gear Swap** | `Shion\ShionGear.txt` | `Y + R` on foot near Shion | `MEM_SHION_WEAPON_ID`, `MEM_SHION_AMMO_COUNT`, `MEM_SHION_STANCE` | `MEM_COMBAT_RES_MODE`, `MEM_SHION_HANDLE` | Exchanges weapons between Jo'on and Shion, auto-disarms when dry |
 | **Death Telemetry** | `Shion\ShionDeathTracker.txt`| Shion takes damage or dies | `MEM_SHION_DEATH_FLAG`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON`, `MEM_SHION_DEATH_IN_CAR` | `MEM_CAR_SMASH_SIGNAL`, `MEM_SHION_HANDLE` | Logs cause of death for post-death quips and lockouts |
-| **CJ Retaliation** | `Shion\ShionRetaliation.txt`| CJ punches/attacks Shion | `MEM_SHION_HANDLE`, `MEM_DMG_RECURSION_LCK` | `MEM_PLAYER_FORM` | Damages CJ, staggers him, despawns Shion |
+| **CJ Retaliation**   | `Shion\ShionRetaliation.txt`| CJ attacks or rams Shion with vehicle | `MEM_SHION_HANDLE`, `MEM_DMG_RECURSION_LCK`, `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM` | Damages CJ or ignites vehicle, plays reaction, despawns Shion |
 | **Follow & Transit** | `Shion\ShionFollow.txt` | `H` (Stay Put), `G` (Recall/Warp), Doors | `MEM_SHION_STAY_PUT`, `MEM_SAFEHOUSE_DOOR_ID`, `MEM_TIMES_WASTED/BUSTED`| `MEM_SHION_BUSY`, `MEM_INTENTIONAL_DISM` | Warps Shion indoors/outdoors, spawns `FX_Warp` |
 | **Vehicle Seat Sync** | `Shion\ShionVehicle.txt` | Player driving, `G` (Board/Cycle), `H` | `MEM_SHION_STAY_PUT` | `MEM_SHION_BUSY`, `MEM_SHION_STAY_PUT` | Warps Shion into car seats, cycles seats, bails out on fire |
 | **Target Acquisition** | `Shion\ShionCombatRedMarker.txt`| Red blips on radar | None | `MEM_SHION_STANCE`, `MEM_SHION_STAY_PUT` | Commands Shion to attack red-marked targets or execute drive-bys |
