@@ -168,6 +168,7 @@ If you want to rebind hotkeys, adjust perk caps, change scan intervals (`ScanInt
 * **Misaki Yutsuki** — Shion MMD model port to GTA SA.
 * **WarButler, DK22Pac, Junior_Djjr, Ezekiel, Function-X** — *CombatFX* (Base shootlight FX modified into custom `joon_gold` and `shion_misfortune` particle systems via texture and keyvalue edits).
 * **Lighthoneygirl** — *Smoking Mod* (The original F11 smoking mod that served as a reference for playing secondary animations and cigarette mechanics).
+* **Artem.1.9.9.6** — _Busy Pedestrians: Peds Events Project_ (the Para Jumper.txt as reference for skydiving and parachute related scripts).
 
 ---
 
