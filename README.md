@@ -186,7 +186,8 @@ All creative direction, systems architecture, mechanical balance (the prestige t
 **Note:** These links leads to my personal blog. It contains unfiltered analysis and embraces the darker, messy, and taboo elements of Japanese doujin culture. Proceed accordingly.
 * [An explanation for Jo'on's dialogue:](https://eagleraviorange.bearblog.dev/explanation-and-ramblings-about-joons-dialogue-in-my-mod-yorigami-syndicate/) 
   *Ramblings about linguistic inspirations, localizing Japanese Shitamachi speech patterns into English.*
-* [A text regarding Jo'on Yorigami's ability to adapt to the current era and environment, and what that means in a criminal sandbox game](https://eagleraviorange.bearblog.dev/a-text-regarding-joon-yorigamis-ability-to-adapt-to-the-current-era-and-environment-and-what-that-means-in-a-criminal-sandbox-game/) 
+* [A text regarding Jo'on Yorigami's ability to adapt to the current era and environment, and what that means in a criminal sandbox game](https://eagleraviorange.bearblog.dev/a-text-regarding-joon-yorigamis-ability-to-adapt-to-the-current-era-and-environment-and-what-that-means-in-a-criminal-sandbox-game/)
+* [A text regarding the thought process on building Shion Yorigami as a companion in GTA San Andreas](https://eagleraviorange.bearblog.dev/a-text-regarding-the-thought-process-on-building-shion-yorigami-in-gta-san-andreas/)
 
 ---
 
