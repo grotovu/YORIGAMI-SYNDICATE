@@ -304,7 +304,12 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 * **`ShionChat.txt` (`Y_ShChat`):**
   * Central dialogue router running an ambient timer (90–150s pacing) during peacetime free-roam and sub-missions.
   * Listens for manual conversation prompt via `Y + T`.
-  * Evaluates health emergencies (critical health triggers high-priority panic lines).
+  * Evaluates health emergencies (critical health triggers high-priority panic lines) and vehicular overspeed panic (`Y_SDWN` at > 40.0 m/s).
+  * **"No Chill Under Heat" Dispatch Priority**: Evaluates active wanted stars (`wanted_level > 0`) immediately after emergency health and speed checks, executing **before** any vehicular driving, cruising, or peacetime sub-mission pools. Completely blocks all chill ambient categories (`chatRadio`, `chatVehicle`, `chatWeather`, `chatZone`, `chatMoney`, `chatInterior`, `chatIdle`, `chatIdleSniper`) while wanted stars are active.
+  * **Pursuit & Sub-Mission Routing**:
+    * *Free-Roam with Heat*: Routes 100% directly to `chatWanted.c`, eliminating false cruising and radio chat.
+    * *Vigilante Sub-Mission under Heat*: Splits 50/50 between Vigilante combat scanner lines (`chatSubMission.c`) and pursuit banter (`chatWanted.c`).
+    * *Active Recognized Sub-Missions under Heat*: Splits 50/50 between job distress lines (`chatSubMission.c`) and pursuit chatter (`chatWanted.c`), bypassing peacetime radio/weather pools.
   * **Marine & Aerial Physics Gatekeeper (`Check_Swimming_Or_Falling`)**: Strictly inspects player and companion states for water immersion (`04AD`), active swimming (`0965`), and unassisted on-foot freefall (`0818` with ground clearance > 2.0m, explicitly exempting jetpack flight `0A0C`). Automatically disarms the manual `Y + T` prompt, holds the ambient timer at 0 to avoid immediate trigger spikes upon landing, and blocks out-of-context free-roam scripts (`chatIdle.c`, `chatIdleSniper.c`, `chatMoney.c`, `chatZone.c`, `chatWeather.c`) while explicitly exempting active *Beat the Cock* Triathlon swimming ($Mission_BeatTheCock_Type > 0) so aquatic sub-mission dialogue can be summoned.
   * Evaluates context and dispatches to specialized sub-scripts: `chatWanted.c`, `chatSubMission.c`, `chatZone.c`, `chatRadio.c`, `chatVehicle.c` (strictly partitioned by vehicle category, preventing generic car cruising lines from leaking into boats or planes), `chatWeather.c`, `chatMoney.c`, `chatInterior.c`, `chatIdle.c`, `chatIdleSniper.c`.
 * **`chatWeather.txt` (`Sh_Wthr`):**
@@ -388,8 +393,12 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * `TRIGGERCHAT`: Interactive submenu to stream all chat scripts directly on demand.
 * **`chatWanted.txt` (`Sh_Star`):**
   * Context-aware pursuit dialogue router evaluating wanted stars (1–6).
-  * **Sensor-First Architecture:** Eliminates "phantom" references by scanning the physical 3D world before rolling dialogue. Choppers (100m), Tanks (50m), Police Bikes (35m), and Forward-Arc Roadblocks (30m radius, 40m ahead) must exist in the world for their specific lines to play.
-  * **3-Tier Cabin & Transit Matrix:** Accurately routes dialogue based on transit state (Air, Water, Enclosed Car, Open-Air/Bike, On Foot, or Train).
+  * **Sensor-First Architecture:** Eliminates "phantom" references by scanning the physical 3D world before rolling dialogue. Uses explicit `0029: >=` boundary opcodes to ensure sensors activate on exact threshold stars:
+    * *Sensor 1 (Police Bikes)*: 35m radius for active HPV-1000s (`523`) with live drivers (ground-only).
+    * *Sensor 2 (Police / News Helicopters)*: 100m 3D radius for Mavericks (`497`) and News Choppers (`488`) at $\ge 3$ Stars.
+    * *Sensor 3 (Forward Roadblocks)*: 30m radius, 40m ahead for stopped/parked police cruisers at $\ge 2$ Stars (driving ground vehicles).
+    * *Sensor 4 (Rhino Tanks)*: 50m radius for Rhinos (`432`) at 6 Stars (ground/foot-only).
+  * **3-Tier Cabin & Transit Matrix:** Accurately routes dialogue based on transit state (Air, Water, Enclosed Car, Open-Air/Bike, On Foot, or Train), with custom Hitodama spectral shield variants.
   * **Mid-Speech Abort:** Immediately terminates banter and releases Priority Lock if stars are cleared via Pay 'n' Spray or bribes mid-sentence.
 * **`chatFollow.txt` (`Sh_FolC`):**
   * Dedicated vocal dispatcher for Jo'on governing movement commands, vehicle transit, and immediate on-scene death reactions across 9 operational modes (`0`–`8`).
