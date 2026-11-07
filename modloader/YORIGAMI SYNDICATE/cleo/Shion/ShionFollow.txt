@@ -306,8 +306,7 @@ then
     end
 
     if and
-        0039: 28@ == 0 // Both outdoors in the same world
-        003B: 28@ == 27@
+        003B: 28@ == 27@ // Both in the same world/interior!
         816B: not fading
         8E25: not is_on_cutscene
     then
@@ -351,7 +350,7 @@ then
         end
 
         // -----------------------------------------------------------------
-        // [H] Key: On-Foot Stay Put (Strictly Outside Vehicles)
+        // [H] Key: On-Foot Stay Put (Strictly Outside Vehicles, Indoors & Outdoors)
         // -----------------------------------------------------------------
         if and
             8449: not actor $PLAYER_ACTOR in_a_car // On foot only
@@ -562,9 +561,10 @@ then
         end
 
         // -----------------------------------------------------------------
-        // Hard Despawn Fallback (Distance > 130m, suppressed if waiting in car)
+        // Hard Despawn Fallback (Distance > 130m, strictly outdoors only)
         // -----------------------------------------------------------------
         if and
+            0039: 28@ == 0 // Never hard despawn while inside interiors
             0021: 26@ > 130.0
             8039: not 15@ == 2
         then
@@ -646,6 +646,7 @@ goto @ShionFollow_Loop
 0792: disembark_instantly_actor 10@
 000F: 22@ -= 1.0
 00A1: put_actor 10@ at 20@ 21@ 22@
+0860: link_actor 10@ to_interior 28@
 0639: AS_actor 10@ rotate_to_actor $PLAYER_ACTOR
 
 07AF: 12@ = player $PLAYER_CHAR group

@@ -208,12 +208,17 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 * **`ShionFollow.txt` (`Sh_Flw`):** 
   * Controls physical companion following behavior, distance-keeping, and auto-catchup.
   * **Universal Anti-Fatigue Watchdog:** Continuously monitors on-foot Shion across **both indoor and outdoor environments** (`8449: not actor in_a_car` and `003B: active_interior == companion_interior`), decoupled from exterior-only distance logic. Intercepts `TASK_SIMPLE_TIRED` (`219`), `"IDLE_TIRED"`, and `"idle_tired"`, immediately wiping primary and secondary tasks (`0E96`/`0E97`) and restoring group follow/stay-put formation.
-  * Implements `H` on foot to trigger "Stay Put" mode (`MEM_SHION_STAY_PUT = 1`, removes from group, applies `0638: AS_actor stay_put 1`). Pressing `G` cancels Stay Put globally and reasserts group follow.
+  * **Indoor & Outdoor Tactical Commands (`G` & `H`):**
+    * Decoupled tactical inputs from outdoor-only gates (`28@ == 0`), executing whenever Jo'on and Shion share the same environment (`003B: 28@ == 27@`).
+    * Pressing `H` on foot indoors or outdoors commands Stay Put (`MEM_SHION_STAY_PUT = 1`, `07B3` command 1, and `0638: AS_actor stay_put 1`), playing Jo'on's stay-put voice line.
+    * Pressing `G` cancels Stay Put globally and reasserts group follow. Single-tap `G` nearby commands a sprint catch-up (`stop_within_radius 1.5m`); double-tap `G` or long-range recall (> 15m) executes an instant spatial warp (`FX_Warp.c`).
+    * Warp execution (`Execute_Shion_OnFoot_Warp`) explicitly asserts `0860: link_actor to_interior 28@` to eliminate interior culling or mesh voids upon arrival.
   * If Shion was locked waiting inside a vehicle (`MEM_SHION_STAY_PUT == 2`), pressing `G` on foot unlocks the doors, commands an orderly car exit (`0633: AS_actor exit_car`), and streams `chatFollow.c 4` (Mode 4: Exit Vehicle Recall).
   * **Zero-Collision Recall Architecture**: Safely caches previous stay-put states into `29@` (preventing register collisions with the active interior tracker `8@` and eliminating false 2.15s doorway mesh freezes).
   * **Strict Task Execution Ordering**: Clears stay-put and old tasks *prior* to re-registering group membership (`0631`) and follow commands (`07B3`), ensuring native group follow intelligence is never wiped.
-  * Single tap `G` triggers an on-foot sprint to Jo'on (`stop_within_radius 1.5m`) and streams Mode 0 recall dialogue; double-tap `G` or long-range recall (> 15m) streams Mode 8 warp dialogue and triggers an instant spatial warp (`FX_Warp.c`).
-  * Auto-warps Shion if distance > 45m; initiates despawn if distance > 130m.
+  * **Distance Bounds & Despawn Shielding:**
+    * Auto-warps Shion if distance > 45m across both indoor and outdoor spaces.
+    * Hard despawn fallback (> 130m) is strictly restricted to outdoor roaming (`28@ == 0`), guaranteeing companion Shion is never permanently destroyed or despawned while navigating large interior environments (casinos, arenas, mansions).
   * Detects interior changes via active interior `28@`. Enforces a 2150ms mesh loading delay before reading player coordinates, matching them against 32 known Safehouse EnEx doorways (`MEM_SAFEHOUSE_DOOR_ID`), and placing Shion inside.
 * **`ShionVehicle.txt` (`Sh_Sync`):**
   * Controls vehicle passenger seat synchronization.
