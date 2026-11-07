@@ -17,6 +17,7 @@ const
     MEM_COMBAT_RES_MODE = 132
     MEM_CMBT_HITODAMA_FX = 156
     MEM_SAFEHOUSE_DOOR_ID = 340
+    MEM_DURGASTRA_PREV_MODE = 416
 end
 
 // 0@ = Shion Actor Handle passed on boot
@@ -313,17 +314,14 @@ then
             else
                 21@ = 1 // Switch to Gear Swap
 
-                // Automatically seal Durgastra! (Gear Swap uses physical ammo, not infinite debt)
+                // Automatically seal Durgastra when manually switching to Gear Swap
                 0085: 30@ = 31@
                 000A: 30@ += MEM_DURGASTRA_FLAG
-                0A8D: 22@ = read_memory 30@ size 4 virtual_protect 0
-                if
-                    22@ == 1
-                then
-                    0085: 30@ = 31@
-                    000A: 30@ += MEM_DURGASTRA_FLAG
-                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-                end
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_DURGASTRA_PREV_MODE
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
             end
             0085: 30@ = 31@
             000A: 30@ += MEM_COMBAT_RES_MODE
@@ -342,19 +340,53 @@ then
             if
                 21@ == 1
             then
-                21@ = 0
-                018C: play_sound 1057 at 0.0 0.0 0.0 // Deactivate buzzer
+                // DEACTIVATE DURGASTRA
+                0085: 30@ = 31@
+                000A: 30@ += MEM_DURGASTRA_FLAG
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+                // Check if we came from Gear Swap
+                0085: 30@ = 31@
+                000A: 30@ += MEM_DURGASTRA_PREV_MODE
+                0A8D: 22@ = read_memory 30@ size 4 virtual_protect 0
+                if
+                    22@ == 1
+                then
+                    // Restore Gear Swap mode
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_COMBAT_RES_MODE
+                    0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+                    0AF1: write_int 1 to_ini_file "cleo\Shion.ini" section "Companion" key "CombatResourceMode"
+                end
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_DURGASTRA_PREV_MODE
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+                018C: play_sound 1057 at 0.0 0.0 0.0
             else
-                21@ = 1
-                // Automatically enforce Wallet Drain when turning on Durgastra!
+                // ACTIVATE DURGASTRA
+                // Snapshot live combat resource mode before forcing Wallet Drain
+                0085: 30@ = 31@
+                000A: 30@ += MEM_COMBAT_RES_MODE
+                0A8D: 22@ = read_memory 30@ size 4 virtual_protect 0
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_DURGASTRA_PREV_MODE
+                0A8C: write_memory 30@ size 4 value 22@ virtual_protect 0
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_DURGASTRA_FLAG
+                0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+                // Enforce Wallet Drain
                 0085: 30@ = 31@
                 000A: 30@ += MEM_COMBAT_RES_MODE
                 0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
                 0AF1: write_int 0 to_ini_file "cleo\Shion.ini" section "Companion" key "CombatResourceMode"
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
             end
-            0085: 30@ = 31@
-            000A: 30@ += MEM_DURGASTRA_FLAG
-            0A8C: write_memory 30@ size 4 value 21@ virtual_protect 0
             gosub @Refresh_Shion_Menu_Text
         end
 

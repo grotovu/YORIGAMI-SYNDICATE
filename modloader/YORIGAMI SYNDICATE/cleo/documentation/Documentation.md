@@ -94,6 +94,7 @@ Every secondary script executes an identical connection routine upon initializat
 | `404` | `MEM_SHION_HUNGRY` | int (bool) | Starvation state: `0` = Satisfied, `1` = Starving / Injured. | `ShionFood`, `foodDiner` | `foodDiner`, `ShionFood` |
 | `408` | `MEM_SHION_CHUTE_OBJ` | int | Object handle of active parachute canopy (`#PARACHUTE` / `3131`). | `ShionChute`, `SpawnShion` | `SpawnShion`, `ShionChute` |
 | `412` | `MEM_SHION_DM` | int | Handle of persistent Zero-Panic Decision Maker allocated once on boot. | `SpawnShion` | `ShionControl`, `Entourage`, `chatDismiss`, `SpawnShion` |
+| `416` | `MEM_DURGASTRA_PREV_MODE`| int | Stored `MEM_COMBAT_RES_MODE` before Durgastra override (`0` = Wallet Drain, `1` = Gear Swap). | `ShionCombat`, `ShionMenu` | `ShionCombat`, `ShionMenu` |
 
 ---
 
@@ -245,6 +246,9 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 * **`ShionCombat.txt` (`Sh_Cmbt`):**
   * **Wallet Drain Mode (`MEM_COMBAT_RES_MODE == 0`):** Monitors live weapon ammo. Each time ammo decreases by `N` rounds, looks up the shot cost from an internal weapon cost table (e.g. 9mm = $7, Desert Eagle = $80, Shotgun = $40, Sniper = $500, Minigun = $7, Rockets = $300) and deducts `N * Cost` directly from player cash.
   * **Bankruptcy Disarm:** If wallet drops <= $0 and cheat "DURGASTRA" is not active, disarms Shion immediately, sets stance to Peaceful (`MEM_SHION_STANCE = 0`), and displays `"CARD DECLINED"`.
+  * **Durgastra Mode Memory & Seamless Restoration:** Typing cheat `"DURGASTRA"` toggles Limitless Debt:
+    * *Activation (0 -> 1):* Snapshots live `MEM_COMBAT_RES_MODE` into `MEM_DURGASTRA_PREV_MODE` (Heap Offset `416`), forces `MEM_COMBAT_RES_MODE = 0` (Wallet Drain), and writes `0` to `Shion.ini`.
+    * *Deactivation (1 -> 0):* Clears `MEM_DURGASTRA_FLAG = 0`. Reads `MEM_DURGASTRA_PREV_MODE`; if it originated from Gear Swap (`1`), restores `MEM_COMBAT_RES_MODE = 1`, writes `1` to `Shion.ini`, triggers physical ammo reinforcement via `ShionGear.c`, and suppresses the bankruptcy disarm even if player wallet is <= $0.
   * **Innate Misfortune Aura:** Scans hostiles within 25m every 1s. Rolls a 20% bad luck check: forces victim to suffer gun jams (cower animation) or slip and knockdown animations (`KO_SKID_FRONT/BACK`, `KO_SPIN_L/R`), and spawns an attached `FX_HexFlame.c`.
     * **Cop Retaliation Exemption:** Cops (`PedType 6`) are strictly exempt from both peacetime hostile targeting (`wanted_level == 0`) and post-recovery retaliation assignments (`18@ = 0`), preventing scripted `05E2: kill_actor` orders from re-aggroing pacified officers.
     * **Task Pack Register Isolation:** Uses dedicated scratch register `20@` for AS pack construction (`0615`), fully decoupling sequence creation from the vehicle iterators (`12@`) used in Traffic Hex and Aviation Calamity.
@@ -326,7 +330,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Reads unlocked state from `MEM_LORE_PROGRESS_BIT` (or debug bypass cheat "ALLORE"). Shows requirement tooltips. Selecting an episode streams `loreTheater.c` for replay.
 * **`ShionMenu.txt` (`Sh_Menu`):**
   * Safehouse configuration terminal opened by holding `TAB` while inside any of the 32 safehouses (`MEM_SAFEHOUSE_DOOR_ID > 0`).
-  * Page 0 (Arsenal): Launches Safehouse Performance Review (`ShionMem.c`), toggles Combat Resource Mode (`MEM_COMBAT_RES_MODE`), toggles Durgastra Limitless Debt (`MEM_DURGASTRA_FLAG`), toggles Combat Hitodama FX (`MEM_CMBT_HITODAMA_FX`), toggles shot chimes, and bankrupt alerts.
+  * Page 0 (Arsenal): Launches Safehouse Performance Review (`ShionMem.c`), toggles Combat Resource Mode (`MEM_COMBAT_RES_MODE`), toggles Durgastra Limitless Debt (`MEM_DURGASTRA_FLAG`), toggles Combat Hitodama FX (`MEM_CMBT_HITODAMA_FX`), toggles shot chimes, and bankrupt alerts. Features bidirectional exclusivity: toggling Durgastra ON forces Wallet Drain and snapshots previous mode to `MEM_DURGASTRA_PREV_MODE` (`416`), toggling Durgastra OFF restores previous mode, and manually choosing Gear Swap automatically seals Durgastra.
   * Page 1 (Lifestyle): Toggles Food Runs, Sister Talk episodes, opens Lore Archive (`MEM_LORE_MENU_SIGNAL = 1`), cycles startup character (`StartupPlayerCharacter`), and toggles idle smoking. Writes directly to `Shion.ini`.
 * **`ShionMem.txt` (`Sh_Mem`):**
   * Safehouse retrospective conversation. Evaluates 9 career categories using performance telemetry:
@@ -607,7 +611,7 @@ The following table details the cross-script dependencies for every component in
 | **Player Scavenging** | `Yorigami\Scavenger.txt`| `F` near bin/cart while broke, "ADDBIN" | None | `MEM_ALLOC_SCAVENGER`, `MEM_PLAYER_FORM`, `MEM_SHION_HANDLE` | Gives health/weapons; Jo'on refuses and defers to Shion |
 | **Aim Transparency** | `Yorigami\YorigamiAimAlpha.txt`| Aiming in shooting range mission | None | `MEM_PLAYER_FORM` | Toggles player alpha (`0` <-> `255`) |
 | **Companion Stance** | `Shion\ShionControl.txt`| `Y + B` (Stance), `Y + Z` (Scavenge) | `MEM_SHION_STANCE`, `MEM_SHION_WEAPON_ID`, `MEM_SHION_BUSY` | `MEM_COMBAT_RES_MODE`, `MEM_DURGASTRA_FLAG`, `MEM_SHION_STAY_PUT` | Spawns `ShionScav.c`, manages companion aggression |
-| **Companion Combat** | `Shion\ShionCombat.txt` | Firing weapons, "DURGASTRA" | `MEM_SHION_KILLS`, `MEM_JOON_KILLS_W_SHION`, `MEM_DURGASTRA_FLAG` | `MEM_COMBAT_RES_MODE`, `MEM_SHION_STANCE`, `MEM_SHION_WEAPON_ID` | Deducts shot costs, disarms on bankruptcy, reflects damage |
+| **Companion Combat** | `Shion\ShionCombat.txt` | Firing weapons, "DURGASTRA" | `MEM_SHION_KILLS`, `MEM_JOON_KILLS_W_SHION`, `MEM_DURGASTRA_FLAG`, `MEM_DURGASTRA_PREV_MODE`, `MEM_COMBAT_RES_MODE` | `MEM_COMBAT_RES_MODE`, `MEM_SHION_STANCE`, `MEM_SHION_WEAPON_ID`, `MEM_DURGASTRA_PREV_MODE` | Deducts shot costs, manages Durgastra mode memory, disarms on bankruptcy, reflects damage |
 | **Gear Swap** | `Shion\ShionGear.txt` | `Y + R` on foot near Shion | `MEM_SHION_WEAPON_ID`, `MEM_SHION_AMMO_COUNT`, `MEM_SHION_STANCE` | `MEM_COMBAT_RES_MODE`, `MEM_SHION_HANDLE` | Exchanges weapons between Jo'on and Shion, auto-disarms when dry |
 | **Death Telemetry** | `Shion\ShionDeathTracker.txt`| Shion takes damage or dies | `MEM_SHION_DEATH_FLAG`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON`, `MEM_SHION_DEATH_IN_CAR` | `MEM_CAR_SMASH_SIGNAL`, `MEM_SHION_HANDLE` | Logs cause of death for post-death quips and lockouts |
 | **CJ Retaliation**   | `Shion\ShionRetaliation.txt`| CJ attacks or rams Shion with vehicle | `MEM_SHION_HANDLE`, `MEM_DMG_RECURSION_LCK`, `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM` | Damages CJ or ignites vehicle, plays reaction, despawns Shion |
@@ -621,7 +625,7 @@ The following table details the cross-script dependencies for every component in
 | **Sister Talk Lore** | `Shion\ShionLore.txt` | Milestone triggers (Bits 0–30) | `MEM_PRIORITY_LOCK`, `MEM_SKYDIVE_LANDED`, `MEM_LOWRIDER_DONE` | `MEM_LORE_PROGRESS_BIT`, Performance ledger | Prompts `[Y/N]`, streams `loreTheater.c` |
 | **Lore Theater** | `Shion\Lore\loreTheater.txt`| Spawned by `ShionLore` or `loreMenu` | `MEM_LORE_PROGRESS_BIT`, `MEM_PRIORITY_LOCK` | None | Executes cutscene dialogue, sets progress bitmask |
 | **Lore Archive** | `Shion\Lore\loreMenu.txt`| "ALLORE", `ShionMenu`, or `ShionDebug` ("LORE") | `MEM_LORE_MENU_SIGNAL` | `MEM_LORE_PROGRESS_BIT` | UI panel for reviewing unlocked lore episodes |
-| **Safehouse Menu** | `Shion\ShionMenu.txt` | Hold `TAB` inside safehouse | `MEM_PRIORITY_LOCK`, `MEM_COMBAT_RES_MODE`, `MEM_DURGASTRA_FLAG`, `MEM_LORE_MENU_SIGNAL` | `MEM_SAFEHOUSE_DOOR_ID` | Safehouse configuration UI, launches `ShionMem` |
+| **Safehouse Menu** | `Shion\ShionMenu.txt` | Hold `TAB` inside safehouse | `MEM_PRIORITY_LOCK`, `MEM_COMBAT_RES_MODE`, `MEM_DURGASTRA_FLAG`, `MEM_DURGASTRA_PREV_MODE`, `MEM_LORE_MENU_SIGNAL` | `MEM_SAFEHOUSE_DOOR_ID`, `MEM_DURGASTRA_PREV_MODE` | Safehouse configuration UI with mode memory arbitration, launches `ShionMem` |
 | **Performance Review** | `Shion\ShionMem.txt` | Launched from `ShionMenu` | `MEM_SPOKEN_TOPICS_BIT`, `MEM_PRIORITY_LOCK` | Performance ledger (Kills, Fares, Wrecks, etc.) | Evaluates partnership stats across 9 interactive topics |
 | **Sandbox Banter** | `Shion\ShionSandbox.txt`| Water hose, sinking, stunts, civ punches | None | `MEM_SHION_BUSY`, `MEM_CARS_WRECKED`, `MEM_CAR_SMASH_SIGNAL`, `MEM_FLEX_SIGNAL` | Contextual reactions to sandbox actions |
 | **Friendly Fire & Cam**| `Shion\ShionFriendlyFire.txt`| Attacking Shion on foot, taking photo | `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_HITODAMA_X/Y/Z` | Reactive dialogue for physical attacks and camera snapshots |

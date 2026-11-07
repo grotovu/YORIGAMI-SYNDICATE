@@ -20,6 +20,7 @@ const
     MEM_COMBAT_RES_MODE = 132     // 0 = Wallet Drain, 1 = Gear Swap
     MEM_SHION_KILLS = 236         // Ledger: Total Shion Kills
     MEM_JOON_KILLS_W_SHION = 296  // Ledger: Total Jo'on Kills with Shion
+    MEM_DURGASTRA_PREV_MODE = 416 // Mode prior to Durgastra override (0 = Wallet Drain, 1 = Gear Swap)
 end
 
 :Connect_To_Brain
@@ -1011,11 +1012,28 @@ end
 if
     18@ == 0
 then
-    // Activate Limitless Debt
+    // ACTIVATE DURGASTRA (Limitless Debt Protocol)
+    // 1. Snapshot live combat resource mode before forcing Wallet Drain
+    0085: 30@ = 31@
+    000A: 30@ += MEM_COMBAT_RES_MODE
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_DURGASTRA_PREV_MODE
+    0A8C: write_memory 30@ size 4 value 21@ virtual_protect 0
+
+    // 2. Automatically enforce Wallet Drain mode
+    0085: 30@ = 31@
+    000A: 30@ += MEM_COMBAT_RES_MODE
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0AF1: write_int 0 to_ini_file "cleo\Shion.ini" section "Companion" key "CombatResourceMode"
+
+    // 3. Unleash Durgastra flag
     18@ = 1
     0085: 30@ = 31@
     000A: 30@ += MEM_DURGASTRA_FLAG
     0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
     018C: play_sound 1147 at 0.0 0.0 0.0
     0ADF: add_text_label "Y_DURA" text "~p~DURGASTRA UNLEASHED~n~~w~LIMITLESS DEBT ENABLED"
     09C1: add_next_text_to_brief_history 1
@@ -1075,25 +1093,50 @@ then
         077A: set_actor 10@ acquaintance 4 to_actors_pedtype 15
     end
 else
-    // Deactivate
+    // DEACTIVATE DURGASTRA (Seal Limitless Debt)
     18@ = 0
     0085: 30@ = 31@
     000A: 30@ += MEM_DURGASTRA_FLAG
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    // Check if we originated from Gear Swap mode
+    0085: 30@ = 31@
+    000A: 30@ += MEM_DURGASTRA_PREV_MODE
+    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+
+    if
+        21@ == 1
+    then
+        // Restore Gear Swap mode (ShionGear will reinforce physical ammo reserve)
+        0085: 30@ = 31@
+        000A: 30@ += MEM_COMBAT_RES_MODE
+        0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+        0AF1: write_int 1 to_ini_file "cleo\Shion.ini" section "Companion" key "CombatResourceMode"
+    end
+
+    // Reset previous mode tracker
+    0085: 30@ = 31@
+    000A: 30@ += MEM_DURGASTRA_PREV_MODE
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
     018C: play_sound 1057 at 0.0 0.0 0.0
     0ADF: add_text_label "Y_DURD" text "~s~DURGASTRA SEALED~n~~r~LIMITLESS DEBT DISABLED"
     09C1: add_next_text_to_brief_history 1
     00BA: show_text_styled GXT 'Y_DURD' time 2500 style 5
 
-    // If player is in debt, immediately enforce standard bankruptcy disarm
-    010B: 28@ = player $PLAYER_CHAR money
+    // Only enforce bankruptcy disarm if the active mode is Wallet Drain!
     if
-        28@ <= 0
+        21@ == 0
     then
+        010B: 28@ = player $PLAYER_CHAR money
         if
-            10@ > 0
+            28@ <= 0
         then
-            gosub @Execute_Shion_Bankruptcy_Disarm
+            if
+                10@ > 0
+            then
+                gosub @Execute_Shion_Bankruptcy_Disarm
+            end
         end
     end
 end
