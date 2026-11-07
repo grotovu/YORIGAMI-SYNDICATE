@@ -875,24 +875,30 @@ then
     if
         20@ > 100
     then
+        // Only active if Jo'on has no armour remaining (Armour <= 0)
+        04DD: 23@ = actor 29@ armour
         if
-            00DF: actor 29@ driving
+            0 >= 23@
         then
-            03C0: 20@ = actor 29@ car
             if
-                047A: actor 29@ driving_bike
+                00DF: actor 29@ driving
             then
-                22@ = 1
-            else
-                0441: 25@ = car 20@ model
-                if or
-                    25@ == 471 // Quad
-                    25@ == 571 // Kart
-                    25@ == 568 // Bandito
-                    25@ == 539 // Vortex
-                    25@ == 572 // Mower
+                03C0: 20@ = actor 29@ car
+                if
+                    047A: actor 29@ driving_bike
                 then
                     22@ = 1
+                else
+                    0441: 25@ = car 20@ model
+                    if or
+                        25@ == 471 // Quad
+                        25@ == 571 // Kart
+                        25@ == 568 // Bandito
+                        25@ == 539 // Vortex
+                        25@ == 572 // Mower
+                    then
+                        22@ = 1
+                    end
                 end
             end
         end
@@ -910,7 +916,7 @@ then
     // Get coordinates directly from vehicle matrix
     0407: store_coords_to 5@ 6@ 7@ from_car 20@ with_offset 0.0 -0.10 0.50
 
-    // Render soft translucent sapphire aura (always on while mounted with >100 HP)
+    // Render soft translucent sapphire aura (always on while mounted with >100 HP and 0 Armour)
     04D5: create_corona_at 5@ 6@ 7@ radius 23@ type 0 flare 0 RGB 20 80 200
 end
 
