@@ -388,7 +388,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * `TRIGGERCHAT`: Interactive submenu to stream all chat scripts directly on demand.
 * **`chatWanted.txt` (`Sh_Star`):**
   * Context-aware pursuit dialogue router evaluating wanted stars (1–6).
-  * **Sensor-First Architecture:** Eliminates "phantom" references by scanning the physical 3D world before rolling dialogue. Choppers (200m), Tanks (75m), Police Bikes (50m), and Forward-Arc Roadblocks (30m radius, 40m ahead) must exist in the world for their specific lines to play.
+  * **Sensor-First Architecture:** Eliminates "phantom" references by scanning the physical 3D world before rolling dialogue. Choppers (100m), Tanks (50m), Police Bikes (35m), and Forward-Arc Roadblocks (30m radius, 40m ahead) must exist in the world for their specific lines to play.
   * **3-Tier Cabin & Transit Matrix:** Accurately routes dialogue based on transit state (Air, Water, Enclosed Car, Open-Air/Bike, On Foot, or Train).
   * **Mid-Speech Abort:** Immediately terminates banter and releases Priority Lock if stars are cleared via Pay 'n' Spray or bribes mid-sentence.
 * **`chatFollow.txt` (`Sh_FolC`):**

@@ -295,7 +295,7 @@ end
 // =========================================================================
 00A0: store_actor $PLAYER_ACTOR position_to 27@ 28@ 29@
 
-// Sensor 1: Police Motorcycle (HPV-1000 / Model 523 within 50m, Strictly Ground Roads)
+// Sensor 1: Police Motorcycle (HPV-1000 / Model 523 within 35m, Strictly Ground Roads)
 24@ = 0
 if and
     0039: 14@ == 0 // Suppressed in aircraft
@@ -304,7 +304,7 @@ then
     18@ = 0
     :Wanted_Bike_Scan_Loop
     if
-        0AE2: 2@ = random_vehicle_near_point 27@ 28@ 29@ in_radius 50.0 find_next 18@ pass_wrecked 1
+        0AE2: 2@ = random_vehicle_near_point 27@ 28@ 29@ in_radius 35.0 find_next 18@ pass_wrecked 1
     then
         18@ = 1
         if and
@@ -329,7 +329,7 @@ then
 end
 :Wanted_Bike_Scan_Done
 
-// Sensor 2: Police / News Helicopter within 200m (Models 497, 488)
+// Sensor 2: Police / News Helicopter within 100m (Models 497, 488)
 12@ = 0
 if
     0029: 22@ >= 3
@@ -337,7 +337,7 @@ then
     18@ = 0
     :Wanted_Heli_Scan_Loop
     if
-        0AE2: 2@ = random_vehicle_near_point 27@ 28@ 29@ in_radius 200.0 find_next 18@ pass_wrecked 1
+        0AE2: 2@ = random_vehicle_near_point 27@ 28@ 29@ in_radius 100.0 find_next 18@ pass_wrecked 1
     then
         18@ = 1
         if and
@@ -401,7 +401,7 @@ then
     :Wanted_Roadblock_Scan_Done
 end
 
-// Sensor 4: Rhino Tank within 75m (Model 432 at 6 Stars, Strictly Ground Vehicles or Foot)
+// Sensor 4: Rhino Tank within 50m (Model 432 at 6 Stars, Strictly Ground Vehicles or Foot)
 17@ = 0
 if and
     0029: 22@ >= 6
@@ -411,7 +411,7 @@ then
     18@ = 0
     :Wanted_Tank_Scan_Loop
     if
-        0AE2: 2@ = random_vehicle_near_point 27@ 28@ 29@ in_radius 75.0 find_next 18@ pass_wrecked 1
+        0AE2: 2@ = random_vehicle_near_point 27@ 28@ 29@ in_radius 50.0 find_next 18@ pass_wrecked 1
     then
         18@ = 1
         if and
