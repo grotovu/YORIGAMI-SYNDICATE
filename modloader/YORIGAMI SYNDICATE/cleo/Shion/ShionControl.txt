@@ -190,13 +190,16 @@ then
                 7@ = 1 // Flag that we just aborted a fight
             end
 
-            // Anti-Surrender Watchdog: Instantly kill any aim panic or cower tasks in Peaceful Mode
+            // Anti-Surrender & Anti-Fatigue Watchdog: Instantly kill cower or tired tasks
             if or
                 0E42: is_char_doing_task_id 10@ 601 // TASK_COMPLEX_REACT_TO_GUN_AIMED_AT
                 0E42: is_char_doing_task_id 10@ 413 // TASK_SIMPLE_HANDS_UP
                 0E42: is_char_doing_task_id 10@ 412 // TASK_SIMPLE_COWER
                 0E42: is_char_doing_task_id 10@ 512 // TASK_COMPLEX_EVASIVE_COWER
                 0E42: is_char_doing_task_id 10@ 415 // TASK_SIMPLE_DUCK
+                0E42: is_char_doing_task_id 10@ 219 // TASK_SIMPLE_TIRED
+                0611: actor 10@ performing_animation "IDLE_TIRED"
+                0611: actor 10@ performing_animation "idle_tired"
             then
                 0687: clear_actor 10@ task
                 0E96: clear_char_primary_tasks 10@
