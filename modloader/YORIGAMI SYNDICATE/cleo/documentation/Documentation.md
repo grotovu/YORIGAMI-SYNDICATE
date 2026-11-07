@@ -427,6 +427,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 ### Jo'on: Wealth Perks
 * **`Bling.txt` (`Y_BLING`):**
   * *Jo'on's Bling (`MEM_ALLOC_JOONBLING`):* Adds scaled melee damage (`Points * BonusDamagePerPoint`, soft-capped by `MaxDamageCap`) to fists and brass knuckles. In Jo'on mode, targeting a ped (> 1.5m, <= 50m) and attacking executes a high-speed 3D dash ("Zippity Zap") with golden afterimage coronas and particle trails, granting temporary bulletproof graze immunity (`FX_JoonGraze.c`). In Shion mode, executes an ethereal remote punch.
+    * **Target Entity Type Safety Guard:** Reads the targeted entity pointer from `CPlayerPed + 0x71C` (`m_pTargetedObject`) and evaluates its entity type via `0E13` before executing `0AD2`. Requires strictly `ENTITY_TYPE_PED` (Type 3) to proc, completely filtering out script-targetable mission objects (such as the counterfeit chip machines in *"You've Had Your Chips"*, explosive barrels, or mission props) and preventing memory dereference crashes.
   * *Car Smasher (`MEM_ALLOC_SMASHER`):* Punches deal scaled damage to vehicles (`Points * BonusDamage * CarDamageMultiplier`). If car HP drops <= 0, grants blast immunity (if points >= `BlastShieldUnlockPoints`), unhooks damage callbacks to protect the stack, detonates the vehicle, and writes `MEM_CAR_SMASH_SIGNAL = 1`.
   * *Fist-Lock:* Forces unarmed/knuckles during combat approach, breaking out instantly on mouse wheel scroll.
 * **`Danmaku.txt` (`Y_Danm`):**
