@@ -290,7 +290,8 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 * **`ShionFood.txt` (`Sh_Food`):**
   * Calculates elapsed in-game hours: `(Days * 24 + CurrentHour) - MEM_LAST_FED_HOURS`.
   * If elapsed >= 48 hours or Shion HP < 950, sets `MEM_SHION_HUNGRY = 1`.
-  * Monitors drive-thrus and restaurant counters. When parked near outdoor fast food locations or standing near indoor counters, presents `[TAB]` prompt. Pressing `TAB` claims Tier 4 priority and launches `foodDiner.c`.
+  * Monitors drive-thrus and restaurant counters. When parked near outdoor fast food locations or standing near indoor counters, presents `[TAB]` prompt.
+  * **Drive-Thru Law Enforcement Interception:** Evaluates active pursuit heat (`wanted_level > 0`). If the player has any wanted stars, the drive-thru prompt (`Y_FDRV`) is completely suppressed, `[TAB]` key input is ignored, and prompt latches (`0@`) and hold timers (`8@`) are flushed so the prompt re-arms cleanly once heat is lost. Pressing `TAB` outside of pursuit claims Tier 4 priority and launches `foodDiner.c`.
 * **`foodDiner.txt` (`Sh_Dine`):**
   * Creates native interactive menu panel with bill options: $1, $2, $5, $10, $20, $50, $100.
   * Freezes player movement, deducts cash, increments `MEM_TIMES_TREATED` and `MEM_TOTAL_CASH_GIVEN`.
