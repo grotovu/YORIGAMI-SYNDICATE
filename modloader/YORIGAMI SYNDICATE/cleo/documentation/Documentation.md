@@ -437,6 +437,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Deducts cash cost per bullet ($100 default) from player wallet, logs `MEM_DANMAKU_CASH_SPENT`, vaporizes enemy body armor on impact, applies bonus damage, deals 4x damage against vehicles, and creates golden impact sparks.
 * **`Fever.txt` (`Y_Fever`):**
   * Activated via `Y + C` on a dynamic cooldown (60s down to 20s based on points).
+  * **Cooldown Expiration Notifier:** Monitors active cooldown completion and immediately triggers a Style 5 on-screen alert (`~y~PESTILENCE FEVER~n~~g~READY`) and notification chime (`1058`) the frame the timer reaches zero. Conditioned on active point allocation (`2@ > 0`), screen fade stability (`816B`), and INI configuration flags (`ShowFeverMessage`, `PlayFeverSound`).
   * Affects pedestrians within an expanding radius (15m to 35m).
   * Forces all non-gang/non-story peds to drop cash pickups (base $60 up to $300, doubled for businessmen and dealers), attach golden glitter particles, and flee in financial ruin (`05DD: flee_from_actor`).
 * **`Shakedown.txt` (`Y_Shake`):**
