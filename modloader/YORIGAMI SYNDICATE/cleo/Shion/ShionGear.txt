@@ -47,6 +47,7 @@ end
 7@ = 0     // Out of Ammo Audio/Subtitle Latch Flag
 8@ = 0     // Empty-Ammo Debounce Accumulator Timer (ms)
 9@ = 0     // Loading Screen Watchdog Flag
+13@ = 1    // Last Tracked CombatResourceMode (Tracks mode transitions)
 
 // Read Settings from Shion.ini
 gosub @Reload_Gear_Settings
@@ -137,6 +138,69 @@ end
 0085: 30@ = 31@
 000A: 30@ += MEM_COMBAT_RES_MODE
 0A8C: write_memory 30@ size 4 value 4@ virtual_protect 0 // Broadcast mode (1 = Gear Swap, 0 = Wallet Drain)
+
+// Transition: Switched from Wallet Drain (0) -> Gear Swap (1)
+if and
+    4@ == 1
+    13@ == 0
+then
+    // Mode returned to Gear Swap: immediately reinforce untouched physical ammo reserve onto actor
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_AMMO_COUNT
+    0A8D: 6@ = read_memory 30@ size 4 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_WEAPON_ID
+    0A8D: 5@ = read_memory 30@ size 4 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_STANCE
+    0A8D: 18@ = read_memory 30@ size 4 virtual_protect 0
+
+    if and
+        18@ == 1
+        10@ > 0
+        5@ > 1
+    then
+        if
+            6@ > 0
+        then
+            017B: set_actor 10@ weapon 5@ ammo_to 6@
+        else
+            048F: actor 10@ remove_weapons
+            01B9: set_actor 10@ armed_weapon_to 0
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_STANCE
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+            gosub @Apply_Shion_Peaceful_Mode
+        end
+    end
+end
+
+// Transition: Switched from Gear Swap (1) -> Wallet Drain (0)
+if and
+    4@ == 0
+    13@ == 1
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_STANCE
+    0A8D: 18@ = read_memory 30@ size 4 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_WEAPON_ID
+    0A8D: 5@ = read_memory 30@ size 4 virtual_protect 0
+
+    if and
+        18@ == 1
+        10@ > 0
+        5@ > 1
+    then
+        // Arm with Wallet Drain cushion without touching MEM_SHION_AMMO_COUNT
+        017B: set_actor 10@ weapon 5@ ammo_to 9999
+    end
+end
+
+0085: 13@ = 4@ // Synchronize last tracked resource mode
 
 // If Wallet Drain is active (Mode 0), Gear Swap stays dormant
 if
@@ -866,7 +930,7 @@ end
 000A: 30@ += MEM_SHION_AMMO_COUNT
 0A8C: write_memory 30@ size 4 value 6@ virtual_protect 0
 
-// Read Jo'on Stashed Weapon ID and Ammo Count (Using 12@ and 13@ to prevent clobbering 27@ and 28@)
+// Read Jo'on Stashed Weapon ID and Ammo Count (Reusing scratch 12@ to preserve 13@ state)
 0AF0: 12@ = read_int_from_ini_file "cleo\savedata\ShionWeapon.ini" section 14@v key "JoWeaponID"
 if
     12@ < 0
@@ -874,21 +938,21 @@ then
     12@ = 0
 end
 
-0AF0: 13@ = read_int_from_ini_file "cleo\savedata\ShionWeapon.ini" section 14@v key "JoAmmoCount"
-if
-    13@ < 0
-then
-    13@ = 0
-end
-
 // Share Jo'on stashed weapon to RAM
 0085: 30@ = 31@
 000A: 30@ += MEM_JOON_STASH_WEAPON
 0A8C: write_memory 30@ size 4 value 12@ virtual_protect 0
 
+0AF0: 12@ = read_int_from_ini_file "cleo\savedata\ShionWeapon.ini" section 14@v key "JoAmmoCount"
+if
+    12@ < 0
+then
+    12@ = 0
+end
+
 0085: 30@ = 31@
 000A: 30@ += MEM_JOON_STASH_AMMO
-0A8C: write_memory 30@ size 4 value 13@ virtual_protect 0
+0A8C: write_memory 30@ size 4 value 12@ virtual_protect 0
 return
 
 :Reload_Gear_Settings

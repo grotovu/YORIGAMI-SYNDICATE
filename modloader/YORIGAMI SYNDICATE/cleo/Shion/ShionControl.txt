@@ -10,8 +10,10 @@
 // =========================================================================
 const
     MEM_SHION_BUSY = 4            // Formerly 708
+    MEM_PLAYER_FORM = 12          // 0 = CJ, 1 = Jo'on, 2 = Shion
     MEM_PRIORITY_LOCK = 20        // Formerly 765
     MEM_DURGASTRA_FLAG = 72       // Formerly 724
+    MEM_SHION_HANDLE = 116        // Live Companion Actor Handle
     MEM_SHION_STANCE = 120        // Formerly 721
     MEM_SHION_WEAPON_ID = 124     // Formerly 731
     MEM_SHION_AMMO_COUNT = 128    // Formerly 732
@@ -64,7 +66,13 @@ end
 :ShionControl_Loop
 wait 50
 
-// Bail immediately if Shion was dismissed from the party
+// Bail only if game stopped or companion was intentionally dismissed from entourage
+if
+    8256: not is_player_playing $PLAYER_CHAR
+then
+    0A93: terminate_this_custom_script
+end
+
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_RECRUITED
 0A8D: 18@ = read_memory 30@ size 4 virtual_protect 0
@@ -74,13 +82,37 @@ then
     0A93: terminate_this_custom_script
 end
 
+// Continually synchronize live companion handle from shared memory
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+// Check player form: 0 = CJ, 1 = Jo'on, 2 = Shion
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
+
+// If companion has no physical body or player is actively in Shion form: sleep cleanly without terminating!
 if or
-    8256: not is_player_playing $PLAYER_CHAR
     10@ <= 0
+    8039: not 19@ == 1
+then
+    wait 250
+    goto @ShionControl_Loop
+end
+
+if
     856D: not actor 10@ defined
+then
+    wait 250
+    goto @ShionControl_Loop
+end
+
+if
     0118: actor 10@ dead
 then
-    0A93: terminate_this_custom_script
+    wait 250
+    goto @ShionControl_Loop
 end
 
 // -------------------------------------------------------------------------

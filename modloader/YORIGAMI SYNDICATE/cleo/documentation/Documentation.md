@@ -254,6 +254,9 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * **Kill Tracker:** Continuously tallies Shion's confirmed kills (`MEM_SHION_KILLS`) and Jo'on's kills with Shion (`MEM_JOON_KILLS_W_SHION`).
 * **`ShionGear.txt` (`Sh_Gear`):**
   * *Dismissal Dormancy:* Polls `MEM_SHION_RECRUITED` and `MEM_SHION_HANDLE`. If Shion is unrecruited or dismissed (`MEM_SHION_RECRUITED == 0`), enters a low-frequency 250ms sleep state that halts real-time ammo tracking and suppresses `[Y + R]` interactions on dismissed wanderers.
+  * **Mode Transition Tracking (`13@` / `LastCombatResourceMode`):** Monitors transitions between Wallet Drain (`0`) and Gear Swap (`1`):
+    * *Wallet Drain $\rightarrow$ Gear Swap ($0 \rightarrow 1$):* Detects the transition frame and immediately reinforces Shion's untouched physical reserve from `MEM_SHION_AMMO_COUNT` onto her ped actor (`017B: set_actor weapon ammo_to`), stripping the synthetic 9,999 cushion. If the stored physical reserve is empty, disarms her and reverts her stance to Peaceful.
+    * *Gear Swap $\rightarrow$ Wallet Drain ($1 \rightarrow 0$):* Equips the actor with the 9,999 round cushion for wallet-drain firing while leaving `MEM_SHION_AMMO_COUNT` strictly isolated in RAM.
   * **Gear Swap Mode (`MEM_COMBAT_RES_MODE == 1`):** Listens for `Y + R` on foot within 4m.
   * If player is unarmed: strips Shion's weapon, pools remaining ammo with any sibling ammo Jo'on holds, restores weapon to Jo'on, and clears Shion's weapon in RAM.
   * If player is holding a firearm (IDs 22–38): removes gun from Jo'on, transfers it to Shion with exact current ammo, updates `MEM_SHION_WEAPON_ID` and `MEM_SHION_AMMO_COUNT`, and switches her stance to Hostile.
