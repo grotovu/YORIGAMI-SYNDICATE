@@ -668,7 +668,7 @@ then
     then
         018C: play_sound 1057 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SWDF" text "~b~Shion: ~s~\"I've only got two hands, Jo'on... take this one back before I drop both.\""
+        0ADF: add_text_label "Y_SWDF" text "~b~Shion: ~s~\"I only got two hands, Jo'on... take this one back before I drop both.\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_SWDF' time 3000 flag 1
         return
