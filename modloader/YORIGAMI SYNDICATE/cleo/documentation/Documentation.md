@@ -95,6 +95,7 @@ Every secondary script executes an identical connection routine upon initializat
 | `408` | `MEM_SHION_CHUTE_OBJ` | int | Object handle of active parachute canopy (`#PARACHUTE` / `3131`). | `ShionChute`, `SpawnShion` | `SpawnShion`, `ShionChute` |
 | `412` | `MEM_SHION_DM` | int | Handle of persistent Zero-Panic Decision Maker allocated once on boot. | `SpawnShion` | `ShionControl`, `Entourage`, `chatDismiss`, `SpawnShion` |
 | `416` | `MEM_DURGASTRA_PREV_MODE`| int | Stored `MEM_COMBAT_RES_MODE` before Durgastra override (`0` = Wallet Drain, 1 = Gear Swap). | `ShionGear`, `ShionMenu` | `ShionGear`, `ShionMenu` |
+| `420` | `MEM_HITO_SHIELD_ON` | int (bool) | Live Spectral Shield Active (`0` = Inactive / Armoured / Broken, `1` = Active & Deflecting). | `FX_ShionHitodama` | `chatVehicle`, `chatWanted` |
 
 ---
 

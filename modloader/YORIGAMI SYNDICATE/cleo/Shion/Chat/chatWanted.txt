@@ -1091,35 +1091,52 @@ then
         if
             11@ == 1
         then
-            0085: 30@ = 31@
-            000A: 30@ += MEM_SHION_PRES_HP
-            0A8D: 1@ = read_memory 30@ size 4 virtual_protect 0
+            04DD: 2@ = actor $PLAYER_ACTOR armour
             if
-                1@ > 100
+                2@ > 0
             then
-                0ADF: add_text_label "Y_W2B0H" text "~b~Shion: ~s~\"The bike cop is shooting while driving... his bullets are bouncing right off my shield.\""
+                0ADF: add_text_label "Y_W2BAR" text "~b~Shion: ~s~\"The bike cop is shooting while driving... your vest is catching all the pellets, Jo'on.\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_W2B0H' time 3700 flag 1
+                00BC: show_text_highpriority GXT 'Y_W2BAR' time 3700 flag 1
                 0001: wait 3700 ms
                 0050: gosub @Check_Alive_Or_Exit
 
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_W2B1H" text "~y~Jo'on: ~s~\"Keep that barrier locked tight, Shion! Those cheap bullets bounce right off! AHAHAHA!\""
+                0ADF: add_text_label "Y_W2BAS" text "~y~Jo'on: ~s~\"Top-dollar body armor, Shion! These beat cops can't pierce high-end ceramic! AHAHAHA!\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_W2B1H' time 3600 flag 1
+                00BC: show_text_highpriority GXT 'Y_W2BAS' time 3600 flag 1
             else
-                0ADF: add_text_label "Y_W2BD0" text "~b~Shion: ~s~\"The bike cop is shooting while driving... my shield's broken, I can't block him, Jo'on.\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_W2BD0' time 3700 flag 1
-                0001: wait 3700 ms
-                0050: gosub @Check_Alive_Or_Exit
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_PRES_HP
+                0A8D: 1@ = read_memory 30@ size 4 virtual_protect 0
+                if
+                    1@ > 100
+                then
+                    0ADF: add_text_label "Y_W2B0H" text "~b~Shion: ~s~\"The bike cop is shooting while driving... his bullets are bouncing right off my shield.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_W2B0H' time 3700 flag 1
+                    0001: wait 3700 ms
+                    0050: gosub @Check_Alive_Or_Exit
 
-                018C: play_sound 1058 at 0.0 0.0 0.0
-                03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_W2BD1" text "~y~Jo'on: ~s~\"Useless! You're a ghost and I'm the one gettin' shot at! Put some muscle into it!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_W2BD1' time 3500 flag 1
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_W2B1H" text "~y~Jo'on: ~s~\"Keep that barrier locked tight, Shion! Those cheap bullets bounce right off! AHAHAHA!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_W2B1H' time 3600 flag 1
+                else
+                    0ADF: add_text_label "Y_W2BD0" text "~b~Shion: ~s~\"The bike cop is shooting while driving... my shield's broken, I can't block him, Jo'on.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_W2BD0' time 3700 flag 1
+                    0001: wait 3700 ms
+                    0050: gosub @Check_Alive_Or_Exit
+
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_W2BD1" text "~y~Jo'on: ~s~\"Useless! You're a ghost and I'm the one gettin' shot at! Put some muscle into it!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_W2BD1' time 3500 flag 1
+                end
             end
         else
             if

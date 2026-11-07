@@ -25,6 +25,7 @@ const
     MEM_TIMES_WASTED = 300
     MEM_TIMES_BUSTED = 304
     MEM_HITO_PAIN_MUTED = 348     // Formerly unused / Spectral Shield Pain Audio Latch
+    MEM_HITO_SHIELD_ON = 420      // Live Spectral Shield Active (0 = Inactive / Armoured / Broken, 1 = Active & Deflecting)
 end
 
 :Connect_To_Brain
@@ -226,7 +227,7 @@ then
 end
 
 // =========================================================================
-// SPECTRAL SHIELD PAIN AUDIO LATCH
+// SPECTRAL SHIELD PAIN AUDIO LATCH & SHIELD STATE BROADCAST
 // =========================================================================
 20@ = 0 // Assume shield is inactive
 
@@ -267,9 +268,17 @@ then
     0085: 30@ = 31@
     000A: 30@ += MEM_HITO_PAIN_MUTED
     0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_HITO_SHIELD_ON
+    0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
 else
-    // Shield is broken, unarmoured, or inactive; restore pain audio
+    // Shield is broken, armoured, or inactive; restore pain audio
     gosub @Restore_Pain_Audio_If_Configured
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_HITO_SHIELD_ON
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 end
 
 // =========================================================================
@@ -1084,6 +1093,10 @@ end
 0085: 30@ = 31@
 000A: 30@ += MEM_HITO_PAIN_MUTED
 0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_HITO_SHIELD_ON
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
 if
     20@ == 1
