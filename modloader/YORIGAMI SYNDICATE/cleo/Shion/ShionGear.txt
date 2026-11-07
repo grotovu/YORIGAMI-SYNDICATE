@@ -14,6 +14,7 @@ wait 1000
 const
     MEM_SAVE_SLOT = 0
     MEM_PRIORITY_LOCK = 20
+    MEM_DURGASTRA_FLAG = 72
     MEM_SHION_HANDLE = 116
     MEM_SHION_STANCE = 120
     MEM_SHION_WEAPON_ID = 124
@@ -22,6 +23,8 @@ const
     MEM_JOON_STASH_WEAPON = 136
     MEM_JOON_STASH_AMMO = 140
     MEM_SHION_RECRUITED = 400
+    MEM_SHION_DM = 412
+    MEM_DURGASTRA_PREV_MODE = 416
 end
 
 :Connect_To_Brain
@@ -47,6 +50,11 @@ end
 7@ = 0     // Out of Ammo Audio/Subtitle Latch Flag
 8@ = 0     // Empty-Ammo Debounce Accumulator Timer (ms)
 9@ = 0     // Loading Screen Watchdog Flag
+13@ = 1    // Last Tracked CombatResourceMode (Tracks mode transitions)
+14@ = 0    // Wallet Drain Tracked Ammo Buffer
+15@ = 0    // Wallet Drain Cost Per Shot
+16@ = 1    // EnableWalletDrain INI setting
+17@ = 1    // PlayShotCashSound INI setting
 
 // Read Settings from Shion.ini
 gosub @Reload_Gear_Settings
@@ -60,15 +68,40 @@ then
 end
 gosub @Load_Weapon_Slot_From_Ini
 
+// Restore Initial Arming Baseline (Wallet Drain 9999 buffer)
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+if and
+    10@ > 0
+    056D: actor 10@ defined
+then
+    0470: 25@ = actor 10@ current_weapon
+    if
+        25@ > 1
+    then
+        041A: 14@ = actor 10@ weapon 25@ ammo
+    end
+end
+
 :ShionGear_Loop
 wait 50
 
-// Detect loading screens or player despawning to catch save reloads
 if
-    8256: not player $PLAYER_CHAR defined
+    8256: not is_player_playing $PLAYER_CHAR
 then
     9@ = 1
     goto @ShionGear_Loop
+end
+
+// =========================================================================
+// CHEAT LISTENER: "DURGASTRA" (Limitless Debt Protocol)
+// =========================================================================
+if
+    0ADC: test_cheat "DURGASTRA"
+then
+    gosub @Toggle_Durgastra_Mode
 end
 
 // Force slot reload from disk after any loading screen
@@ -100,12 +133,12 @@ end
 
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_RECRUITED
-0A8D: 17@ = read_memory 30@ size 4 virtual_protect 0
+0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
 
 // If dismissed, unrecruited, or in Hitodama form: sleep without touching actor opcodes
 if or
     10@ <= 0
-    0039: 17@ == 0
+    0039: 29@ == 0
 then
     7@ = 0
     8@ = 0
@@ -138,16 +171,205 @@ end
 000A: 30@ += MEM_COMBAT_RES_MODE
 0A8C: write_memory 30@ size 4 value 4@ virtual_protect 0 // Broadcast mode (1 = Gear Swap, 0 = Wallet Drain)
 
-// If Wallet Drain is active (Mode 0), Gear Swap stays dormant
-if
-    4@ == 0
+// Transition: Switched from Wallet Drain (0) -> Gear Swap (1)
+if and
+    4@ == 1
+    13@ == 0
 then
-    wait 250
-    goto @ShionGear_Loop
+    // Mode returned to Gear Swap: immediately reinforce untouched physical ammo reserve onto actor
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_AMMO_COUNT
+    0A8D: 6@ = read_memory 30@ size 4 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_WEAPON_ID
+    0A8D: 5@ = read_memory 30@ size 4 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_STANCE
+    0A8D: 18@ = read_memory 30@ size 4 virtual_protect 0
+
+    if and
+        18@ == 1
+        10@ > 0
+        5@ > 1
+    then
+        if
+            6@ > 0
+        then
+            017B: set_actor 10@ weapon 5@ ammo_to 6@
+        else
+            048F: actor 10@ remove_weapons
+            01B9: set_actor 10@ armed_weapon_to 0
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_STANCE
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+            gosub @Apply_Shion_Peaceful_Mode
+        end
+    end
+end
+
+// Transition: Switched from Gear Swap (1) -> Wallet Drain (0)
+if and
+    4@ == 0
+    13@ == 1
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_STANCE
+    0A8D: 18@ = read_memory 30@ size 4 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_WEAPON_ID
+    0A8D: 5@ = read_memory 30@ size 4 virtual_protect 0
+
+    if and
+        18@ == 1
+        10@ > 0
+        5@ > 1
+    then
+        // Arm with Wallet Drain cushion without touching MEM_SHION_AMMO_COUNT
+        017B: set_actor 10@ weapon 5@ ammo_to 9999
+    end
+end
+
+0085: 13@ = 4@ // Synchronize last tracked resource mode
+
+// =========================================================================
+// WALLET DRAIN (True 1-to-1 Per-Ammo Deduction / Durgastra Support)
+// =========================================================================
+if and
+    4@ == 0  // CombatResourceMode == 0 (Wallet Drain)
+    16@ == 1 // Wallet Drain enabled in INI
+    10@ > 0  // Solid Ped only
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_STANCE
+    0A8D: 18@ = read_memory 30@ size 4 virtual_protect 0
+
+    if
+        18@ == 1 // Hostile / Armed stance
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_DURGASTRA_FLAG
+        0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0 // 1 = Limitless Debt
+        010B: 28@ = player $PLAYER_CHAR money
+
+        27@ = 0
+        if
+            28@ <= 0
+        then
+            if
+                21@ == 0
+            then
+                27@ = 1
+            end
+        end
+
+        if
+            27@ == 1
+        then
+            gosub @Execute_Shion_Bankruptcy_Disarm
+        else
+            0470: 25@ = actor 10@ current_weapon
+            if
+                25@ <= 1
+            then
+                // If armed in RAM but ped is currently unarmed, give designated weapon
+                if
+                    5@ > 1
+                then
+                    0781: get_weapon_with_ID 5@ model_to 12@
+                    if
+                        12@ > 0
+                    then
+                        0247: request_model 12@
+                        038B: load_requested_models
+                        if
+                            0248: model 12@ available
+                        then
+                            01B2: give_actor 10@ weapon 5@ ammo 9999
+                            01B9: set_actor 10@ armed_weapon_to 5@
+                            041A: 14@ = actor 10@ weapon 5@ ammo
+                            0249: release_model 12@
+                        end
+                    end
+                end
+            else
+                if
+                    803B: not 25@ == 5@
+                then
+                    0085: 5@ = 25@
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_SHION_WEAPON_ID
+                    0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+                    017B: set_actor 10@ weapon 5@ ammo_to 9999
+                    041A: 14@ = actor 10@ weapon 5@ ammo
+                end
+                041A: 26@ = actor 10@ weapon 5@ ammo
+
+                if
+                    26@ > 20000
+                then
+                    017B: set_actor 10@ weapon 5@ ammo_to 9999
+                    041A: 14@ = actor 10@ weapon 5@ ammo
+                    041A: 26@ = actor 10@ weapon 5@ ammo
+                end
+
+                if
+                    001D: 14@ > 26@
+                then
+                    0085: 27@ = 14@
+                    0062: 27@ -= 26@
+
+                    if
+                        27@ <= 15
+                    then
+                        0085: 14@ = 26@
+                        gosub @Get_Weapon_Shot_Cost
+                        006A: 15@ *= 27@ // Explicit Local Integer Multiply (006A)
+
+                        0085: 29@ = 15@
+                        0012: 29@ *= -1
+                        0109: player $PLAYER_CHAR money += 29@
+
+                        if
+                            17@ == 1
+                        then
+                            018C: play_sound 1058 at 0.0 0.0 0.0
+                        end
+
+                        if
+                            21@ == 0
+                        then
+                            010B: 28@ = player $PLAYER_CHAR money
+                            if
+                                28@ <= 0
+                            then
+                                gosub @Execute_Shion_Bankruptcy_Disarm
+                            end
+                        end
+                    else
+                        017B: set_actor 10@ weapon 5@ ammo_to 9999
+                        041A: 14@ = actor 10@ weapon 5@ ammo
+                    end
+                else
+                    0085: 14@ = 26@
+                end
+
+                if and
+                    18@ == 1
+                    26@ < 2000
+                then
+                    017B: set_actor 10@ weapon 5@ ammo_to 9999
+                    041A: 14@ = actor 10@ weapon 5@ ammo
+                end
+            end
+        end
+    end
 end
 
 // =========================================================================
-// REAL-TIME AMMO MONITOR & EMPTY WEAPON FALLBACK WATCHDOG
+// REAL-TIME AMMO MONITOR & EMPTY WEAPON FALLBACK WATCHDOG (GEAR SWAP ONLY)
 // =========================================================================
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_STANCE
@@ -162,6 +384,7 @@ end
 0A8D: 6@ = read_memory 30@ size 4 virtual_protect 0  // Keep synced with RAM
 
 if and
+    4@ == 1  // Strictly in Gear Swap mode!
     18@ == 1 // Only monitor ammo while actively in Hostile stance
     10@ > 0  // Solid Ped only
     5@ > 1   // Shion has a firearm assigned
@@ -394,6 +617,11 @@ then
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_SWRE' time 3000 flag 1
     wait 2500
+    if
+        8256: not is_player_playing $PLAYER_CHAR
+    then
+        return
+    end
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
     0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
@@ -440,7 +668,7 @@ then
     then
         018C: play_sound 1057 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SWDF" text "~b~Shion: ~s~\"I've only got two hands, Jo'on... take this one back before I drop both.\""
+        0ADF: add_text_label "Y_SWDF" text "~b~Shion: ~s~\"I only got two hands, Jo'on... take this one back before I drop both.\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_SWDF' time 3000 flag 1
         return
@@ -480,6 +708,11 @@ then
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_SWPL' time 3000 flag 1
         wait 2500
+        if
+            8256: not is_player_playing $PLAYER_CHAR
+        then
+            return
+        end
         0085: 30@ = 31@
         000A: 30@ += MEM_PRIORITY_LOCK
         0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
@@ -569,6 +802,11 @@ then
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_SWGV' time 3000 flag 1
     wait 2500
+    if
+        8256: not is_player_playing $PLAYER_CHAR
+    then
+        return
+    end
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
     0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
@@ -808,13 +1046,26 @@ return
 07DD: set_actor 10@ attack_rate 0
 0770: set_actor 10@ target_priority 0
 0816: set_actor 10@ dont_chase_victim 1
-0946: set_actor 10@ actions_uninterupted_by_weapon_fire 0
-060B: set_actor 10@ decision_maker_to 65543
+0946: set_actor 10@ actions_uninterupted_by_weapon_fire 1
+
+// Install persistent Zero-Panic Decision Maker
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_DM
+0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+if
+    29@ > 0
+then
+    060B: set_actor 10@ decision_maker_to 29@
+else
+    060B: set_actor 10@ decision_maker_to 65543
+end
+
 077C: clear_actor 10@ acquaintance 4 to_all_pedtypes
 077C: clear_actor 10@ acquaintance 3 to_all_pedtypes
 return
 
 :Apply_Shion_Hostile_Mode
+060B: set_actor 10@ decision_maker_to 65543
 07CB: set_actor 10@ supporting_fire 1
 07DD: set_actor 10@ attack_rate 100
 0946: set_actor 10@ actions_uninterupted_by_weapon_fire 1
@@ -841,20 +1092,29 @@ return
 000A: 30@ += MEM_SAVE_SLOT
 0A8C: write_memory 30@ size 4 value 1@ virtual_protect 0
 
-0AD3: 14@v = string_format "Slot_%d" 1@
+// Format section string into isolated high registers 24@v (occupies 24@, 25@, 26@, 27@)
+0AD3: 24@v = string_format "Slot_%d" 1@
 
-0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionWeapon.ini" section 14@v key "WeaponID"
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionWeapon.ini" section 24@v key "WeaponID"
 if
     5@ < 0
 then
     5@ = 0
 end
 
-0AF0: 6@ = read_int_from_ini_file "cleo\savedata\ShionWeapon.ini" section 14@v key "AmmoCount"
+0AF0: 6@ = read_int_from_ini_file "cleo\savedata\ShionWeapon.ini" section 24@v key "AmmoCount"
 if
     6@ < 0
 then
     6@ = 0
+end
+
+// If in Wallet Drain mode and no weapon assigned, default to Sniper Rifle (34)
+if and
+    4@ == 0
+    5@ <= 1
+then
+    5@ = 34
 end
 
 // Share Shion designated weapon to RAM
@@ -866,29 +1126,29 @@ end
 000A: 30@ += MEM_SHION_AMMO_COUNT
 0A8C: write_memory 30@ size 4 value 6@ virtual_protect 0
 
-// Read Jo'on Stashed Weapon ID and Ammo Count (Using 12@ and 13@ to prevent clobbering 27@ and 28@)
-0AF0: 12@ = read_int_from_ini_file "cleo\savedata\ShionWeapon.ini" section 14@v key "JoWeaponID"
+// Read Jo'on Stashed Weapon ID and Ammo Count (Reusing scratch 28@ to keep registers clean)
+0AF0: 28@ = read_int_from_ini_file "cleo\savedata\ShionWeapon.ini" section 24@v key "JoWeaponID"
 if
-    12@ < 0
+    28@ < 0
 then
-    12@ = 0
-end
-
-0AF0: 13@ = read_int_from_ini_file "cleo\savedata\ShionWeapon.ini" section 14@v key "JoAmmoCount"
-if
-    13@ < 0
-then
-    13@ = 0
+    28@ = 0
 end
 
 // Share Jo'on stashed weapon to RAM
 0085: 30@ = 31@
 000A: 30@ += MEM_JOON_STASH_WEAPON
-0A8C: write_memory 30@ size 4 value 12@ virtual_protect 0
+0A8C: write_memory 30@ size 4 value 28@ virtual_protect 0
+
+0AF0: 28@ = read_int_from_ini_file "cleo\savedata\ShionWeapon.ini" section 24@v key "JoAmmoCount"
+if
+    28@ < 0
+then
+    28@ = 0
+end
 
 0085: 30@ = 31@
 000A: 30@ += MEM_JOON_STASH_AMMO
-0A8C: write_memory 30@ size 4 value 13@ virtual_protect 0
+0A8C: write_memory 30@ size 4 value 28@ virtual_protect 0
 return
 
 :Reload_Gear_Settings
@@ -904,5 +1164,328 @@ if
     3@ == 0
 then
     3@ = 82 // R Key (Default)
+end
+
+0AF0: 16@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "EnableWalletDrain"
+if
+    16@ < 0
+then
+    16@ = 1
+end
+
+0AF0: 17@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "PlayShotCashSound"
+if
+    17@ < 0
+then
+    17@ = 1
+end
+return
+
+// =========================================================================
+// SUBROUTINE: WEAPON PRICING LOOKUP (FOR WALLET DRAIN)
+// =========================================================================
+:Get_Weapon_Shot_Cost
+15@ = 0
+
+if
+    5@ == 22 // 9mm Pistol ($200 / 30)
+then
+    15@ = 7
+    return
+end
+if
+    5@ == 23 // Silenced Pistol ($600 / 30)
+then
+    15@ = 20
+    return
+end
+if
+    5@ == 24 // Desert Eagle ($1,200 / 15)
+then
+    15@ = 80
+    return
+end
+if
+    5@ == 25 // Chrome Shotgun ($600 / 15)
+then
+    15@ = 40
+    return
+end
+if
+    5@ == 26 // Sawn-off Shotgun ($800 / 12)
+then
+    15@ = 67
+    return
+end
+if
+    5@ == 27 // Combat Shotgun / SPAS-12 ($1,000 / 10)
+then
+    15@ = 100
+    return
+end
+if
+    5@ == 32 // Tec-9 ($300 / 60)
+then
+    15@ = 5
+    return
+end
+if
+    5@ == 28 // Micro Uzi ($500 / 60)
+then
+    15@ = 8
+    return
+end
+if
+    5@ == 29 // MP5 ($2,000 / 90)
+then
+    15@ = 22
+    return
+end
+if
+    5@ == 30 // AK-47 ($3,500 / 120)
+then
+    15@ = 29
+    return
+end
+if
+    5@ == 31 // M4 ($4,500 / 150)
+then
+    15@ = 30
+    return
+end
+if
+    5@ == 33 // Country Rifle ($1,000 / 20)
+then
+    15@ = 50
+    return
+end
+if
+    5@ == 34 // Sniper Rifle ($5,000 / 10)
+then
+    15@ = 500
+    return
+end
+if
+    5@ == 35 // Rocket Launcher ($3,000 / 10)
+then
+    15@ = 300
+    return
+end
+if
+    5@ == 36 // Heatseeker ($4,000 / 10)
+then
+    15@ = 400
+    return
+end
+if
+    5@ == 37 // Flamethrower ($2,500 / 250)
+then
+    15@ = 10
+    return
+end
+if
+    5@ == 38 // Minigun ($10,000 / 1500)
+then
+    15@ = 7
+    return
+end
+if
+    5@ == 16 // Grenades ($300 / 5)
+then
+    15@ = 60
+    return
+end
+if
+    5@ == 18 // Molotovs ($400 / 8)
+then
+    15@ = 50
+    return
+end
+if
+    5@ == 39 // Satchel Charges ($2,000 / 1)
+then
+    15@ = 2000
+    return
+end
+
+15@ = 10
+return
+
+// =========================================================================
+// SUBROUTINE: BANKRUPTCY AUTO-DISARM
+// =========================================================================
+:Execute_Shion_Bankruptcy_Disarm
+048F: actor 10@ remove_weapons
+01B9: set_actor 10@ armed_weapon_to 0
+
+07CB: set_actor 10@ supporting_fire 0
+07DD: set_actor 10@ attack_rate 0
+0770: set_actor 10@ target_priority 0
+0816: set_actor 10@ dont_chase_victim 1
+0946: set_actor 10@ actions_uninterupted_by_weapon_fire 1
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_DM
+0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+if
+    29@ > 0
+then
+    060B: set_actor 10@ decision_maker_to 29@
+else
+    060B: set_actor 10@ decision_maker_to 65543
+end
+
+077C: clear_actor 10@ acquaintance 4 to_all_pedtypes
+077C: clear_actor 10@ acquaintance 3 to_all_pedtypes
+0792: clear_char_tasks_immediately 10@
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_STANCE
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+018C: play_sound 1057 at 0.0 0.0 0.0
+
+0AF0: 29@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "ShowBankruptAlert"
+if
+    0039: 29@ == 1
+then
+    0ADF: add_text_label "Y_DECL" text "~r~CARD DECLINED~n~~w~OUT OF AMMO FUNDS"
+    00BA: show_text_styled GXT 'Y_DECL' time 3000 style 5
+end
+return
+
+// =========================================================================
+// SUBROUTINE: TOGGLE DURGASTRA MODE
+// =========================================================================
+:Toggle_Durgastra_Mode
+0085: 30@ = 31@
+000A: 30@ += MEM_DURGASTRA_FLAG
+0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    21@ == 0
+then
+    // ACTIVATE DURGASTRA (Limitless Debt Protocol)
+    // 1. Snapshot live combat resource mode before forcing Wallet Drain
+    0085: 30@ = 31@
+    000A: 30@ += MEM_COMBAT_RES_MODE
+    0A8D: 22@ = read_memory 30@ size 4 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_DURGASTRA_PREV_MODE
+    0A8C: write_memory 30@ size 4 value 22@ virtual_protect 0
+
+    // 2. Automatically enforce Wallet Drain mode
+    4@ = 0
+    0085: 30@ = 31@
+    000A: 30@ += MEM_COMBAT_RES_MODE
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0AF1: write_int 0 to_ini_file "cleo\Shion.ini" section "Companion" key "CombatResourceMode"
+
+    // 3. Unleash Durgastra flag
+    0085: 30@ = 31@
+    000A: 30@ += MEM_DURGASTRA_FLAG
+    0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+    018C: play_sound 1147 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_DURA" text "~p~DURGASTRA UNLEASHED~n~~w~LIMITLESS DEBT ENABLED"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_DURA' time 2500 style 5
+
+    // Re-arm physical ped if materialized and hostile
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_STANCE
+    0A8D: 18@ = read_memory 30@ size 4 virtual_protect 0
+
+    if and
+        18@ == 0
+        10@ > 0
+    then
+        18@ = 1
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_STANCE
+        0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+        if
+            5@ <= 1
+        then
+            5@ = 34 // Fallback to Sniper Rifle
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_WEAPON_ID
+            0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+        end
+
+        0781: get_weapon_with_ID 5@ model_to 12@
+        if
+            12@ > 0
+        then
+            0247: request_model 12@
+            038B: load_requested_models
+
+            :Wait_Durgastra_Model_Load
+            wait 0
+            if
+                8256: not is_player_playing $PLAYER_CHAR
+            then
+                return
+            end
+            if
+                8248: not model 12@ available
+            then
+                goto @Wait_Durgastra_Model_Load
+            end
+
+            01B2: give_actor 10@ weapon 5@ ammo 9999
+            01B9: set_actor 10@ armed_weapon_to 5@
+            0249: release_model 12@
+        end
+
+        gosub @Apply_Shion_Hostile_Mode
+    end
+else
+    // DEACTIVATE DURGASTRA (Seal Limitless Debt)
+    0085: 30@ = 31@
+    000A: 30@ += MEM_DURGASTRA_FLAG
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    // Check if we originated from Gear Swap mode
+    0085: 30@ = 31@
+    000A: 30@ += MEM_DURGASTRA_PREV_MODE
+    0A8D: 22@ = read_memory 30@ size 4 virtual_protect 0
+
+    if
+        22@ == 1
+    then
+        4@ = 1
+        0085: 30@ = 31@
+        000A: 30@ += MEM_COMBAT_RES_MODE
+        0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+        0AF1: write_int 1 to_ini_file "cleo\Shion.ini" section "Companion" key "CombatResourceMode"
+    end
+
+    // Reset previous mode tracker
+    0085: 30@ = 31@
+    000A: 30@ += MEM_DURGASTRA_PREV_MODE
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_DURD" text "~s~DURGASTRA SEALED~n~~r~LIMITLESS DEBT DISABLED"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_DURD' time 2500 style 5
+
+    // Enforce bankruptcy disarm if in Wallet Drain mode and broke
+    if
+        22@ == 0
+    then
+        010B: 28@ = player $PLAYER_CHAR money
+        if
+            28@ <= 0
+        then
+            if
+                10@ > 0
+            then
+                gosub @Execute_Shion_Bankruptcy_Disarm
+            end
+        end
+    end
 end
 return

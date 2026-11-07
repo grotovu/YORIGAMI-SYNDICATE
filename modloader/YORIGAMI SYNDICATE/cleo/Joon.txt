@@ -1371,9 +1371,17 @@ then
     // Snapshot live ammo of Shion's designated weapon only
     041A: 16@ = actor $PLAYER_ACTOR weapon 15@ ammo
 
+    // Only update MEM_SHION_AMMO_COUNT if physical Gear Swap mode is active
     0085: 30@ = 31@
-    000A: 30@ += MEM_SHION_AMMO_COUNT
-    0A8C: write_memory 30@ size 4 value 16@ virtual_protect 0
+    000A: 30@ += MEM_COMBAT_RES_MODE
+    0A8D: 17@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        17@ == 1
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_AMMO_COUNT
+        0A8C: write_memory 30@ size 4 value 16@ virtual_protect 0
+    end
 
     0555: remove_weapon 15@ from_actor $PLAYER_ACTOR
 end
