@@ -332,7 +332,7 @@ end
 // Sensor 2: Police / News Helicopter within 200m (Models 497, 488)
 12@ = 0
 if
-    0019: 22@ >= 3
+    0029: 22@ >= 3
 then
     18@ = 0
     :Wanted_Heli_Scan_Loop
@@ -364,7 +364,7 @@ if and
     00DF: actor $PLAYER_ACTOR driving
     0039: 14@ == 0
     0039: 25@ == 0
-    0019: 22@ >= 2
+    0029: 22@ >= 2
 then
     0407: store_coords_to 6@ 7@ 8@ from_car 3@ with_offset 0.0 40.0 0.0
     18@ = 0
@@ -404,7 +404,7 @@ end
 // Sensor 4: Rhino Tank within 75m (Model 432 at 6 Stars, Strictly Ground Vehicles or Foot)
 17@ = 0
 if and
-    0019: 22@ >= 6
+    0029: 22@ >= 6
     0039: 14@ == 0 // Suppressed while flying an aircraft
     0039: 25@ == 0 // Suppressed while in a boat/water
 then
