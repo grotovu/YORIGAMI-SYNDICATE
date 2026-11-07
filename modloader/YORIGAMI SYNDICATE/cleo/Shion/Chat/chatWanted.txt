@@ -201,8 +201,12 @@ else
     0441: 4@ = car 3@ model
     26@ = 1 // Default: Context 1 (Enclosed Cabin with Roof)
 
-    // Check Motorcycles & Bicycles
-    if
+    // Check Motorcycles, Bicycles & Quads
+    0E12: get_vehicle 3@ subclass_to 2@
+    if or
+        0039: 2@ == 7 // Motorcycle
+        0039: 2@ == 8 // Bicycle
+        0039: 2@ == 2 // Quad Bike
         047A: actor $PLAYER_ACTOR driving_bike
     then
         26@ = 2 // Context 2: Open-Air Bike
@@ -259,10 +263,34 @@ if
 then
     25@ = 1
 end
+
 if
     04A7: actor $PLAYER_ACTOR driving_boat
 then
     25@ = 1
+end
+
+// Detect vehicles physically floating on water (Vortex Hovercraft & Amphibious water craft)
+if and
+    0039: 25@ == 0
+    0449: actor $PLAYER_ACTOR in_a_car
+then
+    03C0: 3@ = actor $PLAYER_ACTOR car
+    00AA: store_car 3@ position_to 27@ 28@ 29@
+    092E: get_water_height_at 27@ 28@ ignore_waves 0 store_to 1@
+    if
+        0021: 1@ > -100.0
+    then
+        // 2@ = Vehicle Z - Water Z (Relative elevation above water surface)
+        0087: 2@ = 29@
+        0063: 2@ -= 1@
+        if and
+            0021: 2@ > -2.0
+            8021: not 2@ > 3.5
+        then
+            25@ = 1
+        end
+    end
 end
 
 // Check if player or Shion has firearms drawn (Weapons 22 to 38)
@@ -429,6 +457,266 @@ then
         goto @Wanted_Tank_Scan_Loop
     end
     :Wanted_Tank_Scan_Done
+end
+
+// =========================================================================
+// SPECIAL VEHICLE ARCHETYPES (PRIORITY OVER GENERIC PURSUIT BANTER)
+// =========================================================================
+if
+    0449: actor $PLAYER_ACTOR in_a_car
+then
+    03C0: 3@ = actor $PLAYER_ACTOR car
+    0441: 4@ = car 3@ model
+
+    // ARCHETYPE 1: THE RHINO TANK (Model 432)
+    if
+        0039: 4@ == 432
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            0039: 11@ == 1
+        then
+            0ADF: add_text_label "Y_WTK0H" text "~b~Shion: ~s~\"That cannon is deafening, Jo'on... squad cars are blowing up just by touching our tracks.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WTK0H' time 3700 flag 1
+        else
+            0ADF: add_text_label "Y_WTK0P" text "~b~Shion: ~s~\"Jo'on, my ears are ringing... squad cars are exploding just by touching our tracks.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WTK0P' time 3700 flag 1
+        end
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WTK1" text "~y~Jo'on: ~s~\"Let 'em pop! Who's settin' up roadblocks now, ya badge-wearin' chumps?! AHAHAHA!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WTK1' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Wanted
+    end
+
+    // ARCHETYPE 2: THE CRUSHERS (Monster Trucks & Mining Dumper)
+    if or
+        0039: 4@ == 444 // Monster
+        0039: 4@ == 556 // Monster A
+        0039: 4@ == 557 // Monster B
+        0039: 4@ == 406 // Dumper
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            0039: 11@ == 1
+        then
+            0ADF: add_text_label "Y_WCR0H" text "~b~Shion: ~s~\"We just drove right over a squad car's roof... they're completely flattened, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WCR0H' time 3700 flag 1
+        else
+            0ADF: add_text_label "Y_WCR0P" text "~b~Shion: ~s~\"We just drove over a squad car's roof... I'm getting whiplash from these giant tires, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WCR0P' time 3700 flag 1
+        end
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WCR1" text "~y~Jo'on: ~s~\"Felt like a tiny pebble! Keep your head down, I'm usin' this roadblock as a ramp!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WCR1' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Wanted
+    end
+
+    // ARCHETYPE 3: HEAVY RIGS & BUSSES (Massive Battering Rams)
+    if or
+        0039: 4@ == 515 // Roadtrain
+        0039: 4@ == 514 // Tanker
+        0039: 4@ == 403 // Linerunner
+        0039: 4@ == 431 // Bus
+        0039: 4@ == 437 // Coach
+        0039: 4@ == 408 // Trashmaster
+        0039: 4@ == 524 // Cement Truck
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            0039: 11@ == 1
+        then
+            0ADF: add_text_label "Y_WHV0H" text "~b~Shion: ~s~\"They're trying to ram us, but twenty tons of steel doesn't care... don't lose the wheel, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WHV0H' time 3700 flag 1
+        else
+            0ADF: add_text_label "Y_WHV0P" text "~b~Shion: ~s~\"They're trying to ram us, but twenty tons of steel doesn't care... hold onto the wheel, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WHV0P' time 3700 flag 1
+        end
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WHV1" text "~y~Jo'on: ~s~\"Rammin' a twenty-ton battering ram?! These rookies got death wishes! EAT MY BUMPER!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WHV1' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Wanted
+    end
+
+    // ARCHETYPE 4: WATER CANNONS (Firetruck & SWAT Tank)
+    if or
+        0039: 4@ == 407 // Fire Truck
+        0039: 4@ == 544 // Fire Truck Ladder
+        0039: 4@ == 601 // S.W.A.T. Tank
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WWC0" text "~b~Shion: ~s~\"You're blasting officers across the sidewalk with hydrant water, Jo'on... that's making them angrier.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WWC0' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WWC1" text "~y~Jo'on: ~s~\"AHAHAHA! Presents don't cost me a dime, Shion! Consider it my generous donation to the department!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WWC1' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Wanted
+    end
+
+    // ARCHETYPE 5: MILITARY ATTACK GUNSHIPS (Hunter & Hydra)
+    if or
+        0039: 4@ == 425 // Hunter
+        0039: 4@ == 520 // Hydra
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WGN0" text "~b~Shion: ~s~\"The missile lock is beeping, Jo'on... if you fire rockets downtown, the fine will be millions.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WGN0' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WGN1" text "~y~Jo'on: ~s~\"Let 'em send the bill! I got lock-on missiles and an itchy finger! Outta our airspace, chumps!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WGN1' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Wanted
+    end
+
+    // ARCHETYPE 6: VORTEX HOVERCRAFT (Amphibious Land vs Water)
+    if
+        0039: 4@ == 539 // Vortex
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            0039: 25@ == 1 // On Water
+        then
+            if
+                0039: 11@ == 1
+            then
+                0ADF: add_text_label "Y_WVW0H" text "~b~Shion: ~s~\"Two cruisers drove straight off the pier trying to follow us... watch out for the boat wakes, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_WVW0H' time 3700 flag 1
+            else
+                0ADF: add_text_label "Y_WVW0P" text "~b~Shion: ~s~\"Two cruisers drove straight off the pier trying to follow us... water's splashing all over my feet, Jo'on.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_WVW0P' time 3700 flag 1
+            end
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_WVW1" text "~y~Jo'on: ~s~\"AHAHAHA! Enjoy the bay, ya lead-footed anchors! Hope you know how to swim in full uniform!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WVW1' time 3600 flag 1
+        else
+            // On Land
+            if
+                0039: 11@ == 1
+            then
+                0ADF: add_text_label "Y_WVL0H" text "~b~Shion: ~s~\"We're spinning sideways across the street, Jo'on... this cushion has zero traction.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_WVL0H' time 3700 flag 1
+            else
+                0ADF: add_text_label "Y_WVL0P" text "~b~Shion: ~s~\"We're sliding all over the road, Jo'on... this cushion doesn't have brakes and my stomach's churning.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_WVL0P' time 3700 flag 1
+            end
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_WVL1" text "~y~Jo'on: ~s~\"Who needs brakes?! Watch me drift this fan right past their squad cars! Lean into it!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WVL1' time 3600 flag 1
+        end
+        0001: wait 3600 ms
+        0002: jump @Finalize_Wanted
+    end
+
+    // ARCHETYPE 7: THE SNAIL-PACED DISASTERS (Golf Cart, Mower, Sweeper, etc.)
+    if or
+        0039: 4@ == 457 // Caddy
+        0039: 4@ == 572 // Mower
+        0039: 4@ == 574 // Sweeper
+        0039: 4@ == 531 // Tractor
+        0039: 4@ == 583 // Tug
+        0039: 4@ == 485 // Baggage
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            0039: 11@ == 1
+        then
+            0ADF: add_text_label "Y_WSN0H" text "~b~Shion: ~s~\"Floor it all you want, Jo'on... that cop jogging with a baton is still moving faster than we are.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WSN0H' time 3700 flag 1
+        else
+            0ADF: add_text_label "Y_WSN0P" text "~b~Shion: ~s~\"Jo'on, you're stomping the pedal so hard it'll break... that cop jogging with a baton is faster.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WSN0P' time 3700 flag 1
+        end
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WSN1" text "~y~Jo'on: ~s~\"WHY DOES THIS JUNK TOP OUT AT FIFTEEN MILES AN HOUR?! MOVE, YOU PATHETIC LAWN TOY!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WSN1' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Wanted
+    end
+
+    // ARCHETYPE 8: MR. WHOOPEE (Model 423)
+    if
+        0039: 4@ == 423
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WHP0" text "~b~Shion: ~s~\"The music won't stop, Jo'on... tap the horn to shut it off before they shoot our tires out.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WHP0' time 3700 flag 1
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WHP1" text "~y~Jo'on: ~s~\"I AM mashin' the horn! If this clown jingle doesn't stop, I'm rippin' the speakers out with my bare hands!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WHP1' time 3700 flag 1
+        0001: wait 3700 ms
+        0002: jump @Finalize_Wanted
+    end
 end
 
 // Read Anti-Repetition Memory from Shared Var
@@ -1026,18 +1314,35 @@ then
                     0ADF: add_text_label "Y_W21WB" text "~y~Jo'on: ~s~\"Amateur dock patrol! Watch me leave 'em spinnin' in our wake!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_W21WB' time 3500 flag 1
-                else // In Car
-                    0ADF: add_text_label "Y_W21A" text "~b~Shion: ~s~\"A squad car just whipped around that corner trying to crash into my door, Jo'on...\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_W21A' time 3600 flag 1
-                    0001: wait 3600 ms
-                    0050: gosub @Check_Alive_Or_Exit
+                else
+                    if
+                        0039: 26@ == 2 // Open-Air Bike
+                    then
+                        0ADF: add_text_label "Y_W21BK" text "~b~Shion: ~s~\"A squad car just whipped around that corner trying to clip our bike, Jo'on...\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_W21BK' time 3600 flag 1
+                        0001: wait 3600 ms
+                        0050: gosub @Check_Alive_Or_Exit
 
-                    018C: play_sound 1058 at 0.0 0.0 0.0
-                    03EB: clear_small_messages_only
-                    0ADF: add_text_label "Y_W21B" text "~y~Jo'on: ~s~\"Intersection ambushes! Watch me blow right past 'em! Hold onto your seat!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_W21B' time 3500 flag 1
+                        018C: play_sound 1058 at 0.0 0.0 0.0
+                        03EB: clear_small_messages_only
+                        0ADF: add_text_label "Y_W21BL" text "~y~Jo'on: ~s~\"Intersection ambushes! Watch me lean into this turn! Hold onto my waist!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_W21BL' time 3500 flag 1
+                    else
+                        // Enclosed Car with Doors
+                        0ADF: add_text_label "Y_W21A" text "~b~Shion: ~s~\"A squad car just whipped around that corner trying to crash into my door, Jo'on...\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_W21A' time 3600 flag 1
+                        0001: wait 3600 ms
+                        0050: gosub @Check_Alive_Or_Exit
+
+                        018C: play_sound 1058 at 0.0 0.0 0.0
+                        03EB: clear_small_messages_only
+                        0ADF: add_text_label "Y_W21B" text "~y~Jo'on: ~s~\"Intersection ambushes! Watch me blow right past 'em! Hold onto your seat!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_W21B' time 3500 flag 1
+                    end
                 end
             end
         end
@@ -1153,9 +1458,18 @@ then
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_W3BHF' time 3600 flag 1
             else
-                0ADF: add_text_label "Y_W30BH" text "~y~Jo'on: ~s~\"Turn off your glow, Shion! You're illuminatin' our roof for their airborne gunner!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_W30BH' time 3600 flag 1
+                if
+                    0039: 26@ == 2 // Bike / Open-Air
+                then
+                    0ADF: add_text_label "Y_W3BHK" text "~y~Jo'on: ~s~\"Turn off your glow, Shion! You're illuminatin' our heads for their airborne gunner!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_W3BHK' time 3600 flag 1
+                else
+                    // Enclosed Cabin
+                    0ADF: add_text_label "Y_W30BH" text "~y~Jo'on: ~s~\"Turn off your glow, Shion! You're illuminatin' our roof for their airborne gunner!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_W30BH' time 3600 flag 1
+                end
             end
         else
             0ADF: add_text_label "Y_W30A" text "~b~Shion: ~s~\"There's a police chopper overhead, Jo'on... the searchlight's blinding my eyes.\""
@@ -1747,18 +2061,35 @@ then
                     0ADF: add_text_label "Y_W41WB" text "~y~Jo'on: ~s~\"Their heavy hulls turn like lead! Watch me carve right past 'em!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_W41WB' time 3600 flag 1
-                else // In Car
-                    0ADF: add_text_label "Y_W41AC" text "~b~Shion: ~s~\"Those huge SWAT trucks are right behind us, Jo'on... they weigh twice as much as this car.\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_W41AC' time 3600 flag 1
-                    0001: wait 3600 ms
-                    0050: gosub @Check_Alive_Or_Exit
+                else
+                    if
+                        0039: 26@ == 2 // Bike / Open-Air
+                    then
+                        0ADF: add_text_label "Y_W41BK" text "~b~Shion: ~s~\"Those huge SWAT trucks are right behind us, Jo'on... they'll crush this bike like a tin can.\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_W41BK' time 3600 flag 1
+                        0001: wait 3600 ms
+                        0050: gosub @Check_Alive_Or_Exit
 
-                    018C: play_sound 1058 at 0.0 0.0 0.0
-                    03EB: clear_small_messages_only
-                    0ADF: add_text_label "Y_W41BC" text "~y~Jo'on: ~s~\"Heavy trucks mean slow turns! Watch me take this corner, they'll slide right into a pole!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_W41BC' time 3600 flag 1
+                        018C: play_sound 1058 at 0.0 0.0 0.0
+                        03EB: clear_small_messages_only
+                        0ADF: add_text_label "Y_W41BL" text "~y~Jo'on: ~s~\"Heavy trucks mean slow turns! Watch me carve through this gap, they'll slide right into a pole!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_W41BL' time 3600 flag 1
+                    else
+                        // Enclosed Car
+                        0ADF: add_text_label "Y_W41AC" text "~b~Shion: ~s~\"Those huge SWAT trucks are right behind us, Jo'on... they weigh twice as much as this car.\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_W41AC' time 3600 flag 1
+                        0001: wait 3600 ms
+                        0050: gosub @Check_Alive_Or_Exit
+
+                        018C: play_sound 1058 at 0.0 0.0 0.0
+                        03EB: clear_small_messages_only
+                        0ADF: add_text_label "Y_W41BC" text "~y~Jo'on: ~s~\"Heavy trucks mean slow turns! Watch me take this corner, they'll slide right into a pole!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_W41BC' time 3600 flag 1
+                    end
                 end
             end
             0001: wait 3600 ms
@@ -2197,17 +2528,34 @@ then
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_W52BF' time 3500 flag 1
                 else
-                    0ADF: add_text_label "Y_W52A" text "~b~Shion: ~s~\"Those black Ranchers are ramming us at eighty miles an hour... they don't even care about their cars.\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_W52A' time 3600 flag 1
-                    0001: wait 3600 ms
-                    0050: gosub @Check_Alive_Or_Exit
+                    if
+                        0039: 26@ == 2 // Bike / Open-Air
+                    then
+                        0ADF: add_text_label "Y_W52BK" text "~b~Shion: ~s~\"Those black Ranchers are ramming at eighty miles an hour... one clip and we're flying, Jo'on.\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_W52BK' time 3600 flag 1
+                        0001: wait 3600 ms
+                        0050: gosub @Check_Alive_Or_Exit
 
-                    018C: play_sound 1058 at 0.0 0.0 0.0
-                    03EB: clear_small_messages_only
-                    0ADF: add_text_label "Y_W52B" text "~y~Jo'on: ~s~\"Must be nice havin' government cash! They can smash bumpers all day and not pay a dime!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_W52B' time 3500 flag 1
+                        018C: play_sound 1058 at 0.0 0.0 0.0
+                        03EB: clear_small_messages_only
+                        0ADF: add_text_label "Y_W52BL" text "~y~Jo'on: ~s~\"Must be nice havin' government cash! Lean forward, they won't clip our rear wheel!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_W52BL' time 3500 flag 1
+                    else
+                        // Enclosed Car
+                        0ADF: add_text_label "Y_W52A" text "~b~Shion: ~s~\"Those black Ranchers are ramming us at eighty miles an hour... they don't even care about their cars.\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_W52A' time 3600 flag 1
+                        0001: wait 3600 ms
+                        0050: gosub @Check_Alive_Or_Exit
+
+                        018C: play_sound 1058 at 0.0 0.0 0.0
+                        03EB: clear_small_messages_only
+                        0ADF: add_text_label "Y_W52B" text "~y~Jo'on: ~s~\"Must be nice havin' government cash! They can smash bumpers all day and not pay a dime!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_W52B' time 3500 flag 1
+                    end
                 end
                 0001: wait 3500 ms
             end
@@ -2318,17 +2666,34 @@ then
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_W6BHF' time 3700 flag 1
             else
-                0ADF: add_text_label "Y_W60AH" text "~b~Shion: ~s~\"A military tank... it can crush our car, but it can't crush a floating spirit, Jo'on.\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_W60AH' time 3700 flag 1
-                wait 3700
-                gosub @Check_Alive_Or_Exit
+                if
+                    0039: 26@ == 2 // Bike / Open-Air
+                then
+                    0ADF: add_text_label "Y_W6AHK" text "~b~Shion: ~s~\"A military tank... it can crush our bike, but it can't crush a floating spirit, Jo'on.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_W6AHK' time 3700 flag 1
+                    wait 3700
+                    gosub @Check_Alive_Or_Exit
 
-                018C: play_sound 1058 at 0.0 0.0 0.0
-                03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_W60BH" text "~y~Jo'on: ~s~\"It can crush ME, ya idiot! I'm throwin' it in reverse! I ain't gettin' pancaked by sixty tons of steel!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_W60BH' time 3700 flag 1
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_W6BHK" text "~y~Jo'on: ~s~\"It can crush ME, ya idiot! Punch the throttle! I ain't gettin' flattened on two wheels!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_W6BHK' time 3700 flag 1
+                else
+                    // Enclosed Car
+                    0ADF: add_text_label "Y_W60AH" text "~b~Shion: ~s~\"A military tank... it can crush our car, but it can't crush a floating spirit, Jo'on.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_W60AH' time 3700 flag 1
+                    wait 3700
+                    gosub @Check_Alive_Or_Exit
+
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_W60BH" text "~y~Jo'on: ~s~\"It can crush ME, ya idiot! I'm throwin' it in reverse! I ain't gettin' pancaked by sixty tons of steel!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_W60BH' time 3700 flag 1
+                end
             end
         else
             if
@@ -2346,17 +2711,34 @@ then
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_W60BF' time 3600 flag 1
             else
-                0ADF: add_text_label "Y_W60A" text "~b~Shion: ~s~\"That's a huge army tank, Jo'on... it's gonna roll right over us and crush the whole car flat.\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_W60A' time 3700 flag 1
-                0001: wait 3700 ms
-                0050: gosub @Check_Alive_Or_Exit
+                if
+                    0039: 26@ == 2 // Bike / Open-Air
+                then
+                    0ADF: add_text_label "Y_W60AK" text "~b~Shion: ~s~\"That's a huge army tank, Jo'on... it's gonna roll right over us and flatten this bike.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_W60AK' time 3700 flag 1
+                    0001: wait 3700 ms
+                    0050: gosub @Check_Alive_Or_Exit
 
-                018C: play_sound 1058 at 0.0 0.0 0.0
-                03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_W60B" text "~y~Jo'on: ~s~\"If that giant track touches us, we're flattened like pancakes! I'm throwin' it in reverse!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_W60B' time 3600 flag 1
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_W60BK" text "~y~Jo'on: ~s~\"If that giant track touches us, we're pancaked! Turn around and punch the throttle!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_W60BK' time 3600 flag 1
+                else
+                    // Enclosed Car
+                    0ADF: add_text_label "Y_W60A" text "~b~Shion: ~s~\"That's a huge army tank, Jo'on... it's gonna roll right over us and crush the whole car flat.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_W60A' time 3700 flag 1
+                    0001: wait 3700 ms
+                    0050: gosub @Check_Alive_Or_Exit
+
+                    018C: play_sound 1058 at 0.0 0.0 0.0
+                    03EB: clear_small_messages_only
+                    0ADF: add_text_label "Y_W60B" text "~y~Jo'on: ~s~\"If that giant track touches us, we're flattened like pancakes! I'm throwin' it in reverse!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_W60B' time 3600 flag 1
+                end
             end
         end
         wait 3600

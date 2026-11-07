@@ -393,12 +393,21 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * `TRIGGERCHAT`: Interactive submenu to stream all chat scripts directly on demand.
 * **`chatWanted.txt` (`Sh_Star`):**
   * Context-aware pursuit dialogue router evaluating wanted stars (1–6).
-  * **Sensor-First Architecture:** Eliminates "phantom" references by scanning the physical 3D world before rolling dialogue. Uses explicit `0029: >=` boundary opcodes to ensure sensors activate on exact threshold stars:
+  * **Sensor-First Architecture:** Eliminates "phantom" references by scanning the physical 3D world before rolling dialogue. Uses explicit `0029: >=` boundary opcodes and tuned physical scan radii to ensure threats are immediately visible:
     * *Sensor 1 (Police Bikes)*: 35m radius for active HPV-1000s (`523`) with live drivers (ground-only).
     * *Sensor 2 (Police / News Helicopters)*: 100m 3D radius for Mavericks (`497`) and News Choppers (`488`) at $\ge 3$ Stars.
     * *Sensor 3 (Forward Roadblocks)*: 30m radius, 40m ahead for stopped/parked police cruisers at $\ge 2$ Stars (driving ground vehicles).
-    * *Sensor 4 (Rhino Tanks)*: 50m radius for Rhinos (`432`) at 6 Stars (ground/foot-only).
-  * **3-Tier Cabin & Transit Matrix:** Accurately routes dialogue based on transit state (Air, Water, Enclosed Car, Open-Air/Bike, On Foot, or Train), with custom Hitodama spectral shield variants.
+    * *Sensor 4 (Rhino Tanks)*: 50m radius for enemy Rhinos (`432`) at 6 Stars (ground/foot-only).
+  * **Special Vehicle Archetypes Interception**: Evaluated immediately after physical sensors, overriding generic sedan dialogue with 8 bespoke vehicle-specific pursuits:
+    * *Archetype 1 (Rhino Tank 432)*
+    * *Archetype 2 (Crushers 444, 556, 557, 406)*
+    * *Archetype 3 (Heavy Battering Rams 515, 514, 403, 431, 437, 408, 524)*
+    * *Archetype 4 (High-Pressure Water Cannons 407, 544, 601)*
+    * *Archetype 5 (Attack Gunships 425, 520)*
+    * *Archetype 6 (Vortex Hovercraft 539)*
+    * *Archetype 7 (Snail Disasters 457, 572, 574, 531, 583, 485)*
+    * *Archetype 8 (Mr. Whoopee 423)*
+  * **Multi-Modal Transit & Cabin Matrix (`26@`)**: Dual-validates open-air vehicles via `047A: driving_bike` and `0E12: get_vehicle subclass_to` (Subclasses 7 = Motorbike, 8 = Bicycle, 2 = Quad), strictly isolating motorcycle dialogue across all star tiers (e.g. leaning into turns instead of slamming doors, clipping rear wheels instead of smashing bumpers, and illuminating heads instead of car roofs).
   * **Mid-Speech Abort:** Immediately terminates banter and releases Priority Lock if stars are cleared via Pay 'n' Spray or bribes mid-sentence.
 * **`chatFollow.txt` (`Sh_FolC`):**
   * Dedicated vocal dispatcher for Jo'on governing movement commands, vehicle transit, and immediate on-scene death reactions across 9 operational modes (`0`–`8`).
