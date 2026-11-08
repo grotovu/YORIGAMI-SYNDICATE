@@ -394,11 +394,11 @@ if and
     0039: 25@ == 0
     0029: 22@ >= 2
 then
-    0407: store_coords_to 6@ 7@ 8@ from_car 3@ with_offset 0.0 40.0 0.0
+    0407: store_coords_to 6@ 7@ 1@ from_car 3@ with_offset 0.0 40.0 0.0
     18@ = 0
     :Wanted_Roadblock_Scan_Loop
     if
-        0AE2: 2@ = random_vehicle_near_point 6@ 7@ 8@ in_radius 30.0 find_next 18@ pass_wrecked 1
+        0AE2: 2@ = random_vehicle_near_point 6@ 7@ 1@ in_radius 30.0 find_next 18@ pass_wrecked 1
     then
         18@ = 1
         if and
@@ -459,11 +459,11 @@ then
     :Wanted_Tank_Scan_Done
 end
 
-// Sensor 5: Military Pursuit Hydra within 300m (Model 520)
+// Sensor 5: Military Pursuit Hydra within 300m (Model 520, Aircraft Only at 4+ Stars)
 8@ = 0
 if and
-    0039: 14@ == 1 // Player is in a combat aircraft
-    0029: 22@ >= 3 // Pursuit heat active
+    0039: 14@ == 1 // Player is piloting a flight vehicle
+    0029: 22@ >= 4 // Hydras only scramble at 4+ Stars
 then
     18@ = 0
     :Wanted_Hydra_Scan_Loop
@@ -477,7 +477,7 @@ then
         then
             0441: 19@ = car 2@ model
             if
-                0039: 19@ == 520 // Enemy Military Hydra physically in the sky!
+                0039: 19@ == 520 // Enemy Military Hydra confirmed airborne!
             then
                 8@ = 1
                 goto @Wanted_Hydra_Scan_Done
@@ -5993,6 +5993,56 @@ end
 if
     22@ == 4
 then
+    // Priority Context 0: Airborne Military Hydra Interceptor (1 Jet in Flight)
+    if and
+        0039: 14@ == 1 // Strictly airborne in an aircraft
+        0039: 8@ == 1  // Hydra confirmed airborne nearby
+    then
+        0209: 18@ = random_int_in_ranges 0 2
+        if
+            0039: 18@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                0039: 11@ == 1
+            then
+                0ADF: add_text_label "Y_W4H1H" text "~b~Shion: ~s~\"A military fighter jet just tore through the clouds, Jo'on... it's matching our speed right behind us.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W4H1H' time 3700 flag 1
+            else
+                0ADF: add_text_label "Y_W4H1A" text "~b~Shion: ~s~\"A military fighter jet just tore through the clouds, Jo'on... my ears are ringing from the loud roar.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W4H1A' time 3700 flag 1
+            end
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W4H1B" text "~y~Jo'on: ~s~\"A whole military jet for little ol' me?! They're wastin' million-dollar fuel tryin' to catch us! AHAHAHA!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4H1B' time 3700 flag 1
+            0001: wait 3700 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W4H2A" text "~b~Shion: ~s~\"That military jet is right on our tail, Jo'on... it looks ready to blast us out of the sky.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4H2A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W4H2B" text "~y~Jo'on: ~s~\"Let 'im try! Watch me pull this stick and bank hard! That military stiff can't out-fly Jo'on Yorigami!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W4H2B' time 3600 flag 1
+            0001: wait 3600 ms
+        end
+        0002: jump @Finalize_Wanted
+    end
+
     // Priority Context 1: Physical Helicopter Overhead (News Chopper / Police)
     if
         0039: 12@ == 1
@@ -6061,7 +6111,7 @@ then
         then
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_W42A" text "~b~Shion: ~s~\"Military fighter jets are behind us, Jo'on... they're shooting missiles.\""
+            0ADF: add_text_label "Y_W42A" text "~b~Shion: ~s~\"The military's scrambled planes to track us, Jo'on... they're closing in on our altitude.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_W42A' time 3600 flag 1
             0001: wait 3600 ms
@@ -6069,10 +6119,10 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_W42B" text "~y~Jo'on: ~s~\"Military jets screamin' over the city?! Those cops lost their minds callin' in missiles on us!\""
+            0ADF: add_text_label "Y_W42B" text "~y~Jo'on: ~s~\"Scramblin' the military?! Those cops lost their minds spendin' that much budget on us! AHAHAHA!\""
             09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_W42B' time 3500 flag 1
-            wait 3500
+            00BC: show_text_highpriority GXT 'Y_W42B' time 3600 flag 1
+            0001: wait 3600 ms
         else
             if
                 25@ == 1 // Water: Patrol Cutters replace street vans
@@ -6316,6 +6366,56 @@ end
 if
     22@ == 5
 then
+    // Priority Context 0: Airborne Dual Hydra Pursuit (2 Jets Flanking)
+    if and
+        0039: 14@ == 1 // Strictly airborne in an aircraft
+        0039: 8@ == 1  // Hydras confirmed airborne nearby
+    then
+        0209: 18@ = random_int_in_ranges 0 2
+        if
+            0039: 18@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                0039: 11@ == 1
+            then
+                0ADF: add_text_label "Y_W5H1H" text "~b~Shion: ~s~\"Now there are two military jets on our wings, Jo'on... they're closing in from both sides of the clouds.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5H1H' time 3700 flag 1
+            else
+                0ADF: add_text_label "Y_W5H1A" text "~b~Shion: ~s~\"Now there are two military jets on our wings, Jo'on... my stomach is dropping from how fast we're turning.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W5H1A' time 3700 flag 1
+            end
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W5H1B" text "~y~Jo'on: ~s~\"Two military jets?! Look at all that taxpayer cash burnin' in the sky just to keep up with my flyin'! AHAHAHA!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W5H1B' time 3700 flag 1
+            0001: wait 3700 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W5H2A" text "~b~Shion: ~s~\"Both jets are flying right beside us, Jo'on... they're trying to box our wings in.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W5H2A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W5H2B" text "~y~Jo'on: ~s~\"Boxin' in a superstar?! Duck down, I'm cuttin' the throttle and lettin' 'em overshoot right past us!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W5H2B' time 3600 flag 1
+            0001: wait 3600 ms
+        end
+        0002: jump @Finalize_Wanted
+    end
+
     // Restored: Restricted Military Airspace Sensor (Heap Offset 216)
     0085: 30@ = 31@
     000A: 30@ += MEM_RESTRICTED_AIR
@@ -6825,7 +6925,57 @@ end
 if
     22@ >= 6
 then
-    // Priority Context 1: Physical Rhino Tank Nearby
+    // Priority Context 0: Airborne Full Military Base Mobilization
+    if and
+        0039: 14@ == 1 // Strictly airborne in an aircraft
+        0039: 8@ == 1  // Hydras confirmed airborne nearby
+    then
+        0209: 18@ = random_int_in_ranges 0 2
+        if
+            0039: 18@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            if
+                0039: 11@ == 1
+            then
+                0ADF: add_text_label "Y_W6H1H" text "~b~Shion: ~s~\"The sky is full of military jets chasing us, Jo'on... they've got the whole airspace completely boxed in.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W6H1H' time 3700 flag 1
+            else
+                0ADF: add_text_label "Y_W6H1A" text "~b~Shion: ~s~\"The sky is full of military jets chasing us, Jo'on... my knees are shaking from the constant engine noise.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_W6H1A' time 3700 flag 1
+            end
+            0001: wait 3700 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W6H1B" text "~y~Jo'on: ~s~\"The entire air base mobilized against Jo'on Yorigami?! AHAHAHA! You hear that, army boys?! I'M UNTOUCHABLE!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W6H1B' time 3700 flag 1
+            0001: wait 3700 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W6H2A" text "~b~Shion: ~s~\"Fighter jets are swarming everywhere, Jo'on... if we clip a wing, there won't even be scraps left of us.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W6H2A' time 3600 flag 1
+            0001: wait 3600 ms
+            0050: gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_W6H2B" text "~y~Jo'on: ~s~\"Then I ain't clippin' nothin'! I'm pullin' full throttle! Let's see those army boys match my flyin'!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_W6H2B' time 3600 flag 1
+            0001: wait 3600 ms
+        end
+        0002: jump @Finalize_Wanted
+    end
+
+    // Priority Context 1: Physical Rhino Tank Nearby (Ground/Foot Only)
     if
         0039: 17@ == 1
     then

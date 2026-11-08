@@ -428,41 +428,84 @@ end
 if
     25@ == 423
 then
-    0209: 29@ = random_int_in_ranges 0 2
     if
-        29@ == 0
+        0ABD: car 24@ siren_on
     then
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_WHO0A" text "~b~Shion: ~s~\"Hear that ice cream jingle? Pull over and buy me cherry popsicles, Jo'on. I'm starving.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_WHO0A' time 3500 flag 1
-        wait 3500
-        gosub @Check_Alive_Or_Exit
+        // JINGLE CHIME ACTIVE (Personal Parade & Peddler Hustle)
+        0209: 29@ = random_int_in_ranges 0 2
+        if
+            29@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_WHO0A" text "~b~Shion: ~s~\"That jingle is ringing so loud, Jo'on... pull over and let me check the freezer for popsicles.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WHO0A' time 3600 flag 1
+            wait 3600
+            gosub @Check_Alive_Or_Exit
 
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_WHO0B" text "~y~Jo'on: ~s~\"Shut that jingle off before someone thinks I'm sellin' cheap ice cream to toddlers!\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_WHO0B' time 3400 flag 1
-        wait 3400
-        goto @Finalize_Ambient_Chat
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_WHO0B" text "~y~Jo'on: ~s~\"Keep your hands off the stock! That's gourmet merchandise! Hundred bucks a scoop minimum!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WHO0B' time 3600 flag 1
+            wait 3600
+            goto @Finalize_Ambient_Chat
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_WHO1A" text "~b~Shion: ~s~\"All the people on the sidewalk are waving dollar bills at our serving window, Jo'on...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WHO1A' time 3600 flag 1
+            wait 3600
+            gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_WHO1B" text "~y~Jo'on: ~s~\"Take their cash and floor the gas! Five hundred a pop! First lesson in street economics! AHAHAHA!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WHO1B' time 3600 flag 1
+            wait 3600
+            goto @Finalize_Ambient_Chat
+        end
     else
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_WHO1A" text "~b~Shion: ~s~\"All the kids on the sidewalk are waving dollar bills at the window, Jo'on...\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_WHO1A' time 3500 flag 1
-        wait 3500
-        gosub @Check_Alive_Or_Exit
+        // JINGLE CHIME OFF (Silent Delivery & Billboard Cone)
+        0209: 29@ = random_int_in_ranges 0 2
+        if
+            29@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_WHO2A" text "~b~Shion: ~s~\"The music box is off... do you want me to hit the chime so someone flags us down for food?\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WHO2A' time 3600 flag 1
+            wait 3600
+            gosub @Check_Alive_Or_Exit
 
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_WHO1B" text "~y~Jo'on: ~s~\"Take their money! But give 'em nothin'! First lesson in financial reality!\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_WHO1B' time 3500 flag 1
-        wait 3500
-        goto @Finalize_Ambient_Chat
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_WHO2B" text "~y~Jo'on: ~s~\"Leave it off! I ain't servin' melted cones for pennies! We sell the whole freezer to rich chumps!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WHO2B' time 3600 flag 1
+            wait 3600
+            goto @Finalize_Ambient_Chat
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_WHO3A" text "~b~Shion: ~s~\"Everyone on the sidewalk is staring at our giant plastic roof cone, Jo'on...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WHO3A' time 3500 flag 1
+            wait 3500
+            gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_WHO3B" text "~y~Jo'on: ~s~\"Let 'em stare! That giant cone is free billboard advertising for Jo'on Yorigami! AHAHAHA!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WHO3B' time 3600 flag 1
+            wait 3600
+            goto @Finalize_Ambient_Chat
+        end
     end
 end
 
@@ -1309,41 +1352,84 @@ if or
     25@ == 427
     25@ == 490
 then
-    0209: 29@ = random_int_in_ranges 0 2
     if
-        29@ == 0
+        0ABD: car 24@ siren_on
     then
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_COP0A" text "~b~Shion: ~s~\"The police radio's calling for our squad car, Jo'on... they know we stole it.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_COP0A' time 3500 flag 1
-        wait 3500
-        gosub @Check_Alive_Or_Exit
+        // SIREN ON: SIRENS SCREAMING & LANES PARTING
+        0209: 29@ = random_int_in_ranges 0 2
+        if
+            29@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_COP0A" text "~y~Jo'on: ~s~\"Look at 'em clear the lane! Siren screamin' and strobes flashin'! Outta my way, peons! AHAHAHA!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_COP0A' time 3600 flag 1
+            wait 3600
+            gosub @Check_Alive_Or_Exit
 
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_COP0B" text "~y~Jo'on: ~s~\"Hit the siren, Shion! Tell 'em to choke on our exhaust! AHAHAHA!\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_COP0B' time 3400 flag 1
-        wait 3400
-        goto @Finalize_Ambient_Chat
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_COP0B" text "~b~Shion: ~s~\"The siren is deafening, Jo'on... and every cop within five miles knows we stole this cruiser.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_COP0B' time 3600 flag 1
+            wait 3600
+            goto @Finalize_Ambient_Chat
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_COP1A" text "~y~Jo'on: ~s~\"Look at 'em pullin' over with their licenses ready! Wallets are already out for the takin'!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_COP1A' time 3500 flag 1
+            wait 3500
+            gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_COP1B" text "~b~Shion: ~s~\"They think we're responding to a felony, Jo'on... we're just driving to the drive-thru.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_COP1B' time 3500 flag 1
+            wait 3500
+            goto @Finalize_Ambient_Chat
+        end
     else
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_COP1A" text "~y~Jo'on: ~s~\"Look at 'em pullin' over with their licenses ready! Wallets are already out for the takin'!\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_COP1A' time 3500 flag 1
-        wait 3500
-        gosub @Check_Alive_Or_Exit
+        // SIREN OFF: STEALTH SQUAD CAR CRUISING
+        0209: 29@ = random_int_in_ranges 0 2
+        if
+            29@ == 0
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_COP2A" text "~b~Shion: ~s~\"Everyone on the road is doing twenty under the limit because they think we're real cops, Jo'on...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_COP2A' time 3700 flag 1
+            wait 3700
+            gosub @Check_Alive_Or_Exit
 
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_COP1B" text "~b~Shion: ~s~\"They think we're responding to a felony, Jo'on... we're just driving to the drive-thru.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_COP1B' time 3500 flag 1
-        wait 3500
-        goto @Finalize_Ambient_Chat
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_COP2B" text "~y~Jo'on: ~s~\"AHAHAHA! Look at 'em sweatin'! Cruisin' silent in a squad car is the ultimate power trip!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_COP2B' time 3500 flag 1
+            wait 3500
+            goto @Finalize_Ambient_Chat
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_COP3A" text "~b~Shion: ~s~\"The police radio's calling for our squad car, Jo'on... they know we stole it.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_COP3A' time 3500 flag 1
+            wait 3500
+            gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_COP3B" text "~y~Jo'on: ~s~\"Leave the siren off! If we stay quiet, we can tail the next armored van without an alarm!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_COP3B' time 3600 flag 1
+            wait 3600
+            goto @Finalize_Ambient_Chat
+        end
     end
 end
 
