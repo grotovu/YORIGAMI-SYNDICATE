@@ -2386,40 +2386,59 @@ then
         jump @Finalize_Ambient_Chat
     end
 
-    // Variant: The Wailing Siren & Red Sea VIP Treatment
+    // Variant: Siren Active vs Silent Dispatch
     if
         28@ == 3
     then
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SCM3A" text "~b~Shion: ~s~\"The siren is wailing right above our heads... can you turn the noise off, Jo'on?\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_SCM3A' time 3500 flag 1
-        wait 3500 ms
-        gosub @Check_Alive_Or_Exit
+        if
+            0ABD: car 24@ siren_on
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_SCM3A" text "~b~Shion: ~s~\"The siren is wailing right above our heads... can you turn the noise off, Jo'on?\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SCM3A' time 3500 flag 1
+            wait 3500 ms
+            gosub @Check_Alive_Or_Exit
 
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SCM3B" text "~y~Jo'on: ~s~\"Turn it off?! Never! That siren makes cars part like the Red Sea for me!\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_SCM3B' time 3600 flag 1
-        wait 3600 ms
-        gosub @Check_Alive_Or_Exit
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_SCM3B" text "~y~Jo'on: ~s~\"Turn it off?! Never! That siren makes cars part like the Red Sea for me!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SCM3B' time 3600 flag 1
+            wait 3600 ms
+            gosub @Check_Alive_Or_Exit
 
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SCM3C" text "~b~Shion: ~s~\"It's giving me a pounding headache... and oncoming drivers keep swerving into light poles.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_SCM3C' time 3600 flag 1
-        wait 3600 ms
-        gosub @Check_Alive_Or_Exit
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_SCM3C" text "~b~Shion: ~s~\"It's giving me a pounding headache... and oncoming drivers keep swerving into light poles.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SCM3C' time 3600 flag 1
+            wait 3600 ms
+            gosub @Check_Alive_Or_Exit
 
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SCM3D" text "~y~Jo'on: ~s~\"Then they should've cleared the lane faster! I ain't touchin' that siren switch! AHAHAHA!\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_SCM3D' time 3600 flag 1
-        wait 3600 ms
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_SCM3D" text "~y~Jo'on: ~s~\"Then they should've cleared the lane faster! I ain't touchin' that siren switch! AHAHAHA!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SCM3D' time 3600 flag 1
+            wait 3600 ms
+        else
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_SCM3E" text "~b~Shion: ~s~\"The hospital scanner says all available ambulances need to report in... we should stay quiet.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SCM3E' time 3600 flag 1
+            wait 3600 ms
+            gosub @Check_Alive_Or_Exit
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_SCM3F" text "~y~Jo'on: ~s~\"Keep that siren switch off! If dispatch figures out we're joyridin', the fun's over!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SCM3F' time 3500 flag 1
+            wait 3500 ms
+        end
         jump @Finalize_Ambient_Chat
     end
 end
