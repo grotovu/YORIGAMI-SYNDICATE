@@ -95,7 +95,6 @@ Every secondary script executes an identical connection routine upon initializat
 | `408` | `MEM_SHION_CHUTE_OBJ` | int | Object handle of active parachute canopy (`#PARACHUTE` / `3131`). | `ShionChute`, `SpawnShion` | `SpawnShion`, `ShionChute` |
 | `412` | `MEM_SHION_DM` | int | Handle of persistent Zero-Panic Decision Maker allocated once on boot. | `SpawnShion` | `ShionControl`, `Entourage`, `chatDismiss`, `SpawnShion` |
 | `416` | `MEM_DURGASTRA_PREV_MODE`| int | Stored `MEM_COMBAT_RES_MODE` before Durgastra override (`0` = Wallet Drain, 1 = Gear Swap). | `ShionGear`, `ShionMenu` | `ShionGear`, `ShionMenu` |
-| `420` | `MEM_HITO_SHIELD_ON` | int (bool) | Live Spectral Shield Active (`0` = Inactive / Armoured / Broken, `1` = Active & Deflecting). | `FX_ShionHitodama` | `chatVehicle`, `chatWanted` |
 
 ---
 
@@ -414,6 +413,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * *Archetype 6 (Vortex Hovercraft 539)*
     * *Archetype 7 (Snail Disasters 457, 572, 574, 531, 583, 485)*
     * *Archetype 8 (Mr. Whoopee 423)*
+    * *Archetype 9 (Bicycles 481, 509, 510)*
   * **Multi-Modal Transit & Cabin Matrix (`26@`)**: Dual-validates open-air vehicles via `047A: driving_bike` and `0E12: get_vehicle subclass_to` (Subclasses 7 = Motorbike, 8 = Bicycle, 2 = Quad), strictly isolating motorcycle dialogue across all star tiers (e.g. leaning into turns instead of slamming doors, clipping rear wheels instead of smashing bumpers, and illuminating heads instead of car roofs).
   * **Mid-Speech Abort:** Immediately terminates banter and releases Priority Lock if stars are cleared via Pay 'n' Spray or bribes mid-sentence.
 * **`chatFollow.txt` (`Sh_FolC`):**

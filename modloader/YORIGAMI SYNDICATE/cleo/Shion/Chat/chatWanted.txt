@@ -717,6 +717,39 @@ then
         0001: wait 3700 ms
         0002: jump @Finalize_Wanted
     end
+    
+    // ARCHETYPE 9: BICYCLES (BMX 481, Bike 509, Mountain Bike 510)
+    0E12: get_vehicle 3@ subclass_to 2@
+    if or
+        0039: 2@ == 8 // Bicycle subclass
+        0039: 4@ == 481 // BMX
+        0039: 4@ == 509 // Bike
+        0039: 4@ == 510 // Mountain Bike
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            0039: 11@ == 1
+        then
+            0ADF: add_text_label "Y_WBK0H" text "~b~Shion: ~s~\"Pedal faster, Jo'on... that squad car bumper is inches from your back tire.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WBK0H' time 3700 flag 1
+        else
+            0ADF: add_text_label "Y_WBK0P" text "~b~Shion: ~s~\"Pedal faster, Jo'on... that squad car is doing fifty and my legs are cramping on these pegs.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WBK0P' time 3700 flag 1
+        end
+        0001: wait 3700 ms
+        0050: gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WBK1" text "~y~Jo'on: ~s~\"MY CALVES ARE ON FIRE! WHY AM I PEDALIN' FOR MY LIFE AGAINST SQUAD CARS?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WBK1' time 3600 flag 1
+        0001: wait 3600 ms
+        0002: jump @Finalize_Wanted
+    end
 end
 
 // Read Anti-Repetition Memory from Shared Var
