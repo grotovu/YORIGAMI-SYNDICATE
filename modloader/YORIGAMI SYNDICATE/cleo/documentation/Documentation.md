@@ -252,9 +252,9 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 * **`ShionCombat.txt` (`Sh_Cmbt`):**
   * **Innate Misfortune Aura:** Scans hostiles within 25m every 1s. Rolls a 20% bad luck check: forces victim to suffer gun jams (cower animation) or slip and knockdown animations (`KO_SKID_FRONT/BACK`, `KO_SPIN_L/R`), and spawns an attached `FX_HexFlame.c`.
     * **Cop Retaliation Exemption:** Cops (`PedType 6`) are strictly exempt from both peacetime hostile targeting (`wanted_level == 0`) and post-recovery retaliation assignments (`18@ = 0`), preventing scripted `05E2: kill_actor` orders from re-aggroing pacified officers.
-    * **Task Pack Register Isolation:** Uses dedicated scratch register `20@` for AS pack construction (`0615`), fully decoupling sequence creation from the vehicle iterators (`12@`) used in Traffic Hex and Aviation Calamity.
+    * **Task Pack Sequence Isolation:** Isolates task sequence creation memory from the active search coordinates and vehicle iterators, ensuring radial ped sweeps never lose track of companion position or jump to map origin mid-scan.
   * **Innate Traffic Hex:** When wanted level > 1, scans police vehicles within 45m every 5s. Rolls 20% chance to force stall (`0477: action 1 time 3500`) and deflates front tires (`04FE`).
-  * **Innate Aviation Calamity:** When wanted level > 2, scans helicopters and jets within 300m every 5s. Rolls 20% chance to detonate pursuit aircraft (`020B: explode_car`).
+  * **Innate Aviation Calamity:** When wanted level > 2, scans helicopters and jets within 300m every 4s. Rolls 20% chance to detonate pursuit aircraft (`020B: explode_car`). Verifies the aircraft is above critical health and not already burning immediately prior to detonation, preventing race condition conflicts if shot down by the player or detonated by pursuit perks.
   * **Voodoo Damage Reflection (`OnShionDamage`):** Intercepts damage events on Shion; reflects incoming intensity back to the attacking ped or vehicle driver.
   * **Kill Tracker:** Continuously tallies Shion's confirmed kills (`MEM_SHION_KILLS`) and Jo'on's kills with Shion (`MEM_JOON_KILLS_W_SHION`).
 * **`ShionGear.txt` (`Sh_Gear`):**
@@ -512,7 +512,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 * **`Pursuit.txt` (`Y_Pursuit`):**
   * *Police Bribe:* Type "BRIBE" to clear 1 wanted star for cash ($20,000 default), incrementing `MEM_BRIBES_PAID`.
   * *Traffic Hex (`MEM_ALLOC_TRAFFICHEX`):* Scans 45m radius around player for pursuit cruisers and bikes when wanted level > 1 on a configurable interval (`[TrafficHex] ScanIntervalSeconds`, default 5s, stored in `18@`). Rolls stall chance, applies engine stall action, deflates tires on 4-wheel cruisers, and uses `20@` as a single-scan audio limiter.
-  * *Aviation Calamity (`MEM_ALLOC_AVIATION`):* Scans 300m radius for airborne pursuit aircraft when wanted level > 2 on a configurable interval (`[AviationMisfortune] ScanIntervalSeconds`, default 4s, stored in `11@`). Rolls explosion chance and detonates target.
+  * *Aviation Calamity (`MEM_ALLOC_AVIATION`):* Scans 300m radius for airborne pursuit aircraft when wanted level > 2 on a configurable interval (`[AviationMisfortune] ScanIntervalSeconds`, default 4s). Rolls explosion chance and detonates target. Employs dual-stage vehicle verification (checking both critical health thresholds and burning status prior to detonation) to safely yield if an aircraft is already being destroyed by weapons or companion auras.
 * **`DebtDet.txt` (`Y_DebtD`):**
   * Triggers when player health drops below threshold (default 50% HP) while having points in Debt Detonation.
   * Launches `FX_GrimBurst.c` (ethereal sapphire screen shockwave).

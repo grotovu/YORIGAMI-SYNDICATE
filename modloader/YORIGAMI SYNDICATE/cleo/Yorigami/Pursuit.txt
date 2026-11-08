@@ -367,9 +367,9 @@ then
                                 if
                                     25@ == 0
                                 then
-                                    0227: 25@ = car 9@ health
-                                    if
-                                        25@ > 250
+                                    if and
+                                        0185: car 9@ health > 250
+                                        8495: not car 9@ burning
                                     then
                                         0085: 27@ = 9@
                                         goto @Aviation_Evaluate_Target
@@ -394,17 +394,21 @@ then
             if
                 002D: 24@ >= 25@
             then
-                020B: explode_car 27@
-                0003: shake_camera 30
-                if
-                    16@ == 1
+                if and
+                    0185: car 27@ health > 250
+                    8495: not car 27@ burning
                 then
-                    018C: play_sound 1057 at 0.0 0.0 0.0
-                end
-                if
-                    14@ == 1
-                then
-                    0ACF: show_formatted_styled_text "~r~AVIATION CALAMITY~n~~w~AIRCRAFT EXPLODED" time 2500 style 5
+                    020B: explode_car 27@
+                    if
+                        16@ == 1
+                    then
+                        018C: play_sound 1057 at 0.0 0.0 0.0
+                    end
+                    if
+                        14@ == 1
+                    then
+                        0ACF: show_formatted_styled_text "~r~AVIATION CALAMITY~n~~w~AIRCRAFT EXPLODED" time 2500 style 5
+                    end
                 end
             end
         end

@@ -397,24 +397,24 @@ then
         if
             26@ == 1
         then
-            // Gun Jam Outcome: Cower in Panic
-            0615: define_AS_pack_begin 20@
+            // Gun Jam Outcome: Cower in Panic (Uses isolated register 17@)
+            0615: define_AS_pack_begin 17@
             05C5: AS_actor -1 cower 2500 ms
             if
                 18@ == 1
             then
                 05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
             end
-            0616: define_AS_pack_end 20@
-            0618: assign_actor 29@ to_AS_pack 20@
-            061B: remove_references_to_AS_pack 20@
+            0616: define_AS_pack_end 17@
+            0618: assign_actor 29@ to_AS_pack 17@
+            061B: remove_references_to_AS_pack 17@
         else
             0209: 25@ = random_int_in_range 0 4
 
             if
                 25@ == 0
             then
-                0615: define_AS_pack_begin 20@
+                0615: define_AS_pack_begin 17@
                 0812: AS_actor -1 perform_animation "KO_SKID_FRONT" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 1 time 1500
                 0812: AS_actor -1 perform_animation "GETUP_FRONT" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
                 if
@@ -422,15 +422,15 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 end
-                0616: define_AS_pack_end 20@
-                0618: assign_actor 29@ to_AS_pack 20@
-                061B: remove_references_to_AS_pack 20@
+                0616: define_AS_pack_end 17@
+                0618: assign_actor 29@ to_AS_pack 17@
+                061B: remove_references_to_AS_pack 17@
             end
 
             if
                 25@ == 1
             then
-                0615: define_AS_pack_begin 20@
+                0615: define_AS_pack_begin 17@
                 0812: AS_actor -1 perform_animation "KO_SKID_BACK" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 1 time 1500
                 0812: AS_actor -1 perform_animation "GETUP" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
                 if
@@ -438,15 +438,15 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 end
-                0616: define_AS_pack_end 20@
-                0618: assign_actor 29@ to_AS_pack 20@
-                061B: remove_references_to_AS_pack 20@
+                0616: define_AS_pack_end 17@
+                0618: assign_actor 29@ to_AS_pack 17@
+                061B: remove_references_to_AS_pack 17@
             end
 
             if
                 25@ == 2
             then
-                0615: define_AS_pack_begin 20@
+                0615: define_AS_pack_begin 17@
                 0812: AS_actor -1 perform_animation "KO_SPIN_L" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 1 time 1500
                 0812: AS_actor -1 perform_animation "GETUP" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
                 if
@@ -454,15 +454,15 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 end
-                0616: define_AS_pack_end 20@
-                0618: assign_actor 29@ to_AS_pack 20@
-                061B: remove_references_to_AS_pack 20@
+                0616: define_AS_pack_end 17@
+                0618: assign_actor 29@ to_AS_pack 17@
+                061B: remove_references_to_AS_pack 17@
             end
 
             if
                 25@ == 3
             then
-                0615: define_AS_pack_begin 20@
+                0615: define_AS_pack_begin 17@
                 0812: AS_actor -1 perform_animation "KO_SPIN_R" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 1 time 1500
                 0812: AS_actor -1 perform_animation "GETUP" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
                 if
@@ -470,9 +470,9 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 end
-                0616: define_AS_pack_end 20@
-                0618: assign_actor 29@ to_AS_pack 20@
-                061B: remove_references_to_AS_pack 20@
+                0616: define_AS_pack_end 17@
+                0618: assign_actor 29@ to_AS_pack 17@
+                061B: remove_references_to_AS_pack 17@
             end
         end
     end
@@ -618,11 +618,15 @@ then
                         if
                             25@ <= 20
                         then
-                            020B: explode_car 12@
-                            0003: shake_camera 30
-                            018C: play_sound 1057 at 0.0 0.0 0.0
-                            0ADF: add_text_label "Y_SAIR" text "~r~SHION'S AURA~n~~w~AIRCRAFT DESTROYED"
-                            00BA: show_text_styled GXT 'Y_SAIR' time 2500 style 5
+                            if and
+                                0185: car 12@ health > 250
+                                8495: not car 12@ burning
+                            then
+                                020B: explode_car 12@
+                                018C: play_sound 1057 at 0.0 0.0 0.0
+                                0ADF: add_text_label "Y_SAIR" text "~r~SHION'S AURA~n~~w~AIRCRAFT DESTROYED"
+                                00BA: show_text_styled GXT 'Y_SAIR' time 2500 style 5
+                            end
                         end
                     end
                 end
