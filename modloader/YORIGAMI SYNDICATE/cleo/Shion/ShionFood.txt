@@ -43,9 +43,9 @@ wait 1500
 11@ = 0   // Previous Recruitment State Latch
 12@ = 0   // Needs Food Boolean Flag
 13@ = 0   // 10-Second Spawn/Recruit Delay Timer (ms)
-14@ = 0   // Death Memory Suppression Flag (1 = Suppress initial hunger line)
+14@ = 0   // Previous Shion Ped Handle (Tracks respawns and morphs!)
 15@ = 0   // Diner Active State: 0 = Idle/Monitoring, 1 = Diner Active
-17@ = 0   // Previous Shion Ped Handle (Tracks respawns and morphs!)
+17@ = 0   // Scratch Player Position Y Coord
 21@ = 0   // Dedicated Player Vehicle Handle
 // 29@       Elapsed Hours Since Last Fed (Calculated globally in loop)
 
@@ -89,7 +89,7 @@ end
 
 // Check Handle Change (Respawn via Cheat or Morphing from Hitodama)
 if
-    803B: not 10@ == 17@
+    803B: not 10@ == 14@
 then
     if and
         16@ == 1 // Only applies if she is actively recruited
@@ -97,7 +97,7 @@ then
     then
         24@ = 1
     end
-    0085: 17@ = 10@
+    0085: 14@ = 10@
 end
 
 // Execute 10-Second Silence on any spawn or recruitment
@@ -490,55 +490,64 @@ then
             if
                 9@ < 4 // Can prompt and override any chat except Tier 4 Sister Talk!
             then
-                // Check wallet: Only display prompt if player has money!
-                010B: 9@ = player $PLAYER_CHAR money
+                // Check wanted stars: Suppress drive-thru prompt and TAB during police pursuit
+                01C0: 9@ = player $PLAYER_CHAR wanted_level
                 if
-                    9@ > 0
+                    9@ == 0
                 then
-                    // Display prompt ONCE upon stopping (Latched with 0@!)
-                    if
-                        0@ == 0
-                    then
-                        0@ = 1
-                        0ADF: add_text_label "Y_FDRV" text "~y~DRIVE-THRU~n~~w~PRESS [TAB] FOR MENU"
-                        00BA: show_text_styled GXT 'Y_FDRV' time 3500 style 5
-                    end
-                end
-
-                if or
-                    0AB0: is_key_pressed 9 // TAB Key
-                    00E1: player 0 pressed_key 4
-                then
+                    // Check wallet: Only display prompt if player has money!
                     010B: 9@ = player $PLAYER_CHAR money
                     if
                         9@ > 0
                     then
+                        // Display prompt ONCE upon stopping (Latched with 0@!)
                         if
-                            23@ == 0
+                            0@ == 0
                         then
-                            0226: 22@ = actor 10@ health
-                            if
-                                22@ < 950
-                            then
-                                23@ = 2 // Wounded
-                            else
-                                23@ = 1 // Hungry
-                            end
-                        end
-                        0@ = 0 // Clear latch on buy
-                        8@ = 0
-                        gosub @Launch_Diner_Thread
-                    else
-                        // Holding Tab while broke triggers verbal feedback
-                        000A: 8@ += 250
-                        if
-                            8@ >= 1000 // Held for 1 second
-                        then
-                            8@ = 0
-                            gosub @Show_Broke_Food_Message
+                            0@ = 1
+                            0ADF: add_text_label "Y_FDRV" text "~y~DRIVE-THRU~n~~w~PRESS [TAB] FOR MENU"
+                            00BA: show_text_styled GXT 'Y_FDRV' time 3500 style 5
                         end
                     end
+
+                    if or
+                        0AB0: is_key_pressed 9 // TAB Key
+                        00E1: player 0 pressed_key 4
+                    then
+                        010B: 9@ = player $PLAYER_CHAR money
+                        if
+                            9@ > 0
+                        then
+                            if
+                                23@ == 0
+                            then
+                                0226: 22@ = actor 10@ health
+                                if
+                                    22@ < 950
+                                then
+                                    23@ = 2 // Wounded
+                                else
+                                    23@ = 1 // Hungry
+                                end
+                            end
+                            0@ = 0 // Clear latch on buy
+                            8@ = 0
+                            gosub @Launch_Diner_Thread
+                        else
+                            // Holding Tab while broke triggers verbal feedback
+                            000A: 8@ += 250
+                            if
+                                8@ >= 1000 // Held for 1 second
+                            then
+                                8@ = 0
+                                gosub @Show_Broke_Food_Message
+                            end
+                        end
+                    else
+                        8@ = 0
+                    end
                 else
+                    0@ = 0
                     8@ = 0
                 end
             else
@@ -580,9 +589,9 @@ then
                 19@ == 1
             then
                 // Check wallet: Only display prompt if player has money!
-                010B: 21@ = player $PLAYER_CHAR money
+                010B: 9@ = player $PLAYER_CHAR money
                 if
-                    21@ > 0
+                    9@ > 0
                 then
                     // Display prompt ONCE upon reaching counter (Latched with 0@!)
                     if
@@ -603,9 +612,9 @@ then
                         8@ >= 1200
                     then
                         8@ = 0
-                        010B: 21@ = player $PLAYER_CHAR money
+                        010B: 9@ = player $PLAYER_CHAR money
                         if
-                            21@ > 0
+                            9@ > 0
                         then
                             0226: 22@ = actor 10@ health
                             if

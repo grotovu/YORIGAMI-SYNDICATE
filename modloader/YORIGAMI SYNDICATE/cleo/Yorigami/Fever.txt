@@ -66,13 +66,29 @@ end
 
 // Tick down Cooldown
 if
-    12@ > 0
+    0019: 12@ > 0
 then
     000E: 12@ -= 100
     if
-        001B: 0 > 12@
+        8019: not 12@ > 0
     then
         12@ = 0
+        if and
+            0019: 2@ > 0
+            816B: not fading
+        then
+            if
+                0039: 3@ == 1
+            then
+                0ADF: add_text_label "Y_FEVRD" text "~y~PESTILENCE FEVER~n~~g~READY"
+                00BA: show_text_styled GXT 'Y_FEVRD' time 1500 style 5
+            end
+            if
+                0039: 4@ == 1
+            then
+                018C: play_sound 1058 at 0.0 0.0 0.0
+            end
+        end
     end
 end
 

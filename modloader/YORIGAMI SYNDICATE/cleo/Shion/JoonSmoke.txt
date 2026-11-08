@@ -173,10 +173,11 @@ then
     end
 end
 
-// Clamp withdrawal timer and cooldown during active missions until OnMission is 0
+// Clamp withdrawal timer and cooldown during active missions or wanted levels
 if or
     0038: $ONMISSION == 1
     0E1D: is_on_mission
+    010F: player $PLAYER_CHAR wanted_level > 0
 then
     18@ = 0
     if
@@ -506,6 +507,7 @@ then
             8E25: not is_on_cutscene
             8E47: not is_char_fighting $PLAYER_ACTOR
             82E0: not actor $PLAYER_ACTOR firing_weapon
+            810F: not player $PLAYER_CHAR wanted_level > 0
         then
             0085: 30@ = 31@
             000A: 30@ += MEM_PRIORITY_LOCK
@@ -1177,6 +1179,13 @@ then
     return
 end
 
+// Do not trigger withdrawal complaints while wanted
+if
+    010F: player $PLAYER_CHAR wanted_level > 0
+then
+    return
+end
+
 // Do not interrupt phone conversations with withdrawal complaints
 if or
     0E42: is_char_doing_task_id $PLAYER_ACTOR 1600
@@ -1475,6 +1484,7 @@ if or
     0118: actor $PLAYER_ACTOR dead
     016B: fading
     0E25: is_on_cutscene
+    010F: player $PLAYER_CHAR wanted_level > 0
 then
     03EB: clear_small_messages_only
     0085: 30@ = 31@

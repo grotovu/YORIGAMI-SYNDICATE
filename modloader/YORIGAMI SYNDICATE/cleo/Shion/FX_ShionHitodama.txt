@@ -25,6 +25,7 @@ const
     MEM_TIMES_WASTED = 300
     MEM_TIMES_BUSTED = 304
     MEM_HITO_PAIN_MUTED = 348     // Formerly unused / Spectral Shield Pain Audio Latch
+    MEM_HITO_SHIELD_ON = 420      // Live Spectral Shield Active (0 = Inactive / Armoured / Broken, 1 = Active & Deflecting)
 end
 
 :Connect_To_Brain
@@ -226,7 +227,7 @@ then
 end
 
 // =========================================================================
-// SPECTRAL SHIELD PAIN AUDIO LATCH
+// SPECTRAL SHIELD PAIN AUDIO LATCH & SHIELD STATE BROADCAST
 // =========================================================================
 20@ = 0 // Assume shield is inactive
 
@@ -267,9 +268,17 @@ then
     0085: 30@ = 31@
     000A: 30@ += MEM_HITO_PAIN_MUTED
     0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_HITO_SHIELD_ON
+    0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
 else
-    // Shield is broken, unarmoured, or inactive; restore pain audio
+    // Shield is broken, armoured, or inactive; restore pain audio
     gosub @Restore_Pain_Audio_If_Configured
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_HITO_SHIELD_ON
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 end
 
 // =========================================================================
@@ -875,24 +884,30 @@ then
     if
         20@ > 100
     then
+        // Only active if Jo'on has no armour remaining (Armour <= 0)
+        04DD: 23@ = actor 29@ armour
         if
-            00DF: actor 29@ driving
+            0 >= 23@
         then
-            03C0: 20@ = actor 29@ car
             if
-                047A: actor 29@ driving_bike
+                00DF: actor 29@ driving
             then
-                22@ = 1
-            else
-                0441: 25@ = car 20@ model
-                if or
-                    25@ == 471 // Quad
-                    25@ == 571 // Kart
-                    25@ == 568 // Bandito
-                    25@ == 539 // Vortex
-                    25@ == 572 // Mower
+                03C0: 20@ = actor 29@ car
+                if
+                    047A: actor 29@ driving_bike
                 then
                     22@ = 1
+                else
+                    0441: 25@ = car 20@ model
+                    if or
+                        25@ == 471 // Quad
+                        25@ == 571 // Kart
+                        25@ == 568 // Bandito
+                        25@ == 539 // Vortex
+                        25@ == 572 // Mower
+                    then
+                        22@ = 1
+                    end
                 end
             end
         end
@@ -910,7 +925,7 @@ then
     // Get coordinates directly from vehicle matrix
     0407: store_coords_to 5@ 6@ 7@ from_car 20@ with_offset 0.0 -0.10 0.50
 
-    // Render soft translucent sapphire aura (always on while mounted with >100 HP)
+    // Render soft translucent sapphire aura (always on while mounted with >100 HP and 0 Armour)
     04D5: create_corona_at 5@ 6@ 7@ radius 23@ type 0 flare 0 RGB 20 80 200
 end
 
@@ -1078,6 +1093,10 @@ end
 0085: 30@ = 31@
 000A: 30@ += MEM_HITO_PAIN_MUTED
 0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_HITO_SHIELD_ON
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
 if
     20@ == 1

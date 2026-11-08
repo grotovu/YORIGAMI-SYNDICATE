@@ -1055,7 +1055,90 @@ then
 end
 
 // -------------------------------------------------------------------------
-// ON-FOOT & URGENT SUB-MISSIONS (Checked FIRST so Wanted stars don't hijack jobs)
+// SPEED PANIC (High speed while driving on land)
+// -------------------------------------------------------------------------
+if
+    00DF: actor $PLAYER_ACTOR driving
+then
+    03C0: 24@ = actor $PLAYER_ACTOR car
+    0441: 25@ = car 24@ model
+    if and
+        0038: $CUSTOM_TOURNAMENT_FLAG == 0
+        0038: $161 == 0
+        84A9: not actor $PLAYER_ACTOR driving_heli
+        84AB: not actor $PLAYER_ACTOR driving_plane
+    then
+        02E3: 27@ = car 24@ speed
+        if and
+            0021: 27@ > 40.0
+            10@ > 0 // Suppress if Hitodama (-1)
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_SDWN" text "~b~Shion: ~s~\"Jo'on, slow down! My stomach's in my throat!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SDWN' time 3000 flag 1
+            wait 3000
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                24@ == 2
+            then
+                0085: 30@ = 31@
+                000A: 30@ += MEM_PRIORITY_LOCK
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+            end
+            return
+        end
+    end
+end
+
+// -------------------------------------------------------------------------
+// EMERGENCY 2: WANTED PURSUIT INTERCEPTION (Zero Chill Under Heat)
+// -------------------------------------------------------------------------
+01C0: 22@ = player $PLAYER_CHAR wanted_level
+if
+    22@ > 0
+then
+    // Check if on Vigilante Sub-Mission
+    gosub @Check_Vigilante_State
+    if
+        29@ == 1
+    then
+        0209: 23@ = random_int_in_range 0 2
+        if
+            23@ == 0
+        then
+            0A92: create_custom_thread "Shion\Chat\chatSubMission.c" 10@
+        else
+            0A92: create_custom_thread "Shion\Chat\chatWanted.c" 10@
+        end
+        return
+    end
+
+    // Check if on other active Sub-Missions (Taxi, Medic, Fire, Trucking, etc.)
+    if
+        0038: $ONMISSION == 1
+    then
+        0209: 23@ = random_int_in_range 0 2
+        if
+            23@ == 0
+        then
+            0A92: create_custom_thread "Shion\Chat\chatSubMission.c" 10@
+        else
+            0A92: create_custom_thread "Shion\Chat\chatWanted.c" 10@
+        end
+        return
+    end
+
+    // Free-roam with wanted level: 100% Wanted Chatter!
+    0A92: create_custom_thread "Shion\Chat\chatWanted.c" 10@
+    return
+end
+
+// -------------------------------------------------------------------------
+// ON-FOOT & URGENT SUB-MISSIONS (Peacetime)
 // -------------------------------------------------------------------------
 if and
     0038: $ONMISSION == 1
@@ -1088,6 +1171,7 @@ then
     0A92: create_custom_thread "Shion\Chat\chatSubMission.c" 10@
     return
 end
+
 if and
     0038: $ONMISSION == 1
     0018: $Mission_BeatTheCock_Type > 0
@@ -1097,7 +1181,7 @@ then
 end
 
 // -------------------------------------------------------------------------
-// VEHICLE DRIVING & VEHICLE SUB-MISSIONS
+// VEHICLE DRIVING & VEHICLE SUB-MISSIONS (Peacetime)
 // -------------------------------------------------------------------------
 if
     00DF: actor $PLAYER_ACTOR driving
@@ -1136,39 +1220,7 @@ then
     if
         26@ == 1
     then
-        // Only trigger speed panic in land vehicles (excludes planes, helis, races, and trains)
-        if and
-            0038: $CUSTOM_TOURNAMENT_FLAG == 0
-            0038: $161 == 0
-            84A9: not actor $PLAYER_ACTOR driving_heli
-            84AB: not actor $PLAYER_ACTOR driving_plane
-        then
-            02E3: 27@ = car 24@ speed
-            if and
-                0021: 27@ > 40.0
-                10@ > 0 // Suppress if Hitodama (-1)
-            then
-                018C: play_sound 1058 at 0.0 0.0 0.0
-                03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_SDWN" text "~b~Shion: ~s~\"Jo'on, slow down! My stomach's in my throat!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_SDWN' time 3000 flag 1
-                wait 3000
-                0085: 30@ = 31@
-                000A: 30@ += MEM_PRIORITY_LOCK
-                0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
-                if
-                    24@ == 2
-                then
-                    0085: 30@ = 31@
-                    000A: 30@ += MEM_PRIORITY_LOCK
-                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-                end
-                return
-            end
-        end
-
-        // TAXI SUB-MISSION
+        // TAXI SUB-MISSION (Peacetime)
         if
             0038: $ONMISSION_TAXI == 1
         then
@@ -1203,7 +1255,7 @@ then
             return
         end
 
-        // PIMPING SUB-MISSION
+        // PIMPING SUB-MISSION (Peacetime)
         if and
             0038: $ONMISSION == 1
             0038: $162 == 1
@@ -1239,7 +1291,7 @@ then
             return
         end
 
-        // RS HAUL TRUCKING SUB-MISSION
+        // RS HAUL TRUCKING SUB-MISSION (Peacetime)
         if
             0038: $ONMISSION == 1
         then
@@ -1280,7 +1332,7 @@ then
             end
         end
 
-        // OTHER URGENT SUB-MISSIONS & ACTIVITIES
+        // OTHER SUB-MISSIONS & ACTIVITIES (Peacetime)
         28@ = 0
         if
             0038: $ONMISSION == 1
@@ -1372,7 +1424,7 @@ then
             return
         end
 
-        // CRUISING
+        // PEACETIME CRUISING
         0209: 29@ = random_int_in_range 0 10
         if
             29@ < 5
@@ -1408,17 +1460,8 @@ then
 end
 
 // -------------------------------------------------------------------------
-// FREE-ROAM WANTED STARS (Only evaluated if NOT on an active sub-mission!)
+// PEACETIME FREE-ROAM DISPATCHER (On-Foot & Vehicle Fallbacks)
 // -------------------------------------------------------------------------
-01C0: 22@ = player $PLAYER_CHAR wanted_level
-if
-    22@ > 0
-then
-    // Launch Wanted chatter without pre-claiming Lock 3 so ShionChat passes cleanly
-    0A92: create_custom_thread "Shion\Chat\chatWanted.c" 10@
-    return
-end
-
 // If actively on a story mission, or during mission fail/pass screen, release lock and do not speak
 if
     0038: $ONMISSION == 1
@@ -1526,7 +1569,7 @@ then
     return
 end
 
-// Category C (30%): Idle
+// Category C (30%): Idle / Vehicle
 if
     00DF: actor $PLAYER_ACTOR driving
 then

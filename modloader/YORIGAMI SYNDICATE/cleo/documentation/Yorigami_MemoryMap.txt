@@ -120,4 +120,5 @@ const
     MEM_SHION_CHUTE_OBJ = 408     // Parachute Canopy Object Handle (0 = None, >0 = Live Object)
     MEM_SHION_DM = 412            // Persistent Zero-Panic Decision Maker Handle
     MEM_DURGASTRA_PREV_MODE = 416 // Stored CombatResourceMode prior to Durgastra override (0 = Wallet Drain, 1 = Gear Swap)
+    MEM_HITO_SHIELD_ON = 420      // Live Spectral Shield Active (0 = Inactive / Armoured / Broken, 1 = Active & Deflecting)
 end

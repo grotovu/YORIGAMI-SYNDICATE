@@ -1640,39 +1640,56 @@ if
     11@ == 1
 then
     // HITODAMA FORM: MOTORCYCLE CRUISING (Jo'on Driving)
-    // Handlebar Shield vs Depleted Flame
+    // Handlebar Shield vs Armoured Vest vs Depleted Flame
     if
         29@ == 0
     then
-        0085: 30@ = 31@
-        000A: 30@ += MEM_SHION_PRES_HP
-        0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+        04DD: 27@ = actor $PLAYER_ACTOR armour
         if
-            28@ > 100
+            27@ > 0
         then
-            0ADF: add_text_label "Y_MCH0A" text "~b~Shion: ~s~\"I don't have hands to shoot right now, but my shield's blocking the handlebars from stray lead...\""
+            0ADF: add_text_label "Y_MC0AR" text "~b~Shion: ~s~\"You're wearing that heavy vest, so my shield isn't catching anything right now... I'm just floating along.\""
             09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_MCH0A' time 3600 flag 1
-            wait 3600
+            00BC: show_text_highpriority GXT 'Y_MC0AR' time 3700 flag 1
+            wait 3700
             gosub @Check_Alive_Or_Exit
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_MCH0B" text "~y~Jo'on: ~s~\"A bulletproof ghost shield on a stolen bike?! You're actually good for somethin', Shion!\""
+            0ADF: add_text_label "Y_MC0BR" text "~y~Jo'on: ~s~\"That's high-end body armor under my coat! I ain't trustin' my life to cheap ghost tricks when I got real gear!\""
             09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_MCH0B' time 3600 flag 1
+            00BC: show_text_highpriority GXT 'Y_MC0BR' time 3600 flag 1
         else
-            0ADF: add_text_label "Y_MCH0D" text "~b~Shion: ~s~\"My shield's completely broken, I can't block any gunfire right now, Jo'on... stay low!\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_MCH0D' time 3600 flag 1
-            wait 3600
-            gosub @Check_Alive_Or_Exit
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_PRES_HP
+            0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                28@ > 100
+            then
+                0ADF: add_text_label "Y_MCH0A" text "~b~Shion: ~s~\"I don't have hands to shoot right now, but with no vest on you, my shield's blocking the handlebars from stray lead...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MCH0A' time 3700 flag 1
+                wait 3700
+                gosub @Check_Alive_Or_Exit
 
-            018C: play_sound 1058 at 0.0 0.0 0.0
-            03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_MCH0E" text "~y~Jo'on: ~s~\"Don't worry, no cop on this highway can match my cornerin' anyway!\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_MCH0E' time 3500 flag 1
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_MCH0B" text "~y~Jo'on: ~s~\"A bulletproof ghost shield on a stolen bike?! You're actually good for somethin', Shion!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MCH0B' time 3600 flag 1
+            else
+                0ADF: add_text_label "Y_MCH0D" text "~b~Shion: ~s~\"My shield's completely broken, I can't block any gunfire right now, Jo'on... stay low!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MCH0D' time 3600 flag 1
+                wait 3600
+                gosub @Check_Alive_Or_Exit
+
+                018C: play_sound 1058 at 0.0 0.0 0.0
+                03EB: clear_small_messages_only
+                0ADF: add_text_label "Y_MCH0E" text "~y~Jo'on: ~s~\"Don't worry, no cop on this highway can match my cornerin' anyway!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MCH0E' time 3500 flag 1
+            end
         end
         wait 3500
         goto @Finalize_Ambient_Chat

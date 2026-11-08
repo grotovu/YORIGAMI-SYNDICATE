@@ -11,6 +11,7 @@ const
     MEM_SHION_DEATH_WEAPON = 388
     MEM_SHION_DEATH_IN_CAR = 392
     MEM_SHION_STANCE = 120
+    MEM_SAFEHOUSE_DOOR_ID = 340
 end
 
 // 0@ = Mode: 0 = Recall (G), 1 = Stay Put (H), 2 = Lost (>130m), 3 = Dead
@@ -135,387 +136,612 @@ then
         end
     end
 
+    077E: get_active_interior_to 27@ // 27@ > 0 = Indoors
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SAFEHOUSE_DOOR_ID
+    0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0 // 29@ > 0 = Registered Safehouse
+
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
 
     if
-        0039: 4@ == 1
+        0019: 29@ > 0
     then
+        // -----------------------------------------------------------------
+        // SAFEHOUSE RECALL BRANCH (Player-Owned Safehouse)
+        // -----------------------------------------------------------------
         if
-            0039: 7@ == 1
+            0039: 4@ == 1
         then
-            // Combat - Close Range (<= 3.0m)
-            if
-                0039: 28@ == 1
-            then
-                // Close Combat - Armed / Hostile
-                0209: 1@ = random_int_in_ranges 0 5
-                if
-                    0039: 1@ == 0
-                then
-                    0ADF: add_text_label "Y_RCC0" text "~y~Jo'on: ~s~\"Watch my back! Keep your eyes open!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RCC0' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 1
-                then
-                    0ADF: add_text_label "Y_RCC1" text "~y~Jo'on: ~s~\"Don't just stand next to me! Shoot 'em!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RCC1' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 2
-                then
-                    0ADF: add_text_label "Y_RCC2" text "~y~Jo'on: ~s~\"Keep shootin'! Don't let 'em flank us!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RCC2' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 3
-                then
-                    0ADF: add_text_label "Y_RCC3" text "~y~Jo'on: ~s~\"Cover me! And don't catch a stray!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RCC3' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 4
-                then
-                    0ADF: add_text_label "Y_RCC4" text "~y~Jo'on: ~s~\"Stay right on my shoulder and keep blastin'!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RCC4' time 2500 flag 1
-                end
-            else
-                // Close Combat - Unarmed / Peaceful
-                0209: 1@ = random_int_in_ranges 0 5
-                if
-                    0039: 1@ == 0
-                then
-                    0ADF: add_text_label "Y_RCU0" text "~y~Jo'on: ~s~\"Get behind me! Quit standin' in the line of fire!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RCU0' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 1
-                then
-                    0ADF: add_text_label "Y_RCU1" text "~y~Jo'on: ~s~\"Keep your head down! You don't have a piece to shoot with!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RCU1' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 2
-                then
-                    0ADF: add_text_label "Y_RCU2" text "~y~Jo'on: ~s~\"Duck! Don't just stand there lookin' at the bullets!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RCU2' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 3
-                then
-                    0ADF: add_text_label "Y_RCU3" text "~y~Jo'on: ~s~\"Stay on my heel! If you get clipped, I ain't carryin' ya!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RCU3' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 4
-                then
-                    0ADF: add_text_label "Y_RCU4" text "~y~Jo'on: ~s~\"Watch our flanks! Warn me if someone's sneakin' up!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RCU4' time 2500 flag 1
-                end
-            end
-        else
-            // Combat - Far Range (> 3.0m)
+            // Safehouse with Heat (Smug / Cops Outside)
             0209: 1@ = random_int_in_ranges 0 5
             if
                 0039: 1@ == 0
             then
-                0ADF: add_text_label "Y_RC_C0" text "~y~Jo'on: ~s~\"Get over here, Shion! Now!\""
+                0ADF: add_text_label "Y_SRC0" text "~y~Jo'on: ~s~\"AHAHAHA! Look at 'em searchin' the curb while we're relaxin'!\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_RC_C0' time 2500 flag 1
+                00BC: show_text_highpriority GXT 'Y_SRC0' time 2500 flag 1
             end
             if
                 0039: 1@ == 1
             then
-                0ADF: add_text_label "Y_RC_C1" text "~y~Jo'on: ~s~\"To me, Shion! Move your ass!\""
+                0ADF: add_text_label "Y_SRC1" text "~y~Jo'on: ~s~\"Over here, Shion! We dusted the whole precinct right at the door!\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_RC_C1' time 2500 flag 1
+                00BC: show_text_highpriority GXT 'Y_SRC1' time 2500 flag 1
             end
             if
                 0039: 1@ == 2
             then
-                0ADF: add_text_label "Y_RC_C2" text "~y~Jo'on: ~s~\"Dammit, Shion! Get behind me!\""
+                0ADF: add_text_label "Y_SRC2" text "~y~Jo'on: ~s~\"They're runnin' in circles outside! Come on, let's grab a drink.\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_RC_C2' time 2500 flag 1
+                00BC: show_text_highpriority GXT 'Y_SRC2' time 2500 flag 1
             end
             if
                 0039: 1@ == 3
             then
-                0ADF: add_text_label "Y_RC_C3" text "~y~Jo'on: ~s~\"Here! Right now! Don't just stand there!\""
+                0ADF: add_text_label "Y_SRC3" text "~y~Jo'on: ~s~\"Told ya we'd shake 'em! Stick by me and you'll never see handcuffs.\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_RC_C3' time 2500 flag 1
+                00BC: show_text_highpriority GXT 'Y_SRC3' time 2500 flag 1
             end
             if
                 0039: 1@ == 4
             then
-                0ADF: add_text_label "Y_RC_C4" text "~y~Jo'on: ~s~\"Shion, fall in! Quit daydreamin' in a firefight!\""
+                0ADF: add_text_label "Y_SRC4" text "~y~Jo'on: ~s~\"Shook 'em clean off! Now come over here and help me stash the loot.\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_RC_C4' time 2500 flag 1
+                00BC: show_text_highpriority GXT 'Y_SRC4' time 2500 flag 1
+            end
+        else
+            // Safehouse Peacetime (Heading Out)
+            0209: 1@ = random_int_in_ranges 0 5
+            if
+                0039: 1@ == 0
+            then
+                0ADF: add_text_label "Y_SRN0" text "~y~Jo'on: ~s~\"Alright, nap time's over, Shion! Up on your feet, we're rollin'!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_SRN0' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 1
+            then
+                0ADF: add_text_label "Y_SRN1" text "~y~Jo'on: ~s~\"To the door, slowpoke! We've got pockets to pick and cash to blow!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_SRN1' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 2
+            then
+                0ADF: add_text_label "Y_SRN2" text "~y~Jo'on: ~s~\"Quit loungin' around like a house cat! Over here, we're headin' out!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_SRN2' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 3
+            then
+                0ADF: add_text_label "Y_SRN3" text "~y~Jo'on: ~s~\"Shake the sleep outta your eyes, Shion! Time to hit the pavement!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_SRN3' time 2500 flag 1
+            end
+            if
+                0039: 1@ == 4
+            then
+                0ADF: add_text_label "Y_SRN4" text "~y~Jo'on: ~s~\"Get over here! You've rested your bones long enough, let's move!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_SRN4' time 2500 flag 1
             end
         end
     else
-        // Peaceful Mode
+        // -----------------------------------------------------------------
+        // STANDARD INDOOR / OUTDOOR RECALL BRANCH
+        // -----------------------------------------------------------------
         if
-            0039: 7@ == 1
+            0039: 4@ == 1
         then
-            // Close Range (<= 3.0m) Health & State Evaluation
-            0226: 22@ = actor 6@ health
-
-            0085: 30@ = 31@
-            000A: 30@ += 404 // MEM_SHION_HUNGRY
-            0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
-
-            8@ = 0
-            0209: 9@ = random_int_in_ranges 0 100
-
             if
-                001A: 350 > 22@
+                0019: 27@ > 0
             then
-                8@ = 1
-            else
+                // Combat Indoors - Regroup
+                0209: 1@ = random_int_in_ranges 0 5
                 if
-                    001A: 800 > 22@
+                    0039: 1@ == 0
                 then
+                    0ADF: add_text_label "Y_RIC0" text "~y~Jo'on: ~s~\"Fall back to me, Shion! Move it!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RIC0' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_RIC1" text "~y~Jo'on: ~s~\"Get over to my side before they pin us down!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RIC1' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 2
+                then
+                    0ADF: add_text_label "Y_RIC2" text "~y~Jo'on: ~s~\"Over here! Don't get trapped by yourself!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RIC2' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_RIC3" text "~y~Jo'on: ~s~\"To me, now! Watch out for flyin' plaster and ricochets!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RIC3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_RIC4" text "~y~Jo'on: ~s~\"Pull back to my shoulder! We're takin' 'em on!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_RIC4' time 2500 flag 1
+                end
+            else
+                // Combat Outdoors
+                if
+                    0039: 7@ == 1
+                then
+                    // Combat Outdoors - Close Range (<= 3.0m)
                     if
-                        0039: 24@ == 1
+                        0039: 28@ == 1
                     then
+                        // Close Combat - Armed / Hostile
+                        0209: 1@ = random_int_in_ranges 0 5
                         if
-                            001A: 50 > 9@
+                            0039: 1@ == 0
                         then
-                            8@ = 2
-                        else
-                            8@ = 3
+                            0ADF: add_text_label "Y_RCC0" text "~y~Jo'on: ~s~\"Watch my back! Keep your eyes open!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RCC0' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 1
+                        then
+                            0ADF: add_text_label "Y_RCC1" text "~y~Jo'on: ~s~\"Don't just stand next to me! Shoot 'em!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RCC1' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 2
+                        then
+                            0ADF: add_text_label "Y_RCC2" text "~y~Jo'on: ~s~\"Keep shootin'! Don't let 'em flank us!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RCC2' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 3
+                        then
+                            0ADF: add_text_label "Y_RCC3" text "~y~Jo'on: ~s~\"Cover me! And don't catch a stray!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RCC3' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 4
+                        then
+                            0ADF: add_text_label "Y_RCC4" text "~y~Jo'on: ~s~\"Stay right on my shoulder and keep blastin'!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RCC4' time 2500 flag 1
                         end
                     else
-                        8@ = 2
+                        // Close Combat - Unarmed / Peaceful
+                        0209: 1@ = random_int_in_ranges 0 5
+                        if
+                            0039: 1@ == 0
+                        then
+                            0ADF: add_text_label "Y_RCU0" text "~y~Jo'on: ~s~\"Get behind me! Quit standin' in the line of fire!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RCU0' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 1
+                        then
+                            0ADF: add_text_label "Y_RCU1" text "~y~Jo'on: ~s~\"Keep your head down! You don't have a piece to shoot with!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RCU1' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 2
+                        then
+                            0ADF: add_text_label "Y_RCU2" text "~y~Jo'on: ~s~\"Duck! Don't just stand there lookin' at the bullets!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RCU2' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 3
+                        then
+                            0ADF: add_text_label "Y_RCU3" text "~y~Jo'on: ~s~\"Stay on my heel! If you get clipped, I ain't carryin' ya!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RCU3' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 4
+                        then
+                            0ADF: add_text_label "Y_RCU4" text "~y~Jo'on: ~s~\"Watch our flanks! Warn me if someone's sneakin' up!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RCU4' time 2500 flag 1
+                        end
                     end
                 else
+                    // Combat Outdoors - Far Range (> 3.0m)
+                    0209: 1@ = random_int_in_ranges 0 5
                     if
-                        0039: 24@ == 1
+                        0039: 1@ == 0
                     then
-                        if
-                            001A: 50 > 9@
-                        then
-                            8@ = 0
-                        else
-                            8@ = 3
-                        end
-                    else
-                        8@ = 0
+                        0ADF: add_text_label "Y_RC_C0" text "~y~Jo'on: ~s~\"Get over here, Shion! Now!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RC_C0' time 2500 flag 1
                     end
-                end
-            end
-
-            if
-                0039: 8@ == 1
-            then
-                0209: 1@ = random_int_in_ranges 0 5
-                if
-                    0039: 1@ == 0
-                then
-                    0ADF: add_text_label "Y_RC_K0" text "~y~Jo'on: ~s~\"Is that a rib stickin' out?! Turn into an orb, you're embarrassin' me in public!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_K0' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 1
-                then
-                    0ADF: add_text_label "Y_RC_K1" text "~y~Jo'on: ~s~\"You're barely holdin' together! Don't you dare drop dead on me!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_K1' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 2
-                then
-                    0ADF: add_text_label "Y_RC_K2" text "~y~Jo'on: ~s~\"Ugh, you're a walkin' massacre! Go ghost before the cops start investigatin'!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_K2' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 3
-                then
-                    0ADF: add_text_label "Y_RC_K3" text "~y~Jo'on: ~s~\"Don't you dare flatline on me! I'll buy ya a steak later, just stay on your feet!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_K3' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 4
-                then
-                    0ADF: add_text_label "Y_RC_K4" text "~y~Jo'on: ~s~\"You look like roadkill, Shion! Turn into a flame so I don't have to see you lookin' pathetic!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_K4' time 2500 flag 1
-                end
-            end
-
-            if
-                0039: 8@ == 2
-            then
-                0209: 1@ = random_int_in_ranges 0 5
-                if
-                    0039: 1@ == 0
-                then
-                    0ADF: add_text_label "Y_RC_I0" text "~y~Jo'on: ~s~\"Look at ya, bleedin' all over the place! Don't get blood on my shoes!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_I0' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 1
-                then
-                    0ADF: add_text_label "Y_RC_I1" text "~y~Jo'on: ~s~\"You're covered in bruises! How're we supposed to shake people down if ya look like a victim?!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_I1' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 2
-                then
-                    0ADF: add_text_label "Y_RC_I2" text "~y~Jo'on: ~s~\"You're covered in scrapes! Go ghost before people think I'm hangin' out with a zombie!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_I2' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 3
-                then
-                    0ADF: add_text_label "Y_RC_I3" text "~y~Jo'on: ~s~\"Dammit, who beat ya up like that? Duck next time instead of catchin' hits!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_I3' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 4
-                then
-                    0ADF: add_text_label "Y_RC_I4" text "~y~Jo'on: ~s~\"You're takin' way too many punches today, Shion! Block with your arms, not your face!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_I4' time 2500 flag 1
-                end
-            end
-
-            if
-                0039: 8@ == 3
-            then
-                0209: 1@ = random_int_in_ranges 0 5
-                if
-                    0039: 1@ == 0
-                then
-                    0ADF: add_text_label "Y_RC_H0" text "~y~Jo'on: ~s~\"I can hear your stomach growlin' from over here! Shut it up, will ya?!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_H0' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 1
-                then
-                    0ADF: add_text_label "Y_RC_H1" text "~y~Jo'on: ~s~\"Fleece first, grease later! You ain't seein' a single fry until we score some cash!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_H1' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 2
-                then
-                    0ADF: add_text_label "Y_RC_H2" text "~y~Jo'on: ~s~\"Don't ya dare eye that dumpster! I'm wearin' silk, we ain't eatin' outta the trash!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_H2' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 3
-                then
-                    0ADF: add_text_label "Y_RC_H3" text "~y~Jo'on: ~s~\"I can feel your poverty aura suckin' calories outta the air! Step on it, Shion!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_H3' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 4
-                then
-                    0ADF: add_text_label "Y_RC_H4" text "~y~Jo'on: ~s~\"Quit that loud-ass growlin', Shion! You're embarrassin' me on the street!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_H4' time 2500 flag 1
-                end
-            end
-
-            if
-                0039: 8@ == 0
-            then
-                0209: 1@ = random_int_in_ranges 0 5
-                if
-                    0039: 1@ == 0
-                then
-                    0ADF: add_text_label "Y_RC_N0" text "~y~Jo'on: ~s~\"Look at that, you don't look too bad! Not a scratch on ya!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_N0' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 1
-                then
-                    0ADF: add_text_label "Y_RC_N1" text "~y~Jo'on: ~s~\"Still in one piece? Good. Keep your guard up and stick close.\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_N1' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 2
-                then
-                    0ADF: add_text_label "Y_RC_N2" text "~y~Jo'on: ~s~\"You don't look too beat up today, Shion. Try keepin' it that way.\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_N2' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 3
-                then
-                    0ADF: add_text_label "Y_RC_N3" text "~y~Jo'on: ~s~\"Look at ya, completely fine! Now stop spacin' out and stay sharp.\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_N3' time 2500 flag 1
-                end
-                if
-                    0039: 1@ == 4
-                then
-                    0ADF: add_text_label "Y_RC_N4" text "~y~Jo'on: ~s~\"No fresh holes in your rags? Amazing. Fix your posture and walk!\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_RC_N4' time 2500 flag 1
+                    if
+                        0039: 1@ == 1
+                    then
+                        0ADF: add_text_label "Y_RC_C1" text "~y~Jo'on: ~s~\"To me, Shion! Move your ass!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RC_C1' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 2
+                    then
+                        0ADF: add_text_label "Y_RC_C2" text "~y~Jo'on: ~s~\"Dammit, Shion! Get behind me!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RC_C2' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 3
+                    then
+                        0ADF: add_text_label "Y_RC_C3" text "~y~Jo'on: ~s~\"Here! Right now! Don't just stand there!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RC_C3' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 4
+                    then
+                        0ADF: add_text_label "Y_RC_C4" text "~y~Jo'on: ~s~\"Shion, fall in! Quit daydreamin' in a firefight!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RC_C4' time 2500 flag 1
+                    end
                 end
             end
         else
-            // Far Range (> 3.0m) - Peaceful
-            0209: 1@ = random_int_in_ranges 0 5
+            // Peaceful Mode
             if
-                0039: 1@ == 0
+                0019: 27@ > 0
             then
-                0ADF: add_text_label "Y_RC_F0" text "~y~Jo'on: ~s~\"Keep up, ya slowpoke!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_RC_F0' time 2500 flag 1
-            end
-            if
-                0039: 1@ == 1
-            then
-                0ADF: add_text_label "Y_RC_F1" text "~y~Jo'on: ~s~\"Oi, Shion! Pick up the pace!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_RC_F1' time 2500 flag 1
-            end
-            if
-                0039: 1@ == 2
-            then
-                0ADF: add_text_label "Y_RC_F2" text "~y~Jo'on: ~s~\"What'cha doin' starin' at nothin'? Walk!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_RC_F2' time 2500 flag 1
-            end
-            if
-                0039: 1@ == 3
-            then
-                0ADF: add_text_label "Y_RC_F3" text "~y~Jo'on: ~s~\"Quit draggin' your feet back there! Move it!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_RC_F3' time 2500 flag 1
-            end
-            if
-                0039: 1@ == 4
-            then
-                0ADF: add_text_label "Y_RC_F4" text "~y~Jo'on: ~s~\"I ain't waitin' around all day, Shion! Hurry up!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_RC_F4' time 2500 flag 1
+                // Peaceful Indoors
+                if
+                    0039: 7@ == 1
+                then
+                    // Peaceful Indoors - Close Range (<= 3.0m)
+                    0209: 1@ = random_int_in_ranges 0 5
+                    if
+                        0039: 1@ == 0
+                    then
+                        0ADF: add_text_label "Y_RIN0" text "~y~Jo'on: ~s~\"Keep your elbows to yourself, Shion. Don't go breakin' anything in here.\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RIN0' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 1
+                    then
+                        0ADF: add_text_label "Y_RIN1" text "~y~Jo'on: ~s~\"Stick to my heels and try actin' like ya belong in here.\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RIN1' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 2
+                    then
+                        0ADF: add_text_label "Y_RIN2" text "~y~Jo'on: ~s~\"Wipe your dirty bare feet! You're leavin' gray smudges all over the floor!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RIN2' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 3
+                    then
+                        0ADF: add_text_label "Y_RIN3" text "~y~Jo'on: ~s~\"Stay right on my heels. If anything goes missin' in here, they're blamin' you.\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RIN3' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 4
+                    then
+                        0ADF: add_text_label "Y_RIN4" text "~y~Jo'on: ~s~\"Stand up straight! Don't go rubbin' your poverty aura all over the place!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RIN4' time 2500 flag 1
+                    end
+                else
+                    // Peaceful Indoors - Far Range (> 3.0m)
+                    0209: 1@ = random_int_in_ranges 0 5
+                    if
+                        0039: 1@ == 0
+                    then
+                        0ADF: add_text_label "Y_RIF0" text "~y~Jo'on: ~s~\"Quit starin' at the ceiling, Shion! Move your ass over here!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RIF0' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 1
+                    then
+                        0ADF: add_text_label "Y_RIF1" text "~y~Jo'on: ~s~\"Hurry up! People in here are already lookin' at us funny, stick close!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RIF1' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 2
+                    then
+                        0ADF: add_text_label "Y_RIF2" text "~y~Jo'on: ~s~\"Get over here! I ain't hollerin' across the whole buildin' for ya!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RIF2' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 3
+                    then
+                        0ADF: add_text_label "Y_RIF3" text "~y~Jo'on: ~s~\"Step it up, slowpoke! We're headin' out!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RIF3' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 4
+                    then
+                        0ADF: add_text_label "Y_RIF4" text "~y~Jo'on: ~s~\"Quit loafin' back there! Get your ragged self over to me!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RIF4' time 2500 flag 1
+                    end
+                end
+            else
+                // Peaceful Outdoors
+                if
+                    0039: 7@ == 1
+                then
+                    // Close Range (<= 3.0m) Health & State Evaluation
+                    0226: 22@ = actor 6@ health
+
+                    0085: 30@ = 31@
+                    000A: 30@ += 404 // MEM_SHION_HUNGRY
+                    0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+
+                    8@ = 0
+                    0209: 9@ = random_int_in_ranges 0 100
+
+                    if
+                        001A: 350 > 22@
+                    then
+                        8@ = 1
+                    else
+                        if
+                            001A: 800 > 22@
+                        then
+                            if
+                                0039: 24@ == 1
+                            then
+                                if
+                                    001A: 50 > 9@
+                                then
+                                    8@ = 2
+                                else
+                                    8@ = 3
+                                end
+                            else
+                                8@ = 2
+                            end
+                        else
+                            if
+                                0039: 24@ == 1
+                            then
+                                if
+                                    001A: 50 > 9@
+                                then
+                                    8@ = 0
+                                else
+                                    8@ = 3
+                                end
+                            else
+                                8@ = 0
+                            end
+                        end
+                    end
+
+                    if
+                        0039: 8@ == 1
+                    then
+                        0209: 1@ = random_int_in_ranges 0 5
+                        if
+                            0039: 1@ == 0
+                        then
+                            0ADF: add_text_label "Y_RC_K0" text "~y~Jo'on: ~s~\"Is that a rib stickin' out?! Turn into an orb, you're embarrassin' me in public!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_K0' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 1
+                        then
+                            0ADF: add_text_label "Y_RC_K1" text "~y~Jo'on: ~s~\"You're barely holdin' together! Don't you dare drop dead on me!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_K1' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 2
+                        then
+                            0ADF: add_text_label "Y_RC_K2" text "~y~Jo'on: ~s~\"Ugh, you're a walkin' massacre! Go ghost before the cops start investigatin'!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_K2' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 3
+                        then
+                            0ADF: add_text_label "Y_RC_K3" text "~y~Jo'on: ~s~\"Don't you dare flatline on me! I'll buy ya a steak later, just stay on your feet!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_K3' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 4
+                        then
+                            0ADF: add_text_label "Y_RC_K4" text "~y~Jo'on: ~s~\"You look like roadkill, Shion! Turn into a flame so I don't have to see you lookin' pathetic!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_K4' time 2500 flag 1
+                        end
+                    end
+
+                    if
+                        0039: 8@ == 2
+                    then
+                        0209: 1@ = random_int_in_ranges 0 5
+                        if
+                            0039: 1@ == 0
+                        then
+                            0ADF: add_text_label "Y_RC_I0" text "~y~Jo'on: ~s~\"Look at ya, bleedin' all over the place! Don't get blood on my shoes!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_I0' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 1
+                        then
+                            0ADF: add_text_label "Y_RC_I1" text "~y~Jo'on: ~s~\"You're covered in bruises! How're we supposed to shake people down if ya look like a victim?!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_I1' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 2
+                        then
+                            0ADF: add_text_label "Y_RC_I2" text "~y~Jo'on: ~s~\"You're covered in scrapes! Go ghost before people think I'm hangin' out with a zombie!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_I2' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 3
+                        then
+                            0ADF: add_text_label "Y_RC_I3" text "~y~Jo'on: ~s~\"Dammit, who beat ya up like that? Duck next time instead of catchin' hits!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_I3' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 4
+                        then
+                            0ADF: add_text_label "Y_RC_I4" text "~y~Jo'on: ~s~\"You're takin' way too many punches today, Shion! Block with your arms, not your face!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_I4' time 2500 flag 1
+                        end
+                    end
+
+                    if
+                        0039: 8@ == 3
+                    then
+                        0209: 1@ = random_int_in_ranges 0 5
+                        if
+                            0039: 1@ == 0
+                        then
+                            0ADF: add_text_label "Y_RC_H0" text "~y~Jo'on: ~s~\"I can hear your stomach growlin' from over here! Shut it up, will ya?!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_H0' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 1
+                        then
+                            0ADF: add_text_label "Y_RC_H1" text "~y~Jo'on: ~s~\"Fleece first, grease later! You ain't seein' a single fry until we score some cash!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_H1' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 2
+                        then
+                            0ADF: add_text_label "Y_RC_H2" text "~y~Jo'on: ~s~\"Don't ya dare eye that dumpster! I'm wearin' silk, we ain't eatin' outta the trash!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_H2' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 3
+                        then
+                            0ADF: add_text_label "Y_RC_H3" text "~y~Jo'on: ~s~\"I can feel your poverty aura suckin' calories outta the air! Step on it, Shion!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_H3' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 4
+                        then
+                            0ADF: add_text_label "Y_RC_H4" text "~y~Jo'on: ~s~\"Quit that loud-ass growlin', Shion! You're embarrassin' me on the street!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_H4' time 2500 flag 1
+                        end
+                    end
+
+                    if
+                        0039: 8@ == 0
+                    then
+                        0209: 1@ = random_int_in_ranges 0 5
+                        if
+                            0039: 1@ == 0
+                        then
+                            0ADF: add_text_label "Y_RC_N0" text "~y~Jo'on: ~s~\"Look at that, you don't look too bad! Not a scratch on ya!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_N0' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 1
+                        then
+                            0ADF: add_text_label "Y_RC_N1" text "~y~Jo'on: ~s~\"Still in one piece? Good. Keep your guard up and stick close.\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_N1' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 2
+                        then
+                            0ADF: add_text_label "Y_RC_N2" text "~y~Jo'on: ~s~\"You don't look too beat up today, Shion. Try keepin' it that way.\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_N2' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 3
+                        then
+                            0ADF: add_text_label "Y_RC_N3" text "~y~Jo'on: ~s~\"Look at ya, completely fine! Now stop spacin' out and stay sharp.\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_N3' time 2500 flag 1
+                        end
+                        if
+                            0039: 1@ == 4
+                        then
+                            0ADF: add_text_label "Y_RC_N4" text "~y~Jo'on: ~s~\"No fresh holes in your rags? Amazing. Fix your posture and walk!\""
+                            09C1: add_next_text_to_brief_history 1
+                            00BC: show_text_highpriority GXT 'Y_RC_N4' time 2500 flag 1
+                        end
+                    end
+                else
+                    // Far Range (> 3.0m) - Peaceful Outdoors
+                    0209: 1@ = random_int_in_ranges 0 5
+                    if
+                        0039: 1@ == 0
+                    then
+                        0ADF: add_text_label "Y_RC_F0" text "~y~Jo'on: ~s~\"Keep up, ya slowpoke!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RC_F0' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 1
+                    then
+                        0ADF: add_text_label "Y_RC_F1" text "~y~Jo'on: ~s~\"Oi, Shion! Pick up the pace!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RC_F1' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 2
+                    then
+                        0ADF: add_text_label "Y_RC_F2" text "~y~Jo'on: ~s~\"What'cha doin' starin' at nothin'? Walk!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RC_F2' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 3
+                    then
+                        0ADF: add_text_label "Y_RC_F3" text "~y~Jo'on: ~s~\"Quit draggin' your feet back there! Move it!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RC_F3' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 4
+                    then
+                        0ADF: add_text_label "Y_RC_F4" text "~y~Jo'on: ~s~\"I ain't waitin' around all day, Shion! Hurry up!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_RC_F4' time 2500 flag 1
+                    end
+                end
             end
         end
     end
@@ -554,128 +780,353 @@ then
         end
     end
 
+    077E: get_active_interior_to 27@ // 27@ > 0 = Indoors
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SAFEHOUSE_DOOR_ID
+    0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0 // 29@ > 0 = Registered Safehouse
+
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
 
     if
-        0039: 4@ == 1
+        0019: 29@ > 0
     then
+        // -----------------------------------------------------------------
+        // SAFEHOUSE STAY PUT BRANCH (Player-Owned Safehouse)
+        // -----------------------------------------------------------------
         if
-            0039: 28@ == 1
+            0039: 4@ == 1
         then
-            // Combat Stay Put - Armed / Hostile (Holding Angle / Choke)
+            // Safehouse Stay Put under Heat (Smug / Cops Outside)
             0209: 1@ = random_int_in_ranges 0 5
             if
                 0039: 1@ == 0
             then
-                0ADF: add_text_label "Y_SPC0" text "~y~Jo'on: ~s~\"Hold that corner! Blast anything that peeks around it!\""
+                0ADF: add_text_label "Y_SHC0" text "~y~Jo'on: ~s~\"Relax, Shion! Let them sirens scream all they want out there!\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_SPC0' time 2500 flag 1
+                00BC: show_text_highpriority GXT 'Y_SHC0' time 2500 flag 1
             end
             if
                 0039: 1@ == 1
             then
-                0ADF: add_text_label "Y_SPC1" text "~y~Jo'on: ~s~\"Keep your iron aimed down that alley and don't budge!\""
+                0ADF: add_text_label "Y_SHC1" text "~y~Jo'on: ~s~\"Door's locked! Cops can circle the block all day, we're safe in here.\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_SPC1' time 2500 flag 1
+                00BC: show_text_highpriority GXT 'Y_SHC1' time 2500 flag 1
             end
             if
                 0039: 1@ == 2
             then
-                0ADF: add_text_label "Y_SPC2" text "~y~Jo'on: ~s~\"Cover this side! Drop anyone that tries to flank us!\""
+                0ADF: add_text_label "Y_SHC2" text "~y~Jo'on: ~s~\"Sit down and relax. Cops can't do squat to us under my roof!\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_SPC2' time 2500 flag 1
+                00BC: show_text_highpriority GXT 'Y_SHC2' time 2500 flag 1
             end
             if
                 0039: 1@ == 3
             then
-                0ADF: add_text_label "Y_SPC3" text "~y~Jo'on: ~s~\"Lock this spot down! If someone charges, put 'em down!\""
+                0ADF: add_text_label "Y_SHC3" text "~y~Jo'on: ~s~\"Hear that? Lost 'em at the doorstep! Take a breath, we're good.\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_SPC3' time 2500 flag 1
+                00BC: show_text_highpriority GXT 'Y_SHC3' time 2500 flag 1
             end
             if
                 0039: 1@ == 4
             then
-                0ADF: add_text_label "Y_SPC4" text "~y~Jo'on: ~s~\"Hold this line and keep firin'! I'm circlin' around 'em!\""
+                0ADF: add_text_label "Y_SHC4" text "~y~Jo'on: ~s~\"Let 'em burn their tires outside! Sit back and enjoy the show!\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_SPC4' time 2500 flag 1
+                00BC: show_text_highpriority GXT 'Y_SHC4' time 2500 flag 1
             end
         else
-            // Combat Stay Put - Unarmed / Peaceful (Taking Cover)
+            // Safehouse Stay Put Peacetime (Relaxing at Home)
             0209: 1@ = random_int_in_ranges 0 5
             if
                 0039: 1@ == 0
             then
-                0ADF: add_text_label "Y_SP_C0" text "~y~Jo'on: ~s~\"Stay down right there, Shion!\""
+                0ADF: add_text_label "Y_SSH0" text "~y~Jo'on: ~s~\"Crash right here, Shion. Make yourself comfortable in my place.\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_SP_C0' time 2500 flag 1
+                00BC: show_text_highpriority GXT 'Y_SSH0' time 2500 flag 1
             end
             if
                 0039: 1@ == 1
             then
-                0ADF: add_text_label "Y_SP_C1" text "~y~Jo'on: ~s~\"Take cover and don't move!\""
+                0ADF: add_text_label "Y_SSH1" text "~y~Jo'on: ~s~\"Take a load off, slowpoke. Nobody's kickin' us out of this place.\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_SP_C1' time 2500 flag 1
+                00BC: show_text_highpriority GXT 'Y_SSH1' time 2500 flag 1
             end
             if
                 0039: 1@ == 2
             then
-                0ADF: add_text_label "Y_SP_C2" text "~y~Jo'on: ~s~\"Hold that spot! Keep your head down!\""
+                0ADF: add_text_label "Y_SSH2" text "~y~Jo'on: ~s~\"Wait here. And don't hog the best spot on the rug while I'm relaxin'.\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_SP_C2' time 2500 flag 1
+                00BC: show_text_highpriority GXT 'Y_SSH2' time 2500 flag 1
             end
             if
                 0039: 1@ == 3
             then
-                0ADF: add_text_label "Y_SP_C3" text "~y~Jo'on: ~s~\"Plant yourself! I'm handlin' this!\""
+                0ADF: add_text_label "Y_SSH3" text "~y~Jo'on: ~s~\"Plant yourself right there. Feel free to relax, the deed's mine!\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_SP_C3' time 2500 flag 1
+                00BC: show_text_highpriority GXT 'Y_SSH3' time 2500 flag 1
             end
             if
                 0039: 1@ == 4
             then
-                0ADF: add_text_label "Y_SP_C4" text "~y~Jo'on: ~s~\"Don't you dare step into the line of fire! Stay!\""
+                0ADF: add_text_label "Y_SSH4" text "~y~Jo'on: ~s~\"Sit tight, Shion. Kick your feet up while I count our stash.\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_SP_C4' time 2500 flag 1
+                00BC: show_text_highpriority GXT 'Y_SSH4' time 2500 flag 1
             end
         end
     else
-        // Peaceful On-Foot Stay Put
-        0209: 1@ = random_int_in_ranges 0 5
+        // -----------------------------------------------------------------
+        // STANDARD INDOOR / OUTDOOR STAY PUT BRANCH
+        // -----------------------------------------------------------------
         if
-            0039: 1@ == 0
+            0039: 4@ == 1
         then
-            0ADF: add_text_label "Y_SP_N0" text "~y~Jo'on: ~s~\"Stay right here, Shion. Don't wander off.\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_SP_N0' time 2500 flag 1
-        end
-        if
-            0039: 1@ == 1
-        then
-            0ADF: add_text_label "Y_SP_N1" text "~y~Jo'on: ~s~\"Hold it right there. Don't move a muscle.\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_SP_N1' time 2500 flag 1
-        end
-        if
-            0039: 1@ == 2
-        then
-            0ADF: add_text_label "Y_SP_N2" text "~y~Jo'on: ~s~\"Wait here. And quit starin' at strangers while I'm gone.\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_SP_N2' time 2500 flag 1
-        end
-        if
-            0039: 1@ == 3
-        then
-            0ADF: add_text_label "Y_SP_N3" text "~y~Jo'on: ~s~\"Plant your feet, Shion. I'll be right back.\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_SP_N3' time 2500 flag 1
-        end
-        if
-            0039: 1@ == 4
-        then
-            0ADF: add_text_label "Y_SP_N4" text "~y~Jo'on: ~s~\"Don't move an inch. Stand there and guard the curb.\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_SP_N4' time 2500 flag 1
+            if
+                0019: 27@ > 0
+            then
+                // Combat Stay Put Indoors
+                if
+                    0039: 28@ == 1
+                then
+                    // Armed / Hostile Indoors
+                    0209: 1@ = random_int_in_ranges 0 5
+                    if
+                        0039: 1@ == 0
+                    then
+                        0ADF: add_text_label "Y_SIC0" text "~y~Jo'on: ~s~\"Hold this ground! Blast anything that tries to rush us in here!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SIC0' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 1
+                    then
+                        0ADF: add_text_label "Y_SIC1" text "~y~Jo'on: ~s~\"Cover that side! If anyone moves in on us, drop 'em!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SIC1' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 2
+                    then
+                        0ADF: add_text_label "Y_SIC2" text "~y~Jo'on: ~s~\"Anchor right here, Shion! Keep your piece aimed and ready!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SIC2' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 3
+                    then
+                        0ADF: add_text_label "Y_SIC3" text "~y~Jo'on: ~s~\"Lock this spot down! Blast anyone tryin' to close the distance!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SIC3' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 4
+                    then
+                        0ADF: add_text_label "Y_SIC4" text "~y~Jo'on: ~s~\"Keep firin' from right there! I'm sweepin' the rest of this place!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SIC4' time 2500 flag 1
+                    end
+                else
+                    // Unarmed / Peaceful Indoors
+                    0209: 1@ = random_int_in_ranges 0 5
+                    if
+                        0039: 1@ == 0
+                    then
+                        0ADF: add_text_label "Y_SIU0" text "~y~Jo'on: ~s~\"Get down right there, Shion! Keep your head tucked low!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SIU0' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 1
+                    then
+                        0ADF: add_text_label "Y_SIU1" text "~y~Jo'on: ~s~\"Hit the floor and stay put! Bullets are tearin' this place apart!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SIU1' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 2
+                    then
+                        0ADF: add_text_label "Y_SIU2" text "~y~Jo'on: ~s~\"Stay low right where ya are! Don't step into the line of fire!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SIU2' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 3
+                    then
+                        0ADF: add_text_label "Y_SIU3" text "~y~Jo'on: ~s~\"Stay down and don't move! I'll clear these clowns out!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SIU3' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 4
+                    then
+                        0ADF: add_text_label "Y_SIU4" text "~y~Jo'on: ~s~\"Crouch low and stay put! You catch a hit in here and we're trapped!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SIU4' time 2500 flag 1
+                    end
+                end
+            else
+                // Combat Stay Put Outdoors
+                if
+                    0039: 28@ == 1
+                then
+                    // Combat Stay Put Outdoors - Armed / Hostile
+                    0209: 1@ = random_int_in_ranges 0 5
+                    if
+                        0039: 1@ == 0
+                    then
+                        0ADF: add_text_label "Y_SPC0" text "~y~Jo'on: ~s~\"Hold that corner! Blast anything that peeks around it!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SPC0' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 1
+                    then
+                        0ADF: add_text_label "Y_SPC1" text "~y~Jo'on: ~s~\"Keep your iron aimed down that alley and don't budge!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SPC1' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 2
+                    then
+                        0ADF: add_text_label "Y_SPC2" text "~y~Jo'on: ~s~\"Cover this side! Drop anyone that tries to flank us!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SPC2' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 3
+                    then
+                        0ADF: add_text_label "Y_SPC3" text "~y~Jo'on: ~s~\"Lock this spot down! If someone charges, put 'em down!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SPC3' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 4
+                    then
+                        0ADF: add_text_label "Y_SPC4" text "~y~Jo'on: ~s~\"Hold this line and keep firin'! I'm circlin' around 'em!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SPC4' time 2500 flag 1
+                    end
+                else
+                    // Combat Stay Put Outdoors - Unarmed / Peaceful
+                    0209: 1@ = random_int_in_ranges 0 5
+                    if
+                        0039: 1@ == 0
+                    then
+                        0ADF: add_text_label "Y_SP_C0" text "~y~Jo'on: ~s~\"Stay down right there, Shion!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SP_C0' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 1
+                    then
+                        0ADF: add_text_label "Y_SP_C1" text "~y~Jo'on: ~s~\"Take cover and don't move!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SP_C1' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 2
+                    then
+                        0ADF: add_text_label "Y_SP_C2" text "~y~Jo'on: ~s~\"Hold that spot! Keep your head down!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SP_C2' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 3
+                    then
+                        0ADF: add_text_label "Y_SP_C3" text "~y~Jo'on: ~s~\"Plant yourself! I'm handlin' this!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SP_C3' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 4
+                    then
+                        0ADF: add_text_label "Y_SP_C4" text "~y~Jo'on: ~s~\"Don't you dare step into the line of fire! Stay!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_SP_C4' time 2500 flag 1
+                    end
+                end
+            end
+        else
+            // Peaceful Stay Put
+            if
+                0019: 27@ > 0
+            then
+                // Peaceful Indoors
+                0209: 1@ = random_int_in_ranges 0 5
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_SIN0" text "~y~Jo'on: ~s~\"Wait right here. And don't you dare touch anything with your greasy hands.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SIN0' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_SIN1" text "~y~Jo'on: ~s~\"Plant your feet right there, Shion. Don't go trackin' dirt all over the floor.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SIN1' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 2
+                then
+                    0ADF: add_text_label "Y_SIN2" text "~y~Jo'on: ~s~\"Stand right there. If anyone looks at ya, act like you're with a VIP.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SIN2' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_SIN3" text "~y~Jo'on: ~s~\"Hold it right there. And don't go messin' with anything with your sticky paws.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SIN3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_SIN4" text "~y~Jo'on: ~s~\"Hold this spot. Stay put while I look around and check out the good stuff.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SIN4' time 2500 flag 1
+                end
+            else
+                // Peaceful Outdoors
+                0209: 1@ = random_int_in_ranges 0 5
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_SP_N0" text "~y~Jo'on: ~s~\"Stay right here, Shion. Don't wander off.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SP_N0' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_SP_N1" text "~y~Jo'on: ~s~\"Hold it right there. Don't move a muscle.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SP_N1' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 2
+                then
+                    0ADF: add_text_label "Y_SP_N2" text "~y~Jo'on: ~s~\"Wait here. And quit starin' at strangers while I'm gone.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SP_N2' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_SP_N3" text "~y~Jo'on: ~s~\"Plant your feet, Shion. I'll be right back.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SP_N3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_SP_N4" text "~y~Jo'on: ~s~\"Don't move an inch. Stand there and guard the curb.\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_SP_N4' time 2500 flag 1
+                end
+            end
         end
     end
 
@@ -2623,125 +3074,307 @@ then
         end
     end
 
+    077E: get_active_interior_to 27@ // 27@ > 0 = Indoors
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SAFEHOUSE_DOOR_ID
+    0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0 // 29@ > 0 = Registered Safehouse
+
     if
-        0039: 4@ == 1
+        0019: 29@ > 0
     then
-        if
-            0039: 8@ == 1
-        then
-            // Combat Warp - Armed / Hostile (Gun ready)
-            0209: 1@ = random_int_in_ranges 0 5
-            if
-                0039: 1@ == 0
-            then
-                0ADF: add_text_label "Y_DWC0" text "~y~Jo'on: ~s~\"Yanked ya right to me! Draw your piece and start blastin'!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_DWC0' time 2500 flag 1
-            end
-            if
-                0039: 1@ == 1
-            then
-                0ADF: add_text_label "Y_DWC1" text "~y~Jo'on: ~s~\"I pulled ya over here for backup! Quit gawkin' and shoot!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_DWC1' time 2500 flag 1
-            end
-            if
-                0039: 1@ == 2
-            then
-                0ADF: add_text_label "Y_DWC2" text "~y~Jo'on: ~s~\"Don't just stand there dazed! We got lead flyin' everywhere!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_DWC2' time 2500 flag 1
-            end
-            if
-                0039: 1@ == 3
-            then
-                0ADF: add_text_label "Y_DWC3" text "~y~Jo'on: ~s~\"Brought ya right to the front! Watch my back, dammit!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_DWC3' time 2500 flag 1
-            end
-            if
-                0039: 1@ == 4
-            then
-                0ADF: add_text_label "Y_DWC4" text "~y~Jo'on: ~s~\"Quit lookin' confused! You're in a firefight now, shoot back!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_DWC4' time 2500 flag 1
-            end
-        else
-            // Combat Warp - Unarmed / Peaceful (Empty hands)
-            0209: 1@ = random_int_in_ranges 0 5
-            if
-                0039: 1@ == 0
-            then
-                0ADF: add_text_label "Y_DWU0" text "~y~Jo'on: ~s~\"Get down! You don't even have a piece on ya!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_DWU0' time 2500 flag 1
-            end
-            if
-                0039: 1@ == 1
-            then
-                0ADF: add_text_label "Y_DWU1" text "~y~Jo'on: ~s~\"Duck behind me! Quit standin' there with empty hands!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_DWU1' time 2500 flag 1
-            end
-            if
-                0039: 1@ == 2
-            then
-                0ADF: add_text_label "Y_DWU2" text "~y~Jo'on: ~s~\"Stay low, Shion! You're gonna catch lead with your teeth!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_DWU2' time 2500 flag 1
-            end
-            if
-                0039: 1@ == 3
-            then
-                0ADF: add_text_label "Y_DWU3" text "~y~Jo'on: ~s~\"Get behind something! What're ya gonna do, punch their bullets?!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_DWU3' time 2500 flag 1
-            end
-            if
-                0039: 1@ == 4
-            then
-                0ADF: add_text_label "Y_DWU4" text "~y~Jo'on: ~s~\"Keep your head down! I'm the one packin' heat here, not you!\""
-                09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_DWU4' time 2500 flag 1
-            end
-        end
-    else
-        // Peaceful Warp Lines
+        // -----------------------------------------------------------------
+        // SAFEHOUSE WARP BRANCH (Inside Player-Owned Safehouse)
+        // -----------------------------------------------------------------
         0209: 1@ = random_int_in_ranges 0 5
         if
             0039: 1@ == 0
         then
-            0ADF: add_text_label "Y_DW0" text "~y~Jo'on: ~s~\"There you are! Don't make me drag you by the collar next time!\""
+            0ADF: add_text_label "Y_SRW0" text "~y~Jo'on: ~s~\"Snapped ya right to me! Quit hauntin' the back rooms!\""
             09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_DW0' time 2500 flag 1
+            00BC: show_text_highpriority GXT 'Y_SRW0' time 2500 flag 1
         end
         if
             0039: 1@ == 1
         then
-            0ADF: add_text_label "Y_DW1" text "~y~Jo'on: ~s~\"Finally! Quit laggin' behind and stay on my heel!\""
+            0ADF: add_text_label "Y_SRW1" text "~y~Jo'on: ~s~\"Blinked ya right next to me! How do ya manage to get lost in my own pad?!\""
             09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_DW1' time 2500 flag 1
+            00BC: show_text_highpriority GXT 'Y_SRW1' time 2500 flag 1
         end
         if
             0039: 1@ == 2
         then
-            0ADF: add_text_label "Y_DW2" text "~y~Jo'on: ~s~\"See? That wasn't so hard! Now stick close to me!\""
+            0ADF: add_text_label "Y_SRW2" text "~y~Jo'on: ~s~\"Pop out of ghost form and relax on the floor! We're home!\""
             09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_DW2' time 2500 flag 1
+            00BC: show_text_highpriority GXT 'Y_SRW2' time 2500 flag 1
         end
         if
             0039: 1@ == 3
         then
-            0ADF: add_text_label "Y_DW3" text "~y~Jo'on: ~s~\"'Bout time! I ain't got time to wait for your slow ass!\""
+            0ADF: add_text_label "Y_SRW3" text "~y~Jo'on: ~s~\"Right by my side! See? Much faster than floatin' down the hall!\""
             09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_DW3' time 2500 flag 1
+            00BC: show_text_highpriority GXT 'Y_SRW3' time 2500 flag 1
         end
         if
             0039: 1@ == 4
         then
-            0ADF: add_text_label "Y_DW4" text "~y~Jo'on: ~s~\"Right by my side, where I can see ya! Move it!\""
+            0ADF: add_text_label "Y_SRW4" text "~y~Jo'on: ~s~\"Yanked ya to me! Now settle down, the heat's completely off!\""
             09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_DW4' time 2500 flag 1
+            00BC: show_text_highpriority GXT 'Y_SRW4' time 2500 flag 1
+        end
+    else
+        // -----------------------------------------------------------------
+        // STANDARD INDOOR / OUTDOOR WARP BRANCH
+        // -----------------------------------------------------------------
+        if
+            0039: 4@ == 1
+        then
+            if
+                0019: 27@ > 0
+            then
+                // Combat Warp Indoors
+                if
+                    0039: 8@ == 1
+                then
+                    // Armed / Hostile Indoors
+                    0209: 1@ = random_int_in_ranges 0 5
+                    if
+                        0039: 1@ == 0
+                    then
+                        0ADF: add_text_label "Y_DIC0" text "~y~Jo'on: ~s~\"Yanked ya right to me! Draw your piece and keep blastin'!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DIC0' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 1
+                    then
+                        0ADF: add_text_label "Y_DIC1" text "~y~Jo'on: ~s~\"Right on my flank! Clear anyone pushin' up!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DIC1' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 2
+                    then
+                        0ADF: add_text_label "Y_DIC2" text "~y~Jo'on: ~s~\"Pulled ya in! Don't let 'em close the gap, shoot!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DIC2' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 3
+                    then
+                        0ADF: add_text_label "Y_DIC3" text "~y~Jo'on: ~s~\"You're right beside me now! Lay down some lead!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DIC3' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 4
+                    then
+                        0ADF: add_text_label "Y_DIC4" text "~y~Jo'on: ~s~\"Snapped ya right to my shoulder! Drop anyone that steps up!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DIC4' time 2500 flag 1
+                    end
+                else
+                    // Unarmed / Peaceful Indoors
+                    0209: 1@ = random_int_in_ranges 0 5
+                    if
+                        0039: 1@ == 0
+                    then
+                        0ADF: add_text_label "Y_DIU0" text "~y~Jo'on: ~s~\"Pulled ya right to me! Duck down and keep your head tucked!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DIU0' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 1
+                    then
+                        0ADF: add_text_label "Y_DIU1" text "~y~Jo'on: ~s~\"Hit the deck! Bullets are tearin' the place up!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DIU1' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 2
+                    then
+                        0ADF: add_text_label "Y_DIU2" text "~y~Jo'on: ~s~\"Get down on the floor! You don't have a piece to shoot with!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DIU2' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 3
+                    then
+                        0ADF: add_text_label "Y_DIU3" text "~y~Jo'on: ~s~\"Stay right behind me, Shion! Don't step out into the line of fire!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DIU3' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 4
+                    then
+                        0ADF: add_text_label "Y_DIU4" text "~y~Jo'on: ~s~\"Yanked ya outta the open! Plant yourself behind me and stay low!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DIU4' time 2500 flag 1
+                    end
+                end
+            else
+                // Combat Warp Outdoors
+                if
+                    0039: 8@ == 1
+                then
+                    // Combat Warp Outdoors - Armed / Hostile (Gun ready)
+                    0209: 1@ = random_int_in_ranges 0 5
+                    if
+                        0039: 1@ == 0
+                    then
+                        0ADF: add_text_label "Y_DWC0" text "~y~Jo'on: ~s~\"Yanked ya right to me! Draw your piece and start blastin'!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DWC0' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 1
+                    then
+                        0ADF: add_text_label "Y_DWC1" text "~y~Jo'on: ~s~\"I pulled ya over here for backup! Quit gawkin' and shoot!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DWC1' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 2
+                    then
+                        0ADF: add_text_label "Y_DWC2" text "~y~Jo'on: ~s~\"Don't just stand there dazed! We got lead flyin' everywhere!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DWC2' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 3
+                    then
+                        0ADF: add_text_label "Y_DWC3" text "~y~Jo'on: ~s~\"Brought ya right to the front! Watch my back, dammit!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DWC3' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 4
+                    then
+                        0ADF: add_text_label "Y_DWC4" text "~y~Jo'on: ~s~\"Quit lookin' confused! You're in a firefight now, shoot back!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DWC4' time 2500 flag 1
+                    end
+                else
+                    // Combat Warp Outdoors - Unarmed / Peaceful (Empty hands)
+                    0209: 1@ = random_int_in_ranges 0 5
+                    if
+                        0039: 1@ == 0
+                    then
+                        0ADF: add_text_label "Y_DWU0" text "~y~Jo'on: ~s~\"Get down! You don't even have a piece on ya!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DWU0' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 1
+                    then
+                        0ADF: add_text_label "Y_DWU1" text "~y~Jo'on: ~s~\"Duck behind me! Quit standin' there with empty hands!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DWU1' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 2
+                    then
+                        0ADF: add_text_label "Y_DWU2" text "~y~Jo'on: ~s~\"Stay low, Shion! You're gonna catch lead with your teeth!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DWU2' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 3
+                    then
+                        0ADF: add_text_label "Y_DWU3" text "~y~Jo'on: ~s~\"Get behind something! What're ya gonna do, punch their bullets?!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DWU3' time 2500 flag 1
+                    end
+                    if
+                        0039: 1@ == 4
+                    then
+                        0ADF: add_text_label "Y_DWU4" text "~y~Jo'on: ~s~\"Keep your head down! I'm the one packin' heat here, not you!\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_DWU4' time 2500 flag 1
+                    end
+                end
+            end
+        else
+            // Peaceful Warp Lines
+            if
+                0019: 27@ > 0
+            then
+                // Peaceful Indoors
+                0209: 1@ = random_int_in_ranges 0 5
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_DWI0" text "~y~Jo'on: ~s~\"Blinked ya right to me! Quit laggin' behind!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DWI0' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_DWI1" text "~y~Jo'on: ~s~\"There ya go! Easier than waitin' for you to drag your feet!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DWI1' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 2
+                then
+                    0ADF: add_text_label "Y_DWI2" text "~y~Jo'on: ~s~\"Next to me, right now! And don't leave soot on the floor!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DWI2' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_DWI3" text "~y~Jo'on: ~s~\"Popped ya right here! Now stay where I can see ya!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DWI3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_DWI4" text "~y~Jo'on: ~s~\"See? Ghost form saves us ten minutes of wanderin' around!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DWI4' time 2500 flag 1
+                end
+            else
+                // Peaceful Outdoors
+                0209: 1@ = random_int_in_ranges 0 5
+                if
+                    0039: 1@ == 0
+                then
+                    0ADF: add_text_label "Y_DW0" text "~y~Jo'on: ~s~\"There you are! Don't make me drag you by the collar next time!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DW0' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 1
+                then
+                    0ADF: add_text_label "Y_DW1" text "~y~Jo'on: ~s~\"Finally! Quit laggin' behind and stay on my heel!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DW1' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 2
+                then
+                    0ADF: add_text_label "Y_DW2" text "~y~Jo'on: ~s~\"See? That wasn't so hard! Now stick close to me!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DW2' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 3
+                then
+                    0ADF: add_text_label "Y_DW3" text "~y~Jo'on: ~s~\"'Bout time! I ain't got time to wait for your slow ass!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DW3' time 2500 flag 1
+                end
+                if
+                    0039: 1@ == 4
+                then
+                    0ADF: add_text_label "Y_DW4" text "~y~Jo'on: ~s~\"Right by my side, where I can see ya! Move it!\""
+                    09C1: add_next_text_to_brief_history 1
+                    00BC: show_text_highpriority GXT 'Y_DW4' time 2500 flag 1
+                end
+            end
         end
     end
 

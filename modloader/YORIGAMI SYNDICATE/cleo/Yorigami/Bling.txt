@@ -199,248 +199,263 @@ then
             00E1: player 0 pressed_key 15 // Secondary Attack (F / Enter style moves)
             0E8D: is_any_fire_button_pressed 0
         then
-            // Check if player has target locked on with the three triangles
+            // Target entity guard: Ensure targeted entity exists and is strictly a ped (type 3)
+            // Prevents Bling Dash & Shion ghostly punch from crashing on targetable objects (e.g. chip machines)
+            0A96: 28@ = ped $PLAYER_ACTOR struct
+            0085: 30@ = 28@
+            000A: 30@ += 0x71C // CPed::m_pTargetedObject (CEntity*)
+            0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
             if
-                0AD2: 10@ = player $PLAYER_CHAR targeted_actor
+                0019: 29@ > 0
             then
-                if and
-                    056D: actor 10@ defined
-                    8118: not actor 10@ dead
-                    87D6: not 10@ == $PLAYER_ACTOR
+                0E13: get_entity 29@ type_to 26@
+                if
+                    0039: 26@ == 3 // Strictly ENTITY_TYPE_PED
                 then
-                    00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
-                    00A0: store_actor 10@ position_to 23@ 24@ 25@
-
-                    // Pre-dash starting coords safely preserved in 20@ 21@ 22@ for recall
-
-                    // 3D Distance check
-                    050A: 13@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 23@ 24@ 25@
-
-                    // Range gate: Ignore if within punching reach (<= 1.50m) or beyond MAX range (> 50.0m)
-                    if and
-                        0021: 13@ > 1.50
-                        8021: not 13@ > 50.0
+                    // Check if player has target locked on with the three triangles
+                    if
+                        0AD2: 10@ = player $PLAYER_CHAR targeted_actor
                     then
-                        TIMERA = 0 // Reset attack cooldown
-
-                        if
-                            0039: 15@ == 2
+                        if and
+                            056D: actor 10@ defined
+                            8118: not actor 10@ dead
+                            87D6: not 10@ == $PLAYER_ACTOR
                         then
-                            // Shion Mode: Ethereal Remote Punch (Long-Range Melee Strike)
-                            // Face the target
-                            0087: 26@ = 23@
-                            0063: 26@ -= 20@
-                            0087: 27@ = 24@
-                            0063: 27@ -= 21@
-                            0604: get_Z_angle_for_point 26@ 27@ store_to 29@
-                            0173: set_actor $PLAYER_ACTOR Z_angle_to 29@
+                            00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
+                            00A0: store_actor 10@ position_to 23@ 24@ 25@
 
-                            // Calculate bonus damage from Jo'on's Bling
-                            0085: 26@ = 2@
-                            006A: 26@ *= 4@ // Points * BonusDamagePerPoint
-                            if
-                                001D: 26@ > 6@
-                            then
-                                0085: 26@ = 6@ // Clamp to MaxDamageCap
-                            end
+                            // Pre-dash starting coords safely preserved in 20@ 21@ 22@ for recall
 
-                            // Deal script damage with recursion lock
-                            9@ = 1
-                            0851: set_actor 10@ decrease_health_by 26@ affect_armour 1
+                            // 3D Distance check
+                            050A: 13@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 23@ 24@ 25@
 
-                            // Multi-frame blue flash at target torso (Like FX_GrimBurst)
-                            11@ = 1
-                            :Shion_Bling_Flash_Loop
-                            0001: wait 0 ms
-                            if
-                                056D: actor 10@ defined
-                            then
-                                04C4: store_coords_to 23@ 24@ 25@ from_actor 10@ with_offset 0.0 0.0 0.15
-                                04D5: create_corona_at 23@ 24@ 25@ radius 1.2 type 0 flare 0 RGB 0 100 255
-                                04D5: create_corona_at 23@ 24@ 25@ radius 0.6 type 0 flare 0 RGB 80 200 255
-                                04D5: create_corona_at 23@ 24@ 25@ radius 0.25 type 0 flare 0 RGB 255 255 255
-                            end
-                            000A: 11@ += 1
-                            if
-                                8019: not 11@ > 3
-                            then
-                                0002: jump @Shion_Bling_Flash_Loop
-                            end
-
-                            // Shion Misfortune particle at impact point
-                            064B: 14@ = create_particle "shion_misfortune" at 23@ 24@ 25@ type 1
-                            064C: make_particle 14@ visible
-                            064F: remove_references_to_particle 14@
-                            9@ = 0 // Release recursion lock after particle spawn
-
-                            018C: play_sound 1052 at 0.0 0.0 0.0
-
-                            // Flinch reaction if target survived the blow
+                            // Range gate: Ignore if within punching reach (<= 1.50m) or beyond MAX range (> 50.0m)
                             if and
-                                056D: actor 10@ defined
-                                8118: not actor 10@ dead
-                                8E48: not is_char_fallen_on_ground 10@
+                                0021: 13@ > 1.50
+                                8021: not 13@ > 50.0
                             then
-                                0687: clear_actor 10@ task
-                                0812: AS_actor 10@ perform_animation "hit_front" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
-                            end
-                        else
-                            // Jo'on / CJ Mode: Melee Target-Closing Dash (Zippity Zap)
-                            // Calculate 3D delta vectors (Supports targets above or below)
-                            0087: 26@ = 23@
-                            0063: 26@ -= 20@ // dx = TargetX - PlayerX
-                            0087: 27@ = 24@
-                            0063: 27@ -= 21@ // dy = TargetY - PlayerY
-                            0087: 28@ = 25@
-                            0063: 28@ -= 22@ // dz = TargetZ - PlayerZ
+                                TIMERA = 0 // Reset attack cooldown
 
-                            // Calculate horizontal heading to face target
-                            0604: get_Z_angle_for_point 26@ 27@ store_to 29@
-                            0173: set_actor $PLAYER_ACTOR Z_angle_to 29@
-
-                            if
-                                0021: 13@ > 15.0
-                            then
-                                // Gap-Closer Dash (Target > 15m Away)
-                                0007: 12@ = 5.0
-                                0073: 12@ /= 13@ // Ratio = 5.0m / TotalDistance
-                                19@ = 0          // Flag: Gap Closer (No pin-down animation applied)
-                            else
-                                // Final Strike Dash (Target <= 15m Away)
-                                // Calculate stopping position 0.90m in front of target to prevent collision overlap
-                                0087: 14@ = 13@
-                                000F: 14@ -= 0.90
                                 if
-                                    0023: 0.0 > 14@
+                                    0039: 15@ == 2
                                 then
-                                    0007: 14@ = 0.0
-                                end
+                                    // Shion Mode: Ethereal Remote Punch (Long-Range Melee Strike)
+                                    // Face the target
+                                    0087: 26@ = 23@
+                                    0063: 26@ -= 20@
+                                    0087: 27@ = 24@
+                                    0063: 27@ -= 21@
+                                    0604: get_Z_angle_for_point 26@ 27@ store_to 29@
+                                    0173: set_actor $PLAYER_ACTOR Z_angle_to 29@
 
-                                0087: 12@ = 14@
-                                0073: 12@ /= 13@ // Ratio = TravelDistance / TotalDistance
-                                19@ = 1          // Flag: Strike Dash (Pins target for the punch)
-                            end
+                                    // Calculate bonus damage from Jo'on's Bling
+                                    0085: 26@ = 2@
+                                    006A: 26@ *= 4@ // Points * BonusDamagePerPoint
+                                    if
+                                        001D: 26@ > 6@
+                                    then
+                                        0085: 26@ = 6@ // Clamp to MaxDamageCap
+                                    end
 
-                            // Compute Destination Coordinates
-                            006B: 26@ *= 12@
-                            006B: 27@ *= 12@
-                            006B: 28@ *= 12@
-                            005B: 26@ += 20@ // StopX = PlayerX + (dx * Ratio)
-                            005B: 27@ += 21@ // StopY = PlayerY + (dy * Ratio)
-                            005B: 28@ += 22@ // StopZ = PlayerZ + (dz * Ratio)
+                                    // Deal script damage with recursion lock
+                                    9@ = 1
+                                    0851: set_actor 10@ decrease_health_by 26@ affect_armour 1
 
-                            // Ground elevation floor check to prevent clipping under terrain/stairs
-                            0087: 14@ = 28@
-                            000B: 14@ += 1.5
-                            02CE: 14@ = ground_z_at 26@ 27@ 14@
-                            if
-                                8043: not 14@ == 0.0
-                            then
-                                000B: 14@ += 0.95
-                                if
-                                    0025: 14@ > 28@
-                                then
-                                    0087: 28@ = 14@
-                                end
-                            end
+                                    // Multi-frame blue flash at target torso (Like FX_GrimBurst)
+                                    11@ = 1
+                                    :Shion_Bling_Flash_Loop
+                                    0001: wait 0 ms
+                                    if
+                                        056D: actor 10@ defined
+                                    then
+                                        04C4: store_coords_to 23@ 24@ 25@ from_actor 10@ with_offset 0.0 0.0 0.15
+                                        04D5: create_corona_at 23@ 24@ 25@ radius 1.2 type 0 flare 0 RGB 0 100 255
+                                        04D5: create_corona_at 23@ 24@ 25@ radius 0.6 type 0 flare 0 RGB 80 200 255
+                                        04D5: create_corona_at 23@ 24@ 25@ radius 0.25 type 0 flare 0 RGB 255 255 255
+                                    end
+                                    000A: 11@ += 1
+                                    if
+                                        8019: not 11@ > 3
+                                    then
+                                        0002: jump @Shion_Bling_Flash_Loop
+                                    end
 
-                            // Play rush sound and apply temporary afterimage transparency
-                            018C: play_sound 1052 at 0.0 0.0 0.0
-                            0D10: set_actor $PLAYER_ACTOR alpha 140
+                                    // Shion Misfortune particle at impact point
+                                    064B: 14@ = create_particle "shion_misfortune" at 23@ 24@ 25@ type 1
+                                    064C: make_particle 14@ visible
+                                    064F: remove_references_to_particle 14@
+                                    9@ = 0 // Release recursion lock after particle spawn
 
-                            // 3-frame high-speed 3D visual blur trajectory protected by lock
-                            9@ = 1
-                            11@ = 1
-                            :YBling_Dash_Interpolation_Loop
-                            0001: wait 0 ms
-                            0093: 12@ = integer 11@ to_float
-                            0017: 12@ /= 3.0 // Progress factor: 0.33, 0.66, 1.00
+                                    018C: play_sound 1052 at 0.0 0.0 0.0
 
-                            0087: 23@ = 26@
-                            0063: 23@ -= 20@
-                            006B: 23@ *= 12@
-                            005B: 23@ += 20@ // Current StepX
-
-                            0087: 24@ = 27@
-                            0063: 24@ -= 21@
-                            006B: 24@ *= 12@
-                            005B: 24@ += 21@ // Current StepY
-
-                            0087: 25@ = 28@
-                            0063: 25@ -= 22@
-                            006B: 25@ *= 12@
-                            005B: 25@ += 22@ // Current StepZ
-
-                            0E32: set_char_coordinates_simple $PLAYER_ACTOR coord 23@ 24@ 25@
-                            0173: set_actor $PLAYER_ACTOR Z_angle_to 29@
-
-                            // Visual blur trail: Golden energy flash and sparks
-                            04D5: create_corona_at 23@ 24@ 25@ radius 0.60 type 0 flare 0 RGB 255 215 50
-                            04D5: create_corona_at 23@ 24@ 25@ radius 0.25 type 0 flare 0 RGB 255 255 255
-                            if
-                                0039: 7@ == 1 // CashParticleOnBlingDash
-                            then
-                                064B: 14@ = create_particle "joon_gold" at 23@ 24@ 25@ type 1
-                                064C: make_particle 14@ visible
-                                064F: remove_references_to_particle 14@
-                            end
-
-                            000A: 11@ += 1
-                            if
-                                8019: not 11@ > 3
-                            then
-                                0002: jump @YBling_Dash_Interpolation_Loop
-                            end
-
-                            // Restore full opacity upon arrival
-                            0D10: set_actor $PLAYER_ACTOR alpha 255
-
-                            // Failsafe recovery check: Verify player did not clip into the void or map origin
-                            00A0: store_actor $PLAYER_ACTOR position_to 23@ 24@ 25@
-                            11@ = 0 // Using 11@ as integer corruption flag to keep 14@ strictly float
-
-                            // Check: Warped to origin (0, 0, 0)
-                            050A: 13@ = distance_between_XYZ 23@ 24@ 25@ and_XYZ 0.0 0.0 0.0
-                            if
-                                0023: 20.0 > 13@
-                            then
-                                11@ = 1
-                            end
-
-                            // Check: Warped ridiculously far (> 25m from start position)
-                            050A: 13@ = distance_between_XYZ 23@ 24@ 25@ and_XYZ 20@ 21@ 22@
-                            if
-                                0021: 13@ > 25.0
-                            then
-                                11@ = 1
-                            end
-
-                            // Restore safe starting position if any corruption occurred
-                            if
-                                0039: 11@ == 1
-                            then
-                                0E32: set_char_coordinates_simple $PLAYER_ACTOR coord 20@ 21@ 22@
-                            else
-                                if
-                                    0039: 19@ == 1 // Final Strike Dash completed
-                                then
-                                    // Pin down fleeing target so punch animation connects cleanly
+                                    // Flinch reaction if target survived the blow
                                     if and
                                         056D: actor 10@ defined
                                         8118: not actor 10@ dead
+                                        8E48: not is_char_fallen_on_ground 10@
                                     then
                                         0687: clear_actor 10@ task
-                                        05B9: AS_actor 10@ stay_idle 500 ms // Freeze sprint momentum
+                                        0812: AS_actor 10@ perform_animation "hit_front" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
                                     end
+                                else
+                                    // Jo'on / CJ Mode: Melee Target-Closing Dash (Zippity Zap)
+                                    // Calculate 3D delta vectors (Supports targets above or below)
+                                    0087: 26@ = 23@
+                                    0063: 26@ -= 20@ // dx = TargetX - PlayerX
+                                    0087: 27@ = 24@
+                                    0063: 27@ -= 21@ // dy = TargetY - PlayerY
+                                    0087: 28@ = 25@
+                                    0063: 28@ -= 22@ // dz = TargetZ - PlayerZ
+
+                                    // Calculate horizontal heading to face target
+                                    0604: get_Z_angle_for_point 26@ 27@ store_to 29@
+                                    0173: set_actor $PLAYER_ACTOR Z_angle_to 29@
+
+                                    if
+                                        0021: 13@ > 15.0
+                                    then
+                                        // Gap-Closer Dash (Target > 15m Away)
+                                        0007: 12@ = 5.0
+                                        0073: 12@ /= 13@ // Ratio = 5.0m / TotalDistance
+                                        19@ = 0          // Flag: Gap Closer (No pin-down animation applied)
+                                    else
+                                        // Final Strike Dash (Target <= 15m Away)
+                                        // Calculate stopping position 0.90m in front of target to prevent collision overlap
+                                        0087: 14@ = 13@
+                                        000F: 14@ -= 0.90
+                                        if
+                                            0023: 0.0 > 14@
+                                        then
+                                            0007: 14@ = 0.0
+                                        end
+
+                                        0087: 12@ = 14@
+                                        0073: 12@ /= 13@ // Ratio = TravelDistance / TotalDistance
+                                        19@ = 1          // Flag: Strike Dash (Pins target for the punch)
+                                    end
+
+                                    // Compute Destination Coordinates
+                                    006B: 26@ *= 12@
+                                    006B: 27@ *= 12@
+                                    006B: 28@ *= 12@
+                                    005B: 26@ += 20@ // StopX = PlayerX + (dx * Ratio)
+                                    005B: 27@ += 21@ // StopY = PlayerY + (dy * Ratio)
+                                    005B: 28@ += 22@ // StopZ = PlayerZ + (dz * Ratio)
+
+                                    // Ground elevation floor check to prevent clipping under terrain/stairs
+                                    0087: 14@ = 28@
+                                    000B: 14@ += 1.5
+                                    02CE: 14@ = ground_z_at 26@ 27@ 14@
+                                    if
+                                        8043: not 14@ == 0.0
+                                    then
+                                        000B: 14@ += 0.95
+                                        if
+                                            0025: 14@ > 28@
+                                        then
+                                            0087: 28@ = 14@
+                                        end
+                                    end
+
+                                    // Play rush sound and apply temporary afterimage transparency
+                                    018C: play_sound 1052 at 0.0 0.0 0.0
+                                    0D10: set_actor $PLAYER_ACTOR alpha 140
+
+                                    // 3-frame high-speed 3D visual blur trajectory protected by lock
+                                    9@ = 1
+                                    11@ = 1
+                                    :YBling_Dash_Interpolation_Loop
+                                    0001: wait 0 ms
+                                    0093: 12@ = integer 11@ to_float
+                                    0017: 12@ /= 3.0 // Progress factor: 0.33, 0.66, 1.00
+
+                                    0087: 23@ = 26@
+                                    0063: 23@ -= 20@
+                                    006B: 23@ *= 12@
+                                    005B: 23@ += 20@ // Current StepX
+
+                                    0087: 24@ = 27@
+                                    0063: 24@ -= 21@
+                                    006B: 24@ *= 12@
+                                    005B: 24@ += 21@ // Current StepY
+
+                                    0087: 25@ = 28@
+                                    0063: 25@ -= 22@
+                                    006B: 25@ *= 12@
+                                    005B: 25@ += 22@ // Current StepZ
+
+                                    0E32: set_char_coordinates_simple $PLAYER_ACTOR coord 23@ 24@ 25@
+                                    0173: set_actor $PLAYER_ACTOR Z_angle_to 29@
+
+                                    // Visual blur trail: Golden energy flash and sparks
+                                    04D5: create_corona_at 23@ 24@ 25@ radius 0.60 type 0 flare 0 RGB 255 215 50
+                                    04D5: create_corona_at 23@ 24@ 25@ radius 0.25 type 0 flare 0 RGB 255 255 255
+                                    if
+                                        0039: 7@ == 1 // CashParticleOnBlingDash
+                                    then
+                                        064B: 14@ = create_particle "joon_gold" at 23@ 24@ 25@ type 1
+                                        064C: make_particle 14@ visible
+                                        064F: remove_references_to_particle 14@
+                                    end
+
+                                    000A: 11@ += 1
+                                    if
+                                        8019: not 11@ > 3
+                                    then
+                                        0002: jump @YBling_Dash_Interpolation_Loop
+                                    end
+
+                                    // Restore full opacity upon arrival
+                                    0D10: set_actor $PLAYER_ACTOR alpha 255
+
+                                    // Failsafe recovery check: Verify player did not clip into the void or map origin
+                                    00A0: store_actor $PLAYER_ACTOR position_to 23@ 24@ 25@
+                                    11@ = 0 // Using 11@ as integer corruption flag to keep 14@ strictly float
+
+                                    // Check: Warped to origin (0, 0, 0)
+                                    050A: 13@ = distance_between_XYZ 23@ 24@ 25@ and_XYZ 0.0 0.0 0.0
+                                    if
+                                        0023: 20.0 > 13@
+                                    then
+                                        11@ = 1
+                                    end
+
+                                    // Check: Warped ridiculously far (> 25m from start position)
+                                    050A: 13@ = distance_between_XYZ 23@ 24@ 25@ and_XYZ 20@ 21@ 22@
+                                    if
+                                        0021: 13@ > 25.0
+                                    then
+                                        11@ = 1
+                                    end
+
+                                    // Restore safe starting position if any corruption occurred
+                                    if
+                                        0039: 11@ == 1
+                                    then
+                                        0E32: set_char_coordinates_simple $PLAYER_ACTOR coord 20@ 21@ 22@
+                                    else
+                                        if
+                                            0039: 19@ == 1 // Final Strike Dash completed
+                                        then
+                                            // Pin down fleeing target so punch animation connects cleanly
+                                            if and
+                                                056D: actor 10@ defined
+                                                8118: not actor 10@ dead
+                                            then
+                                                0687: clear_actor 10@ task
+                                                05B9: AS_actor 10@ stay_idle 500 ms // Freeze sprint momentum
+                                            end
+                                        end
+
+                                        // Extend 2-second Graze Bulletproof Immunity on EVERY step
+                                        0ABA: terminate_all_custom_scripts_with_this_name 'Y_Graze'
+                                        0A92: stream_custom_script "Yorigami\FX_JoonGraze.c"
+                                    end
+
+                                    9@ = 0 // Release recursion lock after arrival and failsafe validation
+                                    17@ = 3000 // Guarantee Fist-Lock holds throughout the entire approach sequence
                                 end
-
-                                // Extend 2-second Graze Bulletproof Immunity on EVERY step
-                                0ABA: terminate_all_custom_scripts_with_this_name 'Y_Graze'
-                                0A92: stream_custom_script "Yorigami\FX_JoonGraze.c"
                             end
-
-                            9@ = 0 // Release recursion lock after arrival and failsafe validation
-                            17@ = 3000 // Guarantee Fist-Lock holds throughout the entire approach sequence
                         end
                     end
                 end
