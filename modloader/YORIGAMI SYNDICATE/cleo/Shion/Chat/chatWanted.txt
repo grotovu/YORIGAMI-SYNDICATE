@@ -2787,7 +2787,7 @@ then
 
                     018C: play_sound 1058 at 0.0 0.0 0.0
                     03EB: clear_small_messages_only
-                    0ADF: add_text_label "Y_W60BH" text "~y~Jo'on: ~s~\"It can crush ME, ya idiot! I'm throwin' it in reverse! I ain't gettin' pancaked by sixty tons of steel!\""
+                    0ADF: add_text_label "Y_W60BH" text "~y~Jo'on: ~s~\"It can crush ME, ya idiot! Floorin' it! I ain't gettin' pancaked by sixty tons of steel!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_W60BH' time 3700 flag 1
                 end
@@ -2832,7 +2832,7 @@ then
 
                     018C: play_sound 1058 at 0.0 0.0 0.0
                     03EB: clear_small_messages_only
-                    0ADF: add_text_label "Y_W60B" text "~y~Jo'on: ~s~\"If that giant track touches us, we're flattened like pancakes! I'm throwin' it in reverse!\""
+                    0ADF: add_text_label "Y_W60B" text "~y~Jo'on: ~s~\"If that giant track touches us, we're flattened like pancakes!\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_W60B' time 3600 flag 1
                 end
