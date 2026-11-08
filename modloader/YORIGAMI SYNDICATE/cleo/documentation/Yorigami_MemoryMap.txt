@@ -120,4 +120,7 @@ const
     MEM_SHION_CHUTE_OBJ = 408     // Parachute Canopy Object Handle (0 = None, >0 = Live Object)
     MEM_SHION_DM = 412            // Persistent Zero-Panic Decision Maker Handle
     MEM_DURGASTRA_PREV_MODE = 416 // Stored CombatResourceMode prior to Durgastra override (0 = Wallet Drain, 1 = Gear Swap)
+    MEM_RAPID_SWAP_COUNT = 420   // Consecutive form swaps counter
+    MEM_RAPID_SWAP_TIMER = 424   // Rolling window timer (ms)
+    MEM_LAST_FORM_MODE = 428     // Last tracked form mode (-1 = init, 0 = Ped, 1 = Hitodama)
 end

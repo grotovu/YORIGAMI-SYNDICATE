@@ -15,6 +15,9 @@ const
     MEM_CARS_WRECKED = 268
     MEM_CAR_SMASH_SIGNAL = 372
     MEM_FLEX_SIGNAL = 376
+    MEM_RAPID_SWAP_COUNT = 420
+    MEM_RAPID_SWAP_TIMER = 424
+    MEM_LAST_FORM_MODE = 428
 end
 
 :Connect_To_Brain
@@ -28,6 +31,18 @@ end
 000A: 31@ += 0x3C 
 0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0 
 // 31@ NOW HOLDS THE MASTER POINTER.
+
+// Safety: Flush any orphan Priority Lock left behind by a killed thread
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 29@ == 3
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
 
 // Header initialization
 0@ = 0  // Dialogue Random Selector
@@ -74,6 +89,19 @@ then
     0085: 30@ = 31@
     000A: 30@ += MEM_CAR_SMASH_SIGNAL
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    // Reset rapid swap counters while absent
+    0085: 30@ = 31@
+    000A: 30@ += MEM_RAPID_SWAP_COUNT
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_RAPID_SWAP_TIMER
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_LAST_FORM_MODE
+    0A8C: write_memory 30@ size 4 value -1 virtual_protect 0
     goto @ShionSandbox_Loop
 end
 
@@ -141,6 +169,76 @@ if
     10@ == -1
 then
     11@ = 1
+end
+
+// Tick down Rapid Swap Window Timer
+0085: 30@ = 31@
+000A: 30@ += MEM_RAPID_SWAP_TIMER
+0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0019: 27@ > 0
+then
+    000E: 27@ -= 100
+    if
+        002B: 0 >= 27@
+    then
+        27@ = 0
+        0085: 30@ = 31@
+        000A: 30@ += MEM_RAPID_SWAP_COUNT
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
+    0085: 30@ = 31@
+    000A: 30@ += MEM_RAPID_SWAP_TIMER
+    0A8C: write_memory 30@ size 4 value 27@ virtual_protect 0
+end
+
+// Rapid Form Swap Watchdog (Spamming Y + H between Ped and Hitodama)
+0085: 30@ = 31@
+000A: 30@ += MEM_LAST_FORM_MODE
+0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    803B: not 11@ == 28@
+then
+    // Only count transitions between active forms (0 <-> 1), ignoring uninitialized (-1)
+    if and
+        0029: 28@ >= 0
+        0029: 11@ >= 0
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_RAPID_SWAP_COUNT
+        0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+        000A: 27@ += 1
+        0A8C: write_memory 30@ size 4 value 27@ virtual_protect 0
+
+        // Reset 8-second rolling window
+        0085: 30@ = 31@
+        000A: 30@ += MEM_RAPID_SWAP_TIMER
+        0A8C: write_memory 30@ size 4 value 8000 virtual_protect 0
+
+        if
+            0029: 27@ >= 6
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_RAPID_SWAP_COUNT
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_RAPID_SWAP_TIMER
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+            if
+                8019: not 1@ > 0
+            then
+                12@ = 12 // Queue Rapid Form Swap Reaction
+            end
+        end
+    end
+
+    // Update tracked form mode
+    0085: 30@ = 31@
+    000A: 30@ += MEM_LAST_FORM_MODE
+    0A8C: write_memory 30@ size 4 value 11@ virtual_protect 0
 end
 
 // Firetruck Hose-down on Shion
@@ -3489,6 +3587,21 @@ then
         wait 3700
     end
 
+    goto @Finish_Sandbox_Dialogue
+end
+
+// Event: Rapid Form Swap Quip (Spamming Y + H)
+if
+    12@ == 12
+then
+    12@ = 0
+    1@ = 3000 // Short 3-second cooldown instead of 12-second lockout
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_HSPM" text "~b~Shion: ~s~\"You really enjoy pushing that button, don't you, Jo'on...?\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_HSPM' time 2500 flag 1
+    wait 2500
     goto @Finish_Sandbox_Dialogue
 end
 

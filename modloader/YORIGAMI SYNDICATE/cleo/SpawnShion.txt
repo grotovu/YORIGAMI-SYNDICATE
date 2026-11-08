@@ -67,10 +67,7 @@ end
 2@ = 0  // Active Hangout Spot ID (1 = Idlewood, 2 = Doherty, 3 = LV Strip)
 3@ = 89 // MainKey (Y)
 4@ = 72 // HitodamaKey (H)
-5@ = 0  // Asynchronous Stance / Quip Priority Lock Timer (ms)
-6@ = 0  // Hitodama Rapid Swap Rolling Window Timer (ms)
 13@ = 0 // Quick Dismissal Expiration Timer (ms)
-14@ = 0 // Hitodama Rapid Swap Counter
 15@ = 0 // Morph Anti-Spam Cooldown Timer (ms)
 8@ = 0  // Companion In Party Prior to Tag Latch (0 = No, 1 = Yes)
 28@ = 0 // Dedicated Active Interior ID (int)
@@ -284,19 +281,6 @@ then
     end
 end
 
-// Hitodama Rapid Swap Rolling Window Timer
-if
-    6@ > 0
-then
-    000E: 6@ -= 50
-    if
-        0 >= 6@
-    then
-        6@ = 0
-        14@ = 0
-    end
-end
-
 // Morph Debounce Timer
 if
     15@ > 0
@@ -306,28 +290,6 @@ then
         0 >= 15@
     then
         15@ = 0
-    end
-end
-
-// Asynchronous Stance / Quip Priority Lock Timer (Using isolated 5@)
-if
-    5@ > 0
-then
-    000E: 5@ -= 50
-    if
-        0 >= 5@
-    then
-        5@ = 0
-        0085: 30@ = 31@
-        000A: 30@ += MEM_PRIORITY_LOCK
-        0A8D: 26@ = read_memory 30@ size 4 virtual_protect 0
-        if
-            26@ == 3
-        then
-            0085: 30@ = 31@
-            000A: 30@ += MEM_PRIORITY_LOCK
-            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
-        end
     end
 end
 
@@ -395,58 +357,11 @@ then
                 19@ > 0 // Currently Solid Ped -> Dematerialize to Hitodama Form!
             then
                 gosub @Morph_Shion_To_Hitodama
-                000A: 14@ += 1
-                6@ = 8000
             else
                 if
                     19@ == -1 // Currently Hitodama -> Rematerialize to Solid Ped!
                 then
                     gosub @Morph_Shion_To_Ped
-                    // Check if materialization succeeded (Var 703 became > 0)
-                    0085: 30@ = 31@
-                    000A: 30@ += MEM_SHION_HANDLE
-                    0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
-                    if
-                        19@ > 0
-                    then
-                        000A: 14@ += 1
-                        6@ = 8000
-                    end
-                end
-            end
-
-            // Trigger Shion's quip if she has actually swapped forms 6+ times consecutively
-            if
-                14@ >= 6
-            then
-                14@ = 0
-                6@ = 0
-                0085: 30@ = 31@
-                000A: 30@ += MEM_PRIORITY_LOCK
-                0A8D: 26@ = read_memory 30@ size 4 virtual_protect 0
-                if
-                    26@ < 4
-                then
-                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
-                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
-                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
-                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
-                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
-                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
-                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
-                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
-                    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
-                    03EB: clear_small_messages_only
-
-                    0085: 30@ = 31@
-                    000A: 30@ += MEM_PRIORITY_LOCK
-                    0A8C: write_memory 30@ size 4 value 3 virtual_protect 0
-                    5@ = 2500                     // Hold lock asynchronously for 2.5s
-
-                    018C: play_sound 1058 at 0.0 0.0 0.0
-                    0ADF: add_text_label "Y_HSPM" text "~b~Shion: ~s~\"You really enjoy pushing that button, don't you, Jo'on...?\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_HSPM' time 2500 flag 1
                 end
             end
         end
@@ -1690,7 +1605,6 @@ return
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Burg"
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Menu"
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_FF"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sndb"
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_RedM"
 
 0A92: create_custom_thread "Shion\ShionFollow.c" 10@
@@ -1702,7 +1616,6 @@ return
 0A92: create_custom_thread "Shion\ShionBurglary.c" 10@
 0A92: create_custom_thread "Shion\ShionMenu.c" 10@
 0A92: create_custom_thread "Shion\ShionFriendlyFire.c" 10@
-0A92: create_custom_thread "Shion\ShionSandbox.c" 10@
 0A92: create_custom_thread "Shion\ShionCombatRedMarker.c" 10@
 return
 

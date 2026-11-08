@@ -95,6 +95,9 @@ Every secondary script executes an identical connection routine upon initializat
 | `408` | `MEM_SHION_CHUTE_OBJ` | int | Object handle of active parachute canopy (`#PARACHUTE` / `3131`). | `ShionChute`, `SpawnShion` | `SpawnShion`, `ShionChute` |
 | `412` | `MEM_SHION_DM` | int | Handle of persistent Zero-Panic Decision Maker allocated once on boot. | `SpawnShion` | `ShionControl`, `Entourage`, `chatDismiss`, `SpawnShion` |
 | `416` | `MEM_DURGASTRA_PREV_MODE`| int | Stored `MEM_COMBAT_RES_MODE` before Durgastra override (`0` = Wallet Drain, 1 = Gear Swap). | `ShionGear`, `ShionMenu` | `ShionGear`, `ShionMenu` |
+| `420` | `MEM_RAPID_SWAP_COUNT` | int | Counter for consecutive form swaps (`Y + H`) within the rolling window. | `ShionSandbox` | `ShionSandbox` |
+| `424` | `MEM_RAPID_SWAP_TIMER` | int (ms) | Active countdown timer (8000ms) evaluating the rapid swap window. | `ShionSandbox` | `ShionSandbox` |
+| `428` | `MEM_LAST_FORM_MODE` | int | Edge-trigger state tracker for form transitions (`-1` = Init, `0` = Ped, `1` = Hitodama). | `ShionSandbox` | `ShionSandbox` |
 
 ---
 
@@ -358,6 +361,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * Money Danmaku: Pay-to-win expenditure index (`MEM_DANMAKU_CASH_SPENT`).
 * **`ShionSandbox.txt` (`Sh_Sndb`):**
   * Environmental event monitor:
+    * Detects rapid Hitodama form swapping (`Y + H` spam) via edge-trigger Heap state tracking.
     * Detects firetruck water cannon sprayed on physical Shion.
     * Detects vehicle sinking into ocean water (`02BF`).
     * Detects swimming in deep water for > 5 seconds.
