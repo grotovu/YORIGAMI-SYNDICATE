@@ -117,9 +117,24 @@ Tier 1 (Value: 1)  ──>  Idle Smoking Banter, Minor Quips
 Tier 0 (Value: 0)  ──>  Channel Clear / Available
 ```
 
-* **Preemption Rule & Universal Include Pipeline (`{$INCLUDE}`):** A lower-tier script cannot write to subtitles (`00BC`, `0AD1`, `03E5`) or play dialogue sound (`1058`) if `MEM_PRIORITY_LOCK` is set to a higher tier. Higher-tier scripts preempt active dialogue threads instantaneously at compile-time via dedicated Sanny Builder include snippets (`0ABA`), preventing race conditions and thread creation lag:
-  * **`clear_ambient.txt` (Tier 2 Ambient Purge):** Terminates the 9 passive free-roam speakers (`Sh_Zone`, `Sh_Mny`, `Sh_Idle`, `Sh_Snip`, `Sh_Int`, `Sh_Veh`, `Sh_Rad`, `Sh_Sub`, `Sh_Wthr`). Used by Tier 3 reactive daemons (`chatWanted`, `chatSandbox`, `scavLoot`, `chatGrimPity`). Because passive speakers never call preemption, this file is completely immune to self-termination.
-  * **`clear_all_chat.txt` (Tier 2 + Tier 3 Full Purge):** Sweeps all 9 ambient scripts plus active reactive threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Pity`). Used by Tier 4 Master Theater (`loreTheater`, `chatReunion`), death reactions (`chatFollow` Mode 3, `chatSpawned`), companion dismissal (`chatDismiss`), and emergency health panics in `ShionChat`.
+* **Preemption Rule & Universal Include Pipeline (`{$INCLUDE}`):** A lower-tier script cannot write to subtitles (`00BC`, `0AD1`, `03E5`) or play dialogue sound (`1058`) if `MEM_PRIORITY_LOCK` is set to a higher tier. Higher-tier scripts preempt active dialogue threads instantaneously at compile-time via dedicated Sanny Builder include snippets (`0ABA`), preventing race conditions, 1-frame subtitle wiping, and thread-spawning latency:
+  * **`clear_ambient.txt` (Tier 2 Ambient Purge):** Terminates the 9 passive free-roam speakers (`Sh_Zone`, `Sh_Mny`, `Sh_Idle`, `Sh_Snip`, `Sh_Int`, `Sh_Veh`, `Sh_Rad`, `Sh_Sub`, `Sh_Wthr`). Used by Tier 3 reactive and operational daemons:
+    * `chatWanted.txt` (`Sh_Star`)
+    * `chatSandbox.txt` (`Sh_SndC`)
+    * `chatGrimPity.txt` (`Sh_Pity`)
+    * `scavLoot.txt` (`Sh_Loot`)
+    * `ShionBurglary.txt` (`Sh_Burg`)
+    * `ShionChute.txt` (`Sh_Chut`)
+    * `ShionFriendlyFire.txt` (`Sh_FF`)
+  * **`clear_all_chat.txt` (Tier 2 + Tier 3 Full Purge):** Sweeps all 9 ambient scripts plus active reactive/combat threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Pity`). Used by Tier 4 Master Theater events, life-or-death reactions, and major state transitions:
+    * `loreTheater.txt` (`Sh_Thea`)
+    * `chatReunion.txt` (`Sh_Reun`)
+    * `chatSpawned.txt` (`Sh_Spwn`)
+    * `chatDismiss.txt` (`Sh_Dism`)
+    * `chatFollow.txt` (Mode 3: Shion Death Reaction)
+    * `ShionChat.txt` (`Y + T` manual talk prompt & Critical health emergencies)
+    * `ShionMem.txt` (`Sh_Mem` Safehouse Performance Review)
+    * `ShionVehicle.txt` (`Sh_Sync` In-vehicle warp & seat catch-up lines)
 * **Orphan Watchdog:** `ShionChat.txt` contains an automated watchdog polling every 250ms. If Tier 4 is claimed but no theater structs (`Sh_Thea`, `Sh_Dine`, `Sh_Mem`, `Sh_Menu`, `Sh_Reun`) exist in engine memory, it clears the lock to `0` to prevent softlocks. For Tiers 1–3, it validates active child threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Dism`, etc.); if no transient thread is identified, it enforces a 12-second timeout.
 
 ---
@@ -236,7 +251,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Detects interior changes via active interior `28@`. Enforces a 2150ms mesh loading delay before reading player coordinates, matching them against 32 known Safehouse EnEx doorways (`MEM_SAFEHOUSE_DOOR_ID`), and placing Shion inside.
 * **`ShionVehicle.txt` (`Sh_Sync`):**
   * Controls vehicle passenger seat synchronization.
-  * If Shion is outside while player drives, pressing `G` checks vehicle passenger capacity (`01EA`) and warps her into seat 0 (front passenger), 1 (rear left), or 2 (rear right).
+  * If Shion is outside while player drives, pressing `G` checks vehicle passenger capacity (`01EA`) and warps her into seat 0 (front passenger), 1 (rear left), or 2 (rear right). Preempts all ambient and reactive chatter via `clear_all_chat.txt` before delivering warp catch-up dialogue.
   * If Shion is already inside, pressing `G` cycles her through open seats (0 -> 1 -> 2 -> 0) with Hitodama dissolve FX.
   * Pressing `H` in-car sets `MEM_SHION_STAY_PUT = 2`, locks the car door via `039E`, and removes her from the group so she remains seated when the player exits.
   * Monitors vehicle destruction/fire: forces immediate bailout or airborne parachute ejection if car health < 250, burning, or sinking.
@@ -252,7 +267,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Phase 3: Touchdown landing, releases and destroys canopy object, resets `MEM_SHION_CHUTE_OBJ = 0`, re-adds to group, clears busy flag, and sets `MEM_SKYDIVE_LANDED = 1`.
 * **`ShionBurglary.txt` (`Sh_Burg`):**
   * Active during Burglary missions (`$ONMISSION_BURGLARY == 1`).
-  * When Jo'on is carrying loot inside a residence, holding `TAB` near Shion initiates a hand-off.
+  * When Jo'on is carrying loot inside a residence, holding `TAB` near Shion initiates a hand-off, clearing ambient chatter via `clear_ambient.txt`.
   * Jo'on's carrying task and BURGJB memory (`0xA48AD8`, `0xA48A24`) are cleared. Shion dissolves with Hitodama FX (`MEM_SHION_BUSY = 1`).
   * Runs a 3-second background timer representing a run to the Boxville van, increments van loot memory (`0xA48A20`), plays chime `1058`, and rematerializes Shion beside Jo'on.
 
@@ -389,7 +404,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Form-aware execution: bifurcates lines between Physical Ped (`11@ == 0`) and Hitodama spirit (`11@ == 1`) across sinking, deep swimming, hydraulics, vehicle wrecks, car smasher punches, pedestrian run-overs, and cash flexing.
   * Features dedicated abort watchdogs checking cutscenes, screen fades, player death, and companion dismissal during multi-stage dialogues.
 * **`ShionFriendlyFire.txt` (`Sh_FF`):**
-  * Intercepts attacks from Jo'on against Shion via `OnCharDamageFF`.
+  * Intercepts attacks from Jo'on against Shion via `OnCharDamageFF`, preempting ambient chatter via `clear_ambient.txt` upon damage dispatch.
   * Maps damage to specific weapon categories (fists, brass knuckles, golf club, nightstick, knife, bat, shovel, pool cue, katana, chainsaw, dildo, flowers, cane, grenades, rocket launchers, satchel charges, pistols, shotguns, automatics, rifles, spray can, extinguisher).
   * Detects camera viewfinder aim and snapshots on physical Shion or Hitodama spirit (`MEM_HITODAMA_X/Y/Z`) to trigger photo reactions.
 * **`chatDismiss.txt` (`Sh_Dism`):**

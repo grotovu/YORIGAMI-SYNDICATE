@@ -326,15 +326,7 @@ then
         8019: not 25@ > 40
     then
         // Preempt all ambient banter so Shion's handoff has exclusive focus
-        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
-        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
-        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
-        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
-        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
-        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
-        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
-        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
-        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
+        {$INCLUDE Chat\clear_ambient.txt}
 
         0085: 30@ = 31@
         000A: 30@ += MEM_PRIORITY_LOCK

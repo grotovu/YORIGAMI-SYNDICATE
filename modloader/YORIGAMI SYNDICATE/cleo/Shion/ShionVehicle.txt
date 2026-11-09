@@ -185,16 +185,7 @@ then
                         if
                             28@ >= 0
                         then
-                            0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
-                            0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
-                            0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
-                            0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
-                            0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
-                            0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
-                            0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
-                            0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
-                            0ABA: terminate_all_custom_scripts_with_this_name "Sh_Star"
-                            0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
+                            {$INCLUDE Chat\clear_all_chat.txt}
                             03EB: clear_small_messages_only
 
                             00A0: store_actor 10@ position_to 17@ 18@ 19@
