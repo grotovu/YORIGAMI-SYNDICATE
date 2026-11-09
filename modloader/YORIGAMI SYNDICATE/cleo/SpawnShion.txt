@@ -68,6 +68,7 @@ end
 3@ = 89 // MainKey (Y)
 4@ = 72 // HitodamaKey (H)
 5@ = 0  // Pimping 2-Seater Auto-Hitodama State (0 = Inactive, 1 = Auto-Dematerialized for Client)
+6@ = 0  // Recent Vacated Prostitute Handle (prevents drop-off re-trigger)
 14@ = 1 // AutoHitodamaInTwoSeater Config Flag (Default: 1)
 13@ = 0 // Quick Dismissal Expiration Timer (ms)
 15@ = 0 // Morph Anti-Spam Cooldown Timer (ms)
@@ -170,6 +171,7 @@ if
 then
     8@ = 0 // Reset tag-switch companion latch on death or reload
     5@ = 0 // Clear pimping auto-hitodama state on death or reload
+    6@ = 0 // Clear recent prostitute handle
     goto @SpawnShion_Loop
 end
 
@@ -447,6 +449,26 @@ end
 // =========================================================================
 // PIMPING SUB-MISSION 2-SEATER COMPANION FORM AUTOMATION
 // =========================================================================
+// Clear recent client handle once driven away (> 20m)
+if
+    0019: 6@ > 0
+then
+    if
+        056D: actor 6@ defined
+    then
+        00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
+        00A0: store_actor 6@ position_to 23@ 24@ 25@
+        050A: 26@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 23@ 24@ 25@
+        if
+            26@ > 20.0
+        then
+            6@ = 0
+        end
+    else
+        6@ = 0
+    end
+end
+
 // Failsafe: Restore Shion if Pimping ends or cancels while in any auto state
 if and
     5@ > 0
@@ -467,13 +489,16 @@ then
             then
                 gosub @Morph_Shion_To_Ped
                 5@ = 0
+                6@ = 0
             end
         else
             gosub @Morph_Shion_To_Ped
             5@ = 0
+            6@ = 0
         end
     else
         5@ = 0
+        6@ = 0
     end
 end
 
@@ -511,6 +536,7 @@ then
                         87D6: not 25@ == $PLAYER_ACTOR
                         803B: not 25@ == 10@
                     then
+                        0085: 6@ = 25@
                         26@ = 1
                     end
                 end
@@ -531,6 +557,7 @@ then
                         if and
                             87D6: not 25@ == $PLAYER_ACTOR
                             803B: not 25@ == 10@
+                            803B: not 25@ == 6@ // Strictly ignore girl who was just dropped off!
                         then
                             // Active car entry tasks
                             if or
@@ -588,6 +615,7 @@ then
                         87D6: not 25@ == $PLAYER_ACTOR
                         803B: not 25@ == 10@
                     then
+                        0085: 6@ = 25@ // Snapshot active girl's handle
                         5@ = 2 // Stage 2: Working girl is officially on board!
                     end
                 else
@@ -625,6 +653,7 @@ then
                         then
                             gosub @Morph_Shion_To_Ped
                             5@ = 0
+                            6@ = 0
                         end
                     end
                 end
@@ -638,35 +667,55 @@ then
                 if
                     0431: car 24@ passenger_seat_free 0
                 then
-                    // Verify no new ped is actively entering
+                    // Verify the girl has fully finished exiting the vehicle
                     26@ = 0
-                    00AA: store_car 24@ position_to 20@ 21@ 22@
-                    29@ = 0
-
-                    :Scan_Pimp_Vacate_Loop
                     if
-                        0AE1: 25@ = random_char_near_point 20@ 21@ 22@ in_radius 6.0 find_next 29@ pass_deads 1
+                        0019: 6@ > 0
                     then
-                        29@ = 1
-                        if and
-                            87D6: not 25@ == $PLAYER_ACTOR
-                            803B: not 25@ == 10@
+                        if
+                            056D: actor 6@ defined
                         then
-                            if or
-                                0E49: is_char_entering_any_car 25@
-                                0E42: is_char_doing_task_id 25@ 700
-                                0E42: is_char_doing_task_id 25@ 712
-                                0E42: is_char_doing_task_id 25@ 800
-                                0E42: is_char_doing_task_id 25@ 828
+                            if
+                                0E4A: is_char_exiting_any_car 6@
                             then
                                 26@ = 1
                             end
                         end
+                    end
 
+                    // Verify no new ped is actively entering the free seat
+                    if
+                        26@ == 0
+                    then
+                        00AA: store_car 24@ position_to 20@ 21@ 22@
+                        29@ = 0
+
+                        :Scan_Pimp_Vacate_Loop
                         if
-                            26@ == 0
+                            0AE1: 25@ = random_char_near_point 20@ 21@ 22@ in_radius 6.0 find_next 29@ pass_deads 1
                         then
-                            goto @Scan_Pimp_Vacate_Loop
+                            29@ = 1
+                            if and
+                                87D6: not 25@ == $PLAYER_ACTOR
+                                803B: not 25@ == 10@
+                                803B: not 25@ == 6@ // Ignore recently vacated girl
+                            then
+                                if or
+                                    0E49: is_char_entering_any_car 25@
+                                    0E42: is_char_doing_task_id 25@ 700
+                                    0E42: is_char_doing_task_id 25@ 712
+                                    0E42: is_char_doing_task_id 25@ 800
+                                    0E42: is_char_doing_task_id 25@ 828
+                                then
+                                    26@ = 1
+                                end
+                            end
+
+                            if
+                                26@ == 0
+                            then
+                                goto @Scan_Pimp_Vacate_Loop
+                            end
                         end
                     end
 
