@@ -89,6 +89,7 @@ then
     0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
     0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
     0ABA: terminate_all_custom_scripts_with_this_name "Sh_Star"
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_SndC"
 end
 
 // =========================================================================

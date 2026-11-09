@@ -64,6 +64,7 @@ end
 0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Rad'
 0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Sub'
 0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Wthr'
+0ABA: terminate_all_custom_scripts_with_this_name 'Sh_SndC'
 
 // Claim Tier 3 Action Lock!
 0085: 30@ = 31@

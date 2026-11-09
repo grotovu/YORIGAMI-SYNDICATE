@@ -369,17 +369,23 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * Odd Jobs: Career effort distribution across Taxi, Paramedic, Firefighter, Vigilante, Pimping, and Burglary.
     * Money Danmaku: Pay-to-win expenditure index (`MEM_DANMAKU_CASH_SPENT`).
 * **`ShionSandbox.txt` (`Sh_Sndb`):**
-  * Environmental event monitor:
+  * Dedicated non-blocking environmental event sensor daemon:
     * Detects rapid Hitodama form swapping (`Y + H` spam) via edge-trigger Heap state tracking.
     * Detects firetruck water cannon sprayed on physical Shion.
     * Detects vehicle sinking into ocean water (`02BF`).
     * Detects swimming in deep water for > 5 seconds.
     * Detects Pay 'n' Spray repair of a heavily damaged car (< 500 HP restored to >= 990 HP).
     * Detects stunt flips (car flips upside down in air and recovers onto wheels).
-    * Intercepts punches or vehicular hit-and-runs on innocent, unarmed civilians.
+    * Intercepts punches or vehicular hit-and-runs on innocent, unarmed civilians via `0EDE`.
     * Detects continuous lowrider hydraulic hopping for > 3 seconds.
     * Catches Car Smasher vehicle punch explosions (`MEM_CAR_SMASH_SIGNAL`).
     * Catches cash flex events (`MEM_FLEX_SIGNAL`).
+    * Dispatches detected event IDs asynchronously to `chatSandbox.c` without stalling the 100ms sensory detection loop.
+* **`chatSandbox.txt` (`Sh_SndC`):**
+  * Vocal dialogue dispatcher for all sandbox and environmental events streamed by `ShionSandbox.cs` via `0A92`.
+  * Claims Tier 3 Priority Lock (`MEM_PRIORITY_LOCK = 3`), preempting low-tier ambient chat while cleanly yielding to Tier 4 Theater.
+  * Form-aware execution: bifurcates lines between Physical Ped (`11@ == 0`) and Hitodama spirit (`11@ == 1`) across sinking, deep swimming, hydraulics, vehicle wrecks, car smasher punches, pedestrian run-overs, and cash flexing.
+  * Features dedicated abort watchdogs checking cutscenes, screen fades, player death, and companion dismissal during multi-stage dialogues.
 * **`ShionFriendlyFire.txt` (`Sh_FF`):**
   * Intercepts attacks from Jo'on against Shion via `OnCharDamageFF`.
   * Maps damage to specific weapon categories (fists, brass knuckles, golf club, nightstick, knife, bat, shovel, pool cue, katana, chainsaw, dildo, flowers, cane, grenades, rocket launchers, satchel charges, pistols, shotguns, automatics, rifles, spray can, extinguisher).
@@ -685,7 +691,8 @@ The following table details the cross-script dependencies for every component in
 | **Lore Archive** | `Shion\Lore\loreMenu.txt`| "ALLORE", `ShionMenu`, or `ShionDebug` ("LORE") | `MEM_LORE_MENU_SIGNAL` | `MEM_LORE_PROGRESS_BIT` | UI panel for reviewing unlocked lore episodes |
 | **Safehouse Menu** | `Shion\ShionMenu.txt` | Hold `TAB` inside safehouse | `MEM_PRIORITY_LOCK`, `MEM_COMBAT_RES_MODE`, `MEM_DURGASTRA_FLAG`, `MEM_DURGASTRA_PREV_MODE`, `MEM_LORE_MENU_SIGNAL` | `MEM_SAFEHOUSE_DOOR_ID`, `MEM_DURGASTRA_PREV_MODE` | Safehouse configuration UI with mode memory arbitration, launches `ShionMem` |
 | **Performance Review** | `Shion\ShionMem.txt` | Launched from `ShionMenu` | `MEM_SPOKEN_TOPICS_BIT`, `MEM_PRIORITY_LOCK` | Performance ledger (Kills, Fares, Wrecks, etc.) | Evaluates partnership stats across 9 interactive topics |
-| **Sandbox Banter** | `Shion\ShionSandbox.txt`| Water hose, sinking, stunts, civ punches | None | `MEM_SHION_BUSY`, `MEM_CARS_WRECKED`, `MEM_CAR_SMASH_SIGNAL`, `MEM_FLEX_SIGNAL` | Contextual reactions to sandbox actions |
+| **Sandbox Sensory Monitor** | `Shion\ShionSandbox.txt` | Water hose, ocean sinking, stunts, civ punches/run-overs, flex | `MEM_CAR_SMASH_SIGNAL`, `MEM_FLEX_SIGNAL`, `MEM_RAPID_SWAP_*`, `MEM_LAST_FORM_MODE` | `MEM_SHION_BUSY`, `MEM_CARS_WRECKED`, `MEM_CAR_SMASH_SIGNAL`, `MEM_FLEX_SIGNAL`, `MEM_PRIORITY_LOCK` | Dispatches events to `chatSandbox.c` (`Sh_SndC`) via `0A92` |
+| **Sandbox Dialogue Router** | `Shion\Chat\chatSandbox.txt` | Streamed by `ShionSandbox.cs` on sandbox event triggers (Modes 1–12) | `MEM_PRIORITY_LOCK` | `MEM_PRIORITY_LOCK`, `MEM_SHION_HANDLE` | Claims Tier 3 lock, delivers form-aware sister banter across 12 sandbox scenarios |
 | **Friendly Fire & Cam**| `Shion\ShionFriendlyFire.txt`| Attacking Shion on foot, taking photo | `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_HITODAMA_X/Y/Z` | Reactive dialogue for physical attacks and camera snapshots |
 | **Pimping Mission** | `Shion\ShionPimp.txt` | `Y + 2` in 4-door car near prostitute | None | None | Launches native mission 127 (`pimp.sc`) |
 | **Hitodama Defense** | `Shion\FX_ShionHitodama.txt`| Shion in Hitodama form (`-1`) | `MEM_HITODAMA_X/Y/Z`, `MEM_SHION_PRES_HP`, `MEM_HITO_DEFLECT_TMR` | `MEM_PLAYER_FORM`, `MEM_JOON_BASE_HP/ARM` | Floats near Jo'on, absorbs bullet damage, grants unarmoured open-vehicle shield |
