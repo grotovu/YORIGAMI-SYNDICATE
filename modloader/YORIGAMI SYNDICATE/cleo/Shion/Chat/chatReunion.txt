@@ -40,17 +40,7 @@ end
 0050: gosub @Check_Reunion_Alive_Or_Exit
 
 // Preempt any running lower-tier chats and claim Tier 4 Priority!
-0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Zone'
-0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Mny'
-0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Idle'
-0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Snip'
-0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Int'
-0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Veh'
-0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Rad'
-0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Sub'
-0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Star'
-0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Wthr'
-0ABA: terminate_all_custom_scripts_with_this_name 'Sh_SndC'
+{$INCLUDE clear_all_chat.txt}
 03EB: clear_small_messages_only
 
 // Absolute Tier 4 Theater Priority!

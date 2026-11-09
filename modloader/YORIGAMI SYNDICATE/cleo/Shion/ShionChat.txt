@@ -676,19 +676,7 @@ then
     end
 
     // Instantly terminate running ambient scripts AND active wanted chatter
-    0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Zone'
-    0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Mny'
-    0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Idle'
-    0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Snip'
-    0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Int'
-    0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Veh'
-    0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Rad'
-    0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Sub'
-    0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Wthr'
-    0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Star'
-    0ABA: terminate_all_custom_scripts_with_this_name 'Sh_SndC'
-    0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Dnmk'
-    0ABA: terminate_all_custom_scripts_with_this_name 'Sh_Pity'
+    {$INCLUDE Chat\clear_all_chat.txt}
     03EB: clear_small_messages_only
 
     0085: 30@ = 31@
@@ -921,16 +909,7 @@ if and
     20@ < 25
     21@ < 250
 then
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_SndC"
+    {$INCLUDE Chat\clear_all_chat.txt}
     03EB: clear_small_messages_only
 
     0085: 30@ = 31@
@@ -963,16 +942,7 @@ end
 if
     20@ < 25
 then
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_SndC"
+    {$INCLUDE Chat\clear_all_chat.txt}
     03EB: clear_small_messages_only
 
     0085: 30@ = 31@
@@ -1006,16 +976,7 @@ end
 if
     21@ < 250
 then
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_SndC"
+    {$INCLUDE Chat\clear_all_chat.txt}
     03EB: clear_small_messages_only
 
     0085: 30@ = 31@

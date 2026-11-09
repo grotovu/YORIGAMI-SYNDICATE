@@ -117,8 +117,10 @@ Tier 1 (Value: 1)  ──>  Idle Smoking Banter, Minor Quips
 Tier 0 (Value: 0)  ──>  Channel Clear / Available
 ```
 
-* **Preemption Rule:** A lower-tier script cannot write to subtitles (`00BC`, `0AD1`, `03E5`) or play dialogue sound (`1058`) if `MEM_PRIORITY_LOCK` is set to a higher tier. A higher-tier script immediately terminates conflicting running threads (`Sh_Zone`, `Sh_Mny`, `Sh_Veh`, etc.) using `0ABA` and overrides the lock.
-* **Orphan Watchdog:** `ShionChat.txt` contains an automated watchdog polling every 250ms. If Tier 4 is claimed but no theater structs (`Sh_Thea`, `Sh_Dine`, `Sh_Mem`, `Sh_Menu`, `Sh_Reun`) exist in engine memory, it clears the lock to `0` to prevent softlocks. For Tiers 1–3, if no transient thread is identified, it enforces a 12-second timeout.
+* **Preemption Rule & Universal Include Pipeline (`{$INCLUDE}`):** A lower-tier script cannot write to subtitles (`00BC`, `0AD1`, `03E5`) or play dialogue sound (`1058`) if `MEM_PRIORITY_LOCK` is set to a higher tier. Higher-tier scripts preempt active dialogue threads instantaneously at compile-time via dedicated Sanny Builder include snippets (`0ABA`), preventing race conditions and thread creation lag:
+  * **`clear_ambient.txt` (Tier 2 Ambient Purge):** Terminates the 9 passive free-roam speakers (`Sh_Zone`, `Sh_Mny`, `Sh_Idle`, `Sh_Snip`, `Sh_Int`, `Sh_Veh`, `Sh_Rad`, `Sh_Sub`, `Sh_Wthr`). Used by Tier 3 reactive daemons (`chatWanted`, `chatSandbox`, `scavLoot`, `chatGrimPity`). Because passive speakers never call preemption, this file is completely immune to self-termination.
+  * **`clear_all_chat.txt` (Tier 2 + Tier 3 Full Purge):** Sweeps all 9 ambient scripts plus active reactive threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Pity`). Used by Tier 4 Master Theater (`loreTheater`, `chatReunion`), death reactions (`chatFollow` Mode 3, `chatSpawned`), companion dismissal (`chatDismiss`), and emergency health panics in `ShionChat`.
+* **Orphan Watchdog:** `ShionChat.txt` contains an automated watchdog polling every 250ms. If Tier 4 is claimed but no theater structs (`Sh_Thea`, `Sh_Dine`, `Sh_Mem`, `Sh_Menu`, `Sh_Reun`) exist in engine memory, it clears the lock to `0` to prevent softlocks. For Tiers 1–3, it validates active child threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Dism`, etc.); if no transient thread is identified, it enforces a 12-second timeout.
 
 ---
 
@@ -617,6 +619,10 @@ Data persistence is segmented across dedicated INI files organized by save slot 
 cleo\
 ├── Shion.ini                     # Master configuration for companion & controls
 ├── YorigamiPerks.ini             # Master balancing knobs, caps, scan intervals, & perk rates
+├── Shion\
+│   └── Chat\
+│       ├── clear_ambient.txt     # Sanny Builder compile-time macro: sweeps 9 Tier 2 ambient scripts
+│       └── clear_all_chat.txt    # Sanny Builder compile-time macro: sweeps Tier 2 ambient + Tier 3 action scripts
 └── savedata\
     ├── yorigami.ini              # Progression save: points, buffer, perk ranks
     ├── Yorigami_Ledger.txt       # Plain-text audit ledger: slot, day, points, wallet
