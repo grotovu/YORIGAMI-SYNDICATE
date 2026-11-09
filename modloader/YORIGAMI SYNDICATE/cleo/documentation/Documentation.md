@@ -117,24 +117,31 @@ Tier 1 (Value: 1)  ──>  Idle Smoking Banter, Minor Quips
 Tier 0 (Value: 0)  ──>  Channel Clear / Available
 ```
 
-* **Preemption Rule & Universal Include Pipeline (`{$INCLUDE}`):** A lower-tier script cannot write to subtitles (`00BC`, `0AD1`, `03E5`) or play dialogue sound (`1058`) if `MEM_PRIORITY_LOCK` is set to a higher tier. Higher-tier scripts preempt active dialogue threads instantaneously at compile-time via dedicated Sanny Builder include snippets (`0ABA`), preventing race conditions, 1-frame subtitle wiping, and thread-spawning latency:
-  * **`clear_ambient.txt` (Tier 2 Ambient Purge):** Terminates the 9 passive free-roam speakers (`Sh_Zone`, `Sh_Mny`, `Sh_Idle`, `Sh_Snip`, `Sh_Int`, `Sh_Veh`, `Sh_Rad`, `Sh_Sub`, `Sh_Wthr`). Used by Tier 3 reactive and operational daemons:
-    * `chatWanted.txt` (`Sh_Star`)
-    * `chatSandbox.txt` (`Sh_SndC`)
-    * `chatGrimPity.txt` (`Sh_Pity`)
-    * `scavLoot.txt` (`Sh_Loot`)
-    * `ShionBurglary.txt` (`Sh_Burg`)
-    * `ShionChute.txt` (`Sh_Chut`)
-    * `ShionFriendlyFire.txt` (`Sh_FF`)
-  * **`clear_all_chat.txt` (Tier 2 + Tier 3 Full Purge):** Sweeps all 9 ambient scripts plus active reactive/combat threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Pity`). Used by Tier 4 Master Theater events, life-or-death reactions, and major state transitions:
-    * `loreTheater.txt` (`Sh_Thea`)
-    * `chatReunion.txt` (`Sh_Reun`)
-    * `chatSpawned.txt` (`Sh_Spwn`)
-    * `chatDismiss.txt` (`Sh_Dism`)
+* **`clear_ambient.txt` (Tier 2 Ambient Purge):** Terminates the 9 passive free-roam speakers (`Sh_Zone`, `Sh_Mny`, `Sh_Idle`, `Sh_Snip`, `Sh_Int`, `Sh_Veh`, `Sh_Rad`, `Sh_Sub`, `Sh_Wthr`). Used by Tier 3 reactive and operational daemons:
+    * `chatWanted.txt` (`Sh_Star` Pursuit Banter)
+    * `chatSandbox.txt` (`Sh_SndC` Sandbox Reactions)
+    * `chatGrimPity.txt` (`Sh_Pity` Post-Resurrection Banter)
+    * `scavLoot.txt` (`Sh_Loot` Scavenge Item Drops)
+    * `ShionBurglary.txt` (`Sh_Burg` Burglary Handoff)
+    * `ShionChute.txt` (`Sh_Chut` Airborne Parachute Deployment)
+    * `ShionFriendlyFire.txt` (`Sh_FF` Friendly Fire & Camera Reactions)
+    * `ShionChat.txt` (`Y_ShChat` Gunfire & Combat Damage Interception)
+    * `ShionControl.txt` (`Sh_Ctrl` Scavenge Cancellation via [G])
+  * **`clear_all_chat.txt` (Tier 2 + Tier 3 Full Purge):** Sweeps all 9 ambient scripts plus active reactive/combat threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Pity`). Used by Tier 4 Master Theater events, life-or-death reactions, UI menus, and major state transitions:
+    * `loreTheater.txt` (`Sh_Thea` Sister Talk Cutscenes)
+    * `loreMenu.txt` (`Sh_LMen` Archive Episode Replay Launch)
+    * `chatReunion.txt` (`Sh_Reun` Hangout Recruitment Dialogues)
+    * `chatSpawned.txt` (`Sh_Spwn` Post-Death Grievance Lines)
+    * `chatDismiss.txt` (`Sh_Dism` Entourage Dismissal & Stalker Watchdog)
     * `chatFollow.txt` (Mode 3: Shion Death Reaction)
-    * `ShionChat.txt` (`Y + T` manual talk prompt & Critical health emergencies)
+    * `ShionChat.txt` (`Y + T` Manual Talk Prompt & Critical Health Emergencies)
     * `ShionMem.txt` (`Sh_Mem` Safehouse Performance Review)
-    * `ShionVehicle.txt` (`Sh_Sync` In-vehicle warp & seat catch-up lines)
+    * `ShionMenu.txt` (`Sh_Menu` Safehouse Terminal Open)
+    * `ShionControl.txt` (`Sh_Ctrl` Stance Toggles, Broke Disarm Warnings, & Stance Barks)
+    * `ShionFood.txt` (`Sh_Food` Diner Meal Sequence Launch)
+    * `ShionLore.txt` (`Sh_Lore` Milestone Dialogue Prompts & Acceptance)
+    * `ShionVehicle.txt` (`Sh_Sync` In-Vehicle Warp & Seat Catch-Up Lines)
+    * `ShionTrack_World.txt` (`Sh_TrkW` Lowrider Minigame Dance Clears)
 * **Orphan Watchdog:** `ShionChat.txt` contains an automated watchdog polling every 250ms. If Tier 4 is claimed but no theater structs (`Sh_Thea`, `Sh_Dine`, `Sh_Mem`, `Sh_Menu`, `Sh_Reun`) exist in engine memory, it clears the lock to `0` to prevent softlocks. For Tiers 1–3, it validates active child threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Dism`, etc.); if no transient thread is identified, it enforces a 12-second timeout.
 
 ---
@@ -273,7 +280,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 
 ### Combat, Stance & Weapons
 * **`ShionControl.txt` (`Sh_Ctrl`):**
-  * Listens for `Y + B`: toggles `MEM_SHION_STANCE` (`0` = Peaceful, `1` = Hostile).
+  * Listens for `Y + B`: toggles `MEM_SHION_STANCE` (`0` = Peaceful, `1` = Hostile), preempting background banter via `clear_all_chat.txt` on stance changes and broke disarms, or `clear_ambient.txt` on scavenge cancels.
   * *Dismissal Bailout Watchdog:* Polls `MEM_SHION_RECRUITED` every 50ms and terminates immediately upon dismissal (`0A93`), preventing orphaned companion daemons from persisting.
   * *Peaceful:* Strips all weapons (`048F`), sets target priority to 0, sets decision maker to the persistent Zero-Panic template (`MEM_SHION_DM`), sets acquaintances to "Like" for cops, civilians, and gangs, sets Acquaintance 0 (Respect) to Player, and engages anti-surrender, anti-cower, and fatigue watchdogs.
   * *Hostile:* Checks resource mode. In Wallet Drain, equips designated weapon from `MEM_SHION_WEAPON_ID` with 9999 ammo cushion (monitored and deducted by `ShionGear.c`). In Gear Swap, equips exact assigned weapon and ammo from `MEM_SHION_AMMO_COUNT`. Restores aggressive decision maker `65543` and hostility towards rival ped types.
@@ -326,6 +333,11 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * If elapsed >= 48 hours or Shion HP < 950, sets `MEM_SHION_HUNGRY = 1`.
   * Monitors drive-thrus and restaurant counters. When parked near outdoor fast food locations or standing near indoor counters, presents `[TAB]` prompt.
   * **Drive-Thru Law Enforcement Interception:** Evaluates active pursuit heat (`wanted_level > 0`). If the player has any wanted stars, the drive-thru prompt (`Y_FDRV`) is completely suppressed, `[TAB]` key input is ignored, and prompt latches (`0@`) and hold timers (`8@`) are flushed so the prompt re-arms cleanly once heat is lost. Pressing `TAB` outside of pursuit claims Tier 4 priority and launches `foodDiner.c`.
+* **`ShionFood.txt` (`Sh_Food`):**
+  * Calculates elapsed in-game hours: `(Days * 24 + CurrentHour) - MEM_LAST_FED_HOURS`.
+  * If elapsed >= 48 hours or Shion HP < 950, sets `MEM_SHION_HUNGRY = 1`.
+  * Monitors drive-thrus and restaurant counters. When parked near outdoor fast food locations or standing near indoor counters, presents `[TAB]` prompt.
+  * Launches `foodDiner.c` (`MEM_PRIORITY_LOCK = 4`), clearing all background chatter via `clear_all_chat.txt`.
 * **`foodDiner.txt` (`Sh_Dine`):**
   * Creates native interactive menu panel with bill options: $1, $2, $5, $10, $20, $50, $100.
   * Freezes player movement, deducts cash, increments `MEM_TIMES_TREATED` and `MEM_TOTAL_CASH_GIVEN`.
@@ -369,7 +381,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Aborts gracefully with priority restoration if interrupted by cell phone calls, combat, player death, or water immersion.
 * **`loreMenu.txt` (`Sh_LMen`):**
   * Interactive archive browser (`Y_LMTIT`) displaying 4 pages of 8 episodes each.
-  * Reads unlocked state from `MEM_LORE_PROGRESS_BIT` (or debug bypass cheat "ALLORE"). Shows requirement tooltips. Selecting an episode streams `loreTheater.c` for replay.
+  * Reads unlocked state from `MEM_LORE_PROGRESS_BIT` (or debug bypass cheat "ALLORE"). Shows requirement tooltips. Selecting an episode preempts ambient chatter via `clear_all_chat.txt` and streams `loreTheater.c` for replay.
 * **`ShionMenu.txt` (`Sh_Menu`):**
   * Safehouse configuration terminal opened by holding `TAB` while inside any of the 32 safehouses (`MEM_SAFEHOUSE_DOOR_ID > 0`).
   * Page 0 (Arsenal): Launches Safehouse Performance Review (`ShionMem.c`), toggles Combat Resource Mode (`MEM_COMBAT_RES_MODE`), toggles Durgastra Limitless Debt (`MEM_DURGASTRA_FLAG`), toggles Combat Hitodama FX (`MEM_CMBT_HITODAMA_FX`), toggles shot chimes, and bankrupt alerts. Features bidirectional exclusivity: toggling Durgastra ON forces Wallet Drain and snapshots previous mode to `MEM_DURGASTRA_PREV_MODE` (`416`), toggling Durgastra OFF restores previous mode, and manually choosing Gear Swap automatically seals Durgastra.
