@@ -224,7 +224,7 @@ if
 then
     11@ = 0
     1@ = 3500 // Engage debounce to prevent rapid-hit spam
-    0A92: stream_custom_script "chatFriendlyFire.c" 12@
+    0A92: create_custom_thread "Shion\Chat\chatFriendlyFire.c" 12@
 end
 
 goto @ShionFF_Loop
