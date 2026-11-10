@@ -127,7 +127,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * `ShionFriendlyFire.txt` (`Sh_FF` Friendly Fire & Camera Reactions)
     * `ShionChat.txt` (`Y_ShChat` Gunfire & Combat Damage Interception)
     * `ShionControl.txt` (`Sh_Ctrl` Scavenge Cancellation via [G])
-  * **`clear_all_chat.txt` (Tier 2 + Tier 3 Full Purge):** Sweeps all 9 ambient scripts plus active reactive/combat threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Pity`). Used by Tier 4 Master Theater events, life-or-death reactions, UI menus, and major state transitions:
+  * **`clear_all_chat.txt` (Tier 2 + Tier 3 Full Purge):** Sweeps all 9 ambient scripts plus active reactive/combat threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Pity`, `Sh_FFC`). Used by Tier 4 Master Theater events, life-or-death reactions, UI menus, and major state transitions:
     * `loreTheater.txt` (`Sh_Thea` Sister Talk Cutscenes)
     * `loreMenu.txt` (`Sh_LMen` Archive Episode Replay Launch)
     * `chatReunion.txt` (`Sh_Reun` Hangout Recruitment Dialogues)
@@ -142,7 +142,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * `ShionLore.txt` (`Sh_Lore` Milestone Dialogue Prompts & Acceptance)
     * `ShionVehicle.txt` (`Sh_Sync` In-Vehicle Warp & Seat Catch-Up Lines)
     * `ShionTrack_World.txt` (`Sh_TrkW` Lowrider Minigame Dance Clears)
-* **Orphan Watchdog:** `ShionChat.txt` contains an automated watchdog polling every 250ms. If Tier 4 is claimed but no theater structs (`Sh_Thea`, `Sh_Dine`, `Sh_Mem`, `Sh_Menu`, `Sh_Reun`) exist in engine memory, it clears the lock to `0` to prevent softlocks. For Tiers 1–3, it validates active child threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Dism`, etc.); if no transient thread is identified, it enforces a 12-second timeout.
+* **Orphan Watchdog:** `ShionChat.txt` contains an automated watchdog polling every 250ms. If Tier 4 is claimed but no theater structs (`Sh_Thea`, `Sh_Dine`, `Sh_Mem`, `Sh_Menu`, `Sh_Reun`) exist in engine memory, it clears the lock to `0` to prevent softlocks. For Tiers 1–3, it validates active child threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Dism`, `Sh_FFC`, etc.); if no transient thread is identified, it enforces a 12-second timeout.
 
 ---
 
@@ -416,9 +416,15 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Form-aware execution: bifurcates lines between Physical Ped (`11@ == 0`) and Hitodama spirit (`11@ == 1`) across sinking, deep swimming, hydraulics, vehicle wrecks, car smasher punches, pedestrian run-overs, and cash flexing.
   * Features dedicated abort watchdogs checking cutscenes, screen fades, player death, and companion dismissal during multi-stage dialogues.
 * **`ShionFriendlyFire.txt` (`Sh_FF`):**
-  * Intercepts attacks from Jo'on against Shion via `OnCharDamageFF`, preempting ambient chatter via `clear_ambient.txt` upon damage dispatch.
-  * Maps damage to specific weapon categories (fists, brass knuckles, golf club, nightstick, knife, bat, shovel, pool cue, katana, chainsaw, dildo, flowers, cane, grenades, rocket launchers, satchel charges, pistols, shotguns, automatics, rifles, spray can, extinguisher).
-  * Detects camera viewfinder aim and snapshots on physical Shion or Hitodama spirit (`MEM_HITODAMA_X/Y/Z`) to trigger photo reactions.
+  * Non-blocking background sensory daemon monitoring player-inflicted companion damage and camera snapshots.
+  * Intercepts incoming damage on Shion from Jo'on via `OnCharDamageFF` (`0EDE`), mapping explosive munitions (`35`, `36`, `39`, `40`) to current weapons or category fallbacks.
+  * Runs continuous viewfinder aim and snapshot detection on physical Shion (`04C5`) and Hitodama spirit form (`00C2` frustum scan on `MEM_HITODAMA_X/Y/Z`), tracking camera shutter pulses and ammo baselines.
+  * Gated behind `MEM_PRIORITY_LOCK < 4` and an internal 3500ms debounce timer (`1@`). Dispatches damage type (`12@`) to `chatFriendlyFire.c` via `0A92` without stalling loop execution.
+* **`chatFriendlyFire.txt` (`Sh_FFC`):**
+  * Ephemeral dialogue vocalizer streamed by `ShionFriendlyFire.c` on companion damage or photo events.
+  * Claims Tier 3 Priority Lock (`MEM_PRIORITY_LOCK = 3`), purging ambient free-roam conversations via `clear_ambient.txt`.
+  * Executes an 800ms flinch pause on physical weapon impacts before delivering contextual complaints across 35+ weapon categories, distinct Hitodama photography lines (`443`), and physical ped portrait complaints (`43`).
+  * Features dedicated abort watchdogs checking cutscenes, screen fades, player death, and character reverts, resetting `MEM_PRIORITY_LOCK = 0` on completion.
 * **`chatDismiss.txt` (`Sh_Dism`):**
   * Governs dialogue delivery and post-dismissal ambient life when Shion is dismissed on foot via `Entourage.c`.
   * Immediately applies the shared Zero-Panic Decision Maker (`MEM_SHION_DM`) and locks passive temperament attributes (`actions_uninterupted_by_weapon_fire 1`, `maintain_position_when_attacked 1`, `attack_rate 0`).
@@ -726,7 +732,8 @@ The following table details the cross-script dependencies for every component in
 | **Performance Review** | `Shion\ShionMem.txt` | Launched from `ShionMenu` | `MEM_SPOKEN_TOPICS_BIT`, `MEM_PRIORITY_LOCK` | Performance ledger (Kills, Fares, Wrecks, etc.) | Evaluates partnership stats across 9 interactive topics |
 | **Sandbox Sensory Monitor** | `Shion\ShionSandbox.txt` | Water hose, ocean sinking, stunts, civ punches/run-overs, flex | `MEM_CAR_SMASH_SIGNAL`, `MEM_FLEX_SIGNAL`, `MEM_RAPID_SWAP_*`, `MEM_LAST_FORM_MODE` | `MEM_SHION_BUSY`, `MEM_CARS_WRECKED`, `MEM_CAR_SMASH_SIGNAL`, `MEM_FLEX_SIGNAL`, `MEM_PRIORITY_LOCK` | Dispatches events to `chatSandbox.c` (`Sh_SndC`) via `0A92` |
 | **Sandbox Dialogue Router** | `Shion\Chat\chatSandbox.txt` | Streamed by `ShionSandbox.cs` on sandbox event triggers (Modes 1–12) | `MEM_PRIORITY_LOCK` | `MEM_PRIORITY_LOCK`, `MEM_SHION_HANDLE` | Claims Tier 3 lock, delivers form-aware sister banter across 12 sandbox scenarios |
-| **Friendly Fire & Cam**| `Shion\ShionFriendlyFire.txt`| Attacking Shion on foot, taking photo | `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_HITODAMA_X/Y/Z` | Reactive dialogue for physical attacks and camera snapshots |
+| **Friendly Fire Sensor**| `Shion\ShionFriendlyFire.txt`| Attacking Shion on foot, taking photo | None | `MEM_PLAYER_FORM`, `MEM_PRIORITY_LOCK`, `MEM_SHION_HANDLE`, `MEM_HITODAMA_X/Y/Z` | Detects attacks and camera shutter pulses, manages debounce, streams `chatFriendlyFire.c` via `0A92` |
+| **Friendly Fire Dialogue**| `Shion\Chat\chatFriendlyFire.txt`| Streamed by `ShionFriendlyFire.c` | `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_PRIORITY_LOCK`, `MEM_SHION_HANDLE` | Claims Tier 3 lock, delivers flinch delay and weapon-specific complaints across 35+ categories |
 | **Pimping Mission** | `Shion\ShionPimp.txt` | `Y + 2` in 4-door car near prostitute | None | None | Launches native mission 127 (`pimp.sc`) |
 | **Hitodama Defense** | `Shion\FX_ShionHitodama.txt`| Shion in Hitodama form (`-1`) | `MEM_HITODAMA_X/Y/Z`, `MEM_SHION_PRES_HP`, `MEM_HITO_DEFLECT_TMR` | `MEM_PLAYER_FORM`, `MEM_JOON_BASE_HP/ARM` | Floats near Jo'on, absorbs bullet damage, grants unarmoured open-vehicle shield |
 | **Jo'on Smoking** | `Shion\JoonSmoke.txt` | 10s idle on foot, F11 key | `MEM_JOON_CIGAR_OBJ`, `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_SAVE_SLOT`, `MEM_SHION_HANDLE`, `MEM_SHION_RECRUITED` | Attaches cigarette prop, deducts $1, manages withdrawal lines, mutes spontaneous complaints during pursuits, preserves manual F11 broke barks |
