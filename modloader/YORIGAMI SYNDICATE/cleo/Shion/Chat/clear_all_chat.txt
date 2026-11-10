@@ -15,3 +15,4 @@
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Dnmk"
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_Pity"
 0ABA: terminate_all_custom_scripts_with_this_name "Sh_FFC"
+0ABA: terminate_all_custom_scripts_with_this_name "Y_SmkC"

@@ -117,7 +117,7 @@ Tier 1 (Value: 1)  ──>  Idle Smoking Banter, Minor Quips
 Tier 0 (Value: 0)  ──>  Channel Clear / Available
 ```
 
-* **`clear_ambient.txt` (Tier 2 Ambient Purge):** Terminates the 9 passive free-roam speakers (`Sh_Zone`, `Sh_Mny`, `Sh_Idle`, `Sh_Snip`, `Sh_Int`, `Sh_Veh`, `Sh_Rad`, `Sh_Sub`, `Sh_Wthr`). Used by Tier 3 reactive and operational daemons:
+* **`clear_ambient.txt` (Tier 2 Ambient Purge):** Terminates the 9 passive free-roam speakers (`Sh_Zone`, `Sh_Mny`, `Sh_Idle`, `Sh_Snip`, `Sh_Int`, `Sh_Veh`, `Sh_Rad`, `Sh_Sub`, `Sh_Wthr`) plus smoking dialogue (`Y_SmkC`). Used by Tier 3 reactive and operational daemons:
     * `chatWanted.txt` (`Sh_Star` Pursuit Banter)
     * `chatSandbox.txt` (`Sh_SndC` Sandbox Reactions)
     * `chatGrimPity.txt` (`Sh_Pity` Post-Resurrection Banter)
@@ -127,7 +127,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * `ShionFriendlyFire.txt` (`Sh_FF` Friendly Fire & Camera Reactions)
     * `ShionChat.txt` (`Y_ShChat` Gunfire & Combat Damage Interception)
     * `ShionControl.txt` (`Sh_Ctrl` Scavenge Cancellation via [G])
-  * **`clear_all_chat.txt` (Tier 2 + Tier 3 Full Purge):** Sweeps all 9 ambient scripts plus active reactive/combat threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Pity`, `Sh_FFC`). Used by Tier 4 Master Theater events, life-or-death reactions, UI menus, and major state transitions:
+  * **`clear_all_chat.txt` (Tier 2 + Tier 3 Full Purge):** Sweeps all 9 ambient scripts plus active reactive/combat/dialogue threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Pity`, `Sh_FFC`, `Y_SmkC`). Used by Tier 4 Master Theater events, life-or-death reactions, UI menus, and major state transitions:
     * `loreTheater.txt` (`Sh_Thea` Sister Talk Cutscenes)
     * `loreMenu.txt` (`Sh_LMen` Archive Episode Replay Launch)
     * `chatReunion.txt` (`Sh_Reun` Hangout Recruitment Dialogues)
@@ -142,7 +142,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * `ShionLore.txt` (`Sh_Lore` Milestone Dialogue Prompts & Acceptance)
     * `ShionVehicle.txt` (`Sh_Sync` In-Vehicle Warp & Seat Catch-Up Lines)
     * `ShionTrack_World.txt` (`Sh_TrkW` Lowrider Minigame Dance Clears)
-* **Orphan Watchdog:** `ShionChat.txt` contains an automated watchdog polling every 250ms. If Tier 4 is claimed but no theater structs (`Sh_Thea`, `Sh_Dine`, `Sh_Mem`, `Sh_Menu`, `Sh_Reun`) exist in engine memory, it clears the lock to `0` to prevent softlocks. For Tiers 1–3, it validates active child threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Dism`, `Sh_FFC`, etc.); if no transient thread is identified, it enforces a 12-second timeout.
+* **Orphan Watchdog:** `ShionChat.txt` contains an automated watchdog polling every 250ms. If Tier 4 is claimed but no theater structs (`Sh_Thea`, `Sh_Dine`, `Sh_Mem`, `Sh_Menu`, `Sh_Reun`) exist in engine memory, it clears the lock to `0` to prevent softlocks. For Tiers 1–3, it validates active child threads (`Sh_Star`, `Sh_SndC`, `Sh_Dnmk`, `Sh_Dism`, `Sh_FFC`, `Y_SmkC`, etc.); if no transient thread is identified, it enforces a 12-second timeout.
 
 ---
 
@@ -482,11 +482,17 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
       * **Exterior Roaming (`27@ == 0`)**: Preserves the full outdoor suites, including long-distance street shouts, curb guarding, and on-foot injury/hunger status checks.
   * Features granular contextual death reaction trees and 2-stage reactive monologues when Jo'on is the killer.
 * **`JoonSmoke.txt` (`Y_Smk`):**
-  * Manages Jo'on's idle nicotine addiction, cigarette visual attachments, and withdrawal complaints.
-  * Auto-triggers smoking after 10s of idle hands or on demand via `F11` (deducting configured `$1` cost). Attaches secondary bone animation (`"SMKCIG_PRTL"` in `"GANGS"` on Bone 6) allowing continuous movement/steering, rendering visible cigarette object `3027` on right hand Bone 25 via CLEO+, spawning mouth exhale particle `"EXHALE"`.
-  * **Spontaneous Nicotine Withdrawal Engine:** Accumulates time since last smoke (`18@`). Exceeding 150 seconds without smoking rolls spontaneous multi-stage sister banter or solo monologues claiming Tier 2 Priority Lock (`MEM_PRIORITY_LOCK = 2`), respecting session caps (`MaxWithdrawalComplaints`) and cooldowns (`WithdrawalCooldownSeconds`).
-  * **Law Enforcement & Mission Pacification:** Clamps the withdrawal accumulator (`18@`) to zero and enforces a 15-second cooldown buffer while on missions or holding active wanted stars (`010F: wanted_level > 0`). Automatically aborts active multi-stage withdrawal dialogue and frees priority lock if stars are acquired mid-speech.
-  * **Intentional Player Action Exemption:** Spontaneous nagging is completely silenced during police pursuits, but deliberately pressing `F11` while broke and wanted preserves Jo'on's immediate vocal outrage (`Y_SMKBK`), barking about not having a lousy dollar for a smoke while dodging sirens.
+  * Non-blocking background mechanic managing Jo'on's physical smoking animations, cigarette visual attachments, and nicotine addiction clock.
+  * Auto-triggers smoking after 10s of idle hands or on demand via `F11` (deducting configured `$1` cost). Attaches secondary bone animation (`"SMKCIG_PRTL"` in `"GANGS"` on Bone 6) allowing continuous movement/steering, renders visible cigarette object `3027` on right hand Bone 25 via CLEO+, and schedules mouth exhale particle `"EXHALE"`.
+  * Dispatches dialogue asynchronously via `0A92: create_custom_thread "Shion\Chat\chatSmoke.c"` across three modes: Mode 0 (Active Smoking Banter), Mode 1 (Withdrawal Complaint), or Mode 2 (Broke F11 Bark), never freezing the 50ms engine monitoring loop.
+  * Rapid cancellation handling: sprints, brawling, aiming, vehicle crashes, phone calls, or manual `F11` cancels immediately delete the bone render object (`0E2F`) and terminate active dialogue via `0ABA: terminate_all_custom_scripts_with_this_name "Y_SmkC"`, clearing any held Tier 1 priority lock.
+  * **Spontaneous Nicotine Withdrawal Engine:** Tracks time since last smoke (`18@`). Exceeding 150 seconds without smoking checks session caps (`MaxWithdrawalComplaints`) and cooldowns (`WithdrawalCooldownSeconds`), delegating the multi-stage dialogue to `chatSmoke.c` without stalling hand tracking or input detection.
+  * **Law Enforcement & Mission Pacification:** Clamps the withdrawal accumulator (`18@`) to zero and enforces a 15-second cooldown buffer while on missions or holding active wanted stars (`010F: wanted_level > 0`).
+* **`chatSmoke.txt` (`Y_SmkC`):**
+  * Ephemeral vocalizer thread handling all subtitles, audio chimes, and pacing for Jo'on's smoking and nicotine withdrawal episodes.
+  * **Mode 0 (Active Smoking Banter):** Claims Tier 1 Priority (`MEM_PRIORITY_LOCK = 1`), timing Shion's opening complaint at 1200ms and Jo'on's retort at 4200ms (form-aware across Hitodama and physical ped).
+  * **Mode 1 (Withdrawal Episodes):** Claims Tier 2 Priority (`MEM_PRIORITY_LOCK = 2`), delivering randomized 3-stage sister debates or solo Jo'on headache monologues with dedicated abort watchdogs checking combat, wanted stars, phone calls, missions, and cutscenes between lines.
+  * **Mode 2 (Broke F11 Attempt Bark):** Claims Tier 1 Priority, delivering Jo'on's vocal outrage (`Y_SMKBK`) over not having a dollar for a smoke before releasing the lock.
 
 ---
 
@@ -736,7 +742,8 @@ The following table details the cross-script dependencies for every component in
 | **Friendly Fire Dialogue**| `Shion\Chat\chatFriendlyFire.txt`| Streamed by `ShionFriendlyFire.c` | `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_PRIORITY_LOCK`, `MEM_SHION_HANDLE` | Claims Tier 3 lock, delivers flinch delay and weapon-specific complaints across 35+ categories |
 | **Pimping Mission** | `Shion\ShionPimp.txt` | `Y + 2` in 4-door car near prostitute | None | None | Launches native mission 127 (`pimp.sc`) |
 | **Hitodama Defense** | `Shion\FX_ShionHitodama.txt`| Shion in Hitodama form (`-1`) | `MEM_HITODAMA_X/Y/Z`, `MEM_SHION_PRES_HP`, `MEM_HITO_DEFLECT_TMR` | `MEM_PLAYER_FORM`, `MEM_JOON_BASE_HP/ARM` | Floats near Jo'on, absorbs bullet damage, grants unarmoured open-vehicle shield |
-| **Jo'on Smoking** | `Shion\JoonSmoke.txt` | 10s idle on foot, F11 key | `MEM_JOON_CIGAR_OBJ`, `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_SAVE_SLOT`, `MEM_SHION_HANDLE`, `MEM_SHION_RECRUITED` | Attaches cigarette prop, deducts $1, manages withdrawal lines, mutes spontaneous complaints during pursuits, preserves manual F11 broke barks |
+| **Jo'on Smoking** | `Shion\JoonSmoke.txt` | 10s idle on foot, F11 key | `MEM_JOON_CIGAR_OBJ` | `MEM_PLAYER_FORM`, `MEM_SAVE_SLOT`, `MEM_SHION_HANDLE`, `MEM_SHION_RECRUITED`, `MEM_PRIORITY_LOCK` | Manages cigarette prop attachment, animation timers, fees, withdrawal tracking, and streams `chatSmoke.c` via `0A92` |
+| **Smoke Dialogue**| `Shion\Chat\chatSmoke.txt` | Streamed by `JoonSmoke.c` (Modes 0–2) | `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_PRIORITY_LOCK`, `MEM_SHION_HANDLE`, `MEM_SHION_RECRUITED` | Claims Tier 1/2 lock, delivers active smoking banter (Mode 0), withdrawal episodes (Mode 1), or broke F11 barks (Mode 2) |
 | **Telemetry (Playtime)**| `Shion\ShionTrack.txt` | 60s timer, Safehouse save | Writes all telemetry to `ShionMemories.ini` | `MEM_SHION_HANDLE`, Performance ledger | Spawns `ShionTrack_World` and `ShionTrack_Missions` |
 | **Telemetry (World)** | `Shion\ShionTrack_World.txt`| Driving cars, tuning, radio, casino | `MEM_CASINO_LOSSES`, `MEM_CARS_WRECKED`, `MEM_MOD_CASH_SPENT`, `MEM_FAV_CAR_*` | None | Updates `ShionVehicles.ini` and `ShionRadio.ini` |
 | **Telemetry (Jobs)** | `Shion\ShionTrack_Missions.txt`| Sub-missions (Taxi, Medic, Fire, etc.)| `MEM_PARAMEDIC_SAVES`, `MEM_FIREFIGHT_EXTING`, `MEM_VIGILANTE_KILLS`, `MEM_TAXI_FARES`, `MEM_PIMPING_LEVEL`, `MEM_BURGLARIES` | None | Tracks sub-mission milestones with Shion |

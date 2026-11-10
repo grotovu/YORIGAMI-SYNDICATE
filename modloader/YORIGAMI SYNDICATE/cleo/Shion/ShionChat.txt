@@ -331,6 +331,12 @@ then
         then
             26@ = 1
         end
+        0AAA: 25@ = get_script_struct_named 'Y_SmkC'
+        if
+            8039: not 25@ == 0
+        then
+            26@ = 1
+        end
 
         if
             26@ == 1

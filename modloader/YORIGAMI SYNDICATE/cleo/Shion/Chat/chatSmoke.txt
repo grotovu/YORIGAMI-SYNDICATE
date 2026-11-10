@@ -1,0 +1,663 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+script_name "Y_SmkC"
+
+// =========================================================================
+// YORIGAMI HEAP CONSTANTS
+// =========================================================================
+const
+    MEM_PLAYER_FORM     = 12
+    MEM_PRIORITY_LOCK   = 20
+    MEM_SHION_HANDLE    = 116
+    MEM_SHION_RECRUITED = 400
+end
+
+:Connect_To_Brain
+wait 0
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    31@ == 0 
+then
+    goto @Connect_To_Brain
+end
+000A: 31@ += 0x3C 
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0
+
+// 0@ = Mode (0 = Active Smoke Banter, 1 = Withdrawal Episode, 2 = Broke F11 Bark)
+
+// Safety Check: Never interrupt higher tier dialogues
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    0@ == 0 // Mode 0: Tier 1
+then
+    if
+        16@ > 0
+    then
+        0A93: terminate_this_custom_script
+    end
+end
+
+if
+    0@ == 1 // Mode 1: Tier 2
+then
+    if
+        16@ > 1
+    then
+        0A93: terminate_this_custom_script
+    end
+end
+
+if
+    0@ == 2 // Mode 2: Broke F11 Bark
+then
+    if
+        16@ > 1
+    then
+        0A93: terminate_this_custom_script
+    end
+end
+
+// Verify player form is Jo'on
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+if
+    8039: not 14@ == 1
+then
+    0A93: terminate_this_custom_script
+end
+
+// Route Modes
+if
+    0@ == 0
+then
+    goto @Route_Mode_0_SmokeBanter
+end
+if
+    0@ == 1
+then
+    goto @Route_Mode_1_Withdrawal
+end
+if
+    0@ == 2
+then
+    goto @Route_Mode_2_BrokeBark
+end
+0A93: terminate_this_custom_script
+
+
+// =========================================================================
+// MODE 0: ACTIVE SMOKING BANTER (TIER 1 PRIORITY)
+// =========================================================================
+:Route_Mode_0_SmokeBanter
+// Claim Tier 1 Priority
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+// Wait for cigarette to reach Jo'on's mouth (~1200ms)
+wait 1200
+
+gosub @Check_Smoke_Alive
+if
+    13@ == 1
+then
+    goto @SmkC_Bailout_Tier1
+end
+
+// Read Shion Form
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+0209: 26@ = random_int_in_range 0 3
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+
+// Line A (Shion)
+if
+    10@ == -1
+then
+    // Hitodama Spirit Form Line A
+    if
+        26@ == 0
+    then
+        0ADF: add_text_label "Y_SM1AH" text "~b~Shion: ~s~\"Cough! Blow that cheap smoke somewhere else, Jo'on... it's blinding me.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM1AH' time 2800 flag 1
+    end
+    if
+        26@ == 1
+    then
+        0ADF: add_text_label "Y_SM2AH" text "~b~Shion: ~s~\"Watch where you're flicking that ash, Jo'on! You almost hit me with an ember.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM2AH' time 2800 flag 1
+    end
+    if
+        26@ == 2
+    then
+        0ADF: add_text_label "Y_SM3AH" text "~b~Shion: ~s~\"Four dollars a pack... and you're blowing all that expensive smoke right through me.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM3AH' time 2800 flag 1
+    end
+else
+    // Physical Ped Form Line A
+    if
+        26@ == 0
+    then
+        0ADF: add_text_label "Y_SM1A" text "~b~Shion: ~s~\"-Cough- -cough-... Jo'on, those cheap cigarettes are gonna rot your lungs.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM1A' time 2800 flag 1
+    end
+    if
+        26@ == 1
+    then
+        0ADF: add_text_label "Y_SM2A" text "~b~Shion: ~s~\"Your secondhand smoke's gonna make me sick, sis... and four dollars a pack is burning lunch money.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM2A' time 2800 flag 1
+    end
+    if
+        26@ == 2
+    then
+        0ADF: add_text_label "Y_SM3A" text "~b~Shion: ~s~\"Your tobacco smoke's drifting right into my face, Jo'on... -cough-!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM3A' time 2800 flag 1
+    end
+end
+
+// Wait until exhale puff at 4200ms (1200 + 3000 = 4200ms)
+wait 3000
+
+gosub @Check_Smoke_Alive
+if
+    13@ == 1
+then
+    goto @SmkC_Bailout_Tier1
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+
+// Line B (Jo'on)
+if
+    10@ == -1
+then
+    // Hitodama Spirit Form Line B
+    if
+        26@ == 0
+    then
+        0ADF: add_text_label "Y_SM1BH" text "~y~Jo'on: ~s~\"Spirits don't have lungs, Shion! Quit the fake wheezin' and float closer so you can light my next one!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM1BH' time 3200 flag 1
+    end
+    if
+        26@ == 1
+    then
+        0ADF: add_text_label "Y_SM2BH" text "~y~Jo'on: ~s~\"You're a ball of fire, idiot! A tiny cigarette ember isn't gonna put out a god!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM2BH' time 3200 flag 1
+    end
+    if
+        26@ == 2
+    then
+        0ADF: add_text_label "Y_SM3BH" text "~y~Jo'on: ~s~\"It's called aroma therapy! Be grateful I'm drownin' out the stench of poverty with Redwood!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM3BH' time 3200 flag 1
+    end
+else
+    // Physical Ped Form Line B
+    if
+        26@ == 0
+    then
+        0ADF: add_text_label "Y_SM1B" text "~y~Jo'on: ~s~\"I'm an immortal pestilence god, Shion! I'll outlive Redwood by ten thousand years!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM1B' time 3200 flag 1
+    end
+    if
+        26@ == 1
+    then
+        0ADF: add_text_label "Y_SM2B" text "~y~Jo'on: ~s~\"Sickness is for mortal losers! A pestilence god smokes wherever she damn well pleases!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM2B' time 3200 flag 1
+    end
+    if
+        26@ == 2
+    then
+        0ADF: add_text_label "Y_SM3B" text "~y~Jo'on: ~s~\"Then step two feet to the left, idiot! You've got legs! Stop standin' right where I'm blowin'!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SM3B' time 3200 flag 1
+    end
+end
+
+wait 3200
+goto @SmkC_Finish_Tier1
+
+
+// =========================================================================
+// MODE 1: NICOTINE WITHDRAWAL EPISODE (TIER 2 PRIORITY)
+// =========================================================================
+:Route_Mode_1_Withdrawal
+// Claim Tier 2 Priority
+03EB: clear_small_messages_only
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+
+// Check if Shion is nearby and recruited
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_RECRUITED
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+29@ = 0
+if
+    0039: 14@ == 1
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_HANDLE
+    0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        10@ == -1
+    then
+        29@ = 1
+    end
+    if
+        10@ > 0
+    then
+        if and
+            056D: actor 10@ defined
+            8118: not actor 10@ dead
+            0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 15.0
+        then
+            29@ = 1
+        end
+    end
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+
+if
+    29@ == 1
+then
+    0209: 26@ = random_int_in_range 0 4
+
+    // Dialog Variant 0
+    if
+        26@ == 0
+    then
+        0ADF: add_text_label "Y_WD0A" text "~y~Jo'on: ~s~\"Ugh, my hands are shakin'! I haven't had a smoke in ages and I'm losin' my mind!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD0A' time 3400 flag 1
+        wait 3400
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            goto @SmkC_Bailout_Tier2
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WD0B" text "~b~Shion: ~s~\"Maybe it's a good chance to quit smoking, Jo'on... think of your lungs.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD0B' time 3400 flag 1
+        wait 3400
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            goto @SmkC_Bailout_Tier2
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WD0C" text "~y~Jo'on: ~s~\"Quit?! I'm a pestilence god! I don't quit luxuries, I indulge in 'em!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD0C' time 3400 flag 1
+        wait 3400
+        goto @SmkC_Finish_Tier2
+    end
+
+    // Dialog Variant 1
+    if
+        26@ == 1
+    then
+        0ADF: add_text_label "Y_WD1A" text "~y~Jo'on: ~s~\"My head's poundin'... Goin' without a smoke is torture!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD1A' time 3400 flag 1
+        wait 3400
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            goto @SmkC_Bailout_Tier2
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            10@ == -1
+        then
+            0ADF: add_text_label "Y_WD1BH" text "~b~Shion: ~s~\"Whenever I get cravings, I just chew on grass... now I can't even chew on that.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WD1BH' time 3400 flag 1
+        else
+            0ADF: add_text_label "Y_WD1B" text "~b~Shion: ~s~\"Whenever I get cravings, I just chew on a toothpick or dry grass, sis.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WD1B' time 3400 flag 1
+        end
+        wait 3400
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            goto @SmkC_Bailout_Tier2
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WD1C" text "~y~Jo'on: ~s~\"I ain't chewin' grass like a goat! Find me a pack of Redwood right now!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD1C' time 3500 flag 1
+        wait 3500
+        goto @SmkC_Finish_Tier2
+    end
+
+    // Dialog Variant 2
+    if
+        26@ == 2
+    then
+        0ADF: add_text_label "Y_WD2A" text "~y~Jo'on: ~s~\"Don't look at me like that, Shion! I haven't had a smoke in hours and I'm on edge!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD2A' time 3400 flag 1
+        wait 3400
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            goto @SmkC_Bailout_Tier2
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            10@ == -1
+        then
+            0ADF: add_text_label "Y_WD2BH" text "~b~Shion: ~s~\"I didn't even say anything, Jo'on... please stop yelling in my ear.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WD2BH' time 3200 flag 1
+        else
+            0ADF: add_text_label "Y_WD2B" text "~b~Shion: ~s~\"I didn't even say anything, Jo'on... please don't yell at my hoodie.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_WD2B' time 3200 flag 1
+        end
+        wait 3200
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            goto @SmkC_Bailout_Tier2
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WD2C" text "~y~Jo'on: ~s~\"Your silence is loud enough! Where's the nearest counter around here?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD2C' time 3300 flag 1
+        wait 3300
+        goto @SmkC_Finish_Tier2
+    end
+
+    // Dialog Variant 3
+    if
+        26@ == 3
+    then
+        0ADF: add_text_label "Y_WD3A" text "~y~Jo'on: ~s~\"How does a pestilence god not even have a single cigarette lit right now?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD3A' time 3400 flag 1
+        wait 3400
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            goto @SmkC_Bailout_Tier2
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WD3B" text "~b~Shion: ~s~\"Cravings are tough, sis... you get used to the hollow feeling after a while.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD3B' time 3400 flag 1
+        wait 3400
+        gosub @Check_Withdrawal_Alive
+        if
+            13@ == 1
+        then
+            goto @SmkC_Bailout_Tier2
+        end
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_WD3C" text "~y~Jo'on: ~s~\"I refuse to get used to it! We need to score cash and buy out a tobacco stand!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD3C' time 3500 flag 1
+        wait 3500
+        goto @SmkC_Finish_Tier2
+    end
+else
+    // Solo Jo'on Complaint Lines
+    0209: 26@ = random_int_in_range 0 2
+    if
+        26@ == 0
+    then
+        0ADF: add_text_label "Y_WD4A" text "~y~Jo'on: ~s~\"Ugh, my hands are shakin'... I need a smoke before I lose my temper!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD4A' time 3200 flag 1
+        wait 3200
+    else
+        0ADF: add_text_label "Y_WD4B" text "~y~Jo'on: ~s~\"Ugh, massive headache comin' on... Where's a 24-7 when ya need one?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_WD4B' time 3400 flag 1
+        wait 3400
+    end
+    goto @SmkC_Finish_Tier2
+end
+
+
+// =========================================================================
+// MODE 2: BROKE F11 BARK (TIER 1 PRIORITY)
+// =========================================================================
+:Route_Mode_2_BrokeBark
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+018C: play_sound 1057 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_SMKBK" text "~y~Jo'on: ~s~\"Are you kiddin' me?! I don't even have a lousy dollar for a smoke?!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_SMKBK' time 3000 flag 1
+wait 3000
+goto @SmkC_Finish_Tier1
+
+
+// =========================================================================
+// FINISH & BAILOUT HANDLERS
+// =========================================================================
+:SmkC_Finish_Tier1
+03EB: clear_small_messages_only
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    16@ == 1
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+0A93: terminate_this_custom_script
+
+:SmkC_Bailout_Tier1
+03EB: clear_small_messages_only
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    16@ == 1
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+0A93: terminate_this_custom_script
+
+:SmkC_Finish_Tier2
+03EB: clear_small_messages_only
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    16@ == 2
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+0A93: terminate_this_custom_script
+
+:SmkC_Bailout_Tier2
+03EB: clear_small_messages_only
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 16@ = read_memory 30@ size 4 virtual_protect 0
+if
+    16@ == 2
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+end
+0A93: terminate_this_custom_script
+
+
+// =========================================================================
+// SUBROUTINE: CHECK ACTIVE HEALTH / COMBAT FOR CANCELLATION
+// =========================================================================
+:Check_Smoke_Alive
+13@ = 0
+if or
+    8256: not is_player_playing $PLAYER_CHAR
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+    02E0: actor $PLAYER_ACTOR firing_weapon
+    0E67: is_aim_button_pressed 0
+    0E8D: is_any_fire_button_pressed 0
+    0E47: is_char_fighting $PLAYER_ACTOR
+then
+    13@ = 1
+    return
+end
+
+// Check if higher tier preemption occurred
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+if
+    14@ > 1
+then
+    13@ = 1
+    return
+end
+
+// Check character form
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 11@ = read_memory 30@ size 4 virtual_protect 0
+if
+    8039: not 11@ == 1
+then
+    13@ = 1
+    return
+end
+return
+
+:Check_Withdrawal_Alive
+13@ = 0
+if or
+    8256: not is_player_playing $PLAYER_CHAR
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+    010F: player $PLAYER_CHAR wanted_level > 0
+then
+    13@ = 1
+    return
+end
+
+// Abort dialogue immediately if a phone call is received
+if or
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1600
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1601
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1602
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 1603
+then
+    13@ = 1
+    return
+end
+
+if or
+    0611: actor $PLAYER_ACTOR performing_animation "phone_talk"
+    0611: actor $PLAYER_ACTOR performing_animation "phone_in"
+    0611: actor $PLAYER_ACTOR performing_animation "phone_out"
+then
+    13@ = 1
+    return
+end
+
+// Abort if player reverted from Jo'on back to CJ
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 11@ = read_memory 30@ size 4 virtual_protect 0
+if
+    8039: not 11@ == 1
+then
+    13@ = 1
+    return
+end
+
+// Abort dialogue immediately if a mission starts
+if or
+    0038: $ONMISSION == 1
+    0E1D: is_on_mission
+then
+    13@ = 1
+    return
+end
+
+// Abort immediately if combat breaks out
+if or
+    0E47: is_char_fighting $PLAYER_ACTOR
+    02E0: actor $PLAYER_ACTOR firing_weapon
+then
+    13@ = 1
+    return
+end
+
+// Check if higher priority claimed channel
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+if
+    14@ > 2
+then
+    13@ = 1
+    return
+end
+return
