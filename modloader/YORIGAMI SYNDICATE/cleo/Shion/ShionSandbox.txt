@@ -51,12 +51,13 @@ end
 3@ = 0  // Swimming In Deep Water Latch (0 = Ready, 1 = Latched/Spoken)
 4@ = 0  // Hydraulics Bounce Spam Accumulator Timer (ms)
 5@ = 0  // Car Was Wrecked / Smoking Latch (0 = No, 1 = Yes)
-6@ = 0  // Stunt Rollover State (0 = Ground, 1 = Air, 2 = Flipped in Air)
+6@ = 0  // Stunt Rollover State (0 = Ground, 1 = Air, 2 = Flipped in Air, 3 = Settling on Wheels)
 7@ = 0  // Stunt Air Timeout Timer (ms)
 8@ = 0  // Damage Event Victim Handle (Event Receiver)
 9@ = 0  // Damage Event Recursion Lock Flag
 10@ = 0 // Shion Handle
 12@ = 0 // Pending Sandbox Reaction Type (0 = None, 1 = Firehose, 2 = Ocean Sunk, 3 = Swim, 4 = PayNSpray, 5 = Stunt, 6 = CivPunch, 7 = Hydraulics, 8 = Car Destroyed, 9 = Car Smasher, 10 = CivRunOver)
+13@ = 0 // Stunt Wheels Stabilization Timer (ms)
 14@ = -1 // Last Tracked Cars Wrecked Count (-1 = Uninitialized)
 15@ = 0 // Firetruck Hose-Down Stream Accumulator Timer (ms)
 
@@ -546,6 +547,7 @@ then
                     then
                         6@ = 1
                         7@ = 0
+                        13@ = 0
                     end
                 else
                     // State 1: Car flips upside-down while in air
@@ -557,12 +559,14 @@ then
                             01F4: car 24@ flipped
                         then
                             6@ = 2
+                            13@ = 0
                         else
                             // Reset if landed without flipping
                             if
                                 09D0: car 24@ on_wheels
                             then
                                 6@ = 0
+                                13@ = 0
                             end
                         end
 
@@ -571,22 +575,20 @@ then
                             0019: 7@ > 10000
                         then
                             6@ = 0
+                            13@ = 0
                         end
                     else
-                        // State 2: Flipped car recovers and lands cleanly on wheels
+                        // State 2: Flipped car recovers and touches down on wheels
                         if
                             6@ == 2
                         then
                             000A: 7@ += 100
-                            if
+                            if and
                                 09D0: car 24@ on_wheels
+                                81F4: not car 24@ flipped
                             then
-                                6@ = 0
-                                if
-                                    8019: not 1@ > 0
-                                then
-                                    12@ = 5 // Queue Stunt Miracle Reaction
-                                end
+                                6@ = 3
+                                13@ = 0
                             end
 
                             // Abort if car remains upside-down / stranded for over 10s
@@ -594,21 +596,62 @@ then
                                 0019: 7@ > 10000
                             then
                                 6@ = 0
+                                13@ = 0
+                            end
+                        else
+                            // State 3: Must remain stable on wheels for a solid 1000ms
+                            if
+                                6@ == 3
+                            then
+                                000A: 7@ += 100
+                                if and
+                                    09D0: car 24@ on_wheels
+                                    81F4: not car 24@ flipped
+                                then
+                                    000A: 13@ += 100
+                                    if
+                                        0029: 13@ >= 1000
+                                    then
+                                        6@ = 0
+                                        13@ = 0
+                                        if
+                                            8019: not 1@ > 0
+                                        then
+                                            12@ = 5 // Queue Stunt Miracle Reaction
+                                        end
+                                    end
+                                else
+                                    // Lost wheels or flipped again during continuous tumble
+                                    6@ = 2
+                                    13@ = 0
+                                end
+
+                                // Abort if process takes over 10s
+                                if
+                                    0019: 7@ > 10000
+                                then
+                                    6@ = 0
+                                    13@ = 0
+                                end
                             end
                         end
                     end
                 end
             else
                 6@ = 0
+                13@ = 0
             end
         else
             6@ = 0
+            13@ = 0
         end
     else
         6@ = 0
+        13@ = 0
     end
 else
     6@ = 0
+    13@ = 0
 end
 
 // Car hydraulics bounce spam detection

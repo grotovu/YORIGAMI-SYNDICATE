@@ -404,7 +404,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * Detects vehicle sinking into ocean water (`02BF`).
     * Detects swimming in deep water for > 5 seconds.
     * Detects Pay 'n' Spray repair of a heavily damaged car (< 500 HP restored to >= 990 HP).
-    * Detects stunt flips (car flips upside down in air and recovers onto wheels).
+    * Detects stunt flips (car flips upside down in air and stabilizes continuously on wheels for >= 1.0s).
     * Intercepts punches or vehicular hit-and-runs on innocent, unarmed civilians via `0EDE`.
     * Detects continuous lowrider hydraulic hopping for > 3 seconds.
     * Catches Car Smasher vehicle punch explosions (`MEM_CAR_SMASH_SIGNAL`).
