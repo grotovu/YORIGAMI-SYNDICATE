@@ -18,6 +18,12 @@ const
     MEM_RAPID_SWAP_COUNT = 420
     MEM_RAPID_SWAP_TIMER = 424
     MEM_LAST_FORM_MODE = 428
+    MEM_KILL_SPREE_COUNT = 432
+    MEM_KILL_SPREE_TIMER = 436
+    MEM_LAST_KILLED_PED = 440
+    MEM_LAST_GANG_KILLS = 444
+    MEM_LAST_CRIM_KILLS = 448
+    MEM_LAST_COP_PED = 452
 end
 
 :Connect_To_Brain
@@ -61,6 +67,23 @@ end
 14@ = -1 // Last Tracked Cars Wrecked Count (-1 = Uninitialized)
 15@ = 0 // Firetruck Hose-Down Stream Accumulator Timer (ms)
 
+// Initialize heap tracking for killing spree baseline
+0085: 30@ = 31@
+000A: 30@ += MEM_LAST_KILLED_PED
+0A8C: write_memory 30@ size 4 value -1 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_LAST_GANG_KILLS
+0A8C: write_memory 30@ size 4 value -1 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_LAST_CRIM_KILLS
+0A8C: write_memory 30@ size 4 value -1 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_LAST_COP_PED
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
 // Register Damage Event specifically for Sandbox Interactions
 0EDE: set_script_event_char_damage 1 @OnSandboxDamage 8@
 
@@ -103,6 +126,31 @@ then
     0085: 30@ = 31@
     000A: 30@ += MEM_LAST_FORM_MODE
     0A8C: write_memory 30@ size 4 value -1 virtual_protect 0
+
+    // Reset killing spree counters while absent
+    0085: 30@ = 31@
+    000A: 30@ += MEM_KILL_SPREE_COUNT
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_KILL_SPREE_TIMER
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_LAST_KILLED_PED
+    0A8C: write_memory 30@ size 4 value -1 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_LAST_GANG_KILLS
+    0A8C: write_memory 30@ size 4 value -1 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_LAST_CRIM_KILLS
+    0A8C: write_memory 30@ size 4 value -1 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_LAST_COP_PED
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
     goto @ShionSandbox_Loop
 end
 
@@ -191,6 +239,173 @@ then
     0085: 30@ = 31@
     000A: 30@ += MEM_RAPID_SWAP_TIMER
     0A8C: write_memory 30@ size 4 value 27@ virtual_protect 0
+end
+
+// Tick down Killing Spree Window Timer
+0085: 30@ = 31@
+000A: 30@ += MEM_KILL_SPREE_TIMER
+0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0019: 27@ > 0
+then
+    000E: 27@ -= 100
+    if
+        002B: 0 >= 27@
+    then
+        27@ = 0
+        0085: 30@ = 31@
+        000A: 30@ += MEM_KILL_SPREE_COUNT
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
+    0085: 30@ = 31@
+    000A: 30@ += MEM_KILL_SPREE_TIMER
+    0A8C: write_memory 30@ size 4 value 27@ virtual_protect 0
+end
+
+// Killing Spree Watchdog: Stat 121 with Direct Hostile & Gang Corpse Deduction
+0652: 27@ = integer_stat 121 // Total People Wasted
+0085: 30@ = 31@
+000A: 30@ += MEM_LAST_KILLED_PED
+0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    28@ == -1
+then
+    // Initialize baseline on first run
+    0085: 30@ = 31@
+    000A: 30@ += MEM_LAST_KILLED_PED
+    0A8C: write_memory 30@ size 4 value 27@ virtual_protect 0
+else
+    if
+        001D: 27@ > 28@
+    then
+        0085: 26@ = 27@
+        0062: 26@ -= 28@ // 26@ = Raw Kill Delta
+        0085: 30@ = 31@
+        000A: 30@ += MEM_LAST_KILLED_PED
+        0A8C: write_memory 30@ size 4 value 27@ virtual_protect 0
+
+        // Scan nearby freshly dead peds to deduct any Gang Members, Cops, or Hostiles
+        23@ = 0 // CLEO+ iterator progress counter
+        24@ = 0 // Safety iteration limit counter
+        :Scan_Dead_Hostiles_Loop
+        if
+            0EA7: get_any_char_no_save_recursive 23@ progress_to 23@ char_to 22@
+        then
+            000A: 24@ += 1
+            if
+                0019: 24@ > 140 // Pool size ceiling guarantee
+            then
+                goto @Scan_Dead_Hostiles_Done
+            end
+
+            if and
+                0118: actor 22@ dead
+                0EE4: locate_char_distance_to_char 22@ char $PLAYER_ACTOR radius 65.0
+            then
+                0ECE: get_time_char_is_dead 22@ store_to 19@
+                if
+                    001B: 700 > 19@ // Died within the last 700ms
+                then
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_LAST_COP_PED // Stores last registered dead hostile handle
+                    0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+                    if
+                        803B: not 22@ == 21@
+                    then
+                        20@ = 0 // 1 = Is a hostile / non-civilian
+                        089F: get_actor 22@ pedtype_to 18@
+
+                        // Any ped that is NOT CivMale (4) and NOT CivFemale (5) is a Gang, Cop, or Dealer
+                        if and
+                            8039: not 18@ == 4
+                            8039: not 18@ == 5
+                        then
+                            20@ = 1
+                        else
+                            // If PedType is 4 or 5, check if they were carrying a weapon
+                            0470: 17@ = actor 22@ current_weapon
+                            if
+                                0019: 17@ > 0
+                            then
+                                20@ = 1
+                            else
+                                // Check if drug dealer skin
+                                0665: get_actor 22@ model_to 17@
+                                if or
+                                    17@ == 28
+                                    17@ == 29
+                                    17@ == 30
+                                    17@ == 254
+                                    17@ == 144
+                                then
+                                    20@ = 1
+                                end
+                            end
+                        end
+
+                        if
+                            0039: 20@ == 1
+                        then
+                            0085: 30@ = 31@
+                            000A: 30@ += MEM_LAST_COP_PED
+                            0A8C: write_memory 30@ size 4 value 22@ virtual_protect 0
+
+                            if
+                                0019: 26@ > 0
+                            then
+                                000E: 26@ -= 1 // Deduct hostile kill from Delta
+                            end
+                        end
+                    end
+                end
+            end
+            goto @Scan_Dead_Hostiles_Loop
+        end
+        :Scan_Dead_Hostiles_Done
+
+        // If delta is still > 0, the kills were pure innocent civilians!
+        if
+            0019: 26@ > 0
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_KILL_SPREE_COUNT
+            0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+            005A: 25@ += 26@
+            0085: 30@ = 31@
+            000A: 30@ += MEM_KILL_SPREE_COUNT
+            0A8C: write_memory 30@ size 4 value 25@ virtual_protect 0
+
+            // Refresh rolling spree window to 8000ms
+            0085: 30@ = 31@
+            000A: 30@ += MEM_KILL_SPREE_TIMER
+            0A8C: write_memory 30@ size 4 value 8000 virtual_protect 0
+
+            // 5 innocent civilian kills within 8.0s triggers killing spree
+            if
+                0029: 25@ >= 5
+            then
+                0085: 30@ = 31@
+                000A: 30@ += MEM_KILL_SPREE_COUNT
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_KILL_SPREE_TIMER
+                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+                12@ = 13 // Queue Killing Spree Reaction
+            end
+        end
+    else
+        if
+            001D: 28@ > 27@
+        then
+            // Resynchronize baseline on save reload
+            0085: 30@ = 31@
+            000A: 30@ += MEM_LAST_KILLED_PED
+            0A8C: write_memory 30@ size 4 value 27@ virtual_protect 0
+        end
+    end
 end
 
 // Rapid Form Swap Watchdog (Spamming Y + H between Ped and Hitodama)
@@ -847,9 +1062,26 @@ then
     000A: 30@ += MEM_PRIORITY_LOCK
     0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
 
-    // Strictly yield if Priority Lock is 3 (Action/Spawn) or 4+ (Theater)
+    28@ = 0
     if
-        001B: 3 > 29@
+        0039: 12@ == 13 // Killing Spree can preempt Tier 3 (wanted/combat barks), only yields to Tier 4 Theater
+    then
+        if
+            001B: 4 > 29@
+        then
+            28@ = 1
+        end
+    else
+        // Normal sandbox yields if Priority Lock is >= 3
+        if
+            001B: 3 > 29@
+        then
+            28@ = 1
+        end
+    end
+
+    if
+        0039: 28@ == 1
     then
         1@ = 12000 // 12-second sandbox cooldown
         if
@@ -859,8 +1091,15 @@ then
         end
         0ABA: terminate_all_custom_scripts_with_this_name "Sh_SndC"
         0A92: create_custom_thread "Shion\Chat\chatSandbox.c" 12@ 11@
+        12@ = 0
+    else
+        // If Killing Spree is waiting for Tier 4 Theater to finish, hold 12@ = 13 instead of dropping it
+        if
+            8039: not 12@ == 13
+        then
+            12@ = 0
+        end
     end
-    12@ = 0
 end
 
 goto @ShionSandbox_Loop
@@ -959,7 +1198,6 @@ then
                             then
                                 19@ = 1
                             else
-                                // Only check physical car occupancy if Shion is a valid ped handle
                                 if
                                     0019: 10@ > 0
                                 then
@@ -1021,7 +1259,6 @@ then
                             24@ = 1
                         end
 
-                        // Nested check guarantees 051A is never called on an invalid handle
                         if
                             0039: 24@ == 0
                         then
@@ -1079,8 +1316,9 @@ then
                                 if
                                     28@ == 0
                                 then
-                                    if
+                                    if and
                                         8019: not 1@ > 0
+                                        8039: not 12@ == 13 // Prevent overwriting Killing Spree reaction
                                     then
                                         if
                                             21@ == 1

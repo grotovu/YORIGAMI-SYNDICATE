@@ -16,7 +16,7 @@ end
 // 0@ = Event Mode:
 //      1 = Firehose, 2 = Sunk, 3 = Swim, 4 = PayNSpray, 5 = Stunt,
 //      6 = CivPunch, 7 = Hydraulics, 8 = Car Wreck, 9 = Car Smasher,
-//      10 = Civ RunOver, 11 = Flex, 12 = Rapid Swap
+//      10 = Civ RunOver, 11 = Flex, 12 = Rapid Swap, 13 = Killing Spree
 // 1@ = Form Mode (0 = Solid Ped, 1 = Hitodama Spirit)
 0085: 10@ = 0@
 0085: 11@ = 1@
@@ -50,10 +50,23 @@ end
 0085: 30@ = 31@
 000A: 30@ += MEM_PRIORITY_LOCK
 0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+
+// Mode 13 (Killing Spree) is Tier 3 and only yields to Tier 4 (Theater/Diner)
 if
-    0029: 29@ >= 3
+    0039: 10@ == 13
 then
-    0A93: terminate_this_custom_script
+    if
+        0029: 29@ >= 4
+    then
+        0A93: terminate_this_custom_script
+    end
+else
+    // Modes 1-12 yield if Tier 3 or above is active
+    if
+        0029: 29@ >= 3
+    then
+        0A93: terminate_this_custom_script
+    end
 end
 
 // Preempt lower-priority ambient chatter immediately
@@ -2574,6 +2587,66 @@ then
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_HSPM' time 2500 flag 1
     wait 2500
+    goto @Finish_Sandbox_Dialogue
+end
+
+// =========================================================================
+// EVENT 13: JO'ON KILLING SPREE (SHION SOLO REACTION)
+// =========================================================================
+if
+    0039: 10@ == 13
+then
+    // Terminate pursuit dialogue thread so Shion speaks solo without interruption
+    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Star"
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0209: 0@ = random_int_in_ranges 0 5
+
+    if
+        0@ == 0
+    then
+        0ADF: add_text_label "Y_SPRE0" text "~b~Shion: ~s~\"Jo'on, this is bad for business...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SPRE0' time 3200 flag 1
+        wait 3200
+    end
+
+    if
+        0@ == 1
+    then
+        0ADF: add_text_label "Y_SPRE1" text "~b~Shion: ~s~\"I'm not helping you hide the evidence.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SPRE1' time 3200 flag 1
+        wait 3200
+    end
+
+    if
+        0@ == 2
+    then
+        0ADF: add_text_label "Y_SPRE2" text "~b~Shion: ~s~\"All these bodies to loot, what a pain...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SPRE2' time 3200 flag 1
+        wait 3200
+    end
+
+    if
+        0@ == 3
+    then
+        0ADF: add_text_label "Y_SPRE3" text "~b~Shion: ~s~\"I know you're crazy, but not THIS crazy...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SPRE3' time 3300 flag 1
+        wait 3300
+    end
+
+    if
+        0@ == 4
+    then
+        0ADF: add_text_label "Y_SPRE4" text "~b~Shion: ~s~\"I don't think you can fleece dead people, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SPRE4' time 3400 flag 1
+        wait 3400
+    end
+
     goto @Finish_Sandbox_Dialogue
 end
 

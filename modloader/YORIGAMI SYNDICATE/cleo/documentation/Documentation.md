@@ -98,6 +98,10 @@ Every secondary script executes an identical connection routine upon initializat
 | `420` | `MEM_RAPID_SWAP_COUNT` | int | Counter for consecutive form swaps (`Y + H`) within the rolling window. | `ShionSandbox` | `ShionSandbox` |
 | `424` | `MEM_RAPID_SWAP_TIMER` | int (ms) | Active countdown timer (8000ms) evaluating the rapid swap window. | `ShionSandbox` | `ShionSandbox` |
 | `428` | `MEM_LAST_FORM_MODE` | int | Edge-trigger state tracker for form transitions (`-1` = Init, `0` = Ped, `1` = Hitodama). | `ShionSandbox` | `ShionSandbox` |
+| `432` | `MEM_KILL_SPREE_COUNT` | int | Consecutive innocent civilian kills counter in current rolling window. | `ShionSandbox` | `ShionSandbox` |
+| `436` | `MEM_KILL_SPREE_TIMER` | int (ms) | Rolling window countdown timer (8000ms) for civilian killing sprees. | `ShionSandbox` | `ShionSandbox` |
+| `440` | `MEM_LAST_KILLED_PED` | int | Engine Stat 121 (`People you've wasted`) baseline tracker. | `ShionSandbox` | `ShionSandbox` |
+| `452` | `MEM_LAST_COP_PED` | int | Actor handle of the most recently deducted dead hostile/cop/gang corpse. | `ShionSandbox` | `ShionSandbox` |
 
 ---
 
@@ -406,7 +410,9 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * Detects Pay 'n' Spray repair of a heavily damaged car (< 500 HP restored to >= 990 HP).
     * Detects stunt flips (car flips upside down in air and stabilizes continuously on wheels for >= 1.0s).
     * Intercepts punches or vehicular hit-and-runs on innocent, unarmed civilians via `0EDE`.
-    * Detects continuous lowrider hydraulic hopping for > 3 seconds.
+    * Tracks rapid lethal sprees (5 kills within 7.0s) via damage telemetry.
+    * Intercepts punches or vehicular hit-and-runs on innocent, unarmed civilians via `0EDE`.
+    * Tracks civilian killing sprees: samples engine Stat 121 (`People you've wasted`), runs radial corpse sweeps (`0EA7`) to subtract Ballas, rival gangs (PedTypes 7–16), Cops (PedType 6), dealers, and armed hostiles, triggering when 5 unarmed innocent bystanders are killed within 8.0s.
     * Catches Car Smasher vehicle punch explosions (`MEM_CAR_SMASH_SIGNAL`).
     * Catches cash flex events (`MEM_FLEX_SIGNAL`).
     * Dispatches detected event IDs asynchronously to `chatSandbox.c` without stalling the 100ms sensory detection loop.
@@ -414,6 +420,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * Vocal dialogue dispatcher for all sandbox and environmental events streamed by `ShionSandbox.cs` via `0A92`.
   * Claims Tier 3 Priority Lock (`MEM_PRIORITY_LOCK = 3`), preempting low-tier ambient chat while cleanly yielding to Tier 4 Theater.
   * Form-aware execution: bifurcates lines between Physical Ped (`11@ == 0`) and Hitodama spirit (`11@ == 1`) across sinking, deep swimming, hydraulics, vehicle wrecks, car smasher punches, pedestrian run-overs, and cash flexing.
+  * Features solo Shion deadpan reactions for Jo'on's civilian killing sprees (Mode 13) where Jo'on stays completely silent, preempting pursuit chatter (`Sh_Star`) at Tier 3.
   * Features dedicated abort watchdogs checking cutscenes, screen fades, player death, and companion dismissal during multi-stage dialogues.
 * **`ShionFriendlyFire.txt` (`Sh_FF`):**
   * Non-blocking background sensory daemon monitoring player-inflicted companion damage and camera snapshots.
@@ -736,8 +743,8 @@ The following table details the cross-script dependencies for every component in
 | **Lore Archive** | `Shion\Lore\loreMenu.txt`| "ALLORE", `ShionMenu`, or `ShionDebug` ("LORE") | `MEM_LORE_MENU_SIGNAL` | `MEM_LORE_PROGRESS_BIT` | UI panel for reviewing unlocked lore episodes |
 | **Safehouse Menu** | `Shion\ShionMenu.txt` | Hold `TAB` inside safehouse | `MEM_PRIORITY_LOCK`, `MEM_COMBAT_RES_MODE`, `MEM_DURGASTRA_FLAG`, `MEM_DURGASTRA_PREV_MODE`, `MEM_LORE_MENU_SIGNAL` | `MEM_SAFEHOUSE_DOOR_ID`, `MEM_DURGASTRA_PREV_MODE` | Safehouse configuration UI with mode memory arbitration, launches `ShionMem` |
 | **Performance Review** | `Shion\ShionMem.txt` | Launched from `ShionMenu` | `MEM_SPOKEN_TOPICS_BIT`, `MEM_PRIORITY_LOCK` | Performance ledger (Kills, Fares, Wrecks, etc.) | Evaluates partnership stats across 9 interactive topics |
-| **Sandbox Sensory Monitor** | `Shion\ShionSandbox.txt` | Water hose, ocean sinking, stunts, civ punches/run-overs, flex | `MEM_CAR_SMASH_SIGNAL`, `MEM_FLEX_SIGNAL`, `MEM_RAPID_SWAP_*`, `MEM_LAST_FORM_MODE` | `MEM_SHION_BUSY`, `MEM_CARS_WRECKED`, `MEM_CAR_SMASH_SIGNAL`, `MEM_FLEX_SIGNAL`, `MEM_PRIORITY_LOCK` | Dispatches events to `chatSandbox.c` (`Sh_SndC`) via `0A92` |
-| **Sandbox Dialogue Router** | `Shion\Chat\chatSandbox.txt` | Streamed by `ShionSandbox.cs` on sandbox event triggers (Modes 1–12) | `MEM_PRIORITY_LOCK` | `MEM_PRIORITY_LOCK`, `MEM_SHION_HANDLE` | Claims Tier 3 lock, delivers form-aware sister banter across 12 sandbox scenarios |
+| **Sandbox Sensory Monitor** | `Shion\ShionSandbox.txt` | Water hose, ocean sinking, stunts, civ punches/run-overs, flex, civilian sprees | `MEM_CAR_SMASH_SIGNAL`, `MEM_FLEX_SIGNAL`, `MEM_RAPID_SWAP_*`, `MEM_LAST_FORM_MODE`, `MEM_KILL_SPREE_*`, `MEM_LAST_KILLED_PED`, `MEM_LAST_COP_PED` | `MEM_SHION_BUSY`, `MEM_CARS_WRECKED`, `MEM_CAR_SMASH_SIGNAL`, `MEM_FLEX_SIGNAL`, `MEM_PRIORITY_LOCK` | Dispatches events to `chatSandbox.c` (`Sh_SndC`) via `0A92` |
+| **Sandbox Dialogue Router** | `Shion\Chat\chatSandbox.txt` | Streamed by `ShionSandbox.cs` on sandbox event triggers (Modes 1–13) | `MEM_PRIORITY_LOCK` | `MEM_PRIORITY_LOCK`, `MEM_SHION_HANDLE` | Claims Tier 3 lock, delivers form-aware sister banter across 13 sandbox scenarios (including solo Shion spree lines) |
 | **Friendly Fire Sensor**| `Shion\ShionFriendlyFire.txt`| Attacking Shion on foot, taking photo | None | `MEM_PLAYER_FORM`, `MEM_PRIORITY_LOCK`, `MEM_SHION_HANDLE`, `MEM_HITODAMA_X/Y/Z` | Detects attacks and camera shutter pulses, manages debounce, streams `chatFriendlyFire.c` via `0A92` |
 | **Friendly Fire Dialogue**| `Shion\Chat\chatFriendlyFire.txt`| Streamed by `ShionFriendlyFire.c` | `MEM_PRIORITY_LOCK` | `MEM_PLAYER_FORM`, `MEM_PRIORITY_LOCK`, `MEM_SHION_HANDLE` | Claims Tier 3 lock, delivers flinch delay and weapon-specific complaints across 35+ categories |
 | **Pimping Mission** | `Shion\ShionPimp.txt` | `Y + 2` in 4-door car near prostitute | None | None | Launches native mission 127 (`pimp.sc`) |
