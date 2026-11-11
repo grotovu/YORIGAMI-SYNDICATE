@@ -58,7 +58,7 @@ then
     goto @LoreMenu_Idle_Loop
 end
 
-// Debug Cheat: Type "ALLORE" to toggle all episodes unlocked
+// Debug Cheat: Type "ALLOR" to toggle all episodes unlocked
 if
     0ADC: test_cheat "ALLOR"
 then
@@ -450,24 +450,9 @@ then
             8@ = 1
         else
             if
-                5@ < 31
+                08B9: test 6@ bit 5@
             then
-                if
-                    08B9: test 6@ bit 5@
-                then
-                    8@ = 1
-                end
-            else
-                0085: 30@ = 31@
-                000A: 30@ += MEM_LORE_PROGRESS_2
-                0A8D: 17@ = read_memory 30@ size 4 virtual_protect 0
-                0085: 18@ = 5@
-                000E: 18@ -= 31
-                if
-                    08B9: test 17@ bit 18@
-                then
-                    8@ = 1
-                end
+                8@ = 1
             end
         end
 
