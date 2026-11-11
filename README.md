@@ -25,13 +25,15 @@ You’ll need a standard downgraded, mod-ready GTA SA setup:
 3. **Modloader** 
 4. **EffectLoader.asi** (Put this in your root GTA SA folder so the custom particles work)
 5. A limit adjuster (I personally use fastman92limitAdjuster, Open Limit Adjuster works too)
+6. **[Animation Fix: New Car Anim + LCS/VCS Sprinting](https://libertycity.net/files/gta-san-andreas/222557-animation-fix-new-car-anim-lcs-vcs-sprinting.html)** (Required so anime skin meshes sit inside vehicles properly without clipping/distorting, and includes Stories-style sprinting animations)
 
 **How to Install:**
 1. Grab the latest release zip.
 2. Put `EffectLoader.asi` in your main GTA SA directory if you don't already have it.
 3. Drop the `YORIGAMI SYNDICATE` folder into your `modloader` folder (this loads the scripts, character models, etc.).
-4. **Important:** Merge the `models/effects` folder from the zip into your game's base `models` directory. *EffectLoader does not read from Modloader*, so the custom particle effects for Jo'on's gold and Shion's misfortune must be placed directly into your base game's `models/effects` folder.
-5. That's pretty much it. Check the `optional` folder if you want extra compatibility stuff like taxi boarding, high-stakes bets, or quick fist swaps.
+4. **Important:** Merge the `models/effects` folder from the zip into your game's base `models` directory. *EffectLoader does not read from Modloader*, so the custom particle effects for Jo'on's gold and Shion's misfortune must be placed directly into your base game's models/effects folder.
+5. **Recommended (`SkinArmor`):** In `_Optional Tweaks`, drop the `SkinArmor` folder straight into your `modloader`. This prevents the player model from warping into body-stretched monstrosities during missions and activities that force clothing changes on CJ (such as Burglary, 555 We Tip, Key to Her Heart, etc.).
+6. That's pretty much it. Check the `_Optional Tweaks` folder if you want extra compatibility stuff like taxi boarding, high-stakes bets, or quick fist swaps.
 
 ---
 
