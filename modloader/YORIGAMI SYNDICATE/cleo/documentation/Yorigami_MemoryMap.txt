@@ -129,4 +129,8 @@ const
     MEM_SPREE_LATCH = 444        // Recycled: Rampage dialogue latch (0 = Ready, 1 = Latched/Silent)
     MEM_SPREE_COOLOFF = 448      // Recycled: Rampage cool-off duration timer (45000ms)
     MEM_LAST_COP_PED = 452       // Last registered dead hostile corpse handle
+    MEM_JOON_DEATH_STATE = 456       // 0 = Clean, 1 = Wasted, 2 = Busted
+    MEM_JOON_BUSTED_STARS = 460      // Wanted level when busted (1 to 6)
+    MEM_JOON_DEATH_WEAPON = 464      // Weapon ID / damage reason that killed Jo'on (-1 = Generic)
+    MEM_SHION_DIED_FIRST = 468       // 0 = Shion was alive when Jo'on went down, 1 = Shion was already dead
 end
