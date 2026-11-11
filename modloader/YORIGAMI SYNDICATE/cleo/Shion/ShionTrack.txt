@@ -24,6 +24,7 @@ const
     MEM_SHION_KILLS = 236
     MEM_PIMPING_LEVEL = 240
     MEM_LORE_PROGRESS_BIT = 244
+    MEM_LORE_PROGRESS_2 = 472
     MEM_TIMES_TREATED = 248
     MEM_TOTAL_CASH_GIVEN = 252
     MEM_CASINO_LOSSES = 256
@@ -213,6 +214,16 @@ then
 end
 0085: 30@ = 31@
 000A: 30@ += MEM_LORE_PROGRESS_BIT
+0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
+
+0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "LoreProgress2"
+if
+    5@ < 0
+then
+    5@ = 0
+end
+0085: 30@ = 31@
+000A: 30@ += MEM_LORE_PROGRESS_2
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
 // --- COMBAT & SURVIVAL (WITH SHION ONLY) ---
@@ -489,6 +500,11 @@ end
 000A: 27@ += MEM_LORE_PROGRESS_BIT
 0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
 0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "LoreProgress"
+
+0085: 27@ = 31@
+000A: 27@ += MEM_LORE_PROGRESS_2
+0A8D: 12@ = read_memory 27@ size 4 virtual_protect 0
+0AF1: write_int 12@ to_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "LoreProgress2"
 
 0085: 27@ = 31@
 000A: 27@ += MEM_JOON_KILLS_W_SHION

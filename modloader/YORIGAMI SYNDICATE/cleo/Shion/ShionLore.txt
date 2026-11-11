@@ -25,6 +25,7 @@ const
     MEM_SHION_KILLS = 236
     MEM_PIMPING_LEVEL = 240
     MEM_LORE_PROGRESS_BIT = 244
+    MEM_LORE_PROGRESS_2 = 472
     MEM_TIMES_TREATED = 248
     MEM_TOTAL_CASH_GIVEN = 252
     MEM_CASINO_LOSSES = 256
@@ -36,6 +37,7 @@ const
     MEM_MOD_CASH_SPENT = 284
     MEM_SKYDIVE_LANDED = 288
     MEM_LOWRIDER_DONE = 292
+    MEM_JOON_KILLS_W_SHION = 296
     MEM_BRIBES_PAID = 324
     MEM_TIME_BROKE_MIN = 328
     MEM_SAFEHOUSE_DOOR_ID = 340
@@ -210,8 +212,15 @@ then
     0085: 30@ = 31@
     000A: 30@ += MEM_LORE_PROGRESS_BIT
     0A8D: 3@ = read_memory 30@ size 4 virtual_protect 0
-    if
+    
+    0085: 30@ = 31@
+    000A: 30@ += MEM_LORE_PROGRESS_2
+    0A8D: 4@ = read_memory 30@ size 4 virtual_protect 0
+
+    // If either mask isn't completely maxed out, check milestones
+    if or
         3@ < 2147483647
+        4@ == 0
     then
         gosub @Evaluate_Nonlinear_Milestones
     end
@@ -1238,6 +1247,32 @@ then
         8@ = 30
         gosub @Prompt_Lore_Conversation
         return
+    end
+end
+
+// -------------------------------------------------------------------------
+// BIT 0 (Mask 2): Episode 31 - Jo'on Kills with Shion >= 50
+// -------------------------------------------------------------------------
+0085: 30@ = 31@
+000A: 30@ += MEM_LORE_PROGRESS_2
+0A8D: 4@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    88B7: not test 4@ bit 0
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_KILLS_W_SHION
+    0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        28@ >= 50
+    then
+        if
+            80DF: not actor $PLAYER_ACTOR driving
+        then
+            8@ = 31
+            gosub @Prompt_Lore_Conversation
+            return
+        end
     end
 end
 

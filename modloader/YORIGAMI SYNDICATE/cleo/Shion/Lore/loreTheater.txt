@@ -12,6 +12,7 @@ const
     MEM_PRIORITY_LOCK = 20
     MEM_SHION_HANDLE = 116
     MEM_LORE_PROGRESS_BIT = 244
+    MEM_LORE_PROGRESS_2 = 472
 end
 
 // 0@ = Episode ID passed directly from ShionLore.c
@@ -36,10 +37,10 @@ end
 
 28@ = 0 // Abort Flag
 
-// Sanity boundary check on Episode ID (Bits 0-30 only)
+// Sanity boundary check on Episode ID (Bits 0-31)
 if or
     8029: not 8@ >= 0
-    8@ > 30
+    8@ > 31
 then
     28@ = 1
     0002: jump @Finish_Theater_Execution
@@ -242,6 +243,12 @@ then
     gosub @Lore_Episode_30
     0002: jump @Finish_Theater_Execution
 end
+if
+    8@ == 31
+then
+    gosub @Lore_Episode_31
+    0002: jump @Finish_Theater_Execution
+end
 
 :Finish_Theater_Execution
 03EB: clear_small_messages_only
@@ -250,13 +257,28 @@ end
 if
     28@ == 0
 then
-    0085: 30@ = 31@
-    000A: 30@ += MEM_LORE_PROGRESS_BIT
-    0A8D: 3@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        8@ < 31
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_LORE_PROGRESS_BIT
+        0A8D: 3@ = read_memory 30@ size 4 virtual_protect 0
 
-    08BF: set 3@ bit 8@
+        08BF: set 3@ bit 8@
 
-    0A8C: write_memory 30@ size 4 value 3@ virtual_protect 0
+        0A8C: write_memory 30@ size 4 value 3@ virtual_protect 0
+    else
+        0085: 30@ = 31@
+        000A: 30@ += MEM_LORE_PROGRESS_2
+        0A8D: 3@ = read_memory 30@ size 4 virtual_protect 0
+        
+        0085: 29@ = 8@
+        000E: 29@ -= 31
+        
+        08BF: set 3@ bit 29@
+
+        0A8C: write_memory 30@ size 4 value 3@ virtual_protect 0
+    end
 end
 
 // Free busy flag so controller resumes
@@ -6224,4 +6246,338 @@ end
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L30N' time 4000 flag 1
 wait 4000
+return
+
+// =========================================================================
+// EPISODE 31: "The Customer Service Smile" (Bit 31)
+// =========================================================================
+:Lore_Episode_31
+0ADF: add_text_label "Y_T31" text "~y~SISTER TALK~n~~w~THE CUSTOMER SERVICE SMILE"
+00BA: show_text_styled GXT 'Y_T31' time 3500 style 5
+wait 3500
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31A" text "~b~Shion: ~s~\"Watching you wave that pistol around earlier... you've really changed your style, Jo'on.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31A' time 4400 flag 1
+wait 4400
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31B" text "~y~Jo'on: ~s~\"Changed my style?! It's called keepin' up with the times, dummy!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31B' time 3900 flag 1
+wait 3900
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31C" text "~b~Shion: ~s~\"I was just thinking about Tokyo in the eighties. Back then, you never touched a weapon.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31C' time 4300 flag 1
+wait 4300
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31D" text "~b~Shion: ~s~\"You wore that velvet coat, fluttered your fan, and just smiled at wealthy businessmen.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31D' time 4300 flag 1
+wait 4300
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31E" text "~y~Jo'on: ~s~\"AHAHAHA! And they practically tripped over each other beggin' to buy me champagne!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31E' time 4300 flag 1
+wait 4300
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31F" text "~y~Jo'on: ~s~\"Those corporate suckers thought spendin' half their salary on me proved they were big shots!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31F' time 4400 flag 1
+wait 4400
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31G" text "~b~Shion: ~s~\"So that sweet-talking routine doesn't work so well out here, huh?\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31G' time 4100 flag 1
+wait 4100
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31H" text "~y~Jo'on: ~s~\"It works, but it's chump change! Back home, money moved through polite smiles and credit cards.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31H' time 4500 flag 1
+wait 4500
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31I" text "~y~Jo'on: ~s~\"Out here in ninety-two? The big money moves through turf wars, armored trucks, and shakedowns!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31I' time 4400 flag 1
+wait 4400
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31J" text "~y~Jo'on: ~s~\"These broke street punks ain't givin' you a dime for a smile. You gotta stick iron in their ribs!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31J' time 4400 flag 1
+wait 4400
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31K" text "~y~Jo'on: ~s~\"When in Rome, ya do what the locals do! So instead of askin' nice, we take!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31K' time 4200 flag 1
+wait 4200
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31L" text "~b~Shion: ~s~\"I guess that means I won't have to hear that voice anymore.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31L' time 3800 flag 1
+wait 3800
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31M" text "~y~Jo'on: ~s~\"What voice?!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31M' time 2500 flag 1
+wait 2500
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31N" text "~b~Shion: ~s~\"You know what voice. The one you used on your marks. High, sweet, and sticky like melted syrup.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31N' time 4500 flag 1
+wait 4500
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31O" text "~b~Shion: ~s~\"It was so fake. But the moment you turned it on, men would just empty their bank accounts for you.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31O' time 4500 flag 1
+wait 4500
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31P" text "~y~Jo'on: ~s~\"The hell are you talkin' about?! I always talk like this!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31P' time 3800 flag 1
+wait 3800
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31Q" text "~b~Shion: ~s~\"Pretend I'm a mark, Jo'on. Talk to me like you want my money.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31Q' time 3900 flag 1
+wait 3900
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31R" text "~y~Jo'on: ~s~\"Pfft, as if! Look at you! You're a walkin' pile of damp laundry! I can't flirt with a wet mop!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31R' time 4500 flag 1
+wait 4500
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31S" text "~b~Shion: ~s~\"Good. Every time I had to hear you speak like that, it made my skin crawl anyway.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31S' time 4300 flag 1
+wait 4300
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31T" text "~y~Jo'on: ~s~\"The hell's that supposed to mean?! That customer service voice took serious work!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31T' time 4200 flag 1
+wait 4200
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31U" text "~y~Jo'on: ~s~\"D'ya know how exhaustin' it is to smile at greasy old men for three hours without gaggin'?!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31U' time 4400 flag 1
+wait 4400
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31V" text "~y~Jo'on: ~s~\"Out here, I don't gotta giggle at bad jokes. I just flash some iron, look gorgeous, and take the cash!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31V' time 4500 flag 1
+wait 4500
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31W" text "~b~Shion: ~s~\"Heh... at least this way you sound like yourself, sis.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31W' time 3600 flag 1
+wait 3600
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31X" text "~y~Jo'on: ~s~\"...Hmph! Well, obviously! A top-tier VIP like me shouldn't have to play sweet for pocket change!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31X' time 4400 flag 1
+wait 4400
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L31Y" text "~y~Jo'on: ~s~\"Now come on, I ain't scuffin' my leather boots on this cheap pavement! We've got shoppin' to do! AHAHAHA!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L31Y' time 4200 flag 1
+wait 4200
 return

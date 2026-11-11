@@ -108,6 +108,7 @@ Every secondary script executes an identical connection routine upon initializat
 | `460` | `MEM_JOON_BUSTED_STARS` | int | Wanted level (1–6) preserved at the moment of Jo'on's arrest. | `ShionDeathTracker` | `chatReunion` |
 | `464` | `MEM_JOON_DEATH_WEAPON` | int | Weapon ID or fatal cause that took Jo'on down (-1 = Generic/Fall, 53 = Drowning). | `ShionDeathTracker` | `chatReunion` |
 | `468` | `MEM_SHION_DIED_FIRST` | int (bool) | Chronological casualty order: `0` = Shion was alive when Jo'on fell, `1` = Shion died earlier. | `ShionDeathTracker` | `chatReunion` |
+| `472` | `MEM_LORE_PROGRESS_2` | int (bitmask)| Overflow bitmask for Sister Talk episodes 31 and beyond. | `loreTheater`, `ShionTrack` | `ShionLore`, `loreMenu`, `ShionTrack` |
 
 ---
 
@@ -389,14 +390,14 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * *Mode 3 (Dynamic Spawn Extras)*: Inspects the `"extra1"` frame node via `0E82: does_car_have_part_node`; treats vehicle as enclosed if spawned with a roof, or roofless if spawned open-top.
     * *Default (Unlisted)*: Enclosed cabin (`26@ = 1`).
 * **`ShionLore.txt` (`Sh_Lore`):**
-  * Milestone progression engine scanning the 31 bits of `MEM_LORE_PROGRESS_BIT`.
+  * Milestone progression engine scanning the bits of `MEM_LORE_PROGRESS_BIT` and its overflow `MEM_LORE_PROGRESS_2`.
   * Evaluates non-linear gameplay, combat, financial, and environmental milestones across San Andreas:
     * *Combat & Career Milestones*: Shion firearms kills (Ep 1: 25 kills; Ep 5: 100 kills - "The Drug of Poverty"), Pimping Level 5+ (Ep 2), Burglary deliveries (Ep 14), Paramedic saves (Ep 20), vehicle destruction together (Ep 15), and Grim Pity death-defiance saves (Ep 16).
     * *Environmental & Atmospheric Conditions*: Mount Chiliad altitude on foot (Ep 4), dive bar lingering (Ep 12), gas station pump and tanker dwell (Ep 13), train passenger transit > 45s (Ep 22), late-night Rodeo commercial district walks (Ep 26), and alleyway walks in Idlewood/Doherty (Ep 27).
     * *Financial Thresholds*: Casino table losses >= $10k (Ep 11), high-roller wealth thresholds ($100k at LS Tower in Ep 10; $1M along The Strip in Ep 7; $500k in Ep 25), post-wealth bankruptcies ($0 balance in Ep 23 & 28), and safehouse property portfolios >= $500k (Ep 29).
   * Prompts player `[Y: Listen | N: Busy]`. If accepted, streams `loreTheater.c` passing the unlocked episode index.
 * **`loreTheater.txt` (`Sh_Thea`):**
-  * Claims Tier 4 lock, executes multi-stage cutscene dialogue scripts for Episodes 0–30, and writes `MEM_LORE_PROGRESS_BIT` upon clean completion.
+  * Claims Tier 4 lock, executes multi-stage cutscene dialogue scripts for Episodes 0–31, and writes `MEM_LORE_PROGRESS_BIT` (and `MEM_LORE_PROGRESS_2` for Ep 31+) upon clean completion.
   * Aborts gracefully with priority restoration if interrupted by cell phone calls, combat, player death, or water immersion.
 * **`loreMenu.txt` (`Sh_LMen`):**
   * Interactive archive browser (`Y_LMTIT`) displaying 4 pages of 8 episodes each.
@@ -717,7 +718,7 @@ cleo\
      * Mode 0: Reverts player to CJ.
      * Mode 1: Rebuilds player model into Jo'on (`#SPECIAL01`), clears gang hostility, and loads stashed weapon from `ShionWeapon.ini`.
      * Mode 2: Rebuilds player model into Shion (`#SPECIAL01`), equips weapon from `ShionWeapon.ini`, and suppresses companion ped.
-   * `ShionTrack.cs` reads all lifetime metrics from `ShionMemories.ini` into master heap offsets `228–328`.
+   * `ShionTrack.cs` reads all lifetime metrics from `ShionMemories.ini` into their respective master heap offsets (spanning from `228` up to `472`).
    * `ShionTrack_World.cs` reads `ShionVehicles.ini` into its 4 KB RAM cache `1@`, evaluates the vehicle model with the highest minutes, and crowns it into `MEM_FAV_CAR_MODEL` (`312`). Evaluates radio stations from `ShionRadio.ini` and writes favorite and least favorite IDs to `MEM_FAV_RADIO_STAT` (`332`) and `MEM_WORST_RADIO_STAT` (`336`).
 
 ---
@@ -761,9 +762,9 @@ The following table details the cross-script dependencies for every component in
 | **Dining Sequence** | `Shion\Food\foodDiner.txt`| Spawned by `ShionFood` | `MEM_LAST_FED_HOURS`, `MEM_TIMES_TREATED`, `MEM_TOTAL_CASH_GIVEN`, `MEM_SHION_HUNGRY` | None | Deducts cash, restores health/armour, resets hunger |
 | **Companion Scavenge** | `Shion\ShionScav.txt` | Spawned by `ShionControl` | `MEM_SHION_BUSY` | None | Locates target, plays search anim, spawns `scavLoot.c` |
 | **Scavenge Loot** | `Shion\Scav\scavLoot.txt` | Spawned by `ShionScav` | `MEM_TIMES_DUMPSTER`, `MEM_LAST_FED_HOURS`, `MEM_SHION_BUSY` | None | Resolves loot tables, heals Shion/CJ, grants weapons |
-| **Sister Talk Lore** | `Shion\ShionLore.txt` | Milestone triggers (Bits 0–30) | `MEM_PRIORITY_LOCK`, `MEM_SKYDIVE_LANDED`, `MEM_LOWRIDER_DONE` | `MEM_LORE_PROGRESS_BIT`, Performance ledger | Prompts `[Y/N]`, streams `loreTheater.c` |
-| **Lore Theater** | `Shion\Lore\loreTheater.txt`| Spawned by `ShionLore` or `loreMenu` | `MEM_LORE_PROGRESS_BIT`, `MEM_PRIORITY_LOCK` | None | Executes cutscene dialogue, sets progress bitmask |
-| **Lore Archive** | `Shion\Lore\loreMenu.txt`| "ALLORE", `ShionMenu`, or `ShionDebug` ("LORE") | `MEM_LORE_MENU_SIGNAL` | `MEM_LORE_PROGRESS_BIT` | UI panel for reviewing unlocked lore episodes |
+| **Sister Talk Lore** | `Shion\ShionLore.txt` | Milestone triggers (Bits 0–31) | `MEM_PRIORITY_LOCK`, `MEM_SKYDIVE_LANDED`, `MEM_LOWRIDER_DONE` | `MEM_LORE_PROGRESS_BIT`, `MEM_LORE_PROGRESS_2`, Performance ledger | Prompts `[Y/N]`, streams `loreTheater.c` |
+| **Lore Theater** | `Shion\Lore\loreTheater.txt`| Spawned by `ShionLore` or `loreMenu` | `MEM_LORE_PROGRESS_BIT`, `MEM_LORE_PROGRESS_2`, `MEM_PRIORITY_LOCK` | None | Executes cutscene dialogue for Episodes 0–31, sets progress bitmask |
+| **Lore Archive** | `Shion\Lore\loreMenu.txt`| "ALLORE", `ShionMenu`, or `ShionDebug` ("LORE") | `MEM_LORE_MENU_SIGNAL` | `MEM_LORE_PROGRESS_BIT`, `MEM_LORE_PROGRESS_2` | 4-page UI panel (32 episodes total) for reviewing unlocked lore episodes |
 | **Safehouse Menu** | `Shion\ShionMenu.txt` | Hold `TAB` inside safehouse | `MEM_PRIORITY_LOCK`, `MEM_COMBAT_RES_MODE`, `MEM_DURGASTRA_FLAG`, `MEM_DURGASTRA_PREV_MODE`, `MEM_LORE_MENU_SIGNAL` | `MEM_SAFEHOUSE_DOOR_ID`, `MEM_DURGASTRA_PREV_MODE` | Safehouse configuration UI with mode memory arbitration, launches `ShionMem` |
 | **Performance Review** | `Shion\ShionMem.txt` | Launched from `ShionMenu` | `MEM_SPOKEN_TOPICS_BIT`, `MEM_PRIORITY_LOCK` | Performance ledger (Kills, Fares, Wrecks, etc.) | Evaluates partnership stats across 9 interactive topics |
 | **Sandbox Sensory Monitor** | `Shion\ShionSandbox.txt` | Water hose, ocean sinking, stunts, civ punches/run-overs, flex, civilian sprees | `MEM_CAR_SMASH_SIGNAL`, `MEM_FLEX_SIGNAL`, `MEM_RAPID_SWAP_*`, `MEM_LAST_FORM_MODE`, `MEM_KILL_SPREE_*`, `MEM_LAST_KILLED_PED`, `MEM_LAST_COP_PED` | `MEM_SHION_BUSY`, `MEM_CARS_WRECKED`, `MEM_CAR_SMASH_SIGNAL`, `MEM_FLEX_SIGNAL`, `MEM_PRIORITY_LOCK` | Dispatches events to `chatSandbox.c` (`Sh_SndC`) via `0A92` |
