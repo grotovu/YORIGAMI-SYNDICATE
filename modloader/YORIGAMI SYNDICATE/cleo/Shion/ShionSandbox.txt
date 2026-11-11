@@ -21,8 +21,8 @@ const
     MEM_KILL_SPREE_COUNT = 432
     MEM_KILL_SPREE_TIMER = 436
     MEM_LAST_KILLED_PED = 440
-    MEM_LAST_GANG_KILLS = 444
-    MEM_LAST_CRIM_KILLS = 448
+    MEM_SPREE_LATCH = 444
+    MEM_SPREE_COOLOFF = 448
     MEM_LAST_COP_PED = 452
 end
 
@@ -67,18 +67,18 @@ end
 14@ = -1 // Last Tracked Cars Wrecked Count (-1 = Uninitialized)
 15@ = 0 // Firetruck Hose-Down Stream Accumulator Timer (ms)
 
-// Initialize heap tracking for killing spree baseline
+// Initialize heap tracking for killing spree baseline & cool-off
 0085: 30@ = 31@
 000A: 30@ += MEM_LAST_KILLED_PED
 0A8C: write_memory 30@ size 4 value -1 virtual_protect 0
 
 0085: 30@ = 31@
-000A: 30@ += MEM_LAST_GANG_KILLS
-0A8C: write_memory 30@ size 4 value -1 virtual_protect 0
+000A: 30@ += MEM_SPREE_LATCH
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
 0085: 30@ = 31@
-000A: 30@ += MEM_LAST_CRIM_KILLS
-0A8C: write_memory 30@ size 4 value -1 virtual_protect 0
+000A: 30@ += MEM_SPREE_COOLOFF
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
 0085: 30@ = 31@
 000A: 30@ += MEM_LAST_COP_PED
@@ -141,12 +141,12 @@ then
     0A8C: write_memory 30@ size 4 value -1 virtual_protect 0
 
     0085: 30@ = 31@
-    000A: 30@ += MEM_LAST_GANG_KILLS
-    0A8C: write_memory 30@ size 4 value -1 virtual_protect 0
+    000A: 30@ += MEM_SPREE_LATCH
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
     0085: 30@ = 31@
-    000A: 30@ += MEM_LAST_CRIM_KILLS
-    0A8C: write_memory 30@ size 4 value -1 virtual_protect 0
+    000A: 30@ += MEM_SPREE_COOLOFF
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
     0085: 30@ = 31@
     000A: 30@ += MEM_LAST_COP_PED
@@ -262,6 +262,28 @@ then
     0A8C: write_memory 30@ size 4 value 27@ virtual_protect 0
 end
 
+// Tick down Rampage Cool-Off Timer
+0085: 30@ = 31@
+000A: 30@ += MEM_SPREE_COOLOFF
+0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0019: 27@ > 0
+then
+    000E: 27@ -= 100
+    if
+        002B: 0 >= 27@
+    then
+        27@ = 0
+        // Rampage has cooled off for 45s: reset latch so Shion can react again in the future
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SPREE_LATCH
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SPREE_COOLOFF
+    0A8C: write_memory 30@ size 4 value 27@ virtual_protect 0
+end
+
 // Killing Spree Watchdog: Stat 121 with Direct Hostile & Gang Corpse Deduction
 0652: 27@ = integer_stat 121 // Total People Wasted
 0085: 30@ = 31@
@@ -368,32 +390,52 @@ else
         if
             0019: 26@ > 0
         then
+            // Any civilian kill resets the 45-second cool-off timer
             0085: 30@ = 31@
-            000A: 30@ += MEM_KILL_SPREE_COUNT
-            0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
-            005A: 25@ += 26@
-            0085: 30@ = 31@
-            000A: 30@ += MEM_KILL_SPREE_COUNT
-            0A8C: write_memory 30@ size 4 value 25@ virtual_protect 0
+            000A: 30@ += MEM_SPREE_COOLOFF
+            0A8C: write_memory 30@ size 4 value 45000 virtual_protect 0
 
-            // Refresh rolling spree window to 8000ms
+            // Check if rampage latch is active (already commented during this ongoing rampage)
             0085: 30@ = 31@
-            000A: 30@ += MEM_KILL_SPREE_TIMER
-            0A8C: write_memory 30@ size 4 value 8000 virtual_protect 0
+            000A: 30@ += MEM_SPREE_LATCH
+            0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
 
-            // 5 innocent civilian kills within 8.0s triggers killing spree
             if
-                0029: 25@ >= 5
+                0039: 20@ == 0
             then
+                // Latch is clear: accumulate toward the 5-kill threshold
                 0085: 30@ = 31@
                 000A: 30@ += MEM_KILL_SPREE_COUNT
-                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+                005A: 25@ += 26@
+                0085: 30@ = 31@
+                000A: 30@ += MEM_KILL_SPREE_COUNT
+                0A8C: write_memory 30@ size 4 value 25@ virtual_protect 0
 
+                // Refresh rolling spree window to 8000ms
                 0085: 30@ = 31@
                 000A: 30@ += MEM_KILL_SPREE_TIMER
-                0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+                0A8C: write_memory 30@ size 4 value 8000 virtual_protect 0
 
-                12@ = 13 // Queue Killing Spree Reaction
+                // 5 innocent civilian kills within 8.0s triggers killing spree
+                if
+                    0029: 25@ >= 5
+                then
+                    // Engage latch so Shion goes silent for the rest of this prolonged rampage
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_SPREE_LATCH
+                    0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_KILL_SPREE_COUNT
+                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_KILL_SPREE_TIMER
+                    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+                    12@ = 13 // Queue Killing Spree Reaction
+                end
             end
         end
     else

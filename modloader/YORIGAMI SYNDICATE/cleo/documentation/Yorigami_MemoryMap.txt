@@ -123,10 +123,10 @@ const
     MEM_RAPID_SWAP_COUNT = 420   // Consecutive form swaps counter
     MEM_RAPID_SWAP_TIMER = 424   // Rolling window timer (ms)
     MEM_LAST_FORM_MODE = 428     // Last tracked form mode (-1 = init, 0 = Ped, 1 = Hitodama)
-    MEM_KILL_SPREE_COUNT = 432   // Rapid kills counter within rolling window
-    MEM_KILL_SPREE_TIMER = 436   // Rolling window timer (ms)
-    MEM_LAST_KILLED_PED = 440    // Handle of last registered victim to prevent double counts
-    MEM_LAST_GANG_KILLS = 444   // Baseline for Stat 324 (Gang members wasted)
-    MEM_LAST_CRIM_KILLS = 448   // Baseline for Stat 325 (Criminals wasted)
-    MEM_LAST_COP_PED = 452      // Actor handle of last registered dead cop
+    MEM_KILL_SPREE_COUNT = 432   // Consecutive civilian kills counter in rolling window
+    MEM_KILL_SPREE_TIMER = 436   // Rolling window timer (8000ms)
+    MEM_LAST_KILLED_PED = 440    // Stat 121 (People you've wasted) baseline
+    MEM_SPREE_LATCH = 444        // Recycled: Rampage dialogue latch (0 = Ready, 1 = Latched/Silent)
+    MEM_SPREE_COOLOFF = 448      // Recycled: Rampage cool-off duration timer (45000ms)
+    MEM_LAST_COP_PED = 452       // Last registered dead hostile corpse handle
 end

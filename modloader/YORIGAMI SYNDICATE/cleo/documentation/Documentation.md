@@ -101,6 +101,8 @@ Every secondary script executes an identical connection routine upon initializat
 | `432` | `MEM_KILL_SPREE_COUNT` | int | Consecutive innocent civilian kills counter in current rolling window. | `ShionSandbox` | `ShionSandbox` |
 | `436` | `MEM_KILL_SPREE_TIMER` | int (ms) | Rolling window countdown timer (8000ms) for civilian killing sprees. | `ShionSandbox` | `ShionSandbox` |
 | `440` | `MEM_LAST_KILLED_PED` | int | Engine Stat 121 (`People you've wasted`) baseline tracker. | `ShionSandbox` | `ShionSandbox` |
+| `444` | `MEM_SPREE_LATCH` | int (bool) | Rampage fatigue dialogue latch (`0` = Ready, `1` = Silenced after first quip). | `ShionSandbox` | `ShionSandbox` |
+| `448` | `MEM_SPREE_COOLOFF` | int (ms) | Rampage cool-off duration timer (45000ms); resets latch upon zeroing. | `ShionSandbox` | `ShionSandbox` |
 | `452` | `MEM_LAST_COP_PED` | int | Actor handle of the most recently deducted dead hostile/cop/gang corpse. | `ShionSandbox` | `ShionSandbox` |
 
 ---
