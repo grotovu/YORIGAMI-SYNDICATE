@@ -1372,7 +1372,7 @@ then
     if
         0039: 11@ == 1
     then
-        0209: 0@ = random_int_in_ranges 0 3
+        0209: 0@ = random_int_in_ranges 0 4
 
         if
             0@ == 0
@@ -1427,7 +1427,7 @@ then
         then
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_7SH2A" text "~b~Shion: ~s~\"You're bouncing so hard I'm getting thrown all over the roof, Jo'on...\""
+            0ADF: add_text_label "Y_7SH2A" text "~b~Shion: ~s~\"You're bouncing so hard I'm getting thrown all over the cabin, Jo'on...\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_7SH2A' time 3500 flag 1
             wait 3500
@@ -1446,11 +1446,35 @@ then
             wait 3500
         end
 
+        if
+            0@ == 3
+        then
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_7SH3A" text "~b~Shion: ~s~\"The car's bouncing three feet in the air! Stop hitting the switches, Jo'on!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_7SH3A' time 3600 flag 1
+            wait 3600
+            gosub @Check_Sandbox_Alive
+            if
+                13@ == 1
+            then
+                0A93: terminate_this_custom_script
+            end
+
+            018C: play_sound 1058 at 0.0 0.0 0.0
+            03EB: clear_small_messages_only
+            0ADF: add_text_label "Y_7SH3B" text "~y~Jo'on: ~s~\"Those are hydraulics, dummy! You don't even have legs to complain about! AHAHAHA!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_7SH3B' time 3600 flag 1
+            wait 3600
+        end
+
         goto @Finish_Sandbox_Dialogue
     end
 
     // Physical Ped Form Variants
-    0209: 0@ = random_int_in_ranges 0 3
+    0209: 0@ = random_int_in_ranges 0 4
 
     if
         0@ == 0
@@ -1494,7 +1518,7 @@ then
     then
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SB7D" text "~b~Shion: ~s~\"I'm getting dizzy, Jo'on... my head keeps hitting the sun visor.\""
+        0ADF: add_text_label "Y_SB7D" text "~b~Shion: ~s~\"I'm getting dizzy, Jo'on... the world's spinning...\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_SB7D' time 3600 flag 1
         wait 3600
@@ -1511,19 +1535,6 @@ then
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_SB7E' time 3600 flag 1
         wait 3600
-        gosub @Check_Sandbox_Alive
-        if
-            13@ == 1
-        then
-            0A93: terminate_this_custom_script
-        end
-
-        018C: play_sound 1058 at 0.0 0.0 0.0
-        03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SB7F" text "~b~Shion: ~s~\"All I feel is motion sickness and whiplash...\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_SB7F' time 3200 flag 1
-        wait 3200
     end
 
     if
@@ -1548,6 +1559,17 @@ then
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_SB7H' time 3200 flag 1
         wait 3200
+    end
+
+    if
+        0@ == 3
+    then
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_SB7J" text "~b~Shion: ~s~\"The car's bouncing three feet in the air! Are the springs broken, Jo'on?!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SB7J' time 3600 flag 1
+        wait 3600
         gosub @Check_Sandbox_Alive
         if
             13@ == 1
@@ -1557,10 +1579,10 @@ then
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SB7I" text "~b~Shion: ~s~\"I can't even reach the window crank, Jo'on... everything's spinning...\""
+        0ADF: add_text_label "Y_SB7K" text "~y~Jo'on: ~s~\"Those are hydraulics, dummy! I'm hittin' the switches, lean back in style!\""
         09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_SB7I' time 3500 flag 1
-        wait 3500
+        00BC: show_text_highpriority GXT 'Y_SB7K' time 3600 flag 1
+        wait 3600
     end
 
     goto @Finish_Sandbox_Dialogue

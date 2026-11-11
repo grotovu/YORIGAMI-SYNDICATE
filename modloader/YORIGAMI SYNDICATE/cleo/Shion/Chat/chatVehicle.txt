@@ -1508,29 +1508,51 @@ if or
     25@ == 576 // Tornado
     25@ == 412 // Voodoo
 then
-    0209: 29@ = random_int_in_ranges 0 2
+    0209: 29@ = random_int_in_ranges 0 3
     if
         29@ == 0
     then
+        // Variant 0: The Boulevard Slump (Driving Posture)
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_LOW0A" text "~b~Shion: ~s~\"The car's bouncing three feet in the air! Are the springs broken, Jo'on?!\""
+        0ADF: add_text_label "Y_LOW0A" text "~y~Jo'on: ~s~\"Lean that seat all the way back, Shion! You gotta slump down if ya wanna look rich!\""
         09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_LOW0A' time 3500 flag 1
-        wait 3500
+        00BC: show_text_highpriority GXT 'Y_LOW0A' time 3600 flag 1
+        wait 3600
         gosub @Check_Alive_Or_Exit
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_LOW0B" text "~y~Jo'on: ~s~\"Those are hydraulics, dummy! I'm hittin' the switches, lean back in style!\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_LOW0B' time 3500 flag 1
-        wait 3500
-        goto @Finalize_Ambient_Chat
-    else
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_LO0BH" text "~b~Shion: ~s~\"You're slumping so low you can't even see over the steering wheel, Jo'on... watch out.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_LO0BH' time 3700 flag 1
+        else
+            0ADF: add_text_label "Y_LOW0B" text "~b~Shion: ~s~\"If I lean back any farther, Jo'on, my head is gonna be on the floor mats...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_LOW0B' time 3600 flag 1
+        end
+        wait 3600
+        gosub @Check_Alive_Or_Exit
+
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_LOW1A" text "~y~Jo'on: ~s~\"Custom chrome wire wheels and crushed velour interior! First-class luxury!\""
+        0ADF: add_text_label "Y_LOW0C" text "~y~Jo'on: ~s~\"I don't gotta look, the street looks at ME! Keep your chin up and pose! AHAHAHA!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_LOW0C' time 3600 flag 1
+        wait 3600
+        goto @Finalize_Ambient_Chat
+    end
+
+    if
+        29@ == 1
+    then
+        // Variant 1: The Velvet Couch (Comfort vs Cardboard)
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_LOW1A" text "~y~Jo'on: ~s~\"Sink into that velvet, Shion! This bench seat is softer than a luxury hotel sofa!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_LOW1A' time 3600 flag 1
         wait 3600
@@ -1541,14 +1563,67 @@ then
         if
             11@ == 1
         then
-            0ADF: add_text_label "Y_LO1BH" text "~b~Shion: ~s~\"The bottom's scraping sparks on the road, Jo'on... hope that isn't near the gas tank.\""
+            0ADF: add_text_label "Y_LO1BH" text "~b~Shion: ~s~\"The velvet looks nice, but I'm just floating... you're the only one sitting on it, Jo'on.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_LO1BH' time 3700 flag 1
         else
-            0ADF: add_text_label "Y_LOW1B" text "~b~Shion: ~s~\"The car's scraping the pavement so hard my teeth are vibrating out of my skull, Jo'on...\""
+            0ADF: add_text_label "Y_LOW1B" text "~b~Shion: ~s~\"It's definitely softer than my cardboard box... I might just fall asleep right here, sis.\""
             09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_LOW1B' time 3600 flag 1
+            00BC: show_text_highpriority GXT 'Y_LOW1B' time 3700 flag 1
         end
+        wait 3600
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_LO1CH" text "~y~Jo'on: ~s~\"Then keep floatin'! Don't ya dare leave frost on the fabric! It costs more than your life!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_LO1CH' time 3700 flag 1
+        else
+            0ADF: add_text_label "Y_LOW1C" text "~y~Jo'on: ~s~\"Don't ya dare drool on the upholstery! That fabric costs more than your life!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_LOW1C' time 3600 flag 1
+        end
+        wait 3600
+        goto @Finalize_Ambient_Chat
+    end
+
+    if
+        29@ == 2
+    then
+        // Variant 2: Ground Clearance & Sparks (Exterior Scrape)
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_LOW2A" text "~y~Jo'on: ~s~\"Ridin' inches off the asphalt, shinin' for the whole block! We own this whole road!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_LOW2A' time 3600 flag 1
+        wait 3600
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_LO2BH" text "~b~Shion: ~s~\"The bumper is throwing sparks against the asphalt, Jo'on... hope that isn't near the fuel line.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_LO2BH' time 3800 flag 1
+        else
+            0ADF: add_text_label "Y_LOW2B" text "~b~Shion: ~s~\"It's scraping the road on every dip, Jo'on... you're grinding the muffler into dust.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_LOW2B' time 3700 flag 1
+        end
+        wait 3600
+        gosub @Check_Alive_Or_Exit
+
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        03EB: clear_small_messages_only
+        0ADF: add_text_label "Y_LOW2C" text "~y~Jo'on: ~s~\"A little road rash gives it street credibility! Keep cruisin'! AHAHAHA!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_LOW2C' time 3600 flag 1
         wait 3600
         goto @Finalize_Ambient_Chat
     end
