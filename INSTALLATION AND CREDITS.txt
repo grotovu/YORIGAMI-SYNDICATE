@@ -1,6 +1,24 @@
-YORIGAMI SYNDICATE
-Author: EagleRaviOrange
+==============================================================================
+YORIGAMI SYNDICATE (GTA San Andreas Mod)
+By EagleRaviOrange (grotobuvic on Reddit)
 "Even though it's just the two of them..."
+==============================================================================
+
+GitHub: https://github.com/grotovu/YORIGAMI-SYNDICATE
+
+==============================================
+[REQUIREMENTS & PREREQUISITES]
+==============================================
+Ensure your GTA San Andreas installation is downgraded and mod-ready with:
+1. CLEO 4 (or CLEO 5)
+2. CLEO+ (Absolute requirement for scripting opcodes)
+3. Modloader
+4. EffectLoader.asi (Must be in your root GTA SA folder for custom particles)
+5. A Limit Adjuster (fastman92limitAdjuster or Open Limit Adjuster)
+6. Animation Fix: New Car Anim + LCS/VCS Sprinting
+   - Required so anime skin meshes sit inside vehicles properly without 
+     clipping or stretching, plus adds Stories-style sprinting animations.
+7. Essentials Pack / SilentPatch (Recommended standard setup)
 
 ==============================================
 [INSTALLATION]
@@ -9,69 +27,82 @@ Author: EagleRaviOrange
 ▶ IF YOU ARE UPDATING FROM AN EARLIER VERSION:
 1. Drag the "modloader" and "models" folders into your root GTA San Andreas directory.
 2. Choose "Replace files in the destination" when prompted.
-3. Done! Your active saves in "savedata" will remain 100% intact.
+3. Check the "_Optional Tweaks" folder for extra scripts or compatibility patches.
+4. Done! Your active saves in "savedata" will remain 100% intact.
 
 ----------------------------------------------
 
 ▶ IF YOU ARE INSTALLING FOR THE FIRST TIME:
-1. Open the folder: "_FIRST TIME INSTALL (New Players)"
-2. Drag the "modloader" folder inside it into your root GTA San Andreas directory.
-3. Next, drag the main "modloader" and "models" folders into your root GTA San Andreas directory.
-4. Done!
+1. Put "EffectLoader.asi" directly into your main GTA San Andreas root folder 
+   if you do not have it already.
+2. Drag the "modloader" folder into your root GTA San Andreas directory.
+3. IMPORTANT: Drag the "models" folder (containing models/effects/joon_gold 
+   and models/effects/shion_misfortune) directly into your root GTA San Andreas 
+   directory. 
+   *Note: EffectLoader does NOT read from Modloader, so custom particle textures 
+   must go straight into your base game's models/effects folder.*
+4. RECOMMENDED (SkinArmor):
+   Open the "_Optional Tweaks" folder and drop the "SkinArmor" folder into 
+   your "modloader". This prevents player models from warping into stretched 
+   monstrosities during missions and activities that force clothing changes 
+   (e.g., Burglary, 555 We Tip, Key to Her Heart).
+5. Done!
 
 ----------------------------------------------
 
 Your final game folder structure should look like this:
 
 GTA San Andreas/
-    ├── EffectLoader.asi  <-- (Must be in root or modloader)
+    ├── EffectLoader.asi  <-- (Must be in root game directory)
     ├── modloader/
-    │   └── YORIGAMI SYNDICATE/
-    │       ├── cleo/
-    │       │   ├── savedata/
-    │       │   ├── Shion/
-    │       │   └── Yorigami/
-    │       └── models/
+    │   ├── YORIGAMI SYNDICATE/
+    │   │   ├── cleo/
+    │   │   │   ├── savedata/
+    │   │   │   ├── Shion/
+    │   │   │   └── Yorigami/
+    │   │   └── models/
+    │   └── SkinArmor/    <-- (Recommended optional tweak)
     └── models/
         └── effects/
             ├── joon_gold/
             └── shion_misfortune/
 
 ==============================================
-[REQUIREMENTS & PREREQUISITES]
-==============================================
-Ensure your GTA San Andreas installation is mod-ready with the following:
-- CLEO (Developed with CLEO 4, fully tested/working on CLEO 5)
-- CLEO+ (Required for advanced scripting opcodes)
-- Modloader
-- EffectLoader.asi (Required for custom particle effects)
-- A Limit Adjuster (Recommended: fastman92limitAdjuster or Open Limit Adjuster)
-- Essentials Pack / SilentPatch (Recommended standard setup from MixMods)
-
-*Note: If you are new to modding GTA San Andreas, follow a basic modding 
-setup guide online first to make sure your game is downgraded and ready.*
-
-There is also an "optional" folder included in the package. Check it out 
-for extra companion balance and immersion scripts!
-
-==============================================
 [CREDITS & ATTRIBUTIONS]
 ==============================================
-- Misaki Yutsuki: Shion MMD model port to GTA SA
-- tudhsbf123: Jo'on MMD model port to GTA SA
+- ZUN / Team Shanghai Alice & Twilight Frontier:
+    - Touhou Project and the Yorigami Sisters 
+      (Touhou 15.5: Antinomy of Common Flowers, Touhou 17.5: Sunken Fossil World)
 - schwarz: 
     - Yorigami Jo'on original MMD Model (https://3d.nicovideo.jp/works/td32247)
     - Yorigami Shion original MMD Model (https://3d.nicovideo.jp/works/td31923)
-- WarButler: 
-    - GTA SA CombatFX (Base shootlight FX modified into joon_gold 
-      and shion_misfortune particles via texture and keyvalue edits)
-- ZUN / Team Shanghai Alice: Touhou Project and the Yorigami Sisters
+- tudhsbf123: Jo'on MMD model port to GTA SA
+- Misaki Yutsuki: Shion MMD model port to GTA SA
+- WarButler, DK22Pac, Junior_Djjr, Ezekiel, Function-X:
+    - CombatFX (Base shootlight FX modified into custom joon_gold and 
+      shion_misfortune particles via texture and keyvalue edits)
+- Lighthoneygirl:
+    - Smoking Mod (Reference for playing secondary animations and cigarette mechanics)
+- Artem.1.9.9.6:
+    - Busy Pedestrians: Peds Events Project (Reference for skydiving/parachute scripts)
 
-DISCLAIMER:
-A lot of the coding and text formulation process was heavily AI-assisted.
+==============================================
+[DEVELOPMENT & TRANSPARENCY]
+==============================================
+A lot of the coding, CLEO opcode debugging, and string/data table formatting 
+throughout the development process was heavily AI-assisted.
+
+For dialogue and narrative: character lore, historical context, and intended tone 
+were strictly provided from source material. AI was utilized as an assistive tool 
+to generate initial rough drafts to help bridge linguistic gaps for English slang 
+as an ESL developer. Every block of dialogue was subsequently reviewed, rewritten, 
+and curated by hand to eliminate out-of-character moments.
+
+All systems design, mechanical balance, IPC architecture, and creative direction 
+were conceived, engineered, and finalized by EagleRaviOrange.
 
 ==============================================
 [FEEDBACK & BUG REPORTS]
 ==============================================
-If you encounter any bugs, crashes, or glaring out-of-character moments, 
-please feel free to report them on the GitHub repository issues page!
+If you encounter bugs, crashes, or glaring out-of-character moments, 
+please report them on the GitHub repository issues page or on Reddit (u/grotobuvic)!
