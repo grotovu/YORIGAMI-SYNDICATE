@@ -18,22 +18,35 @@ I initially built this to fix the problem of money becoming completely useless i
 
 ## ⚙️ Installation
 
-**Prerequisites:**
-You’ll need a standard downgraded, mod-ready GTA SA setup:
+**Prerequisites:**  
+You will need a standard downgraded, mod-ready GTA SA setup:
 1. **CLEO 4** (or CLEO 5)
-2. **CLEO+** (Absolute requirement for the script opcodes)
-3. **Modloader** 
-4. **EffectLoader.asi** (Put this in your root GTA SA folder so the custom particles work)
-5. A limit adjuster (I personally use fastman92limitAdjuster, Open Limit Adjuster works too)
+2. **CLEO+** (Absolute requirement for scripting opcodes)
+3. **Modloader**
+4. **EffectLoader.asi** (Must be in your root GTA SA folder so custom particles work)
+5. **A limit adjuster** (fastman92limitAdjuster or Open Limit Adjuster)
 6. **[Animation Fix: New Car Anim + LCS/VCS Sprinting](https://libertycity.net/files/gta-san-andreas/222557-animation-fix-new-car-anim-lcs-vcs-sprinting.html)** (Required so anime skin meshes sit inside vehicles properly without clipping/distorting, and includes Stories-style sprinting animations)
+7. **Essentials Pack / SilentPatch** (Recommended standard setup)
 
-**How to Install:**
-1. Grab the latest release zip.
-2. Put `EffectLoader.asi` in your main GTA SA directory if you don't already have it.
-3. Drop the `YORIGAMI SYNDICATE` folder into your `modloader` folder (this loads the scripts, character models, etc.).
-4. **Important:** Merge the `models/effects` folder from the zip into your game's base `models` directory. *EffectLoader does not read from Modloader*, so the custom particle effects for Jo'on's gold and Shion's misfortune must be placed directly into your base game's models/effects folder.
-5. **Recommended (`SkinArmor`):** In `_Optional Tweaks`, drop the `SkinArmor` folder straight into your `modloader`. This prevents the player model from warping into body-stretched monstrosities during missions and activities that force clothing changes on CJ (such as Burglary, 555 We Tip, Key to Her Heart, etc.).
-6. That's pretty much it. Check the `_Optional Tweaks` folder if you want extra compatibility stuff like taxi boarding, high-stakes bets, or quick fist swaps.
+---
+
+### 📥 First-Time Install (New Players)
+1. **Initial Setup:** Open the `_FIRST TIME INSTALL (New Players)` folder and drag the `modloader` folder inside it directly into your root GTA San Andreas directory.  
+   *(This configures required default `.ini` settings, base structure, and initial data folders).*
+2. **Main Mod Content:** Drag the main `modloader` folder from the release zip into your root GTA San Andreas directory.
+3. **Important (Particle Effects):** Drag the `models` folder (containing `models/effects/joon_gold` and `models/effects/shion_misfortune`) straight into your base GTA San Andreas directory.  
+   *Note: EffectLoader does not read from Modloader, so custom particle textures must be placed directly into your base game's `models/effects` folder.*
+4. **EffectLoader:** Ensure `EffectLoader.asi` is in your main GTA SA root directory if you do not have it already.
+5. **Recommended (`SkinArmor`):** In `_Optional Tweaks`, drop the `SkinArmor` folder straight into your `modloader`. This prevents anime player models from warping into body-stretched monstrosities during missions and cutscenes that force clothing changes on CJ (such as Burglary, 555 We Tip, Key to Her Heart, etc.).
+
+---
+
+### 🔄 Updating from an Earlier Version
+1. Drag the `modloader` (and `models` if effects were updated) folder into your root GTA San Andreas directory.
+2. Choose **"Replace files in the destination"** when prompted.
+3. Check the `_UPDATED INIs` folder: copy any new keys or updated configuration settings into your existing `.ini` files located in `modloader/YORIGAMI SYNDICATE/cleo/` so you do not miss out on new features.
+4. Check the `_Optional Tweaks` folder for new scripts or optional patches.
+5. **Your Saves are Safe:** Active saves, perk points, and memory ledgers inside `cleo/savedata/` remain 100% intact.
 
 ---
 
