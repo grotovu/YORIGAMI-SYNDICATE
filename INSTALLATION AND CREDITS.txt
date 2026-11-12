@@ -29,7 +29,8 @@ Ensure your GTA San Andreas installation is downgraded and mod-ready with:
    your root GTA San Andreas directory.
 2. Choose "Replace files in the destination" when prompted.
 3. Check the "_UPDATED INIs" folder: copy the new keys or updated configuration 
-   files into your existing .ini files so you don't miss out on new settings.
+   files into your existing .ini files inside "modloader/YORIGAMI SYNDICATE/cleo/" 
+   so you don't miss out on new settings.
 4. Check the "_Optional Tweaks" folder for extra scripts or compatibility patches.
 5. Done! Your active saves, perk points, and memory ledgers in "cleo/savedata/" 
    will remain 100% intact.
