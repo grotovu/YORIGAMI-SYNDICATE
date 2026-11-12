@@ -9,12 +9,23 @@
 // YORIGAMI MASTER HEAP DICTIONARY (SCOPED TO DEATH TRACKER)
 // =========================================================================
 const
+    MEM_PLAYER_FORM = 12
     MEM_SHION_HANDLE = 116
+    MEM_HITODAMA_X = 144
+    MEM_HITODAMA_Y = 148
+    MEM_HITODAMA_Z = 152
+    MEM_TIMES_WASTED = 300
+    MEM_TIMES_BUSTED = 304
     MEM_CAR_SMASH_SIGNAL = 372
     MEM_SHION_DEATH_FLAG = 380
     MEM_SHION_KILLER_IS_JOON = 384
     MEM_SHION_DEATH_WEAPON = 388
     MEM_SHION_DEATH_IN_CAR = 392
+    MEM_SHION_RECRUITED = 400
+    MEM_JOON_DEATH_STATE = 456
+    MEM_JOON_BUSTED_STARS = 460
+    MEM_JOON_DEATH_WEAPON = 464
+    MEM_SHION_DIED_FIRST = 468
 end
 
 :Connect_To_Brain
@@ -34,8 +45,14 @@ then
 end
 // 31@ NOW HOLDS THE MASTER POINTER.
 
+7@ = -1  // Last Weapon That Damaged Jo'on (-1 = Generic)
+8@ = 0   // Last Damage Timestamp on Jo'on (ms)
+9@ = 0   // Jo'on Death/Bust Handled Latch (0 = Ready, 1 = Processed)
+
+11@ = 1  // Jo'on Last Known Wanted Stars (preserved for bust penalty)
+0652: 16@ = integer_stat 133 // Baseline Times Busted Stat (Stat 133)
+
 10@ = 0  // Tracked Shion Handle
-11@ = 0  // Last Damager Ped / Struct Pointer
 12@ = -1 // Last Weapon Type ID (-1 = Generic)
 13@ = 0  // Last Damager Was Jo'on Flag (0 = No, 1 = Yes)
 14@ = 0  // Last Damage Timestamp (ms)
@@ -55,6 +72,201 @@ end
 
 // Continuously refresh live player actor handle to prevent stale references
 01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
+// Read Live Shion Ped Handle
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 10@ = read_memory 30@ size 4 virtual_protect 0
+
+// Check if player is currently in Jo'on form (1)
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    0039: 29@ == 1
+then
+    // Continuously preserve active pursuit stars before the police can clear them
+    01C0: 21@ = player $PLAYER_CHAR wanted_level
+    if
+        0019: 21@ > 0
+    then
+        0085: 11@ = 21@
+    end
+
+    // Monitor Jo'on for Busted or Wasted
+    if
+        0039: 9@ == 0
+    then
+        // Check Busted via 0741 opcode, Stat 133 increment, arresting cop pointer (0xB7CDA4), or PED_ARRESTED (62)
+        0652: 21@ = integer_stat 133
+        0A8D: 22@ = read_memory 0xB7CDA4 size 4 virtual_protect 0
+        0EAB: get_char_pedstate $PLAYER_ACTOR store_to 20@
+        if or
+            0741: actor $PLAYER_ACTOR busted
+            001D: 21@ > 16@ // Stat 133 (Times Busted) officially incremented by exe
+            0019: 22@ > 0   // Cop actively cuffing / arresting player
+            0039: 20@ == 62 // PED_ARRESTED state
+        then
+            9@ = 1
+            0085: 16@ = 21@ // Synchronize stat baseline
+
+            // Fallback: ensure stars are at least 1
+            if
+                0039: 11@ == 0
+            then
+                11@ = 1
+            end
+
+            // Determine if Shion was already dead
+            28@ = 0
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_DEATH_FLAG
+            0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+            if
+                0039: 20@ == 1
+            then
+                28@ = 1
+            else
+                if
+                    0019: 10@ > 0
+                then
+                    if
+                        056D: actor 10@ defined
+                    then
+                        if
+                            0118: actor 10@ dead
+                        then
+                            28@ = 1
+                        end
+                    else
+                        28@ = 1
+                    end
+                end
+            end
+
+            // Write Busted telemetry to Master Heap
+            0085: 30@ = 31@
+            000A: 30@ += MEM_JOON_DEATH_STATE
+            0A8C: write_memory 30@ size 4 value 2 virtual_protect 0
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_JOON_BUSTED_STARS
+            0A8C: write_memory 30@ size 4 value 11@ virtual_protect 0
+
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_DIED_FIRST
+            0A8C: write_memory 30@ size 4 value 28@ virtual_protect 0
+
+            if
+                0039: 28@ == 0
+            then
+                0085: 30@ = 31@
+                000A: 30@ += MEM_TIMES_BUSTED
+                0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+                000A: 20@ += 1
+                0085: 30@ = 31@
+                000A: 30@ += MEM_TIMES_BUSTED
+                0A8C: write_memory 30@ size 4 value 20@ virtual_protect 0
+
+                gosub @Shion_Warp_Away_On_Casualty
+            end
+        else
+            // Check Wasted
+            0226: 21@ = actor $PLAYER_ACTOR health
+            if or
+                0118: actor $PLAYER_ACTOR dead
+                002B: 0 >= 21@
+            then
+                9@ = 1
+
+                // Fallback / Drowning check
+                if
+                    04AD: actor $PLAYER_ACTOR in_water
+                then
+                    7@ = 53 // Drowned
+                else
+                    0085: 20@ = TIMERA
+                    0062: 20@ -= 8@
+                    if
+                        0029: 20@ >= 3000
+                    then
+                        7@ = -1 // Untracked / fall / generic
+                    end
+                end
+
+                // Determine if Shion was already dead
+                28@ = 0
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_DEATH_FLAG
+                0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+                if
+                    0039: 20@ == 1
+                then
+                    28@ = 1
+                else
+                    if
+                        0019: 10@ > 0
+                    then
+                        if
+                            056D: actor 10@ defined
+                        then
+                            if
+                                0118: actor 10@ dead
+                            then
+                                28@ = 1
+                            end
+                        else
+                            28@ = 1
+                        end
+                    end
+                end
+
+                // Write Wasted telemetry to Master Heap
+                0085: 30@ = 31@
+                000A: 30@ += MEM_JOON_DEATH_STATE
+                0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_JOON_DEATH_WEAPON
+                0A8C: write_memory 30@ size 4 value 7@ virtual_protect 0
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_DIED_FIRST
+                0A8C: write_memory 30@ size 4 value 28@ virtual_protect 0
+
+                if
+                    0039: 28@ == 0
+                then
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_TIMES_WASTED
+                    0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+                    000A: 20@ += 1
+                    0085: 30@ = 31@
+                    000A: 30@ += MEM_TIMES_WASTED
+                    0A8C: write_memory 30@ size 4 value 20@ virtual_protect 0
+
+                    gosub @Shion_Warp_Away_On_Casualty
+                end
+            end
+        end
+    else
+        // Reset latch once Jo'on has safely respawned outside hospital/precinct and has player control back
+        if and
+            8118: not actor $PLAYER_ACTOR dead
+            03EE: player $PLAYER_CHAR controllable
+        then
+            0226: 21@ = actor $PLAYER_ACTOR health
+            if
+                0019: 21@ > 0
+            then
+                9@ = 0
+                0652: 16@ = integer_stat 133 // Keep stat baseline in sync (Stat 133)
+                11@ = 1 // Reset cached stars
+            end
+        end
+    end
+end
 
 // Read Live Shion Ped Handle
 0085: 30@ = 31@
@@ -332,11 +544,21 @@ end
 // DAMAGE CALLBACK
 // =========================================================================
 :OnCharDamageTracker
-if and
-    0019: 10@ > 0
+if
     056D: actor 19@ defined
 then
+    // Check if the victim was Jo'on
     if
+        07D6: 19@ == $PLAYER_ACTOR
+    then
+        0EB5: get_char_damage_last_frame 19@ damager 2@ type 3@ part 4@ intensity 5@
+        0085: 7@ = 3@
+        0085: 8@ = TIMERA
+    end
+
+    // Check if the victim was Shion
+    if and
+        0019: 10@ > 0
         003B: 19@ == 10@
     then
         // 2@ = Damager Struct, 3@ = Weapon Type, 4@ = Body Part, 5@ = Intensity
@@ -505,3 +727,114 @@ then
     end
 end
 0ED0: return_script_event
+
+// =========================================================================
+// SUBROUTINE: SHION WARP AWAY ON JO'ON CASUALTY (BUSTED OR WASTED)
+// Leaves Jo'on behind in a cold hitodama poof to watch from a safe distance
+// =========================================================================
+:Shion_Warp_Away_On_Casualty
+// Failsafe: If 10@ is stale or already zeroed by ShionFollow, scan for model 299 near player
+if and
+    8039: not 10@ == -1
+then
+    if or
+        10@ <= 0
+        856D: not actor 10@ defined
+    then
+        00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
+        29@ = 0
+        :Find_Shion_Ped_Loop
+        if
+            0AE1: 25@ = random_char_near_point 20@ 21@ 22@ in_radius 60.0 find_next 29@ pass_deads 0
+        then
+            29@ = 1
+            if and
+                056D: actor 25@ defined
+                87D6: not 25@ == $PLAYER_ACTOR
+            then
+                0665: get_actor 25@ model_to 26@
+                if
+                    0039: 26@ == 299
+                then
+                    0085: 10@ = 25@
+                end
+            end
+            if
+                0039: 10@ == 0
+            then
+                goto @Find_Shion_Ped_Loop
+            end
+        end
+    end
+end
+
+if
+    0019: 10@ > 0
+then
+    if
+        056D: actor 10@ defined
+    then
+        if
+            8118: not actor 10@ dead
+        then
+            00A0: store_actor 10@ position_to 24@ 25@ 26@
+            0A92: create_custom_thread "Shion\FX_Warp.c" 0 24@ 25@ 26@
+            018C: play_sound 1058 at 0.0 0.0 0.0
+
+            07AF: 20@ = player $PLAYER_CHAR group
+            06C9: remove_actor 10@ from_group
+            0792: disembark_instantly_actor 10@
+            009B: destroy_actor 10@
+            10@ = 0
+        end
+    end
+else
+    if
+        0039: 10@ == -1
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_HITODAMA_X
+        0A8D: 24@ = read_memory 30@ size 4 virtual_protect 0
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_HITODAMA_Y
+        0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+
+        0085: 30@ = 31@
+        000A: 30@ += MEM_HITODAMA_Z
+        0A8D: 26@ = read_memory 30@ size 4 virtual_protect 0
+
+        if or
+            8043: not 24@ == 0.0
+            8043: not 25@ == 0.0
+        then
+            0A92: create_custom_thread "Shion\FX_Warp.c" 0 24@ 25@ 26@
+            018C: play_sound 1058 at 0.0 0.0 0.0
+        end
+
+        0ABA: terminate_all_custom_scripts_with_this_name "Sh_HitoF"
+        10@ = 0
+    end
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_RECRUITED
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Flw"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sync"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Ctrl"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Hito"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Chut"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Burg"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_RedM"
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_FF"
+
+17@ = 0
+18@ = 0
+27@ = 0
+return

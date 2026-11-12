@@ -46,15 +46,7 @@ then
 end
 
 // Preempt Tier 1 (Smoking) & Tier 2 (Ambient World Chat)
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
+{$INCLUDE clear_ambient.txt}
 03EB: clear_small_messages_only
 
 0085: 30@ = 31@

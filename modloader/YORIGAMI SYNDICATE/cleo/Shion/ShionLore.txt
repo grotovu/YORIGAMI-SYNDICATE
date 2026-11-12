@@ -25,10 +25,10 @@ const
     MEM_SHION_KILLS = 236
     MEM_PIMPING_LEVEL = 240
     MEM_LORE_PROGRESS_BIT = 244
+    MEM_LORE_PROGRESS_2 = 472
     MEM_TIMES_TREATED = 248
     MEM_TOTAL_CASH_GIVEN = 252
     MEM_CASINO_LOSSES = 256
-    MEM_GAS_PUMPS_VISITED = 260
     MEM_BURGLARIES = 264
     MEM_CARS_WRECKED = 268
     MEM_GRIMPITY_SAVES = 272
@@ -36,6 +36,7 @@ const
     MEM_MOD_CASH_SPENT = 284
     MEM_SKYDIVE_LANDED = 288
     MEM_LOWRIDER_DONE = 292
+    MEM_JOON_KILLS_W_SHION = 296
     MEM_BRIBES_PAID = 324
     MEM_TIME_BROKE_MIN = 328
     MEM_SAFEHOUSE_DOOR_ID = 340
@@ -210,8 +211,15 @@ then
     0085: 30@ = 31@
     000A: 30@ += MEM_LORE_PROGRESS_BIT
     0A8D: 3@ = read_memory 30@ size 4 virtual_protect 0
-    if
+    
+    0085: 30@ = 31@
+    000A: 30@ += MEM_LORE_PROGRESS_2
+    0A8D: 4@ = read_memory 30@ size 4 virtual_protect 0
+
+    // If either mask isn't completely maxed out, check milestones
+    if or
         3@ < 2147483647
+        4@ == 0
     then
         gosub @Evaluate_Nonlinear_Milestones
     end
@@ -1241,6 +1249,32 @@ then
     end
 end
 
+// -------------------------------------------------------------------------
+// BIT 0 (Mask 2): Episode 31 - Jo'on Kills with Shion >= 50
+// -------------------------------------------------------------------------
+0085: 30@ = 31@
+000A: 30@ += MEM_LORE_PROGRESS_2
+0A8D: 4@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    88B7: not test 4@ bit 0
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_KILLS_W_SHION
+    0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        28@ >= 50
+    then
+        if
+            80DF: not actor $PLAYER_ACTOR driving
+        then
+            8@ = 31
+            gosub @Prompt_Lore_Conversation
+            return
+        end
+    end
+end
+
 return
 
 // =========================================================================
@@ -1251,17 +1285,8 @@ return
 000A: 30@ += MEM_PRIORITY_LOCK
 0A8C: write_memory 30@ size 4 value 4 virtual_protect 0
 
-// Terminate ambient chat scripts
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Star"
-0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
+// Terminate ambient and reactive chat scripts
+{$INCLUDE Chat\clear_all_chat.txt}
 03EB: clear_small_messages_only
 
 018C: play_sound 1058 at 0.0 0.0 0.0
@@ -1302,16 +1327,7 @@ then
         goto @Wait_Lore_Y_Rel
     end
 
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Star"
-    0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
+    {$INCLUDE Chat\clear_all_chat.txt}
     03EB: clear_small_messages_only
 
     018C: play_sound 1058 at 0.0 0.0 0.0

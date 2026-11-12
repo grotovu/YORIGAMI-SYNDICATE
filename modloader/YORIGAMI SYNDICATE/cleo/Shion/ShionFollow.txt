@@ -15,10 +15,9 @@ const
     MEM_PLAYER_FORM = 12          // Active character form (0 = CJ, 1 = Jo'on, 2 = Shion)
     MEM_PRIORITY_LOCK = 20        // Banter / reaction dialogue lock
     MEM_SHION_HANDLE = 116        // Active Shion ped handle
-    MEM_TIMES_WASTED = 300        // Telemetry: Times wasted with Shion
-    MEM_TIMES_BUSTED = 304        // Telemetry: Times arrested with Shion
     MEM_SAFEHOUSE_DOOR_ID = 340   // Current safehouse EnEx doorway index
     MEM_SHION_STAY_PUT = 396      // Stay Put state (0 = Follow, 1 = Stay Put via [H])
+    MEM_SHION_RECRUITED = 400     // 0 = Ambient Loiterer, 1 = Recruited in party
 end
 
 // 0@ = Shion Actor Handle passed from SpawnShion.cs
@@ -90,16 +89,31 @@ end
 if
     0117: player $PLAYER_CHAR wasted
 then
-    0085: 30@ = 31@
-    000A: 30@ += MEM_TIMES_WASTED
-    0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
-    000A: 29@ += 1
-    0085: 30@ = 31@
-    000A: 30@ += MEM_TIMES_WASTED
-    0A8C: write_memory 30@ size 4 value 29@ virtual_protect 0
+    if and
+        0019: 10@ > 0
+        056D: actor 10@ defined
+    then
+        if
+            8118: not actor 10@ dead
+        then
+            00A0: store_actor 10@ position_to 20@ 21@ 22@
+            0A92: create_custom_thread "Shion\FX_Warp.c" 0 20@ 21@ 22@
+            018C: play_sound 1058 at 0.0 0.0 0.0
+
+            07AF: 12@ = player $PLAYER_CHAR group
+            06C9: remove_actor 10@ from_group
+            0792: disembark_instantly_actor 10@
+            009B: destroy_actor 10@
+            10@ = 0
+        end
+    end
 
     0085: 30@ = 31@
     000A: 30@ += MEM_SHION_STAY_PUT
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_RECRUITED
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
     0085: 30@ = 31@
@@ -111,16 +125,31 @@ end
 if
     0741: actor $PLAYER_ACTOR busted
 then
-    0085: 30@ = 31@
-    000A: 30@ += MEM_TIMES_BUSTED
-    0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
-    000A: 29@ += 1
-    0085: 30@ = 31@
-    000A: 30@ += MEM_TIMES_BUSTED
-    0A8C: write_memory 30@ size 4 value 29@ virtual_protect 0
+    if and
+        0019: 10@ > 0
+        056D: actor 10@ defined
+    then
+        if
+            8118: not actor 10@ dead
+        then
+            00A0: store_actor 10@ position_to 20@ 21@ 22@
+            0A92: create_custom_thread "Shion\FX_Warp.c" 0 20@ 21@ 22@
+            018C: play_sound 1058 at 0.0 0.0 0.0
+
+            07AF: 12@ = player $PLAYER_CHAR group
+            06C9: remove_actor 10@ from_group
+            0792: disembark_instantly_actor 10@
+            009B: destroy_actor 10@
+            10@ = 0
+        end
+    end
 
     0085: 30@ = 31@
     000A: 30@ += MEM_SHION_STAY_PUT
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_RECRUITED
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
     0085: 30@ = 31@

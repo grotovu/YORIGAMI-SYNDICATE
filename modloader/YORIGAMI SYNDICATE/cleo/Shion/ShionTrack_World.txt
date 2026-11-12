@@ -378,16 +378,7 @@ then
                         0A8C: write_memory 30@ size 4 value 1 virtual_protect 0 // Shield from ShionFollow.c watchdog
 
                         // Silence any running chatter and clear screen subtitles for the dance
-                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Zone"
-                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Mny"
-                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Idle"
-                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Snip"
-                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Int"
-                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Veh"
-                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Rad"
-                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Sub"
-                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Wthr"
-                        0ABA: terminate_all_custom_scripts_with_this_name "Sh_Star"
+                        {$INCLUDE Chat\clear_all_chat.txt}
                         03EB: clear_small_messages_only
 
                         // Origin Warp FX (Dissolve from front passenger seat)
