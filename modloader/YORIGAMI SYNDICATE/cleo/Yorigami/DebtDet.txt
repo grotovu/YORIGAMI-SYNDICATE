@@ -288,13 +288,35 @@ then
             then
                 // Determine if target should retaliate with bare fists upon standing up
                 8@ = 0
+                15@ = 0 // Non-player target guard so friendly NPCs fighting enemies are not turned hostile
 
                 // Check if ped was actively targeting player before blast
-                0E44: get_char_kill_target_char 29@ store_to 24@
+                24@ = -1
                 if
-                    003B: 24@ == $PLAYER_ACTOR
+                    0E44: get_char_kill_target_char 29@ store_to 24@
                 then
-                    8@ = 1
+                    if
+                        24@ > 0
+                    then
+                        if
+                            003B: 24@ == $PLAYER_ACTOR
+                        then
+                            8@ = 1
+                        else
+                            15@ = 1
+                        end
+                    end
+                end
+
+                // Check if player previously damaged this ped
+                if
+                    8@ == 0
+                then
+                    if
+                        051A: actor 29@ damaged_by_actor $PLAYER_ACTOR
+                    then
+                        8@ = 1
+                    end
                 end
 
                 // Check if target is an enemy gang member during a live Gang War
@@ -310,6 +332,69 @@ then
                             8039: not 24@ == 8 // Exclude Grove Street
                         then
                             8@ = 1
+                        end
+                    end
+                end
+
+                // Catch mission-scripted hostiles (cover-fire 0634, AS_pack sequences, or armed Mission1 goons)
+                if and
+                    8@ == 0
+                    15@ == 0
+                then
+                    if
+                        0E1D: is_on_mission
+                    then
+                        089F: get_actor 29@ pedtype_to 24@
+                        if
+                            8039: not 24@ == 8 // Exclude Grove Street
+                        then
+                            if or
+                                0E42: is_char_doing_task_id 29@ 1034 // TASK_SEEK_COVER_UNTIL_TARGET_DEAD (0634)
+                                0E42: is_char_doing_task_id 29@ 244  // TASK_COMPLEX_SEQUENCE (AS_pack)
+                                0E42: is_char_doing_task_id 29@ 1000 // TASK_COMPLEX_KILL_PED_ON_FOOT
+                                0E42: is_char_doing_task_id 29@ 1001 // TASK_COMPLEX_KILL_PED_ON_FOOT_MELEE
+                                0E42: is_char_doing_task_id 29@ 1002 // TASK_COMPLEX_KILL_PED_ON_FOOT_ARMED
+                                0E42: is_char_doing_task_id 29@ 1010 // TASK_COMPLEX_SIDE_STEP_AND_SHOOT
+                                0E42: is_char_doing_task_id 29@ 1023 // TASK_COMPLEX_KILL_PED_ON_FOOT_TIMED
+                                0E42: is_char_doing_task_id 29@ 1024 // TASK_COMPLEX_KILL_PED_ON_FOOT_STAND_STILL
+                            then
+                                8@ = 1
+                            end
+
+                            if
+                                8@ == 0
+                            then
+                                if or
+                                    0E42: is_char_doing_task_id 29@ 1014 // TASK_KILL_ALL_THREATS
+                                    0E42: is_char_doing_task_id 29@ 1015 // TASK_KILL_PED_GROUP_ON_FOOT
+                                    0E42: is_char_doing_task_id 29@ 1029 // TASK_COMPLEX_KILL_PED_ON_FOOT_KINDA_STAND_STILL
+                                    0E46: is_char_using_gun 29@
+                                    0E47: is_char_fighting 29@
+                                then
+                                    8@ = 1
+                                end
+                            end
+
+                            // Armed or mid-flinch PedType.Mission1 enemies
+                            if and
+                                8@ == 0
+                                24@ == 24
+                            then
+                                if
+                                    0E0A: is_char_script_controlled 29@
+                                then
+                                    0470: 19@ = actor 29@ current_weapon
+                                    if or
+                                        19@ > 1
+                                        0E42: is_char_doing_task_id 29@ 230  // TASK_COMPLEX_HIT_RESPONSE
+                                        0E42: is_char_doing_task_id 29@ 231  // TASK_COMPLEX_HIT_BY_GUN_RESPONSE
+                                        0E42: is_char_doing_task_id 29@ 251  // TASK_SIMPLE_BE_DAMAGED
+                                        0E42: is_char_doing_task_id 29@ 1006 // TASK_COMPLEX_REACT_TO_ATTACK
+                                    then
+                                        8@ = 1
+                                    end
+                                end
+                            end
                         end
                     end
                 end
@@ -334,6 +419,11 @@ then
 
                 // Sever ambient gang group hierarchy so group AI cannot override tasks
                 06C9: remove_actor 29@ from_group
+
+                // Clear mission stay-put and crouch locks so unarmed targets can actually pursue
+                0638: AS_actor 29@ stay_put 0
+                085B: AS_actor 29@ set_kinda_stay_in_same_place 0
+                04EB: AS_actor 29@ crouch 0
 
                 // Kill all weapons, tasks, and forward momentum
                 048F: actor 29@ remove_weapons
