@@ -792,13 +792,52 @@ then
     goto @Cleanup_Smoking_State
 end
 
-// Spawn mouth exhale smoke puff at 4.2 seconds
+// Spawn staggered mouth exhale smoke cloud (4.15s / 4.25s / 4.35s)
 if and
     3@ == 0
-    TIMERA >= 4200
+    TIMERA >= 4150
 then
     3@ = 1
-    0669: 2@ = attach_particle "EXHALE" to_actor $PLAYER_ACTOR with_offset 0.0 0.12 0.0 type 0
+    0669: 2@ = attach_particle "EXHALE" to_actor $PLAYER_ACTOR with_offset -0.02 0.12 0.0 type 1
+    0883: attach_particle 2@ to_actor $PLAYER_ACTOR mode 5
+    064C: make_particle 2@ visible
+    064F: remove_references_to_particle 2@
+    2@ = 0
+    0669: 2@ = attach_particle "EXHALE" to_actor $PLAYER_ACTOR with_offset 0.02 0.12 0.01 type 1
+    0883: attach_particle 2@ to_actor $PLAYER_ACTOR mode 5
+    064C: make_particle 2@ visible
+    064F: remove_references_to_particle 2@
+    2@ = 0
+end
+
+if and
+    3@ == 1
+    TIMERA >= 4250
+then
+    3@ = 2
+    0669: 2@ = attach_particle "EXHALE" to_actor $PLAYER_ACTOR with_offset -0.025 0.13 0.01 type 1
+    0883: attach_particle 2@ to_actor $PLAYER_ACTOR mode 5
+    064C: make_particle 2@ visible
+    064F: remove_references_to_particle 2@
+    2@ = 0
+    0669: 2@ = attach_particle "EXHALE" to_actor $PLAYER_ACTOR with_offset 0.025 0.13 -0.01 type 1
+    0883: attach_particle 2@ to_actor $PLAYER_ACTOR mode 5
+    064C: make_particle 2@ visible
+    064F: remove_references_to_particle 2@
+    2@ = 0
+end
+
+if and
+    3@ == 2
+    TIMERA >= 4350
+then
+    3@ = 3
+    0669: 2@ = attach_particle "EXHALE" to_actor $PLAYER_ACTOR with_offset -0.015 0.14 0.02 type 1
+    0883: attach_particle 2@ to_actor $PLAYER_ACTOR mode 5
+    064C: make_particle 2@ visible
+    064F: remove_references_to_particle 2@
+    2@ = 0
+    0669: 2@ = attach_particle "EXHALE" to_actor $PLAYER_ACTOR with_offset 0.015 0.12 0.0 type 1
     0883: attach_particle 2@ to_actor $PLAYER_ACTOR mode 5
     064C: make_particle 2@ visible
 end
