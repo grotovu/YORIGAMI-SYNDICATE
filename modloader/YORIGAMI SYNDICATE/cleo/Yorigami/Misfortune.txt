@@ -269,6 +269,18 @@ then
     return
 end
 
+// Exclude Special Actors during missions (Models 290..299)
+if
+    0E1D: is_on_mission
+then
+    if and
+        28@ >= 290
+        299 >= 28@
+    then
+        return
+    end
+end
+
 // Entourage group protection
 07AF: 27@ = player $PLAYER_CHAR group
 if
@@ -396,6 +408,76 @@ then
     end
 end
 
+// Check 5: Mission-scripted hostiles actively targeting player/Shion or in combat
+if
+    16@ == 0
+then
+    if
+        0E1D: is_on_mission
+    then
+        if and
+            8039: not 28@ == 6 // Cops rely strictly on wanted level
+            8039: not 28@ == 8 // Exclude Grove Street
+        then
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_HANDLE
+            0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
+            19@ = -1
+            if
+                0E44: get_char_kill_target_char 29@ store_to 19@
+            then
+                if
+                    19@ > 0
+                then
+                    if
+                        003B: 19@ == $PLAYER_ACTOR
+                    then
+                        16@ = 1
+                    else
+                        if and
+                            20@ > 0
+                            003B: 19@ == 20@
+                        then
+                            16@ = 1
+                        end
+                    end
+                end
+            end
+
+            if and
+                16@ == 0
+                19@ <= 0 // Not explicitly targeting a third party
+            then
+                if or
+                    0E42: is_char_doing_task_id 29@ 1034 // TASK_SEEK_COVER_UNTIL_TARGET_DEAD (0634)
+                    0E42: is_char_doing_task_id 29@ 1000 // TASK_COMPLEX_KILL_PED_ON_FOOT
+                    0E42: is_char_doing_task_id 29@ 1001 // TASK_COMPLEX_KILL_PED_ON_FOOT_MELEE
+                    0E42: is_char_doing_task_id 29@ 1002 // TASK_COMPLEX_KILL_PED_ON_FOOT_ARMED
+                    0E42: is_char_doing_task_id 29@ 1010 // TASK_COMPLEX_SIDE_STEP_AND_SHOOT
+                    0E42: is_char_doing_task_id 29@ 1014 // TASK_KILL_ALL_THREATS
+                    0E42: is_char_doing_task_id 29@ 1015 // TASK_KILL_PED_GROUP_ON_FOOT
+                    0E42: is_char_doing_task_id 29@ 1023 // TASK_COMPLEX_KILL_PED_ON_FOOT_TIMED
+                then
+                    16@ = 1
+                end
+
+                if
+                    16@ == 0
+                then
+                    if or
+                        0E42: is_char_doing_task_id 29@ 1024 // TASK_COMPLEX_KILL_PED_ON_FOOT_STAND_STILL
+                        0E42: is_char_doing_task_id 29@ 1029 // TASK_COMPLEX_KILL_PED_ON_FOOT_KINDA_STAND_STILL
+                        0E46: is_char_using_gun 29@
+                    then
+                        16@ = 1
+                    end
+                end
+            end
+        end
+    end
+end
+
 // =========================================================================
 // EXECUTE STUMBLE / GUN JAM OUTCOME
 // =========================================================================
@@ -431,22 +513,62 @@ then
                 0A92: create_custom_thread "Yorigami\FX_HexFlame.c" 29@ 2600
 
                 // Determine if target should retaliate after recovering (Cops exempt)
+                // 18@: 0 = None, 1 = Attack Player, 2 = Attack Shion
                 18@ = 0
+                3@ = 0 // Non-player/non-Shion target guard
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_HANDLE
+                0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
                 089F: get_actor 29@ pedtype_to 19@
                 if
                     8039: not 19@ == 6
                 then
-                    0E44: get_char_kill_target_char 29@ store_to 19@
+                    25@ = -1
                     if
-                        003B: 19@ == $PLAYER_ACTOR
+                        0E44: get_char_kill_target_char 29@ store_to 25@
                     then
-                        18@ = 1
+                        if
+                            25@ > 0
+                        then
+                            if
+                                003B: 25@ == $PLAYER_ACTOR
+                            then
+                                18@ = 1
+                            else
+                                if and
+                                    20@ > 0
+                                    003B: 25@ == 20@
+                                then
+                                    18@ = 2
+                                else
+                                    3@ = 1
+                                end
+                            end
+                        end
+                    end
+
+                    if
+                        18@ == 0
+                    then
+                        if
+                            051A: actor 29@ damaged_by_actor $PLAYER_ACTOR
+                        then
+                            18@ = 1
+                        else
+                            if and
+                                20@ > 0
+                                056D: actor 20@ defined
+                                051A: actor 29@ damaged_by_actor 20@
+                            then
+                                18@ = 2
+                            end
+                        end
                     end
 
                     if
                         087A: gang_war_in_progress
                     then
-                        089F: get_actor 29@ pedtype_to 19@
                         if and
                             19@ >= 7
                             16 >= 19@
@@ -458,9 +580,74 @@ then
                             end
                         end
                     end
+
+                    // Catch mission-scripted hostiles (cover-fire 0634, AS_pack sequences, or armed Mission1 goons)
+                    if and
+                        18@ == 0
+                        3@ == 0
+                    then
+                        if
+                            0E1D: is_on_mission
+                        then
+                            if
+                                8039: not 19@ == 8 // Exclude Grove Street
+                            then
+                                if or
+                                    0E42: is_char_doing_task_id 29@ 1034 // TASK_SEEK_COVER_UNTIL_TARGET_DEAD (0634)
+                                    0E42: is_char_doing_task_id 29@ 244  // TASK_COMPLEX_SEQUENCE (AS_pack)
+                                    0E42: is_char_doing_task_id 29@ 1000 // TASK_COMPLEX_KILL_PED_ON_FOOT
+                                    0E42: is_char_doing_task_id 29@ 1001 // TASK_COMPLEX_KILL_PED_ON_FOOT_MELEE
+                                    0E42: is_char_doing_task_id 29@ 1002 // TASK_COMPLEX_KILL_PED_ON_FOOT_ARMED
+                                    0E42: is_char_doing_task_id 29@ 1010 // TASK_COMPLEX_SIDE_STEP_AND_SHOOT
+                                    0E42: is_char_doing_task_id 29@ 1023 // TASK_COMPLEX_KILL_PED_ON_FOOT_TIMED
+                                    0E42: is_char_doing_task_id 29@ 1024 // TASK_COMPLEX_KILL_PED_ON_FOOT_STAND_STILL
+                                then
+                                    18@ = 1
+                                end
+
+                                if
+                                    18@ == 0
+                                then
+                                    if or
+                                        0E42: is_char_doing_task_id 29@ 1014 // TASK_KILL_ALL_THREATS
+                                        0E42: is_char_doing_task_id 29@ 1015 // TASK_KILL_PED_GROUP_ON_FOOT
+                                        0E42: is_char_doing_task_id 29@ 1029 // TASK_COMPLEX_KILL_PED_ON_FOOT_KINDA_STAND_STILL
+                                        0E46: is_char_using_gun 29@
+                                        0E47: is_char_fighting 29@
+                                    then
+                                        18@ = 1
+                                    end
+                                end
+
+                                // Armed or mid-flinch PedType.Mission1 enemies
+                                if and
+                                    18@ == 0
+                                    19@ == 24
+                                then
+                                    if
+                                        0E0A: is_char_script_controlled 29@
+                                    then
+                                        0470: 25@ = actor 29@ current_weapon
+                                        if or
+                                            25@ > 1
+                                            0E42: is_char_doing_task_id 29@ 230  // TASK_COMPLEX_HIT_RESPONSE
+                                            0E42: is_char_doing_task_id 29@ 231  // TASK_COMPLEX_HIT_BY_GUN_RESPONSE
+                                            0E42: is_char_doing_task_id 29@ 251  // TASK_SIMPLE_BE_DAMAGED
+                                            0E42: is_char_doing_task_id 29@ 1006 // TASK_COMPLEX_REACT_TO_ATTACK
+                                        then
+                                            18@ = 1
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
                 end
 
-                // Clear tasks before interrupting
+                // Clear mission stay-put and crouch locks before interrupting
+                0638: AS_actor 29@ stay_put 0
+                085B: AS_actor 29@ set_kinda_stay_in_same_place 0
+                04EB: AS_actor 29@ crouch 0
                 0792: clear_char_tasks_immediately 29@
 
                 if
@@ -473,6 +660,15 @@ then
                         18@ == 1
                     then
                         05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
+                    else
+                        if and
+                            18@ == 2
+                            20@ > 0
+                            056D: actor 20@ defined
+                            8118: not actor 20@ dead
+                        then
+                            05E2: AS_actor -1 kill_actor 20@
+                        end
                     end
                     0616: define_AS_pack_end 17@
                     0618: assign_actor 29@ to_AS_pack 17@
@@ -501,6 +697,15 @@ then
                             18@ == 1
                         then
                             05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
+                        else
+                            if and
+                                18@ == 2
+                                20@ > 0
+                                056D: actor 20@ defined
+                                8118: not actor 20@ dead
+                            then
+                                05E2: AS_actor -1 kill_actor 20@
+                            end
                         end
                         0616: define_AS_pack_end 17@
                         0618: assign_actor 29@ to_AS_pack 17@
@@ -517,6 +722,15 @@ then
                             18@ == 1
                         then
                             05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
+                        else
+                            if and
+                                18@ == 2
+                                20@ > 0
+                                056D: actor 20@ defined
+                                8118: not actor 20@ dead
+                            then
+                                05E2: AS_actor -1 kill_actor 20@
+                            end
                         end
                         0616: define_AS_pack_end 17@
                         0618: assign_actor 29@ to_AS_pack 17@
@@ -533,6 +747,15 @@ then
                             18@ == 1
                         then
                             05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
+                        else
+                            if and
+                                18@ == 2
+                                20@ > 0
+                                056D: actor 20@ defined
+                                8118: not actor 20@ dead
+                            then
+                                05E2: AS_actor -1 kill_actor 20@
+                            end
                         end
                         0616: define_AS_pack_end 17@
                         0618: assign_actor 29@ to_AS_pack 17@
@@ -549,6 +772,15 @@ then
                             18@ == 1
                         then
                             05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
+                        else
+                            if and
+                                18@ == 2
+                                20@ > 0
+                                056D: actor 20@ defined
+                                8118: not actor 20@ dead
+                            then
+                                05E2: AS_actor -1 kill_actor 20@
+                            end
                         end
                         0616: define_AS_pack_end 17@
                         0618: assign_actor 29@ to_AS_pack 17@
