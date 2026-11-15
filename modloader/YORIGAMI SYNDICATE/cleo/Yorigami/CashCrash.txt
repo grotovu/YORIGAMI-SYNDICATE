@@ -966,35 +966,7 @@ end
 0D10: set_actor $PLAYER_ACTOR alpha 255
 0050: gosub @CashCrash_LoadImpactSettings
 
-// Compute scaled blast radius (24@) and scaled damage (21@)
-0093: 25@ = integer 2@ to_float
-006B: 25@ *= 4@
-0087: 24@ = 3@
-005B: 24@ += 25@
-if
-    0021: 5@ > 0.0
-then
-    if
-        0025: 24@ > 5@
-    then
-        0087: 24@ = 5@
-    end
-end
-
-0085: 21@ = 2@
-006A: 21@ *= 7@
-005A: 21@ += 6@
-if
-    0019: 8@ > 0
-then
-    if
-        001D: 21@ > 8@
-    then
-        0085: 21@ = 8@
-    end
-end
-
-// Scaled radial shockwave against nearby peds
+// Scaled radial shockwave against nearby peds (Damage: 21@, Radius: 24@)
 22@ = 0
 if
     0AE1: 28@ = random_char_near_point 14@ 15@ 16@ in_radius 24@ find_next 0 pass_deads 1
@@ -1028,9 +1000,8 @@ then
     end
 end
 
-// Scaled radial shockwave against nearby vehicles
+// Scaled radial shockwave against nearby vehicles (Damage: 27@, Radius: 24@)
 22@ = 0
-006A: 21@ *= 9@ // VehicleDamage = Damage * VehicleDamageMultiplier
 if
     0AE2: 28@ = random_vehicle_near_point 14@ 15@ 16@ in_radius 24@ find_next 0 pass_wrecked 1
 then
@@ -1040,7 +1011,7 @@ then
         8119: not car 28@ wrecked
     then
         0227: 23@ = car 28@ health
-        0062: 23@ -= 21@
+        0062: 23@ -= 27@
         if
             8019: not 23@ > 0
         then
@@ -1185,46 +1156,76 @@ end
 
 
 // =========================================================================
-// SUBROUTINE: LOAD IMPACT SCALING SETTINGS ON TOUCHDOWN
+// SUBROUTINE: LOAD IMPACT SCALING (Zero register sharing with 3@..9@)
+// Output: 24@ = Final Radius (float), 21@ = Ped Damage (int), 27@ = Car Damage (int)
 // =========================================================================
 :CashCrash_LoadImpactSettings
-0AF2: 3@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "BaseRadius"
+// 1. Compute Blast Radius (24@)
+0AF2: 24@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "BaseRadius"
 if
-    0033: 0.0 >= 3@
+    0033: 0.0 >= 24@
 then
-    0007: 3@ = 8.0
+    0007: 24@ = 2.0
 end
 
-0AF2: 4@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "RadiusPerPoint"
+0AF2: 25@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "RadiusPerPoint"
 if
-    0023: 0.0 > 4@
+    0023: 0.0 > 25@
 then
-    0007: 4@ = 0.55
+    0007: 25@ = 0.2
 end
 
-0AF2: 5@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "MaxRadiusCap"
+0093: 26@ = integer 2@ to_float
+006B: 26@ *= 25@
+005B: 24@ += 26@
 
-0AF0: 6@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "BaseDamage"
+0AF2: 25@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "MaxRadiusCap"
 if
-    002B: 0 >= 6@
+    0021: 25@ > 0.0
 then
-    6@ = 50
+    if
+        0025: 24@ > 25@
+    then
+        0087: 24@ = 25@
+    end
 end
 
-0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "DamagePerPoint"
+// 2. Compute Ped Damage (21@)
+0AF0: 21@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "BaseDamage"
 if
-    001B: 0 > 7@
+    002B: 0 >= 21@
 then
-    7@ = 5
+    21@ = 50
 end
 
-0AF0: 8@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "MaxDamageCap"
-
-0AF0: 9@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "VehicleDamageMultiplier"
+0AF0: 26@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "DamagePerPoint"
 if
-    002B: 0 >= 9@
+    001B: 0 > 26@
 then
-    9@ = 4
+    26@ = 5
 end
+
+006A: 26@ *= 2@
+005A: 21@ += 26@
+
+0AF0: 25@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "MaxDamageCap"
+if
+    0019: 25@ > 0
+then
+    if
+        001D: 21@ > 25@
+    then
+        0085: 21@ = 25@
+    end
+end
+
+// 3. Compute Vehicle Damage (27@ = PedDamage * Multiplier)
+0AF0: 27@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "VehicleDamageMultiplier"
+if
+    002B: 0 >= 27@
+then
+    27@ = 10
+end
+006A: 27@ *= 21@
 
 0051: return
