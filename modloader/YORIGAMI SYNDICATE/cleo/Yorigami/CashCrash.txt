@@ -184,47 +184,65 @@ else
                     9@ = 0
                 end
             else
-                // Shion High Jump Boost (Launches smooth 0E32 upward arc + spawns FX_ShionJumpHito)
+                // Shion High Jump Boost (Fists or Brass Knuckles only; firearms remain visible when invisible)
                 if and
                     0039: 3@ == 0
                     8A0C: not player $PLAYER_CHAR on_jetpack
-                then
-                    083D: get_actor $PLAYER_ACTOR velocity_in_direction_XYZ 18@ 19@ 20@
-                    if
-                        0021: 20@ > 0.05
-                    then
-                        7@ = 0
-                        if or
-                            0E42: is_char_doing_task_id $PLAYER_ACTOR 210
-                            0E42: is_char_doing_task_id $PLAYER_ACTOR 211
-                            0E42: is_char_doing_task_id $PLAYER_ACTOR 241
-                            0E42: is_char_doing_task_id $PLAYER_ACTOR 240
-                            0611: actor $PLAYER_ACTOR performing_animation "JUMP_launch"
-                            0611: actor $PLAYER_ACTOR performing_animation "JUMP_launch_R"
-                            0611: actor $PLAYER_ACTOR performing_animation "JUMP_glide"
-                        then
-                            7@ = 1
-                        end
-
-                        if
-                            0039: 7@ == 1
-                        then
-                            3@ = 1
-                            0AF2: 17@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "ShionJumpVelocity"
-                            if
-                                0033: 0.0 >= 17@
-                            then
-                                0007: 17@ = 16.0
-                            end
-
-                            0687: clear_actor $PLAYER_ACTOR task
-                            018C: play_sound 1052 at 0.0 0.0 0.0
-                            0ABA: terminate_all_custom_scripts_with_this_name 'Y_SHJFX'
-                            0A92: create_custom_thread "Yorigami\FX_ShionJumpHito.c"
-                            TIMERA = 0
-                            9@ = 1
-                            0002: jump @Shion_Ascent_Loop
-                        end
+					then
+						0470: 28@ = actor $PLAYER_ACTOR current_weapon
+						27@ = 0
+						if
+							0039: 28@ == 0
+						then
+							27@ = 1
+						end
+						if
+							0039: 28@ == 1
+						then
+							27@ = 1
+						end
+	
+						if
+							0039: 27@ == 1
+						then
+							083D: get_actor $PLAYER_ACTOR velocity_in_direction_XYZ 18@ 19@ 20@
+							if
+								0021: 20@ > 0.05
+							then
+							7@ = 0
+							if or
+								0E42: is_char_doing_task_id $PLAYER_ACTOR 210
+								0E42: is_char_doing_task_id $PLAYER_ACTOR 211
+								0E42: is_char_doing_task_id $PLAYER_ACTOR 241
+								0E42: is_char_doing_task_id $PLAYER_ACTOR 240
+								0611: actor $PLAYER_ACTOR performing_animation "JUMP_launch"
+								0611: actor $PLAYER_ACTOR performing_animation "JUMP_launch_R"
+								0611: actor $PLAYER_ACTOR performing_animation "JUMP_glide"
+							then
+								7@ = 1
+							end
+	
+							if
+								0039: 7@ == 1
+							then
+								3@ = 1
+								0AF2: 17@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "ShionJumpVelocity"
+								if
+									0033: 0.0 >= 17@
+								then
+									0007: 17@ = 16.0
+								end
+	
+								0687: clear_actor $PLAYER_ACTOR task
+								0992: set_player $PLAYER_CHAR weapons_scrollable 0
+								018C: play_sound 1052 at 0.0 0.0 0.0
+								0ABA: terminate_all_custom_scripts_with_this_name 'Y_SHJFX'
+								0A92: create_custom_thread "Yorigami\FX_ShionJumpHito.c"
+								TIMERA = 0
+								9@ = 1
+								0002: jump @Shion_Ascent_Loop
+							end    
+						end
                     end
                 end
             end
@@ -520,6 +538,7 @@ then
         0256: player $PLAYER_CHAR defined
     then
         0D10: set_actor $PLAYER_ACTOR alpha 255
+        0992: set_player $PLAYER_CHAR weapons_scrollable 1
     end
     0002: jump @CashCrash_Loop
 end
@@ -536,6 +555,7 @@ then
     0ABA: terminate_all_custom_scripts_with_this_name 'Y_SHJFX'
     9@ = 0
     0D10: set_actor $PLAYER_ACTOR alpha 255
+    0992: set_player $PLAYER_CHAR weapons_scrollable 1
     0002: jump @CashCrash_Loop
 end
 
@@ -591,6 +611,7 @@ if
     0033: 0.0 >= 17@
 then
     // Reached jump apex: FX_ShionJumpHito keeps running until landing or Cash Crash
+    0992: set_player $PLAYER_CHAR weapons_scrollable 1
     083C: set_actor $PLAYER_ACTOR velocity_in_direction_XYZ 18@ 19@ -2.5
     0002: jump @CashCrash_Loop
 end
@@ -627,6 +648,7 @@ then
     0E32: set_char_coordinates_simple $PLAYER_ACTOR coord 14@ 15@ 16@
     083C: set_actor $PLAYER_ACTOR velocity_in_direction_XYZ 0.0 0.0 1.0
 else
+    0992: set_player $PLAYER_CHAR weapons_scrollable 1
     083C: set_actor $PLAYER_ACTOR velocity_in_direction_XYZ 18@ 19@ -2.5
     0002: jump @CashCrash_Loop
 end
@@ -1084,6 +1106,7 @@ if
     0256: player $PLAYER_CHAR defined
 then
     0D10: set_actor $PLAYER_ACTOR alpha 255
+    0992: set_player $PLAYER_CHAR weapons_scrollable 1
 
     // Only unmute CJ; keep Jo'on & Shion muted so they don't speak in CJ's voice
     if
