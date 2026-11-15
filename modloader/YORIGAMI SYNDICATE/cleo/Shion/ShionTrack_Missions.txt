@@ -269,14 +269,16 @@ then
     0085: 14@ = 28@
 
     23@ = 0
-    if
-        10@ == -1
+    if and
+        0038: $ONMISSION == 1
+        00DF: actor $PLAYER_ACTOR driving
+        00DD: actor $PLAYER_ACTOR driving_car_with_model #AMBULAN
     then
-        23@ = 1
-    else
         if
-            0449: actor $PLAYER_ACTOR in_a_car
+            10@ == -1
         then
+            23@ = 1
+        else
             03C0: 27@ = actor $PLAYER_ACTOR car
             if
                 00DB: actor 10@ in_car 27@
@@ -313,14 +315,15 @@ then
     0085: 16@ = 28@
 
     23@ = 0
-    if
-        10@ == -1
+    if and
+        0038: $ONMISSION == 1
+        00DF: actor $PLAYER_ACTOR driving
     then
-        23@ = 1
-    else
         if
-            0449: actor $PLAYER_ACTOR in_a_car
+            10@ == -1
         then
+            23@ = 1
+        else
             03C0: 27@ = actor $PLAYER_ACTOR car
             if
                 00DB: actor 10@ in_car 27@
@@ -358,14 +361,18 @@ then
 
     23@ = 0
     if
-        10@ == -1
+        0038: $ONMISSION == 1
     then
-        23@ = 1
-    else
         if
-            0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 50.0
+            10@ == -1
         then
             23@ = 1
+        else
+            if
+                0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 10@ radius 50.0
+            then
+                23@ = 1
+            end
         end
     end
 

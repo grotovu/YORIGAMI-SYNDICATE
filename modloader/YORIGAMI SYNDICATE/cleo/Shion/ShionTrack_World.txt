@@ -956,13 +956,19 @@ return
 // SAVE CONFIRMATION CALLBACK: FLUSH VEHICLE ODOMETER TABLE TO INI
 // =========================================================================
 :OnSaveVehicles
-0E2C: get_current_save_slot 0@
 if
-    0@ < 0
+    9@ >= 0
 then
-    0@ = 0
+    0085: 3@ = 9@
+else
+    0E2C: get_current_save_slot 0@
+    if
+        0@ < 0
+    then
+        0@ = 0
+    end
+    0085: 3@ = 0@
 end
-0085: 3@ = 0@
 
 0AD3: string_format 4@v "Slot_%d" 3@
 0AF1: write_int 2@ to_ini_file "cleo\savedata\ShionVehicles.ini" section 4@v key "Count"

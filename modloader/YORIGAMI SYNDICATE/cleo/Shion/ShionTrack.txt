@@ -68,6 +68,7 @@ end
 1@ = -999 // Last Tracked Save Slot (-999 forces initial load)
 2@ = 0    // Minute Millisecond Accumulator
 3@ = 0    // Broke Minute Millisecond Accumulator
+6@ = 0    // Loading Screen / Player Despawn Latch
 
 // Launch Specialized Sub-Tracker Threads
 0A92: create_custom_thread "Shion\ShionTrack_World.c"
@@ -83,7 +84,15 @@ wait 250
 if
     8256: not is_player_playing $PLAYER_CHAR
 then
+    6@ = 1
     jump @ShionTrack_Loop
+end
+
+if
+    6@ == 1
+then
+    6@ = 0
+    1@ = -999
 end
 
 // -------------------------------------------------------------------------
