@@ -36,6 +36,8 @@ end
 // 31@ NOW HOLDS THE MASTER POINTER.
 
 9@ = 0  // Burglary Fenced State Latch (0 = Ready, 1 = Latched)
+11@ = -999 // Last Tracked Save Slot (-999 forces initial sync)
+12@ = 0    // Loading Screen / Player Despawn Latch
 14@ = 0 // Tracked Paramedic Patients Saved (Stat 151)
 15@ = 0 // Tracked Pimping Mission Level (0xA48A24)
 16@ = 0 // Tracked Fires Extinguished (Stat 153)
@@ -54,6 +56,34 @@ wait 250
 if
     8256: not player $PLAYER_CHAR defined
 then
+    12@ = 1
+    goto @ShionTrackMissions_Loop
+end
+
+if
+    12@ == 1
+then
+    12@ = 0
+    11@ = -999
+end
+
+0E2C: 13@ = get_current_save_slot
+if
+    13@ < 0
+then
+    13@ = 0
+end
+
+if
+    803B: not 13@ == 11@
+then
+    0085: 11@ = 13@
+    9@ = 0
+    15@ = 0
+    0652: 14@ = integer_stat 151
+    0652: 16@ = integer_stat 153
+    0652: 17@ = integer_stat 152
+    0652: 18@ = integer_stat 150
     goto @ShionTrackMissions_Loop
 end
 
@@ -366,14 +396,16 @@ then
     0085: 18@ = 28@
 
     23@ = 0
-    if
-        10@ == -1
+    if and
+        0038: $ONMISSION == 1
+        00DF: actor $PLAYER_ACTOR driving
+        0602: actor $PLAYER_ACTOR driving_taxi
     then
-        23@ = 1
-    else
         if
-            0449: actor $PLAYER_ACTOR in_a_car
+            10@ == -1
         then
+            23@ = 1
+        else
             03C0: 27@ = actor $PLAYER_ACTOR car
             if
                 00DB: actor 10@ in_car 27@
