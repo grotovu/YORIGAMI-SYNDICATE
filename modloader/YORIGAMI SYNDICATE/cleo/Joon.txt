@@ -25,6 +25,7 @@ const
     MEM_SHION_PRES_HP = 160       // Preserved HP
     MEM_SHION_PRES_ARMOUR = 164   // Preserved Armour
     MEM_JOON_CIGAR_OBJ = 220      // Formerly 740
+    MEM_TAG_SWITCH_REQ = 476      // Aerial Tag-Swap Request (0 = Idle, 1 = Shion -> Jo'on)
 end
 
 :Connect_To_Brain
@@ -57,6 +58,10 @@ end
 // Share Jo'on State across scripts
 0085: 30@ = 31@
 000A: 30@ += MEM_PLAYER_FORM
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_TAG_SWITCH_REQ
 0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
 gosub @Load_Joon_Settings
@@ -289,6 +294,34 @@ then
     0793: save_player_clothes
     gosub @Apply_Joon_Skin_With_Banner
     gosub @Restore_Target_Weapon_Slot
+end
+
+// =========================================================================
+// AERIAL TAG-SWAP LISTENER (Catches Cash Crash Shion -> Jo'on Requests)
+// =========================================================================
+0085: 30@ = 31@
+000A: 30@ += MEM_TAG_SWITCH_REQ
+0A8D: 2@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 2@ == 1
+then
+    if and
+        0039: 0@ == 2
+        8449: not actor $PLAYER_ACTOR in_a_car
+        816B: not fading
+        8E25: not is_on_cutscene
+    then
+        0050: gosub @Record_Current_Weapon_Slot
+        0050: gosub @Stash_Shion_Live_Weapon
+        0A92: create_custom_thread "Shion\FX_SwitchBurst.c" 1
+        0050: gosub @Silent_Rebuild_Joon_Model
+        0050: gosub @Restore_Joon_Stashed_Weapon
+        0050: gosub @Restore_Target_Weapon_Slot
+    end
+
+    0085: 30@ = 31@
+    000A: 30@ += MEM_TAG_SWITCH_REQ
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 end
 
 // =========================================================================

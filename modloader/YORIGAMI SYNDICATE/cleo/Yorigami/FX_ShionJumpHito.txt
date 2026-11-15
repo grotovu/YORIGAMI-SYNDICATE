@@ -1,0 +1,528 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE memory}
+
+0000: NOP
+03A4: script_name 'Y_SHJFX'
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (PRUNED)
+// =========================================================================
+const
+    MEM_PLAYER_FORM = 12
+end
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+
+// --- ORBITAL ANGLES & HARMONIC CLOCKS (Strictly Floats: 0@..26@) ---
+0007: 0@ = 0.0    // Cluster 1 Orbital Angle
+0007: 1@ = 120.0  // Cluster 2 Orbital Angle
+0007: 12@ = 240.0 // Cluster 3 Orbital Angle
+0007: 16@ = 0.0   // Master Harmonic Wave Clock
+0007: 9@ = 0.0    // Fade Scale (0.0 -> 1.0 over 350ms)
+
+TIMERA = 0
+
+:ShionJumpHito_Loop
+0001: wait 0 ms
+
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    0A93: terminate_this_custom_script
+end
+
+// Exit silently if form changed away from Shion (don't stomp swap alpha)
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 27@ = read_memory 30@ size 4 virtual_protect 0
+if
+    8039: not 27@ == 2
+then
+    0A93: terminate_this_custom_script
+end
+
+// Exit & restore 100% opacity on death, fade, cutscene, car, water, jetpack, or flight
+if or
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+    0449: actor $PLAYER_ACTOR in_a_car
+    04AD: actor $PLAYER_ACTOR in_water
+    0965: actor $PLAYER_ACTOR swimming
+    0A0C: player $PLAYER_CHAR on_jetpack
+then
+    0D10: set_actor $PLAYER_ACTOR alpha 255
+    0A93: terminate_this_custom_script
+end
+
+// Exit & restore 100% opacity immediately when hanging from a ledge, climbing, or flying
+if or
+    0A29: player $PLAYER_CHAR climbing
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 254
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 267
+    0611: actor $PLAYER_ACTOR performing_animation "CLIMB_idle"
+    0611: actor $PLAYER_ACTOR performing_animation "CLIMB_Pull"
+    0611: actor $PLAYER_ACTOR performing_animation "CLIMB_Stand"
+    0611: actor $PLAYER_ACTOR performing_animation "FLYING"
+    0611: actor $PLAYER_ACTOR performing_animation "FLYING2"
+then
+    0D10: set_actor $PLAYER_ACTOR alpha 255
+    0A93: terminate_this_custom_script
+end
+
+// Exit & restore 100% opacity on touchdown (after 100ms liftoff grace)
+if
+    0019: TIMERA > 100
+then
+    if and
+        8818: not actor $PLAYER_ACTOR in_air
+        8E92: not is_char_really_in_air $PLAYER_ACTOR
+    then
+        0D10: set_actor $PLAYER_ACTOR alpha 255
+        0A93: terminate_this_custom_script
+    end
+end
+
+// =========================================================================
+// 1. ALPHA CROSSFADE (255 -> 140 -> 0) & FADE-IN SCALER
+// =========================================================================
+if
+    001B: 350 > TIMERA
+then
+    0093: 9@ = integer TIMERA to_float
+    0017: 9@ /= 350.0
+
+    0007: 17@ = 1.0
+    0063: 17@ -= 9@
+    0013: 17@ *= 255.0
+    0092: 27@ = float 17@ to_integer
+    0D10: set_actor $PLAYER_ACTOR alpha 27@
+else
+    0007: 9@ = 1.0
+    0D10: set_actor $PLAYER_ACTOR alpha 0
+end
+
+// Read CTimer::ms_fTimeStep and normalize to 30 FPS baseline
+0A8D: 8@ = read_memory 0xB7CB5C size 4 virtual_protect 0
+0013: 8@ *= 0.6
+
+0087: 17@ = 8@
+0013: 17@ *= 1.8
+005B: 16@ += 17@
+if
+    0031: 16@ >= 360.0
+then
+    000F: 16@ -= 360.0
+end
+
+// Live Torso Position (2@ 3@ 4@)
+04C4: store_coords_to 2@ 3@ 4@ from_actor $PLAYER_ACTOR with_offset 0.0 0.0 0.05
+
+// =========================================================================
+// 2. GREATER MOTHER FLAME CENTERED ON SHION'S BODY
+// =========================================================================
+02F7: 17@ = cosine 16@
+0013: 17@ *= 0.06
+000B: 17@ += 1.0
+0087: 10@ = 9@
+006B: 10@ *= 17@ // MasterScaler = FadeScale * Pulse
+
+// Layer 1: Base Root Anchor (Z - 0.04)
+0087: 17@ = 10@
+0013: 17@ *= 0.48
+0087: 24@ = 4@
+000F: 24@ -= 0.04
+04D5: create_corona_at 2@ 3@ 24@ radius 17@ type 0 flare 0 RGB 0 60 210
+
+// Layer 2: Main Radiant Belly (Z + 0.00)
+0087: 17@ = 10@
+0013: 17@ *= 0.44
+0087: 18@ = 10@
+0013: 18@ *= 0.24
+0087: 19@ = 10@
+0013: 19@ *= 0.18
+04D5: create_corona_at 2@ 3@ 4@ radius 17@ type 0 flare 0 RGB 0 100 255
+04D5: create_corona_at 2@ 3@ 4@ radius 18@ type 0 flare 0 RGB 100 210 255
+04D5: create_corona_at 2@ 3@ 4@ radius 19@ type 0 flare 0 RGB 235 250 255
+
+// Layer 3: Tapered Neck (Z + 0.045)
+0087: 17@ = 10@
+0013: 17@ *= 0.36
+0087: 18@ = 10@
+0013: 18@ *= 0.18
+0087: 24@ = 4@
+000B: 24@ += 0.045
+04D5: create_corona_at 2@ 3@ 24@ radius 17@ type 0 flare 0 RGB 0 140 255
+04D5: create_corona_at 2@ 3@ 24@ radius 18@ type 0 flare 0 RGB 230 250 255
+
+// Layer 4: Flickering Tip (Z + 0.10)
+0087: 17@ = 10@
+0013: 17@ *= 0.22
+0087: 24@ = 4@
+000B: 24@ += 0.10
+04D5: create_corona_at 2@ 3@ 24@ radius 17@ type 0 flare 0 RGB 140 220 255
+
+// Blue FX_SwitchBurst-style electric sapphire/cyan launch bloom (0..280ms)
+if
+    001B: 280 > TIMERA
+then
+    0093: 17@ = integer TIMERA to_float
+    0017: 17@ /= 280.0
+
+    0087: 18@ = 17@
+    0013: 18@ *= 2.2
+    000B: 18@ += 0.8
+
+    0087: 19@ = 17@
+    0013: 19@ *= 1.1
+    000B: 19@ += 0.4
+
+    0007: 20@ = 1.0
+    0063: 20@ -= 17@
+
+    0087: 21@ = 20@
+    0013: 21@ *= 110.0
+    0092: 27@ = float 21@ to_integer
+
+    0087: 21@ = 20@
+    0013: 21@ *= 210.0
+    0092: 28@ = float 21@ to_integer
+
+    0087: 21@ = 20@
+    0013: 21@ *= 255.0
+    0092: 29@ = float 21@ to_integer
+
+    04D5: create_corona_at 2@ 3@ 4@ radius 18@ type 0 flare 0 RGB 0 27@ 29@
+    04D5: create_corona_at 2@ 3@ 4@ radius 19@ type 0 flare 0 RGB 27@ 28@ 29@
+    04D5: create_corona_at 2@ 3@ 4@ radius 0.45 type 0 flare 0 RGB 29@ 29@ 29@
+end
+
+// =========================================================================
+// 3. THREE ENCIRCLING HITODAMA TEARDROPS (Reused FX_Hitodama Proportions)
+// =========================================================================
+0087: 11@ = 9@
+0013: 11@ *= 0.19 // Base Root Radius
+
+0087: 13@ = 9@
+0013: 13@ *= 0.17 // Belly Radius
+
+0087: 14@ = 9@
+0013: 14@ *= 0.13 // Neck Radius
+
+0087: 15@ = 9@
+0013: 15@ *= 0.08 // Tip Radius
+
+0087: 26@ = 9@
+0013: 26@ *= 0.06 // Diamond Core Radius
+
+// --- CLUSTER 1 (0 deg) ---
+02F6: 24@ = sine 16@
+0013: 24@ *= 0.50
+000B: 24@ += 0.90
+006B: 24@ *= 8@
+005B: 0@ += 24@
+if
+    0031: 0@ >= 360.0
+then
+    000F: 0@ -= 360.0
+end
+
+02F7: 19@ = cosine 16@
+0013: 19@ *= 0.12
+000B: 19@ += 0.56
+
+0087: 23@ = 16@
+0013: 23@ *= 2.0
+if
+    0031: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+02F6: 22@ = sine 23@
+0013: 22@ *= 0.18
+
+// Cluster 1 - Orb 1: Base
+02F6: 20@ = sine 0@
+02F7: 21@ = cosine 0@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000F: 24@ -= 0.04
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+
+// Cluster 1 - Orb 2: Belly
+0087: 25@ = 0@
+000B: 25@ += 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// Cluster 1 - Orb 3: Neck
+0087: 25@ = 0@
+000F: 25@ -= 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.035
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// Cluster 1 - Orb 4: Tip
+0087: 25@ = 0@
+000B: 25@ += 1.5
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.075
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+
+// --- CLUSTER 2 (+120 deg) ---
+0087: 23@ = 16@
+000B: 23@ += 120.0
+if
+    0031: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+
+02F6: 24@ = sine 23@
+0013: 24@ *= 0.55
+000B: 24@ += 0.85
+006B: 24@ *= 8@
+005B: 1@ += 24@
+if
+    0031: 1@ >= 360.0
+then
+    000F: 1@ -= 360.0
+end
+
+02F7: 19@ = cosine 23@
+0013: 19@ *= 0.12
+000B: 19@ += 0.52
+
+0087: 25@ = 23@
+0013: 25@ *= 2.0
+if
+    0031: 25@ >= 360.0
+then
+    000F: 25@ -= 360.0
+end
+02F6: 22@ = sine 25@
+0013: 22@ *= 0.18
+
+// Cluster 2 - Orb 1: Base
+02F6: 20@ = sine 1@
+02F7: 21@ = cosine 1@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000F: 24@ -= 0.04
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+
+// Cluster 2 - Orb 2: Belly
+0087: 25@ = 1@
+000B: 25@ += 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// Cluster 2 - Orb 3: Neck
+0087: 25@ = 1@
+000F: 25@ -= 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.035
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// Cluster 2 - Orb 4: Tip
+0087: 25@ = 1@
+000B: 25@ += 1.5
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.075
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+
+// --- CLUSTER 3 (+240 deg) ---
+0087: 23@ = 16@
+000B: 23@ += 240.0
+if
+    0031: 23@ >= 360.0
+then
+    000F: 23@ -= 360.0
+end
+
+02F7: 24@ = cosine 23@
+0013: 24@ *= 0.50
+000B: 24@ += 0.75
+006B: 24@ *= 8@
+005B: 12@ += 24@
+if
+    0031: 12@ >= 360.0
+then
+    000F: 12@ -= 360.0
+end
+
+02F6: 19@ = sine 23@
+0013: 19@ *= 0.12
+000B: 19@ += 0.57
+
+0087: 25@ = 23@
+0013: 25@ *= 2.0
+if
+    0031: 25@ >= 360.0
+then
+    000F: 25@ -= 360.0
+end
+02F7: 22@ = cosine 25@
+0013: 22@ *= 0.18
+
+// Cluster 3 - Orb 1: Base
+02F6: 20@ = sine 12@
+02F7: 21@ = cosine 12@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000F: 24@ -= 0.04
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+
+// Cluster 3 - Orb 2: Belly
+0087: 25@ = 12@
+000B: 25@ += 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// Cluster 3 - Orb 3: Neck
+0087: 25@ = 12@
+000F: 25@ -= 1.0
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.035
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+
+// Cluster 3 - Orb 4: Tip
+0087: 25@ = 12@
+000B: 25@ += 1.5
+02F6: 20@ = sine 25@
+02F7: 21@ = cosine 25@
+006B: 20@ *= 19@
+006B: 21@ *= 19@
+0087: 24@ = 22@
+000B: 24@ += 0.075
+0087: 5@ = 2@
+005B: 5@ += 21@
+0087: 6@ = 3@
+005B: 6@ += 20@
+0087: 7@ = 4@
+005B: 7@ += 24@
+04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+
+0002: jump @ShionJumpHito_Loop

@@ -134,4 +134,5 @@ const
     MEM_JOON_DEATH_WEAPON = 464      // Weapon ID / damage reason that killed Jo'on (-1 = Generic)
     MEM_SHION_DIED_FIRST = 468       // 0 = Shion was alive when Jo'on went down, 1 = Shion was already dead
     MEM_LORE_PROGRESS_2 = 472
+    MEM_TAG_SWITCH_REQ = 476
 end

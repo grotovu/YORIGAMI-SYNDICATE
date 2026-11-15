@@ -16,6 +16,7 @@ const
     MEM_PLAYER_FORM = 12
     MEM_ALLOC_JOONBLING = 36
     MEM_ALLOC_SMASHER = 40
+    MEM_TAG_SWITCH_REQ = 476
 end
 
 :Connect_To_Brain
@@ -40,13 +41,10 @@ end
 29@ = 0    // LMB / Attack edge latch
 1@ = 10    // Safeguard RequiredBlingPoints default
 2@ = 0     // Live effective rank: min(Bling, Smasher)
-0007: 3@ = 8.0
-0007: 4@ = 0.55
-0007: 5@ = 30.0
-6@ = 50
-7@ = 5
-8@ = 500
-9@ = 4
+3@ = 0     // Shion Jump Boost Latch (0 = Ready, 1 = Boosted this jump)
+4@ = 0     // Shion Airborne Landing Grace Timer (ms)
+5@ = 0     // Shion Airborne CP 1 Active Flag
+9@ = 0     // Shion Blue Jump Bloom Active Flag
 0007: 10@ = 3.0
 0007: 11@ = -180.0
 
@@ -109,16 +107,197 @@ then
     end
 end
 
-// Form gate: Exclusive to CJ (0) and Jo'on (1). Shion (2) cannot use this.
+// Read active character form (0 = CJ, 1 = Jo'on, 2 = Shion)
 0085: 30@ = 31@
 000A: 30@ += MEM_PLAYER_FORM
 0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+
 if
-    0039: 0@ == 2
+    8039: not 0@ == 2
 then
-    29@ = 0
-    0001: wait 150 ms
-    0002: jump @CashCrash_Loop
+    if
+        0019: 9@ > 0
+    then
+        0ABA: terminate_all_custom_scripts_with_this_name 'Y_SHJFX'
+        0D10: set_actor $PLAYER_ACTOR alpha 255
+    end
+    3@ = 0
+    4@ = 0
+    5@ = 0
+    9@ = 0
+else
+    // =========================================================================
+    // SHION INHERENT ABILITIES: AIRBORNE FALL IMMUNITY & HIGH JUMP
+    // =========================================================================
+    6@ = 0 // Valid on-foot non-flying airborne check flag
+    if and
+        044B: actor $PLAYER_ACTOR on_foot
+        84AD: not actor $PLAYER_ACTOR in_water
+        8965: not actor $PLAYER_ACTOR swimming
+        8118: not actor $PLAYER_ACTOR dead
+        8611: not actor $PLAYER_ACTOR performing_animation "FLYING"
+        8611: not actor $PLAYER_ACTOR performing_animation "FLYING2"
+    then
+        6@ = 1
+    end
+
+    if
+        0039: 6@ == 1
+    then
+        if or
+            0818: actor $PLAYER_ACTOR in_air
+            0E92: is_char_really_in_air $PLAYER_ACTOR
+        then
+            // Airborne: keep CP 1 active and refresh 400ms landing grace
+            4@ = 400
+            5@ = 1
+            0AAA: 28@ = get_script_struct_named 'Y_Graze'
+            if
+                0019: 28@ > 0
+            then
+                02AB: set_actor $PLAYER_ACTOR immunities BP 1 FP 1 EP 0 CP 1 MP 0
+            else
+                02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 0 CP 1 MP 0
+            end
+
+            // Check if hanging from or climbing a ledge: cancel Hitodama form & restore visibility
+            7@ = 0
+            if or
+                0A29: player $PLAYER_CHAR climbing
+                0E42: is_char_doing_task_id $PLAYER_ACTOR 254
+                0E42: is_char_doing_task_id $PLAYER_ACTOR 267
+                0611: actor $PLAYER_ACTOR performing_animation "CLIMB_idle"
+                0611: actor $PLAYER_ACTOR performing_animation "CLIMB_Pull"
+                0611: actor $PLAYER_ACTOR performing_animation "CLIMB_Stand"
+            then
+                7@ = 1
+            end
+
+            if
+                0039: 7@ == 1
+            then
+                if
+                    0019: 9@ > 0
+                then
+                    0ABA: terminate_all_custom_scripts_with_this_name 'Y_SHJFX'
+                    0D10: set_actor $PLAYER_ACTOR alpha 255
+                    9@ = 0
+                end
+            else
+                // Shion High Jump Boost (Launches smooth 0E32 upward arc + spawns FX_ShionJumpHito)
+                if and
+                    0039: 3@ == 0
+                    8A0C: not player $PLAYER_CHAR on_jetpack
+                then
+                    083D: get_actor $PLAYER_ACTOR velocity_in_direction_XYZ 18@ 19@ 20@
+                    if
+                        0021: 20@ > 0.05
+                    then
+                        7@ = 0
+                        if or
+                            0E42: is_char_doing_task_id $PLAYER_ACTOR 210
+                            0E42: is_char_doing_task_id $PLAYER_ACTOR 211
+                            0E42: is_char_doing_task_id $PLAYER_ACTOR 241
+                            0E42: is_char_doing_task_id $PLAYER_ACTOR 240
+                            0611: actor $PLAYER_ACTOR performing_animation "JUMP_launch"
+                            0611: actor $PLAYER_ACTOR performing_animation "JUMP_launch_R"
+                            0611: actor $PLAYER_ACTOR performing_animation "JUMP_glide"
+                        then
+                            7@ = 1
+                        end
+
+                        if
+                            0039: 7@ == 1
+                        then
+                            3@ = 1
+                            0AF2: 17@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "ShionJumpVelocity"
+                            if
+                                0033: 0.0 >= 17@
+                            then
+                                0007: 17@ = 16.0
+                            end
+
+                            0687: clear_actor $PLAYER_ACTOR task
+                            018C: play_sound 1052 at 0.0 0.0 0.0
+                            0ABA: terminate_all_custom_scripts_with_this_name 'Y_SHJFX'
+                            0A92: create_custom_thread "Yorigami\FX_ShionJumpHito.c"
+                            TIMERA = 0
+                            9@ = 1
+                            0002: jump @Shion_Ascent_Loop
+                        end
+                    end
+                end
+            end
+        else
+            if
+                0019: 9@ > 0
+            then
+                0ABA: terminate_all_custom_scripts_with_this_name 'Y_SHJFX'
+                0D10: set_actor $PLAYER_ACTOR alpha 255
+                9@ = 0
+            end
+            // On ground: reset jump latch & tick down 400ms landing fall-immunity grace
+            3@ = 0
+            if
+                0019: 4@ > 0
+            then
+                000E: 4@ -= 10
+                if
+                    0611: actor $PLAYER_ACTOR performing_animation "FALL_collapse"
+                then
+                    0687: clear_actor $PLAYER_ACTOR task
+                end
+
+                if
+                    8019: not 4@ > 0
+                then
+                    4@ = 0
+                    if
+                        0039: 5@ == 1
+                    then
+                        0AAA: 28@ = get_script_struct_named 'Y_Graze'
+                        if
+                            0019: 28@ > 0
+                        then
+                            02AB: set_actor $PLAYER_ACTOR immunities BP 1 FP 1 EP 0 CP 0 MP 0
+                        else
+                            02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 0 CP 0 MP 0
+                        end
+                        5@ = 0
+                    end
+                end
+            end
+        end
+    else
+        // Not on foot or entered water/flight: terminate VFX, restore opacity, drop CP 1
+        if
+            0019: 9@ > 0
+        then
+            0ABA: terminate_all_custom_scripts_with_this_name 'Y_SHJFX'
+            0D10: set_actor $PLAYER_ACTOR alpha 255
+        end
+        3@ = 0
+        4@ = 0
+        9@ = 0
+        if
+            0039: 5@ == 1
+        then
+            if and
+                8611: not actor $PLAYER_ACTOR performing_animation "FLYING"
+                8611: not actor $PLAYER_ACTOR performing_animation "FLYING2"
+            then
+                0AAA: 28@ = get_script_struct_named 'Y_Graze'
+                if
+                    0019: 28@ > 0
+                then
+                    02AB: set_actor $PLAYER_ACTOR immunities BP 1 FP 1 EP 0 CP 0 MP 0
+                else
+                    02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 0 CP 0 MP 0
+                end
+            end
+            5@ = 0
+        end
+    end
 end
 
 // Synergy unlock gate: Requires Jo'on's Bling & Vehicle Smasher >= 10 pts each
@@ -135,11 +314,15 @@ if or
     8019: not 22@ > 0
 then
     29@ = 0
-    0001: wait 150 ms
+    if
+        8039: not 0@ == 2
+    then
+        0001: wait 150 ms
+    end
     0002: jump @CashCrash_Loop
 end
 
-// Compute effective Meteor Dive rank = min(Bling, Smasher)
+// Compute effective Cash Crash rank = min(Bling, Smasher)
 0085: 2@ = 21@
 if
     001D: 21@ > 22@
@@ -173,7 +356,23 @@ then
     29@ = 0
 end
 
-// Environmental & state gates
+// Environmental & state gates (also block Cash Crash trigger while hanging from a ledge)
+if or
+    0A29: player $PLAYER_CHAR climbing
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 254
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 267
+    0611: actor $PLAYER_ACTOR performing_animation "CLIMB_idle"
+    0611: actor $PLAYER_ACTOR performing_animation "CLIMB_Pull"
+    0611: actor $PLAYER_ACTOR performing_animation "CLIMB_Stand"
+then
+    if
+        0039: 23@ == 1
+    then
+        29@ = 1
+    end
+    0002: jump @CashCrash_Loop
+end
+
 if or
     844B: not actor $PLAYER_ACTOR on_foot
     0A0C: player $PLAYER_CHAR on_jetpack
@@ -213,21 +412,34 @@ then
         22@ = 1
     end
 
-    if and
-        0035: 17@ >= 10@
-        0033: -9.5 >= 20@
+    if
+        0039: 0@ == 2
     then
-        if or
-            0E42: is_char_doing_task_id $PLAYER_ACTOR 241
-            0E42: is_char_doing_task_id $PLAYER_ACTOR 240
-            0611: actor $PLAYER_ACTOR performing_animation "FALL_fall"
+        // Shion: Can Cash Crash as soon as she passes the jump apex and descends above MinFallHeight
+        if and
+            0035: 17@ >= 10@
+            0033: -2.0 >= 20@
         then
             22@ = 1
+        end
+    else
+        // Jo'on / CJ: Trigger on deep fall / screaming threshold
+        if and
+            0035: 17@ >= 10@
+            0033: -9.5 >= 20@
+        then
+            if or
+                0E42: is_char_doing_task_id $PLAYER_ACTOR 241
+                0E42: is_char_doing_task_id $PLAYER_ACTOR 240
+                0611: actor $PLAYER_ACTOR performing_animation "FALL_fall"
+            then
+                22@ = 1
+            end
         end
     end
 end
 
-// Not in freefall yet: latch held attack and wait
+// Not in dive-eligible descent yet: latch held attack and wait
 if
     0039: 22@ == 0
 then
@@ -239,7 +451,7 @@ then
     0002: jump @CashCrash_Loop
 end
 
-// Verify Smasher unlock threshold from INI now that we are in freefall
+// Verify Smasher unlock threshold from INI now that we are descending
 0AF0: 28@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "RequiredSmasherPoints"
 if
     002B: 0 >= 28@
@@ -270,16 +482,240 @@ then
     end
 end
 
-// Trigger Meteor Dive on fresh LMB / attack press
+// Trigger Cash Crash on fresh LMB / attack press
 if and
     0039: 23@ == 1
     0039: 29@ == 0
 then
     29@ = 1
-    0002: jump @Execute_Meteor_Dive
+    if
+        0039: 0@ == 2
+    then
+        0002: jump @Request_Aerial_Tag_Dive
+    else
+        0002: jump @Execute_Meteor_Dive
+    end
 end
 
 0002: jump @CashCrash_Loop
+
+
+// =========================================================================
+// SHION HIGH JUMP ASCENT ARC (0E32 Physics; VFX handled by FX_ShionJumpHito)
+// =========================================================================
+:Shion_Ascent_Loop
+0001: wait 0 ms
+
+if or
+    8256: not player $PLAYER_CHAR defined
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+    04AD: actor $PLAYER_ACTOR in_water
+    0965: actor $PLAYER_ACTOR swimming
+then
+    0ABA: terminate_all_custom_scripts_with_this_name 'Y_SHJFX'
+    9@ = 0
+    if
+        0256: player $PLAYER_CHAR defined
+    then
+        0D10: set_actor $PLAYER_ACTOR alpha 255
+    end
+    0002: jump @CashCrash_Loop
+end
+
+// Abort ascent & restore visibility immediately on ledge hang / climb or Flight Mode
+if or
+    0A29: player $PLAYER_CHAR climbing
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 254
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 267
+    0611: actor $PLAYER_ACTOR performing_animation "CLIMB_idle"
+    0611: actor $PLAYER_ACTOR performing_animation "CLIMB_Pull"
+    0611: actor $PLAYER_ACTOR performing_animation "CLIMB_Stand"
+then
+    0ABA: terminate_all_custom_scripts_with_this_name 'Y_SHJFX'
+    9@ = 0
+    0D10: set_actor $PLAYER_ACTOR alpha 255
+    0002: jump @CashCrash_Loop
+end
+
+if or
+    0AB0: is_key_pressed 9
+    00E1: player 0 pressed_key 4
+    0611: actor $PLAYER_ACTOR performing_animation "FLYING"
+    0611: actor $PLAYER_ACTOR performing_animation "FLYING2"
+then
+    0ABA: terminate_all_custom_scripts_with_this_name 'Y_SHJFX'
+    9@ = 0
+    0D10: set_actor $PLAYER_ACTOR alpha 255
+    0002: jump @CashCrash_Loop
+end
+
+// Safety timeout failsafe
+if
+    0019: TIMERA > 12000
+then
+    0ABA: terminate_all_custom_scripts_with_this_name 'Y_SHJFX'
+    9@ = 0
+    0D10: set_actor $PLAYER_ACTOR alpha 255
+    0002: jump @CashCrash_Loop
+end
+
+// Keep airborne CP 1 active throughout ascent
+4@ = 400
+5@ = 1
+0AAA: 28@ = get_script_struct_named 'Y_Graze'
+if
+    0019: 28@ > 0
+then
+    02AB: set_actor $PLAYER_ACTOR immunities BP 1 FP 1 EP 0 CP 1 MP 0
+else
+    02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 0 CP 1 MP 0
+end
+
+// Read CTimer::ms_fTimeStep and convert to seconds (capped at 0.05s)
+0A8D: 24@ = read_memory 0xB7CB5C size 4 virtual_protect 0
+0013: 24@ *= 0.02
+if
+    0021: 24@ > 0.05
+then
+    0007: 24@ = 0.05
+end
+
+// Apply gravity deceleration (22.0 m/s^2)
+0087: 25@ = 24@
+0013: 25@ *= 22.0
+0063: 17@ -= 25@
+
+if
+    0033: 0.0 >= 17@
+then
+    // Reached jump apex: FX_ShionJumpHito keeps running until landing or Cash Crash
+    083C: set_actor $PLAYER_ACTOR velocity_in_direction_XYZ 18@ 19@ -2.5
+    0002: jump @CashCrash_Loop
+end
+
+// Compute position step
+00A0: store_actor $PLAYER_ACTOR position_to 14@ 15@ 16@
+
+0087: 25@ = 18@
+006B: 25@ *= 24@
+005B: 25@ += 14@
+
+0087: 26@ = 19@
+006B: 26@ *= 24@
+005B: 26@ += 15@
+
+if
+    06BD: no_obstacles_between 14@ 15@ 16@ and 25@ 26@ 16@ solid 1 car 1 actor 0 object 1 particle 0
+then
+    0087: 14@ = 25@
+    0087: 15@ = 26@
+end
+
+0087: 20@ = 17@
+006B: 20@ *= 24@
+
+// Ceiling check: stop upward motion cleanly if overhead obstacle exists
+0087: 27@ = 16@
+005B: 27@ += 20@
+000B: 27@ += 1.0
+if
+    06BD: no_obstacles_between 14@ 15@ 16@ and 14@ 15@ 27@ solid 1 car 1 actor 0 object 1 particle 0
+then
+    005B: 16@ += 20@
+    0E32: set_char_coordinates_simple $PLAYER_ACTOR coord 14@ 15@ 16@
+    083C: set_actor $PLAYER_ACTOR velocity_in_direction_XYZ 0.0 0.0 1.0
+else
+    083C: set_actor $PLAYER_ACTOR velocity_in_direction_XYZ 18@ 19@ -2.5
+    0002: jump @CashCrash_Loop
+end
+
+0002: jump @Shion_Ascent_Loop
+
+
+// =========================================================================
+// AERIAL TAG-SWAP HANDOFF (Shion -> Jo'on mid-air before Cash Crash)
+// =========================================================================
+:Request_Aerial_Tag_Dive
+0ABA: terminate_all_custom_scripts_with_this_name 'Y_SHJFX'
+9@ = 0
+0085: 30@ = 31@
+000A: 30@ += MEM_TAG_SWITCH_REQ
+0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
+TIMERA = 0
+:Wait_Aerial_Tag_Loop
+0001: wait 0 ms
+
+if or
+    8256: not player $PLAYER_CHAR defined
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_TAG_SWITCH_REQ
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0002: jump @Dive_Cleanup_Only
+end
+
+if or
+    04AD: actor $PLAYER_ACTOR in_water
+    0965: actor $PLAYER_ACTOR swimming
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_TAG_SWITCH_REQ
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0002: jump @Dive_Cleanup_Only
+end
+
+if or
+    0AB0: is_key_pressed 9
+    00E1: player 0 pressed_key 4
+    0611: actor $PLAYER_ACTOR performing_animation "FLYING"
+    0611: actor $PLAYER_ACTOR performing_animation "FLYING2"
+then
+    13@ = 1
+    0085: 30@ = 31@
+    000A: 30@ += MEM_TAG_SWITCH_REQ
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0002: jump @Dive_Flight_Abort
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 1 CP 1 MP 0
+083C: set_actor $PLAYER_ACTOR velocity_in_direction_XYZ 0.0 0.0 -2.0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_TAG_SWITCH_REQ
+0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+
+if and
+    0039: 28@ == 0
+    0039: 0@ == 1
+then
+    3@ = 0
+    4@ = 0
+    5@ = 0
+    9@ = 0
+    0002: jump @Execute_Meteor_Dive
+end
+
+if
+    0019: TIMERA > 1500
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_TAG_SWITCH_REQ
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0002: jump @Dive_Cleanup_Only
+end
+
+0002: jump @Wait_Aerial_Tag_Loop
 
 
 // =========================================================================
@@ -505,6 +941,9 @@ end
 064C: make_particle 28@ visible
 064F: remove_references_to_particle 28@
 
+0D10: set_actor $PLAYER_ACTOR alpha 255
+0050: gosub @CashCrash_LoadImpactSettings
+
 // Compute scaled blast radius (24@) and scaled damage (21@)
 0093: 25@ = integer 2@ to_float
 006B: 25@ *= 4@
@@ -644,7 +1083,9 @@ end
 if
     0256: player $PLAYER_CHAR defined
 then
-    // Only unmute CJ; keep Jo'on muted so she doesn't speak in CJ's voice
+    0D10: set_actor $PLAYER_ACTOR alpha 255
+
+    // Only unmute CJ; keep Jo'on & Shion muted so they don't speak in CJ's voice
     if
         0039: 0@ == 0
     then
@@ -662,6 +1103,10 @@ then
     end
 end
 
+3@ = 0
+4@ = 0
+5@ = 0
+9@ = 0
 13@ = 0
 0001: wait 400 ms
 0002: jump @CashCrash_Loop
@@ -670,6 +1115,7 @@ end
 if
     0256: player $PLAYER_CHAR defined
 then
+    0D10: set_actor $PLAYER_ACTOR alpha 255
     if
         0039: 0@ == 0
     then
@@ -677,12 +1123,16 @@ then
     end
 end
 
+3@ = 0
+4@ = 0
+5@ = 0
+9@ = 0
 0001: wait 250 ms
 0002: jump @CashCrash_Loop
 
 
 // =========================================================================
-// SUBROUTINE: RELOAD SETTINGS FROM YorigamiPerks.ini
+// SUBROUTINE: RELOAD CORE LOOP SETTINGS FROM YorigamiPerks.ini
 // =========================================================================
 :CashCrash_ReloadSettings
 0085: 12@ = 28@
@@ -694,6 +1144,27 @@ then
     1@ = 10
 end
 
+0AF2: 10@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "MinFallHeight"
+if
+    0033: 0.0 >= 10@
+then
+    0007: 10@ = 3.0
+end
+
+0AF2: 11@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "DiveSpeed"
+if
+    0031: 11@ >= -5.0
+then
+    0007: 11@ = -180.0
+end
+
+0051: return
+
+
+// =========================================================================
+// SUBROUTINE: LOAD IMPACT SCALING SETTINGS ON TOUCHDOWN
+// =========================================================================
+:CashCrash_LoadImpactSettings
 0AF2: 3@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "BaseRadius"
 if
     0033: 0.0 >= 3@
@@ -705,7 +1176,7 @@ end
 if
     0023: 0.0 > 4@
 then
-    0007: 4@ = 0.5
+    0007: 4@ = 0.55
 end
 
 0AF2: 5@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "MaxRadiusCap"
@@ -731,20 +1202,6 @@ if
     002B: 0 >= 9@
 then
     9@ = 4
-end
-
-0AF2: 10@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "MinFallHeight"
-if
-    0033: 0.0 >= 10@
-then
-    0007: 10@ = 3.0
-end
-
-0AF2: 11@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "DiveSpeed"
-if
-    0031: 11@ >= -5.0
-then
-    0007: 11@ = -180.0
 end
 
 0051: return
