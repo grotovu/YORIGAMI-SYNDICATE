@@ -833,6 +833,7 @@ then
             then
                 0AD3: string_format 4@v "Slot_%d" 3@
                 0AD3: string_format 20@v "Station_%d" 28@
+                29@ = 0
                 0AF0: 29@ = read_int_from_ini_file "cleo\savedata\ShionRadio.ini" section 4@v key 20@v
                 if
                     29@ < 0
@@ -860,6 +861,7 @@ goto @ShionTrackWorld_Loop
 0085: 3@ = 0@ // Update LastTrackedSlot
 
 0AD3: string_format 4@v "Slot_%d" 3@
+2@ = 0
 0AF0: 2@ = read_int_from_ini_file "cleo\savedata\ShionVehicles.ini" section 4@v key "Count"
 if or
     2@ < 0
@@ -887,12 +889,14 @@ then
 
         // Read Model ID from INI -> Write to RAM
         0AD3: string_format 20@v "Model_%d" 11@
+        26@ = 0
         0AF0: 26@ = read_int_from_ini_file "cleo\savedata\ShionVehicles.ini" section 4@v key 20@v
         0A8C: write_memory 29@ size 4 value 26@ virtual_protect 0
 
         // Read Minutes from INI -> Write to RAM
         000A: 29@ += 4
         0AD3: string_format 20@v "Minutes_%d" 11@
+        27@ = 0
         0AF0: 27@ = read_int_from_ini_file "cleo\savedata\ShionVehicles.ini" section 4@v key 20@v
         0A8C: write_memory 29@ size 4 value 27@ virtual_protect 0
 
@@ -1013,6 +1017,7 @@ if
     04B7: 11 >= 11@
 then
     0AD3: string_format 20@v "Station_%d" 11@
+    29@ = 0
     0AF0: 29@ = read_int_from_ini_file "cleo\savedata\ShionRadio.ini" section 4@v key 20@v
     if
         29@ < 0
@@ -1032,6 +1037,7 @@ then
 end
 
 // Check station 12 (Radio Off)
+29@ = 0
 0AF0: 29@ = read_int_from_ini_file "cleo\savedata\ShionRadio.ini" section 4@v key "Station_12"
 if
     29@ < 0
@@ -1084,6 +1090,7 @@ then
             803B: not 11@ == 25@
         then
             0AD3: string_format 20@v "Station_%d" 11@
+            29@ = 0
             0AF0: 29@ = read_int_from_ini_file "cleo\savedata\ShionRadio.ini" section 4@v key 20@v
             if
                 29@ < 0

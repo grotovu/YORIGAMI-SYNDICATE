@@ -186,6 +186,7 @@ jump @ShionTrack_Loop
 0AD3: 20@v = string_format "Slot_%d" 1@
 
 // --- COMPANIONSHIP & LORE ---
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimeTogetherMinutes"
 if
     5@ < 0
@@ -196,6 +197,7 @@ end
 000A: 30@ += MEM_TIME_TOGETHER_MIN
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimeBrokeTogetherMinutes"
 if
     5@ < 0
@@ -206,6 +208,7 @@ end
 000A: 30@ += MEM_TIME_BROKE_MIN
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "LoreProgress"
 if
     5@ < 0
@@ -216,6 +219,7 @@ end
 000A: 30@ += MEM_LORE_PROGRESS_BIT
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "LoreProgress2"
 if
     5@ < 0
@@ -227,6 +231,7 @@ end
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
 // --- COMBAT & SURVIVAL (WITH SHION ONLY) ---
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "JoonKillsWithShion"
 if
     5@ < 0
@@ -237,6 +242,7 @@ end
 000A: 30@ += MEM_JOON_KILLS_W_SHION
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "ShionKills"
 if
     5@ < 0
@@ -247,6 +253,7 @@ end
 000A: 30@ += MEM_SHION_KILLS
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimesWastedWithShion"
 if
     5@ < 0
@@ -257,6 +264,7 @@ end
 000A: 30@ += MEM_TIMES_WASTED
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimesBustedWithShion"
 if
     5@ < 0
@@ -267,6 +275,7 @@ end
 000A: 30@ += MEM_TIMES_BUSTED
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "GrimPitySaves"
 if
     5@ < 0
@@ -278,6 +287,7 @@ end
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
 // --- SUSTENANCE & CARE ---
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimesTreated"
 if
     5@ < 0
@@ -288,6 +298,7 @@ end
 000A: 30@ += MEM_TIMES_TREATED
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TimesDumpsterScavenged"
 if
     5@ < 0
@@ -298,6 +309,7 @@ end
 000A: 30@ += MEM_TIMES_DUMPSTER
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TotalCashGiven"
 if
     5@ < 0
@@ -308,6 +320,7 @@ end
 000A: 30@ += MEM_TOTAL_CASH_GIVEN
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "LastFedTotalHours"
 if
     5@ < 0
@@ -319,6 +332,7 @@ end
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
 // --- DRIVING & VEHICLES ---
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "FavoriteCarModel"
 if
     5@ < 0
@@ -329,6 +343,7 @@ end
 000A: 30@ += MEM_FAV_CAR_MODEL
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "FavoriteCarMinutes"
 if
     5@ < 0
@@ -339,6 +354,7 @@ end
 000A: 30@ += MEM_FAV_CAR_MINUTES
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "CarsModdedWithShion"
 if
     5@ < 0
@@ -349,6 +365,7 @@ end
 000A: 30@ += MEM_CARS_MODDED
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "ModCashSpentWithShion"
 if
     5@ < 0
@@ -359,6 +376,7 @@ end
 000A: 30@ += MEM_MOD_CASH_SPENT
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "CarsWreckedWithShion"
 if
     5@ < 0
@@ -370,6 +388,7 @@ end
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
 // --- FINANCES & ACTIVITIES ---
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "CasinoLossesWithShion"
 if
     5@ < 0
@@ -380,6 +399,7 @@ end
 000A: 30@ += MEM_CASINO_LOSSES
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "BribesPaidWithShion"
 if
     5@ < 0
@@ -390,6 +410,7 @@ end
 000A: 30@ += MEM_BRIBES_PAID
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "PimpingLevelPassed"
 if
     5@ < 0
@@ -400,6 +421,7 @@ end
 000A: 30@ += MEM_PIMPING_LEVEL
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "ParamedicWithShion"
 if
     5@ < 0
@@ -410,6 +432,7 @@ end
 000A: 30@ += MEM_PARAMEDIC_SAVES
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "BurglariesWithShion"
 if
     5@ < 0
@@ -420,6 +443,7 @@ end
 000A: 30@ += MEM_BURGLARIES
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "FiresExtinguishedWithShion"
 if
     5@ < 0
@@ -430,6 +454,7 @@ end
 000A: 30@ += MEM_FIREFIGHT_EXTING
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "VigilanteKillsWithShion"
 if
     5@ < 0
@@ -440,6 +465,7 @@ end
 000A: 30@ += MEM_VIGILANTE_KILLS
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "TaxiFaresWithShion"
 if
     5@ < 0
@@ -450,6 +476,7 @@ end
 000A: 30@ += MEM_TAXI_FARES
 0A8C: write_memory 30@ size 4 value 5@ virtual_protect 0
 
+5@ = 0
 0AF0: 5@ = read_int_from_ini_file "cleo\savedata\ShionMemories.ini" section 20@v key "DanmakuCashSpent"
 if
     5@ < 0
