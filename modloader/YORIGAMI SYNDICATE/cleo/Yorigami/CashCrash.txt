@@ -495,8 +495,18 @@ then
         01B9: set_actor $PLAYER_ACTOR armed_weapon_to 0
         0992: set_player $PLAYER_CHAR weapons_scrollable 1
     else
-        // StripParachute = 0: Yield completely to parachute until used/dropped
-        0002: jump @CashCrash_Loop
+        // StripParachute = 0: If too close to ground (< 8.0m), opening chute crashes native plchute.sc
+        // Strip chute and let Cash Crash execute cleanly instead!
+        if and
+            0021: 17@ > 0.0
+            8021: not 17@ > 8.0
+        then
+            0555: remove_weapon 46 from_actor $PLAYER_ACTOR
+            01B9: set_actor $PLAYER_ACTOR armed_weapon_to 0
+            0992: set_player $PLAYER_CHAR weapons_scrollable 1
+        else
+            0002: jump @CashCrash_Loop
+        end
     end
 end
 
