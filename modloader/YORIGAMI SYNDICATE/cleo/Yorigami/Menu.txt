@@ -783,6 +783,25 @@ then
         gosub @Refresh_Preferences_Numbers
         wait 200
     end
+
+    // ROW 9: AUTO-STRIP PARACHUTE (StripParachute)
+    if
+        0039: 2@ == 9
+    then
+        0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "StripParachute"
+        if
+            0039: 7@ == 1
+        then
+            8@ = 0
+        else
+            8@ = 1
+        end
+
+        0AF1: write_int 8@ to_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "StripParachute"
+        018C: play_sound 1058 at 0.0 0.0 0.0
+        gosub @Refresh_Preferences_Numbers
+        wait 200
+    end
 end
 
 // Back to Master Hub
@@ -831,7 +850,7 @@ return
 :Load_Preferences_Rows
 3@ = -1
 14@ = -1
-08DB: set_panel 0@ column 0 header 'YOR_HPR' data 'YOR_P00' 'YOR_P01' 'YOR_P02' 'YOR_P03' 'YOR_P04' 'YOR_P05' 'YOR_P06' 'YOR_P07' 'YOR_P08' 'DUMMY' 'DUMMY' 'DUMMY'
+08DB: set_panel 0@ column 0 header 'YOR_HPR' data 'YOR_P00' 'YOR_P01' 'YOR_P02' 'YOR_P03' 'YOR_P04' 'YOR_P05' 'YOR_P06' 'YOR_P07' 'YOR_P08' 'YOR_P09' 'DUMMY' 'DUMMY'
 090E: set_panel 0@ active_row 0
 gosub @Refresh_Preferences_Numbers
 return
@@ -966,6 +985,10 @@ return
 // Row 8: Save/Load Banner
 0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "Notifications" key "ShowSaveLoadMessage"
 08EE: set_panel 0@ column 0 row 8 text_1number GXT 'YOR_P08' number 7@
+
+// Row 9: Auto-Strip Parachute
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "StripParachute"
+08EE: set_panel 0@ column 0 row 9 text_1number GXT 'YOR_P09' number 7@
 return
 
 // =========================================================================
@@ -1060,9 +1083,9 @@ then
             end
             0085: 12@ = 11@
             0072: 12@ /= 10@
-            0ACE: print_help_formatted "~y~Jo'on's Bling~n~~w~+1 Melee/Knuckle DMG per pt.~n~~g~Soft Cap: %d Pts (+%d DMG max)." 12@ 11@
+            0ACE: print_help_formatted "~y~Jo'on's Bling~n~~w~+1 Melee/Knuckle DMG per pt.~n~~g~Cap: %d Pts (+%d DMG).~n~~y~10+ Bling & Smasher: Cash Crash." 12@ 11@
         else
-            0ACE: print_help_formatted "~y~Jo'on's Bling~n~~w~+1 Melee/Knuckle DMG per pt.~n~~g~Limitless Scaling (No Cap)."
+            0ACE: print_help_formatted "~y~Jo'on's Bling~n~~w~+1 Melee/Knuckle DMG per pt.~n~~g~Limitless DMG.~n~~y~10+ Bling & Smasher: Cash Crash."
         end
     end
 
@@ -1080,9 +1103,9 @@ then
         if
             0019: 11@ > 0
         then
-            0ACE: print_help_formatted "~y~Vehicle Smasher~n~~w~Punch & explode cars.~n~~y~Blast Shield: %d Pts ~w~| ~g~Max DMG: %d Pts." 10@ 11@
+            0ACE: print_help_formatted "~y~Vehicle Smasher~n~~w~Punch & explode cars.~n~~y~Shield: %d Pts | Cap: %d Pts.~n~~g~10+ Bling & Smasher: Cash Crash." 10@ 11@
         else
-            0ACE: print_help_formatted "~y~Vehicle Smasher~n~~w~Punch & explode cars.~n~~y~Blast Shield: %d Pts ~w~| ~g~Limitless Damage." 10@
+            0ACE: print_help_formatted "~y~Vehicle Smasher~n~~w~Punch & explode cars.~n~~y~Shield: %d Pts | Limitless DMG.~n~~g~10+ Bling & Smasher: Cash Crash." 10@
         end
     end
 
@@ -1334,6 +1357,11 @@ then
     then
         0ACE: print_help_formatted "~y~Save/Load Confirmation~n~~w~On-screen banner when saving at safehouses.~n~~g~1 = Show banner | 0 = Silent saves."
     end
+    if
+        0039: 2@ == 9 // StripParachute
+    then
+        0ACE: print_help_formatted "~y~Auto-Strip Parachute~n~~w~Strips chute in freefall to allow Cash Crash.~n~~g~1 = Auto-strip | 0 = Chute priority."
+    end
 end
 return
 
@@ -1349,13 +1377,13 @@ then
     if
         0039: 2@ == 0 // Jo'on's Bling
     then
-        0ACE: print_help_formatted "~y~Jo'on's Bling~n~~w~Target a ped with fists and punch to dash.~n~~s~Grants a golden graze shield during dash."
+        0ACE: print_help_formatted "~y~Jo'on's Bling~n~~w~Target ped & punch to dash w/ shield.~n~~s~10+ Bling & Smasher: LMB mid-fall for Cash Crash."
     end
 
     if
         0039: 2@ == 1 // Vehicle Smasher
     then
-        0ACE: print_help_formatted "~y~Vehicle Smasher~n~~w~Punch vehicles to heavily damage them.~n~~s~Explodes cars on wreck. 10 pts gives blast shield."
+        0ACE: print_help_formatted "~y~Vehicle Smasher~n~~w~Punch cars to wreck. 10 pts: Blast Shield.~n~~s~10+ Bling & Smasher: LMB mid-fall for Cash Crash."
     end
 
     if
@@ -2308,6 +2336,7 @@ return
 0ADF: add_text_label "YOR_P06" text "Police Bribe Fee - $~1~"
 0ADF: add_text_label "YOR_P07" text "High-Roller Mark - ~1~"
 0ADF: add_text_label "YOR_P08" text "Save/Load Banner - ~1~"
+0ADF: add_text_label "YOR_P09" text "Auto-Strip Chute - ~1~"
 return
 
 // =========================================================================

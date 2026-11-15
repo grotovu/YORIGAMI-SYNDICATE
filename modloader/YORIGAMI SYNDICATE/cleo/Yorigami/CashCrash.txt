@@ -1,0 +1,750 @@
+{$CLEO .c}
+{$USE CLEO+}
+{$USE ini}
+{$USE memory}
+
+0000: NOP
+03A4: script_name 'Y_CRASH'
+
+0001: wait 1000 ms
+
+// =========================================================================
+// YORIGAMI MASTER HEAP DICTIONARY (TRIMMED)
+// =========================================================================
+const
+    MEM_SAVE_SLOT = 0
+    MEM_PLAYER_FORM = 12
+    MEM_ALLOC_JOONBLING = 36
+    MEM_ALLOC_SMASHER = 40
+end
+
+:Connect_To_Brain
+0001: wait 0 ms
+0AAA: 31@ = get_script_struct_named 'Y_Brain'
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+000A: 31@ += 0x3C
+0A8D: 31@ = read_memory 31@ size 4 virtual_protect 0
+if
+    0039: 31@ == 0
+then
+    0002: jump @Connect_To_Brain
+end
+
+// Initialize configuration & edge-trigger state
+12@ = -999 // Last save slot synced
+13@ = 0    // Post-flight proof reset latch
+29@ = 0    // LMB / Attack edge latch
+1@ = 10    // Safeguard RequiredBlingPoints default
+2@ = 0     // Live effective rank: min(Bling, Smasher)
+0007: 3@ = 8.0
+0007: 4@ = 0.55
+0007: 5@ = 30.0
+6@ = 50
+7@ = 5
+8@ = 500
+9@ = 4
+0007: 10@ = 3.0
+0007: 11@ = -180.0
+
+:CashCrash_StartupWait
+0001: wait 250 ms
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    0002: jump @CashCrash_StartupWait
+end
+
+// =========================================================================
+// MAIN MONITORING LOOP
+// =========================================================================
+:CashCrash_Loop
+0001: wait 10 ms
+
+if
+    8256: not player $PLAYER_CHAR defined
+then
+    0002: jump @CashCrash_Loop
+end
+
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+
+// Reload INI settings whenever save slot changes or on initial boot
+0085: 30@ = 31@
+000A: 30@ += MEM_SAVE_SLOT
+0A8D: 28@ = read_memory 30@ size 4 virtual_protect 0
+if
+    803B: not 28@ == 12@
+then
+    0050: gosub @CashCrash_ReloadSettings
+end
+
+// If a dive previously aborted into Flight Mode, restore proofs once player lands safely
+if
+    0039: 13@ == 1
+then
+    if and
+        8611: not actor $PLAYER_ACTOR performing_animation "FLYING"
+        8611: not actor $PLAYER_ACTOR performing_animation "FLYING2"
+        8818: not actor $PLAYER_ACTOR in_air
+        8E92: not is_char_really_in_air $PLAYER_ACTOR
+    then
+        0001: wait 100 ms
+        if
+            0256: player $PLAYER_CHAR defined
+        then
+            0AAA: 28@ = get_script_struct_named 'Y_Graze'
+            if
+                0019: 28@ > 0
+            then
+                02AB: set_actor $PLAYER_ACTOR immunities BP 1 FP 1 EP 0 CP 0 MP 0
+            else
+                02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 0 CP 0 MP 0
+            end
+        end
+        13@ = 0
+    end
+end
+
+// Form gate: Exclusive to CJ (0) and Jo'on (1). Shion (2) cannot use this.
+0085: 30@ = 31@
+000A: 30@ += MEM_PLAYER_FORM
+0A8D: 0@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 0@ == 2
+then
+    29@ = 0
+    0001: wait 150 ms
+    0002: jump @CashCrash_Loop
+end
+
+// Synergy unlock gate: Requires Jo'on's Bling & Vehicle Smasher >= 10 pts each
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_JOONBLING
+0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_ALLOC_SMASHER
+0A8D: 22@ = read_memory 30@ size 4 virtual_protect 0
+
+if or
+    001D: 1@ > 21@
+    8019: not 22@ > 0
+then
+    29@ = 0
+    0001: wait 150 ms
+    0002: jump @CashCrash_Loop
+end
+
+// Compute effective Meteor Dive rank = min(Bling, Smasher)
+0085: 2@ = 21@
+if
+    001D: 21@ > 22@
+then
+    0085: 2@ = 22@
+end
+
+// Flight Mode exclusion: Never trigger while flying or pressing TAB / Action (Key 4)
+if or
+    0611: actor $PLAYER_ACTOR performing_animation "FLYING"
+    0611: actor $PLAYER_ACTOR performing_animation "FLYING2"
+    0AB0: is_key_pressed 9
+    00E1: player 0 pressed_key 4
+then
+    29@ = 1
+    0002: jump @CashCrash_Loop
+end
+
+// Read current LMB / attack input state (pure LMB / Fire, never Action/TAB)
+23@ = 0
+if or
+    0AB0: is_key_pressed 1
+    00E1: player 0 pressed_key 17
+then
+    23@ = 1
+end
+
+if
+    0039: 23@ == 0
+then
+    29@ = 0
+end
+
+// Environmental & state gates
+if or
+    844B: not actor $PLAYER_ACTOR on_foot
+    0A0C: player $PLAYER_CHAR on_jetpack
+    04AD: actor $PLAYER_ACTOR in_water
+    0965: actor $PLAYER_ACTOR swimming
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+then
+    if
+        0039: 23@ == 1
+    then
+        29@ = 1
+    end
+    0002: jump @CashCrash_Loop
+end
+
+// Must be airborne
+22@ = 0
+if or
+    0818: actor $PLAYER_ACTOR in_air
+    0E92: is_char_really_in_air $PLAYER_ACTOR
+then
+    0819: 17@ = actor $PLAYER_ACTOR distance_from_ground
+    083D: get_actor $PLAYER_ACTOR velocity_in_direction_XYZ 18@ 19@ 20@
+
+    // Detect screaming / helpless flailing / freefall state
+    if
+        0E42: is_char_doing_task_id $PLAYER_ACTOR 277
+    then
+        22@ = 1
+    end
+
+    if
+        0611: actor $PLAYER_ACTOR performing_animation "FALL_SKYDIVE"
+    then
+        22@ = 1
+    end
+
+    if and
+        0035: 17@ >= 10@
+        0033: -9.5 >= 20@
+    then
+        if or
+            0E42: is_char_doing_task_id $PLAYER_ACTOR 241
+            0E42: is_char_doing_task_id $PLAYER_ACTOR 240
+            0611: actor $PLAYER_ACTOR performing_animation "FALL_fall"
+        then
+            22@ = 1
+        end
+    end
+end
+
+// Not in freefall yet: latch held attack and wait
+if
+    0039: 22@ == 0
+then
+    if
+        0039: 23@ == 1
+    then
+        29@ = 1
+    end
+    0002: jump @CashCrash_Loop
+end
+
+// Verify Smasher unlock threshold from INI now that we are in freefall
+0AF0: 28@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "RequiredSmasherPoints"
+if
+    002B: 0 >= 28@
+then
+    28@ = 10
+end
+if
+    001D: 28@ > 2@
+then
+    0002: jump @CashCrash_Loop
+end
+
+// Parachute handling on entering freefall (reads live INI so Mod Preferences applies instantly)
+if
+    0491: actor $PLAYER_ACTOR has_weapon 46
+then
+    0AF0: 28@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "StripParachute"
+    if
+        0039: 28@ == 1
+    then
+        // StripParachute = 1: Strip chute immediately and force fists
+        0555: remove_weapon 46 from_actor $PLAYER_ACTOR
+        01B9: set_actor $PLAYER_ACTOR armed_weapon_to 0
+        0992: set_player $PLAYER_CHAR weapons_scrollable 1
+    else
+        // StripParachute = 0: Yield completely to parachute until used/dropped
+        0002: jump @CashCrash_Loop
+    end
+end
+
+// Trigger Meteor Dive on fresh LMB / attack press
+if and
+    0039: 23@ == 1
+    0039: 29@ == 0
+then
+    29@ = 1
+    0002: jump @Execute_Meteor_Dive
+end
+
+0002: jump @CashCrash_Loop
+
+
+// =========================================================================
+// METEOR DIVE DESCENT & LANDING SEQUENCE
+// =========================================================================
+:Execute_Meteor_Dive
+// Grant Collision Proof (fall immunity) + Explosion Proof while keeping Fireproof
+02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 1 CP 1 MP 0
+
+// Mute CJ's falling scream during descent (Jo'on is already muted by Joon.c)
+if
+    0039: 0@ == 0
+then
+    0489: set_actor $PLAYER_ACTOR muted 1
+end
+
+// Preserve 50% of horizontal momentum for angled meteor trajectory
+083D: get_actor $PLAYER_ACTOR velocity_in_direction_XYZ 18@ 19@ 20@
+0013: 18@ *= 0.5
+0013: 19@ *= 0.5
+
+// Cancel screaming/flailing task into native feet-down fall
+0687: clear_actor $PLAYER_ACTOR task
+
+018C: play_sound 1052 at 0.0 0.0 0.0
+
+TIMERA = 0
+TIMERB = 50
+
+:Dive_Descent_Loop
+0001: wait 0 ms
+
+if or
+    8256: not player $PLAYER_CHAR defined
+    0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+then
+    0002: jump @Dive_Cleanup_Only
+end
+
+// Abort cleanly without explosion if entering Gensokyo Flight Mode (TAB / Key 4)
+if or
+    0AB0: is_key_pressed 9
+    00E1: player 0 pressed_key 4
+    0611: actor $PLAYER_ACTOR performing_animation "FLYING"
+    0611: actor $PLAYER_ACTOR performing_animation "FLYING2"
+then
+    13@ = 1
+    0002: jump @Dive_Flight_Abort
+end
+
+// Abort cleanly without explosion if landing in water
+if or
+    04AD: actor $PLAYER_ACTOR in_water
+    0965: actor $PLAYER_ACTOR swimming
+then
+    0002: jump @Dive_Cleanup_Only
+end
+
+// Safety timeout failsafe
+if
+    0019: TIMERA > 8000
+then
+    0002: jump @Dive_Impact
+end
+
+// Check ground / roof / vehicle touchdown (0819 returns ~1.0 when feet touch ground)
+0819: 17@ = actor $PLAYER_ACTOR distance_from_ground
+if or
+    8E92: not is_char_really_in_air $PLAYER_ACTOR
+    8818: not actor $PLAYER_ACTOR in_air
+then
+    0002: jump @Dive_Impact
+end
+
+if and
+    0021: 17@ > 0.0
+    8021: not 17@ > 1.08
+then
+    0002: jump @Dive_Impact
+end
+
+// Reinforce immunities and suppress helpless flailing if it tries to reassert
+02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 1 CP 1 MP 0
+if
+    0E42: is_char_doing_task_id $PLAYER_ACTOR 277
+then
+    0687: clear_actor $PLAYER_ACTOR task
+end
+
+// Read CTimer::ms_fTimeStep (50 ticks/sec) and convert to seconds (capped at 0.05s)
+0A8D: 24@ = read_memory 0xB7CB5C size 4 virtual_protect 0
+0013: 24@ *= 0.02
+if
+    0021: 24@ > 0.05
+then
+    0007: 24@ = 0.05
+end
+
+// Compute vertical step for this frame
+0087: 20@ = 11@
+006B: 20@ *= 24@
+
+// Cap downward step near street height to catch vehicle roofs cleanly
+if and
+    0021: 17@ > 0.0
+    8021: not 17@ > 3.5
+then
+    if
+        0023: -0.45 > 20@
+    then
+        0007: 20@ = -0.45
+    end
+end
+
+00A0: store_actor $PLAYER_ACTOR position_to 14@ 15@ 16@
+
+// Apply horizontal step only if path ahead is unobstructed
+0087: 25@ = 18@
+006B: 25@ *= 24@
+005B: 25@ += 14@
+
+0087: 26@ = 19@
+006B: 26@ *= 24@
+005B: 26@ += 15@
+
+if
+    06BD: no_obstacles_between 14@ 15@ 16@ and 25@ 26@ 16@ solid 1 car 1 actor 0 object 1 particle 0
+then
+    0087: 14@ = 25@
+    0087: 15@ = 26@
+end
+
+// Clamp final step cleanly onto the surface if this frame would cross ground
+22@ = 0
+if
+    0021: 17@ > 0.0
+then
+    0087: 25@ = 17@
+    000F: 25@ -= 1.0 // FootHeight above surface
+    0087: 26@ = 25@
+    005B: 26@ += 20@
+    if
+        0033: 0.08 >= 26@
+    then
+        0087: 20@ = 25@
+        0013: 20@ *= -1.0
+        000B: 20@ += 0.05
+        22@ = 1
+    end
+end
+
+005B: 16@ += 20@
+0E32: set_char_coordinates_simple $PLAYER_ACTOR coord 14@ 15@ 16@
+083C: set_actor $PLAYER_ACTOR velocity_in_direction_XYZ 0.0 0.0 -5.0
+
+if
+    0039: 22@ == 1
+then
+    0002: jump @Dive_Impact
+end
+
+// Descent gold aura VFX
+04D5: create_corona_at 14@ 15@ 16@ radius 1.15 type 0 flare 0 RGB 255 215 50
+04D5: create_corona_at 14@ 15@ 16@ radius 0.55 type 0 flare 0 RGB 255 235 80
+04D5: create_corona_at 14@ 15@ 16@ radius 0.25 type 0 flare 0 RGB 255 255 220
+
+if
+    0019: TIMERB > 30
+then
+    TIMERB = 0
+    064B: 28@ = create_particle "joon_gold" at 14@ 15@ 16@ type 1
+    064C: make_particle 28@ visible
+    064F: remove_references_to_particle 28@
+end
+
+0002: jump @Dive_Descent_Loop
+
+
+// =========================================================================
+// IMPACT EXPLOSION, SCALED SHOCKWAVE & CAMERA SHAKE
+// =========================================================================
+:Dive_Impact
+02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 1 CP 1 MP 0
+083C: set_actor $PLAYER_ACTOR velocity_in_direction_XYZ 0.0 0.0 -2.0
+0687: clear_actor $PLAYER_ACTOR task
+
+00A0: store_actor $PLAYER_ACTOR position_to 14@ 15@ 16@
+0087: 27@ = 16@
+000F: 27@ -= 0.7
+
+// Native explosion + camera shake
+0948: create_explosion_at 14@ 15@ 27@ type 0 camera_shake 0.0
+0003: shake_camera 200
+
+// Gold meteor impact burst particles
+064B: 28@ = create_particle "joon_gold" at 14@ 15@ 16@ type 1
+064C: make_particle 28@ visible
+064F: remove_references_to_particle 28@
+
+0087: 25@ = 14@
+000B: 25@ += 1.5
+064B: 28@ = create_particle "joon_gold" at 25@ 15@ 27@ type 1
+064C: make_particle 28@ visible
+064F: remove_references_to_particle 28@
+
+0087: 25@ = 14@
+000F: 25@ -= 1.5
+064B: 28@ = create_particle "joon_gold" at 25@ 15@ 27@ type 1
+064C: make_particle 28@ visible
+064F: remove_references_to_particle 28@
+
+0087: 26@ = 15@
+000B: 26@ += 1.5
+064B: 28@ = create_particle "joon_gold" at 14@ 26@ 27@ type 1
+064C: make_particle 28@ visible
+064F: remove_references_to_particle 28@
+
+0087: 26@ = 15@
+000F: 26@ -= 1.5
+064B: 28@ = create_particle "joon_gold" at 14@ 26@ 27@ type 1
+064C: make_particle 28@ visible
+064F: remove_references_to_particle 28@
+
+// Compute scaled blast radius (24@) and scaled damage (21@)
+0093: 25@ = integer 2@ to_float
+006B: 25@ *= 4@
+0087: 24@ = 3@
+005B: 24@ += 25@
+if
+    0021: 5@ > 0.0
+then
+    if
+        0025: 24@ > 5@
+    then
+        0087: 24@ = 5@
+    end
+end
+
+0085: 21@ = 2@
+006A: 21@ *= 7@
+005A: 21@ += 6@
+if
+    0019: 8@ > 0
+then
+    if
+        001D: 21@ > 8@
+    then
+        0085: 21@ = 8@
+    end
+end
+
+// Scaled radial shockwave against nearby peds
+22@ = 0
+if
+    0AE1: 28@ = random_char_near_point 14@ 15@ 16@ in_radius 24@ find_next 0 pass_deads 1
+then
+    :Dive_PedBlast_Loop
+    if and
+        056D: actor 28@ defined
+        8118: not actor 28@ dead
+        87D6: not 28@ == $PLAYER_ACTOR
+    then
+        0851: set_actor 28@ decrease_health_by 21@ affect_armour 1
+        if and
+            056D: actor 28@ defined
+            8118: not actor 28@ dead
+            8449: not actor 28@ in_a_car
+        then
+            0687: clear_actor 28@ task
+            0812: AS_actor 28@ perform_animation "KO_skid_back" IFP "PED" framedelta 4.0 loopA 0 lockX 1 lockY 1 lockF 0 time -1
+        end
+    end
+
+    000A: 22@ += 1
+    if
+        001B: 40 > 22@
+    then
+        if
+            0AE1: 28@ = random_char_near_point 14@ 15@ 16@ in_radius 24@ find_next 1 pass_deads 1
+        then
+            0002: jump @Dive_PedBlast_Loop
+        end
+    end
+end
+
+// Scaled radial shockwave against nearby vehicles
+22@ = 0
+006A: 21@ *= 9@ // VehicleDamage = Damage * VehicleDamageMultiplier
+if
+    0AE2: 28@ = random_vehicle_near_point 14@ 15@ 16@ in_radius 24@ find_next 0 pass_wrecked 1
+then
+    :Dive_CarBlast_Loop
+    if and
+        056E: car 28@ defined
+        8119: not car 28@ wrecked
+    then
+        0227: 23@ = car 28@ health
+        0062: 23@ -= 21@
+        if
+            8019: not 23@ > 0
+        then
+            020B: explode_car 28@
+        else
+            0224: set_car 28@ health_to 23@
+        end
+    end
+
+    000A: 22@ += 1
+    if
+        001B: 25 > 22@
+    then
+        if
+            0AE2: 28@ = random_vehicle_near_point 14@ 15@ 16@ in_radius 24@ find_next 1 pass_wrecked 1
+        then
+            0002: jump @Dive_CarBlast_Loop
+        end
+    end
+end
+
+// Post-landing immunity grace window + expanding golden shockwave corona
+TIMERA = 0
+0007: 25@ = 1.5
+:Dive_Grace_Loop
+0001: wait 0 ms
+if or
+    8256: not player $PLAYER_CHAR defined
+    0118: actor $PLAYER_ACTOR dead
+then
+    0002: jump @Dive_Cleanup_Only
+end
+
+02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 1 CP 1 MP 0
+
+// Prevent GTA SA from playing heavy collapse recovery after high-speed fall
+if
+    0611: actor $PLAYER_ACTOR performing_animation "FALL_collapse"
+then
+    0687: clear_actor $PLAYER_ACTOR task
+end
+
+if
+    001B: 300 > TIMERA
+then
+    000B: 25@ += 0.15
+    04D5: create_corona_at 14@ 15@ 16@ radius 25@ type 0 flare 0 RGB 255 215 50
+    04D5: create_corona_at 14@ 15@ 16@ radius 1.2 type 0 flare 0 RGB 255 255 220
+end
+
+if
+    001B: 450 > TIMERA
+then
+    0002: jump @Dive_Grace_Loop
+end
+
+
+// =========================================================================
+// CLEANUP & IMMUNITY RESTORATION
+// =========================================================================
+:Dive_Cleanup_Only
+if
+    0256: player $PLAYER_CHAR defined
+then
+    // Only unmute CJ; keep Jo'on muted so she doesn't speak in CJ's voice
+    if
+        0039: 0@ == 0
+    then
+        0489: set_actor $PLAYER_ACTOR muted 0
+    end
+
+    // Preserve Bling Graze bulletproof shield if currently active
+    0AAA: 28@ = get_script_struct_named 'Y_Graze'
+    if
+        0019: 28@ > 0
+    then
+        02AB: set_actor $PLAYER_ACTOR immunities BP 1 FP 1 EP 0 CP 0 MP 0
+    else
+        02AB: set_actor $PLAYER_ACTOR immunities BP 0 FP 1 EP 0 CP 0 MP 0
+    end
+end
+
+13@ = 0
+0001: wait 400 ms
+0002: jump @CashCrash_Loop
+
+:Dive_Flight_Abort
+if
+    0256: player $PLAYER_CHAR defined
+then
+    if
+        0039: 0@ == 0
+    then
+        0489: set_actor $PLAYER_ACTOR muted 0
+    end
+end
+
+0001: wait 250 ms
+0002: jump @CashCrash_Loop
+
+
+// =========================================================================
+// SUBROUTINE: RELOAD SETTINGS FROM YorigamiPerks.ini
+// =========================================================================
+:CashCrash_ReloadSettings
+0085: 12@ = 28@
+
+0AF0: 1@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "RequiredBlingPoints"
+if
+    002B: 0 >= 1@
+then
+    1@ = 10
+end
+
+0AF2: 3@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "BaseRadius"
+if
+    0033: 0.0 >= 3@
+then
+    0007: 3@ = 8.0
+end
+
+0AF2: 4@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "RadiusPerPoint"
+if
+    0023: 0.0 > 4@
+then
+    0007: 4@ = 0.5
+end
+
+0AF2: 5@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "MaxRadiusCap"
+
+0AF0: 6@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "BaseDamage"
+if
+    002B: 0 >= 6@
+then
+    6@ = 50
+end
+
+0AF0: 7@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "DamagePerPoint"
+if
+    001B: 0 > 7@
+then
+    7@ = 5
+end
+
+0AF0: 8@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "MaxDamageCap"
+
+0AF0: 9@ = read_int_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "VehicleDamageMultiplier"
+if
+    002B: 0 >= 9@
+then
+    9@ = 4
+end
+
+0AF2: 10@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "MinFallHeight"
+if
+    0033: 0.0 >= 10@
+then
+    0007: 10@ = 3.0
+end
+
+0AF2: 11@ = read_float_from_ini_file "cleo\YorigamiPerks.ini" section "CashCrash" key "DiveSpeed"
+if
+    0031: 11@ >= -5.0
+then
+    0007: 11@ = -180.0
+end
+
+0051: return
