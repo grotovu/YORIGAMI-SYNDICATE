@@ -343,9 +343,28 @@ then
                     23@ = 2 // Reason: Wounded
                     018C: play_sound 1058 at 0.0 0.0 0.0
                     03EB: clear_small_messages_only
-                    0ADF: add_text_label "Y_CW0" text "~b~Shion: ~s~\"Jo'on... I took bad hits. I need something warm in my stomach to heal...\""
-                    09C1: add_next_text_to_brief_history 1
-                    00BC: show_text_highpriority GXT 'Y_CW0' time 3800 flag 1
+                    0209: 26@ = random_int_in_ranges 0 3
+                    if
+                        26@ == 0
+                    then
+                        0ADF: add_text_label "Y_CW0" text "~b~Shion: ~s~\"Jo'on... I took bad hits. I need something warm in my stomach to heal...\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_CW0' time 3800 flag 1
+                    end
+                    if
+                        26@ == 1
+                    then
+                        0ADF: add_text_label "Y_CW1" text "~b~Shion: ~s~\"I'm hurting pretty bad here... buy me some greasy food before I pass out.\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_CW1' time 3800 flag 1
+                    end
+                    if
+                        26@ == 2
+                    then
+                        0ADF: add_text_label "Y_CW2" text "~b~Shion: ~s~\"My ribs feel cracked and I'm dizzy... get me a hot meal or I'm done for.\""
+                        09C1: add_next_text_to_brief_history 1
+                        00BC: show_text_highpriority GXT 'Y_CW2' time 3800 flag 1
+                    end
                 end
             else
                 // Case B: 48 In-Game Hours Passed
@@ -360,16 +379,53 @@ then
                         03EB: clear_small_messages_only
 
                         010B: 9@ = player $PLAYER_CHAR money
+                        0209: 26@ = random_int_in_ranges 0 3
                         if
                             9@ > 0
                         then
-                            0ADF: add_text_label "Y_HF0" text "~b~Shion: ~s~\"My stomach's digesting itself, Jo'on... buy me something to eat before I collapse.\""
-                            09C1: add_next_text_to_brief_history 1
-                            00BC: show_text_highpriority GXT 'Y_HF0' time 3600 flag 1
+                            if
+                                26@ == 0
+                            then
+                                0ADF: add_text_label "Y_HF0" text "~b~Shion: ~s~\"My stomach's digesting itself, Jo'on... buy me something to eat before I collapse.\""
+                                09C1: add_next_text_to_brief_history 1
+                                00BC: show_text_highpriority GXT 'Y_HF0' time 3600 flag 1
+                            end
+                            if
+                                26@ == 1
+                            then
+                                0ADF: add_text_label "Y_HF1" text "~b~Shion: ~s~\"I haven't eaten in two days... you've got cash, so feed me already.\""
+                                09C1: add_next_text_to_brief_history 1
+                                00BC: show_text_highpriority GXT 'Y_HF1' time 3600 flag 1
+                            end
+                            if
+                                26@ == 2
+                            then
+                                0ADF: add_text_label "Y_HF2" text "~b~Shion: ~s~\"My stomach won't stop growling... spare a few bucks for a burger or something.\""
+                                09C1: add_next_text_to_brief_history 1
+                                00BC: show_text_highpriority GXT 'Y_HF2' time 3600 flag 1
+                            end
                         else
-                            0ADF: add_text_label "Y_HF1" text "~b~Shion: ~s~\"I'm starving, Jo'on... but our pockets are empty. I'll just go check the dumpsters.\""
-                            09C1: add_next_text_to_brief_history 1
-                            00BC: show_text_highpriority GXT 'Y_HF1' time 3600 flag 1
+                            if
+                                26@ == 0
+                            then
+                                0ADF: add_text_label "Y_HFB0" text "~b~Shion: ~s~\"I'm starving, Jo'on... but our pockets are empty. I'll just go check the dumpsters.\""
+                                09C1: add_next_text_to_brief_history 1
+                                00BC: show_text_highpriority GXT 'Y_HFB0' time 3600 flag 1
+                            end
+                            if
+                                26@ == 1
+                            then
+                                0ADF: add_text_label "Y_HFB1" text "~b~Shion: ~s~\"Two days with no food and zero cash... I'm going to start eating out of trash cans.\""
+                                09C1: add_next_text_to_brief_history 1
+                                00BC: show_text_highpriority GXT 'Y_HFB1' time 3600 flag 1
+                            end
+                            if
+                                26@ == 2
+                            then
+                                0ADF: add_text_label "Y_HFB2" text "~b~Shion: ~s~\"We're broke and I'm about to faint... point me toward an alley bin or something.\""
+                                09C1: add_next_text_to_brief_history 1
+                                00BC: show_text_highpriority GXT 'Y_HFB2' time 3600 flag 1
+                            end
                         end
                     end
                 end
@@ -1317,7 +1373,7 @@ return
 018C: play_sound 1057 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
 
-0209: 26@ = random_int_in_ranges 0 2
+0209: 26@ = random_int_in_ranges 0 3
 if
     26@ == 0
 then
@@ -1332,6 +1388,14 @@ then
     0ADF: add_text_label "Y_FBK1" text "~y~Jo'on: ~s~\"Our wallet's bone-dry! Nobody in this city hands out freebies, so forget about it!\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_FBK1' time 3200 flag 1
+end
+
+if
+    26@ == 2
+then
+    0ADF: add_text_label "Y_FBK2" text "~y~Jo'on: ~s~\"Empty wallet, empty tray! Get out and find a dumpster if you're that desperate!\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_FBK2' time 3200 flag 1
 end
 return
 
