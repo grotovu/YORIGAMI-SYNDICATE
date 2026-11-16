@@ -338,7 +338,7 @@ then
         if
             11@ == 1
         then
-            0ADF: add_text_label "Y_BN3BH" text "~b~Shion: ~s~\"Don't treat this car like a rollercoaster, Jo'on... I'm getting smashed against the rear glass.\""
+            0ADF: add_text_label "Y_BN3BH" text "~b~Shion: ~s~\"Don't treat this car like a rollercoaster, Jo'on... I can barely keep up floating behind these sharp turns.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_BN3BH' time 3600 flag 1
         else
@@ -737,7 +737,7 @@ then
         if
             11@ == 1
         then
-            0ADF: add_text_label "Y_RL2BH" text "~b~Shion: ~s~\"If you start bouncing this car around, I'm gonna smash straight into the windshield...\""
+            0ADF: add_text_label "Y_RL2BH" text "~b~Shion: ~s~\"Don't start bouncing this car around, Jo'on... it's hard enough chasing a moving target out here.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_RL2BH' time 3600 flag 1
         else
@@ -849,7 +849,7 @@ then
         if
             11@ == 1
         then
-            0ADF: add_text_label "Y_SF1BH" text "~b~Shion: ~s~\"That screeching synth is piercing right through my ears... it's giving me a pounding headache.\""
+            0ADF: add_text_label "Y_SF1BH" text "~b~Shion: ~s~\"That screeching synth keeps buzzing through the static out here... turn it down, Jo'on.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_SF1BH' time 3600 flag 1
         else
@@ -1288,9 +1288,17 @@ then
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_RDX0D" text "~b~Shion: ~s~\"All that screaming takes way too much energy... my throat hurts just listening to him.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_RDX0D' time 3500 flag 1
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_RD0DH" text "~b~Shion: ~s~\"All that screaming takes way too much energy... I'm getting tired just trailing behind it.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RD0DH' time 3500 flag 1
+        else
+            0ADF: add_text_label "Y_RDX0D" text "~b~Shion: ~s~\"All that screaming takes way too much energy... my throat hurts just listening to him.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RDX0D' time 3500 flag 1
+        end
         wait 3500 ms
         jump @Finalize_Ambient_Chat
     end
@@ -1309,7 +1317,7 @@ then
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_RDX1B" text "~b~Shion: ~s~\"Wait... mortals actually get paid millions of dollars to dress like they're homeless?!\""
+        0ADF: add_text_label "Y_RDX1B" text "~b~Shion: ~s~\"Wait... people actually get paid millions of dollars to dress like they're homeless?!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_RDX1B' time 3500 flag 1
         wait 3500 ms
@@ -1354,9 +1362,17 @@ then
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_RDX2C" text "~b~Shion: ~s~\"At least she's honest, sis. But playing loud guitar screeching right after whining hurts my ears.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_RDX2C' time 3600 flag 1
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_RD2CH" text "~b~Shion: ~s~\"At least she's honest, sis. Though all that noisy guitar right after whining is exhausting.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RD2CH' time 3600 flag 1
+        else
+            0ADF: add_text_label "Y_RDX2C" text "~b~Shion: ~s~\"At least she's honest, sis. But playing loud guitar screeching right after whining hurts my ears.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_RDX2C' time 3600 flag 1
+        end
         wait 3600 ms
         gosub @Check_Alive_Or_Exit
 
@@ -1375,7 +1391,7 @@ then
     then
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_RDX3A" text "~y~Jo'on: ~s~\"Mortals actually pay fifty bucks a ticket to cram into a pit and punch each other to this racket?!\""
+        0ADF: add_text_label "Y_RDX3A" text "~y~Jo'on: ~s~\"Idiots actually pay fifty bucks a ticket to cram into a pit and punch each other to this racket?!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_RDX3A' time 3600 flag 1
         wait 3600 ms
@@ -1594,7 +1610,7 @@ then
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_PBK0D" text "~b~Shion: ~s~\"He bought silk to move up... you just blow ten grand on gaudy jewelry to show-off while I starve.\""
+        0ADF: add_text_label "Y_PBK0D" text "~b~Shion: ~s~\"He bought silk to move up... you just blow ten grand on gaudy jewelry to show off while I starve.\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_PBK0D' time 3600 flag 1
         wait 3600 ms
@@ -1727,7 +1743,7 @@ then
     then
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_WCT0A" text "~y~Jo'on: ~s~\"Ugh, talk radio. Just unhinged mortals ramblin' into microphones. Turn it off!\""
+        0ADF: add_text_label "Y_WCT0A" text "~y~Jo'on: ~s~\"Ugh, talk radio. Just unhinged weirdos ramblin' into microphones. Turn it off!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_WCT0A' time 3500 flag 1
         wait 3500 ms
@@ -2064,7 +2080,7 @@ then
         if
             11@ == 1
         then
-            0ADF: add_text_label "Y_UT2BH" text "~b~Shion: ~s~\"The tape deck is chewing up the ribbon... I can see the black tape knotting inside.\""
+            0ADF: add_text_label "Y_UT2BH" text "~b~Shion: ~s~\"The music just slowed down and died... sounds like your deck ate the tape, Jo'on.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_UT2BH' time 3600 flag 1
         else
@@ -2329,7 +2345,7 @@ then
         if
             11@ == 1
         then
-            0ADF: add_text_label "Y_SM1BH" text "~b~Shion: ~s~\"Dispatch says a stolen ambulance was spotted speeding with a weird blue glow in the cab...\""
+            0ADF: add_text_label "Y_SM1BH" text "~b~Shion: ~s~\"Dispatch says a stolen ambulance was spotted speeding with a weird blue glow chasing the back doors...\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_SM1BH' time 3600 flag 1
         else
@@ -2355,9 +2371,17 @@ then
     then
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SCM2A" text "~b~Shion: ~s~\"There are boxes of sterile bandages back here... maybe I can patch up my sore feet.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_SCM2A' time 3500 flag 1
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_SM2AH" text "~b~Shion: ~s~\"There's boxes of bandages inside, Jo'on... might be worth grabbing later.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SM2AH' time 3500 flag 1
+        else
+            0ADF: add_text_label "Y_SCM2A" text "~b~Shion: ~s~\"There are boxes of sterile bandages back here... maybe I can patch up my sore feet.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SCM2A' time 3500 flag 1
+        end
         wait 3500 ms
         gosub @Check_Alive_Or_Exit
 
@@ -2371,9 +2395,17 @@ then
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SCM2C" text "~b~Shion: ~s~\"The metal lockbox is bolted shut, Jo'on... I can't break into it with bare hands.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_SCM2C' time 3500 flag 1
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_SM2CH" text "~b~Shion: ~s~\"The metal lockbox is bolted shut, Jo'on... and I can't exactly pick a lock without hands.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SM2CH' time 3500 flag 1
+        else
+            0ADF: add_text_label "Y_SCM2C" text "~b~Shion: ~s~\"The metal lockbox is bolted shut, Jo'on... I can't break into it with bare hands.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SCM2C' time 3500 flag 1
+        end
         wait 3500 ms
         gosub @Check_Alive_Or_Exit
 
@@ -2474,7 +2506,7 @@ then
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SCF0C" text "~y~Jo'on: ~s~\"Who cares?! We're fireproof deities! If a vault melts, we'll scoop the gold right out of the coals!\""
+        0ADF: add_text_label "Y_SCF0C" text "~y~Jo'on: ~s~\"Who cares?! Fire can't even touch us! If a vault melts, we'll scoop the gold right out of the coals!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_SCF0C' time 3600 flag 1
         wait 3600 ms
@@ -2519,17 +2551,33 @@ then
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SCF1C" text "~y~Jo'on: ~s~\"A shower is what you need! Hop out on the pavement and let me hose the grime off ya!\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_SCF1C' time 3500 flag 1
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_SC1CH" text "~y~Jo'on: ~s~\"A rinse is what you need! Turn back into havin' a body and let me blast ya!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SC1CH' time 3500 flag 1
+        else
+            0ADF: add_text_label "Y_SCF1C" text "~y~Jo'on: ~s~\"A shower is what you need! Hop out on the pavement and let me hose the grime off ya!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SCF1C' time 3500 flag 1
+        end
         wait 3500 ms
         gosub @Check_Alive_Or_Exit
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SCF1D" text "~b~Shion: ~s~\"I'm staying right here in the passenger seat...\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_SCF1D' time 3000 flag 1
+        if
+            11@ == 1
+        then
+            0ADF: add_text_label "Y_SC1DH" text "~b~Shion: ~s~\"I'm staying right here behind the back bumper where the hose can't aim...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SC1DH' time 3000 flag 1
+        else
+            0ADF: add_text_label "Y_SCF1D" text "~b~Shion: ~s~\"I'm staying right here in the passenger seat...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SCF1D' time 3000 flag 1
+        end
         wait 3000 ms
         jump @Finalize_Ambient_Chat
     end
@@ -2742,7 +2790,7 @@ then
     if
         11@ == 1
     then
-        0ADF: add_text_label "Y_SC3BH" text "~b~Shion: ~s~\"The radio scanner keeps crackling and hissing whenever I float near the dashboard...\""
+        0ADF: add_text_label "Y_SC3BH" text "~b~Shion: ~s~\"The police scanner keeps crackling and hissing whenever I drift near the antenna...\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_SC3BH' time 3600 flag 1
     else
@@ -2887,9 +2935,17 @@ if
 then
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_CML3A" text "~b~Shion: ~s~\"They say living in Los Santos is like smoking a pack a day... my lungs feel it.\""
-    09C1: add_next_text_to_brief_history 1
-    00BC: show_text_highpriority GXT 'Y_CML3A' time 3500 flag 1
+    if
+        11@ == 1
+    then
+        0ADF: add_text_label "Y_CM3AH" text "~b~Shion: ~s~\"They say living in Los Santos is like smoking a pack a day... glad I don't have lungs right now.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CM3AH' time 3500 flag 1
+    else
+        0ADF: add_text_label "Y_CML3A" text "~b~Shion: ~s~\"They say living in Los Santos is like smoking a pack a day... my lungs feel it.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_CML3A' time 3500 flag 1
+    end
     wait 3500 ms
     gosub @Check_Alive_Or_Exit
 
