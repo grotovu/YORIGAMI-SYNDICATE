@@ -3862,7 +3862,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L18C" text "~b~Shion: ~s~\"Before that cord pulled... the wind was deafening. I couldn't feel the weight of my own rags.\""
+0ADF: add_text_label "Y_L18C" text "~b~Shion: ~s~\"Before that cord pulled... the wind was deafening, Jo'on. It completely drowned out the buzzing in my head.\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L18C' time 4300 flag 1
 wait 4300
@@ -3888,10 +3888,23 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L18D2" text "~b~Shion: ~s~\"'Maybe if I hit the dirt and shatter to pieces, all this bad luck will finally stop.'\""
+0ADF: add_text_label "Y_L18D2" text "~b~Shion: ~s~\"'Even if my divine body knits back together by tomorrow...'\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L18D2' time 4200 flag 1
-wait 4200
+00BC: show_text_highpriority GXT 'Y_L18D2' time 3900 flag 1
+wait 3900
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L18D3" text "~b~Shion: ~s~\"'if I shatter on the dirt, for just a few hours, the hunger stops. Everything goes quiet.'\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L18D3' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -3914,9 +3927,9 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L18F" text "~y~Jo'on: ~s~\"If you turn into street paste on the curb, who's takin' the bullets for me?! Who's tankin' the cops?!\""
+0ADF: add_text_label "Y_L18F1" text "~y~Jo'on: ~s~\"You think splattin' on the dirt is a vacation?! You'd rather be paste than be breathin' out here with me?!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L18F' time 4400 flag 1
+00BC: show_text_highpriority GXT 'Y_L18F1' time 4400 flag 1
 wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
@@ -3927,10 +3940,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L18G" text "~b~Shion: ~s~\"...You'd really miss your bullet sponge that much, Jo'on?\""
+0ADF: add_text_label "Y_L18F2" text "~y~Jo'on: ~s~\"Besides... who's supposed to take the bullets for me?! Who's watchin' my back?!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L18G' time 3800 flag 1
-wait 3800
+00BC: show_text_highpriority GXT 'Y_L18F2' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -3940,7 +3953,20 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L18H" text "~y~Jo'on: ~s~\"Duh! Immortal shields with infinite pain tolerance don't grow on trees! Fold that sheet, we're walkin'!\""
+0ADF: add_text_label "Y_L18G" text "~b~Shion: ~s~\"...You really can't stand the thought of being left all by yourself out here, can you, Jo'on?\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L18G' time 4400 flag 1
+wait 4400
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L18H" text "~y~Jo'on: ~s~\"Shut your face! Immortal meat-shields don't grow on trees! Fold that nylon trash, we're walkin'!\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L18H' time 4400 flag 1
 wait 4400
@@ -3953,10 +3979,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L18I" text "~b~Shion: ~s~\"My knees are shaking so hard I can't even stand, Jo'on... you're buying me hot tea.\""
+0ADF: add_text_label "Y_L18I" text "~b~Shion: ~s~\"My knees are shaking so hard I can't even walk straight, Jo'on... you're buying me a meal.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L18I' time 4200 flag 1
-wait 4200
+00BC: show_text_highpriority GXT 'Y_L18I' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -3966,10 +3992,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L18J" text "~y~Jo'on: ~s~\"Tea with extra sugar! Just stop shiverin' over there and move your legs!\""
+0ADF: add_text_label "Y_L18J" text "~y~Jo'on: ~s~\"A hot meal and a whole pot of tea! Just stop shiverin' on the curb and don't ya dare check out on me! Move!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L18J' time 4100 flag 1
-wait 4100
+00BC: show_text_highpriority GXT 'Y_L18J' time 5000 flag 1
+wait 5000
 return
 
 
