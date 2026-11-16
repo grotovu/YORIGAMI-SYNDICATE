@@ -46,6 +46,34 @@ then
     0A93: terminate_this_custom_script
 end
 
+01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+if or
+    0118: actor $PLAYER_ACTOR dead
+    0741: actor $PLAYER_ACTOR busted
+then
+    0A93: terminate_this_custom_script
+end
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_HANDLE
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+if
+    0039: 14@ == 0
+then
+    0A93: terminate_this_custom_script
+end
+
+if
+    0019: 14@ > 0
+then
+    if or
+        856D: not actor 14@ defined
+        0118: actor 14@ dead
+    then
+        0A93: terminate_this_custom_script
+    end
+end
+
 // Verify Priority Lock before proceeding
 0085: 30@ = 31@
 000A: 30@ += MEM_PRIORITY_LOCK
@@ -963,7 +991,7 @@ then
     if
         0@ == 0
     then
-        0ADF: add_text_label "Y_SB4A" text "~b~Shion: ~s~\"Wait... a quick spray of paint fixes a shattered windshield and bent axle?\""
+        0ADF: add_text_label "Y_SB4A" text "~b~Shion: ~s~\"Wait... a quick spray of paint fixes a shattered windshield and a smoking engine?\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_SB4A' time 3700 flag 1
         wait 3700
@@ -1058,9 +1086,17 @@ then
     if
         0@ == 3
     then
-        0ADF: add_text_label "Y_SB4G" text "~b~Shion: ~s~\"These paint fumes smell awful, Jo'on... my head's spinning.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_SB4G' time 3500 flag 1
+        if
+            0039: 11@ == 1
+        then
+            0ADF: add_text_label "Y_SB4GH" text "~b~Shion: ~s~\"Watch out for the paint mist drifting out the doors, Jo'on... you'll stain your coat.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SB4GH' time 3500 flag 1
+        else
+            0ADF: add_text_label "Y_SB4G" text "~b~Shion: ~s~\"These paint fumes smell awful, Jo'on... my head's spinning.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SB4G' time 3500 flag 1
+        end
         wait 3500
         gosub @Check_Sandbox_Alive
         if
@@ -1071,19 +1107,35 @@ then
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SB4H" text "~y~Jo'on: ~s~\"Roll the window down! That's the fresh scent of legal immunity!\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_SB4H' time 3300 flag 1
-        wait 3300
+        if
+            0039: 11@ == 1
+        then
+            0ADF: add_text_label "Y_SB4HH" text "~y~Jo'on: ~s~\"I got silk coat instincts! Just stay back so your weird blue mist don't ruin the clearcoat!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SB4HH' time 3500 flag 1
+        else
+            0ADF: add_text_label "Y_SB4H" text "~y~Jo'on: ~s~\"Roll the window down! That's the fresh scent of legal immunity!\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SB4H' time 3300 flag 1
+        end
+        wait 3400
     end
 
     // Variant 4: Glossy Enamel
     if
         0@ == 4
     then
-        0ADF: add_text_label "Y_4SH1A" text "~b~Shion: ~s~\"The fresh paint is so glossy... it's like a mirror. Makes my ragged hoodie look worse, Jo'on.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_4SH1A' time 3600 flag 1
+        if
+            0039: 11@ == 1
+        then
+            0ADF: add_text_label "Y_4SH1H" text "~b~Shion: ~s~\"The fresh paint is so glossy... it looks nicer than anything I've ever owned, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_4SH1H' time 3600 flag 1
+        else
+            0ADF: add_text_label "Y_4SH1A" text "~b~Shion: ~s~\"The fresh paint is so glossy... it's like a mirror. Makes my ragged hoodie look worse, Jo'on.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_4SH1A' time 3600 flag 1
+        end
         wait 3600
         gosub @Check_Sandbox_Alive
         if
@@ -1142,9 +1194,17 @@ then
     if
         0@ == 2
     then
-        0ADF: add_text_label "Y_SB5C" text "~b~Shion: ~s~\"My stomach did two backflips, Jo'on... please don't do that again.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_SB5C' time 3500 flag 1
+        if
+            0039: 11@ == 1
+        then
+            0ADF: add_text_label "Y_SB5CH" text "~b~Shion: ~s~\"Watching that car flip twice in mid-air made me dizzy just chasing it, Jo'on...\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SB5CH' time 3500 flag 1
+        else
+            0ADF: add_text_label "Y_SB5C" text "~b~Shion: ~s~\"My stomach did two backflips, Jo'on... please don't do that again.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_SB5C' time 3500 flag 1
+        end
         wait 3500
     end
 
@@ -1416,7 +1476,7 @@ then
         then
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_7SH1A" text "~b~Shion: ~s~\"Every time you hit the switch, I get flattened against the glass, Jo'on...\""
+            0ADF: add_text_label "Y_7SH1A" text "~b~Shion: ~s~\"Every time you hit the switch, the trunk jumps right up at me, Jo'on...\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_7SH1A' time 3600 flag 1
             wait 3600
@@ -1440,7 +1500,7 @@ then
         then
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_7SH2A" text "~b~Shion: ~s~\"You're bouncing so hard I'm getting thrown all over the cabin, Jo'on...\""
+            0ADF: add_text_label "Y_7SH2A" text "~b~Shion: ~s~\"You're bouncing that car so hard I can't hold still out here, Jo'on...\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_7SH2A' time 3500 flag 1
             wait 3500
@@ -1780,7 +1840,7 @@ then
     then
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_SB8D" text "~b~Shion: ~s~\"The frame twisted like a crushed soda can... good thing gods don't burn.\""
+        0ADF: add_text_label "Y_SB8D" text "~b~Shion: ~s~\"The frame twisted like a crushed soda can... at least neither of us burns.\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_SB8D' time 3400 flag 1
         wait 3400
@@ -2084,7 +2144,7 @@ then
         if
             0@ == 0
         then
-            0ADF: add_text_label "Y_10S0" text "~b~Shion: ~s~\"Did you feel that thump, Jo'on? Someone was crossing the street...\""
+            0ADF: add_text_label "Y_10S0" text "~b~Shion: ~s~\"Did you hear that thump, Jo'on? Someone was crossing the street...\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_10S0' time 3200 flag 1
             wait 3200
@@ -2284,7 +2344,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_FLX0C" text "~b~Shion: ~s~\"I'm hungry, Jo'on. Watching you toss bills makes my empty stomach hurt.\""
+            0ADF: add_text_label "Y_FLX0C" text "~b~Shion: ~s~\"I can't even eat right now, Jo'on... watching you toss dinner money in the street still hurts.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_FLX0C' time 3400 flag 1
             wait 3400
@@ -2583,10 +2643,44 @@ if
 then
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_HSPM" text "~b~Shion: ~s~\"You really enjoy pushing that button, don't you, Jo'on...?\""
-    09C1: add_next_text_to_brief_history 1
-    00BC: show_text_highpriority GXT 'Y_HSPM' time 2500 flag 1
-    wait 2500
+    0209: 0@ = random_int_in_ranges 0 4
+
+    if
+        0@ == 0
+    then
+        0ADF: add_text_label "Y_HSPM" text "~b~Shion: ~s~\"You really enjoy pushing that button, don't you, Jo'on...?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HSPM' time 2500 flag 1
+        wait 2500
+    end
+
+    if
+        0@ == 1
+    then
+        0ADF: add_text_label "Y_HSP1" text "~b~Shion: ~s~\"Make up your mind, Jo'on... being yanked in and out of my body makes me dizzy.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HSP1' time 3100 flag 1
+        wait 3100
+    end
+
+    if
+        0@ == 2
+    then
+        0ADF: add_text_label "Y_HSP2" text "~b~Shion: ~s~\"Stop flickering me on and off like a broken streetlamp, Jo'on...\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HSP2' time 3000 flag 1
+        wait 3000
+    end
+
+    if
+        0@ == 3
+    then
+        0ADF: add_text_label "Y_HSP3" text "~b~Shion: ~s~\"Are you trying to turn me into a blinking neon sign, sis...? Knock it off.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HSP3' time 3100 flag 1
+        wait 3100
+    end
+
     goto @Finish_Sandbox_Dialogue
 end
 
@@ -2651,13 +2745,13 @@ then
 end
 
 :Finish_Sandbox_Dialogue
-03EB: clear_small_messages_only
 0085: 30@ = 31@
 000A: 30@ += MEM_PRIORITY_LOCK
 0A8D: 29@ = read_memory 30@ size 4 virtual_protect 0
 if
     0039: 29@ == 3
 then
+    03EB: clear_small_messages_only
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
@@ -2673,6 +2767,7 @@ end
 if or
     8256: not is_player_playing $PLAYER_CHAR
     0118: actor $PLAYER_ACTOR dead
+    0741: actor $PLAYER_ACTOR busted
     016B: fading
     0E25: is_on_cutscene
 then
