@@ -219,7 +219,7 @@ then
         if
             11@ == 1
         then
-            0ADF: add_text_label "Y_SU1BH" text "~b~Shion: ~s~\"The engine's buzzing the dashboard right through me... it feels weird, sis.\""
+            0ADF: add_text_label "Y_SU1BH" text "~b~Shion: ~s~\"The exhaust is popping right in my face back here, Jo'on... it smells awful.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_SU1BH' time 3600 flag 1
         else
@@ -253,7 +253,7 @@ then
         if
             11@ == 1
         then
-            0ADF: add_text_label "Y_ST0BH" text "~b~Shion: ~s~\"There's so much velvet in here... I can drift across three whole sofas without touching the floor.\""
+            0ADF: add_text_label "Y_ST0BH" text "~b~Shion: ~s~\"At least let me grab a pretzel from the mini-fridge before you leave me floating outside, sis...\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_ST0BH' time 3600 flag 1
         else
@@ -683,7 +683,7 @@ then
         if
             11@ == 1
         then
-            0ADF: add_text_label "Y_AM0AH" text "~b~Shion: ~s~\"The back's full of clean sheets and warm blankets, Jo'on... feels like heaven.\""
+            0ADF: add_text_label "Y_AM0AH" text "~b~Shion: ~s~\"I can see clean sheets and warm blankets in there, Jo'on... let me grab one later.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_AM0AH' time 3700 flag 1
         else
@@ -860,7 +860,7 @@ then
         if
             11@ == 1
         then
-            0ADF: add_text_label "Y_HE0BH" text "~b~Shion: ~s~\"Floating inside the glass bubble without the engine deafening me is nice... keep it steady, Jo'on.\""
+            0ADF: add_text_label "Y_HE0BH" text "~b~Shion: ~s~\"Keep it steady, Jo'on... floating right beneath these spinning blades makes me nervous.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_HE0BH' time 3600 flag 1
         else
@@ -1003,7 +1003,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_JET0B" text "~b~Shion: ~s~\"The speed's flattening me against the glass, Jo'on... there's barely room in here.\""
+            0ADF: add_text_label "Y_JET0B" text "~b~Shion: ~s~\"Slow down, sis... the wind off your wings is almost blowing me right out of the sky.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_JET0B' time 3700 flag 1
             wait 3700
@@ -1019,7 +1019,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_JET1B" text "~b~Shion: ~s~\"That buzzer's rattling my skull... with my luck, that missile's gonna do a U-turn right into us, Jo'on.\""
+            0ADF: add_text_label "Y_JET1B" text "~b~Shion: ~s~\"Don't fire those missiles while I'm floating right beside the wing, Jo'on...\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_JET1B' time 3700 flag 1
             wait 3700
@@ -1370,7 +1370,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_COP0B" text "~b~Shion: ~s~\"The siren is deafening, Jo'on... and every cop within five miles knows we stole this cruiser.\""
+            0ADF: add_text_label "Y_COP0B" text "~b~Shion: ~s~\"The siren is loud, Jo'on... and every cop within five miles knows we stole this cruiser.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_COP0B' time 3600 flag 1
             wait 3600
@@ -1461,7 +1461,7 @@ then
         if
             11@ == 1
         then
-            0ADF: add_text_label "Y_SP0BH" text "~b~Shion: ~s~\"The speed's flattening me against the back glass, Jo'on... take your foot off the gas.\""
+            0ADF: add_text_label "Y_SP0BH" text "~b~Shion: ~s~\"Slow down, Jo'on... I can barely keep up floating behind this car at this speed.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_SP0BH' time 3700 flag 1
         else
@@ -1653,7 +1653,7 @@ then
         if
             11@ == 1
         then
-            0ADF: add_text_label "Y_BT0BH" text "~b~Shion: ~s~\"There's a hole in the floor, Jo'on... I'm staring straight down at dirty gravel.\""
+            0ADF: add_text_label "Y_BT0BH" text "~b~Shion: ~s~\"Pieces of rust are falling off the bottom right at me, Jo'on... this junker's falling apart.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_BT0BH' time 3700 flag 1
         else
@@ -1752,7 +1752,7 @@ then
     if
         11@ == 1
     then
-        0ADF: add_text_label "Y_CC1H" text "~b~Shion: ~s~\"Floating near the rearview mirror means nobody's screaming at me to pay for gas, sis...\""
+        0ADF: add_text_label "Y_CC1H" text "~b~Shion: ~s~\"Floating behind the bumper means nobody's screaming at me to chip in for gas, sis...\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_CC1H' time 3500 flag 1
     else
@@ -1768,7 +1768,7 @@ then
     if
         11@ == 1
     then
-        0ADF: add_text_label "Y_CC2H" text "~y~Jo'on: ~s~\"Stop hoverin' near the radio, Shion! Your blue flame is creatin' static on my station!\""
+        0ADF: add_text_label "Y_CC2H" text "~y~Jo'on: ~s~\"Get away from my trunk, Shion! Your gloomy glow's makin' static on my radio!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_CC2H' time 3600 flag 1
     else
@@ -1827,7 +1827,7 @@ then
             if
                 28@ > 100
             then
-                0ADF: add_text_label "Y_MCH0A" text "~b~Shion: ~s~\"I don't have hands to shoot right now, but with no vest on you, my shield's blocking the handlebars from stray lead...\""
+                0ADF: add_text_label "Y_MCH0A" text "~b~Shion: ~s~\"No hands to shoot, but with no vest on you, my shield's blocking the handlebars from lead...\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_MCH0A' time 3700 flag 1
                 wait 3700
