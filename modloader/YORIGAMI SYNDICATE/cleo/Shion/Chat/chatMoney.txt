@@ -157,7 +157,7 @@ then
             then
                 0ADF: add_text_label "Y_MC2AH" text "~b~Shion: ~s~\"I actually feel warm for once, Jo'on... must've been all that fast food you bought me.\""
                 09C1: add_next_text_to_brief_history 1
-                00BC: show_text_highpriority GXT 'Y_MC2AH' time 3700 flag 1
+                00BC: show_text_highpriority GXT 'Y_MC2AH' time 3600 flag 1
             else
                 0ADF: add_text_label "Y_MTC2A" text "~b~Shion: ~s~\"I think I've actually gained weight, Jo'on. My hoodie feels tighter around my stomach...\""
                 09C1: add_next_text_to_brief_history 1
@@ -168,17 +168,33 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_MTC2B" text "~y~Jo'on: ~s~\"Of course you have! I've dumped two and a half grand into feedin' ya!\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_MTC2B' time 3500 flag 1
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_MC2BH" text "~y~Jo'on: ~s~\"Better be! I've dumped two and a half grand into keepin' your ghost flame lit!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MC2BH' time 3500 flag 1
+            else
+                0ADF: add_text_label "Y_MTC2B" text "~y~Jo'on: ~s~\"Of course you have! I've dumped two and a half grand into feedin' ya!\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MTC2B' time 3500 flag 1
+            end
             0001: wait 3500 ms
             0050: gosub @Check_Alive_Or_Exit
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_MTC2C" text "~b~Shion: ~s~\"It's good padding against the cold pavement. You're a wonderful provider, Jo'on. Keep it coming.\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_MTC2C' time 3700 flag 1
+            if
+                11@ == 1
+            then
+                0ADF: add_text_label "Y_MC2CH" text "~b~Shion: ~s~\"Well, it's keeping me from fading out. You're a wonderful provider, Jo'on. Keep it coming.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MC2CH' time 3700 flag 1
+            else
+                0ADF: add_text_label "Y_MTC2C" text "~b~Shion: ~s~\"It's good padding against the cold pavement. You're a wonderful provider, Jo'on. Keep it coming.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_MTC2C' time 3700 flag 1
+            end
             0001: wait 3700 ms
             0002: jump @Finalize_Ambient_Chat
         end
@@ -334,11 +350,11 @@ then
         if
             11@ == 1
         then
-            0ADF: add_text_label "Y_MD0AH" text "~b~Shion: ~s~\"Our balance's negative, Jo'on... eviction notices are already manifesting around me.\""
+            0ADF: add_text_label "Y_MD0AH" text "~b~Shion: ~s~\"Our balance is negative, Jo'on... eviction notices are already manifesting around me.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_MD0AH' time 3700 flag 1
         else
-            0ADF: add_text_label "Y_MD0A" text "~b~Shion: ~s~\"Our balance's negative, Jo'on... my sleeves are sprouting fresh eviction notices again.\""
+            0ADF: add_text_label "Y_MD0A" text "~b~Shion: ~s~\"Our balance is negative, Jo'on... my clothes are sprouting fresh eviction notices again.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_MD0A' time 3600 flag 1
         end
@@ -562,7 +578,7 @@ then
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_DC0C" text "~y~Jo'on: ~s~\"Cash is meant to be spent, Shion! What kind of loser keeps a savin's account?!\""
+        0ADF: add_text_label "Y_DC0C" text "~y~Jo'on: ~s~\"Cash is meant to be spent, Shion! What kind of loser keeps a savings account?!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_DC0C' time 3500 flag 1
         0001: wait 3500 ms
