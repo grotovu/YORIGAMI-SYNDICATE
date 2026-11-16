@@ -3992,10 +3992,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L18J" text "~y~Jo'on: ~s~\"A hot meal and a whole pot of tea! Just stop shiverin' on the curb and don't ya dare check out on me! Move!\""
+0ADF: add_text_label "Y_L18J" text "~y~Jo'on: ~s~\"A hot meal and a whole pot of tea! Just stop shiverin' and don't ya dare check out on me! Move!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L18J' time 5000 flag 1
-wait 5000
+00BC: show_text_highpriority GXT 'Y_L18J' time 4400 flag 1
+wait 4400
 return
 
 
