@@ -142,6 +142,9 @@ end
 if and
     12@ > 0        // Misfortune chance > 0%
     002D: 25@ >= 8@
+    8E25: not is_on_cutscene
+    8EB7: not is_on_scripted_cutscene
+    03EE: player $PLAYER_CHAR controllable
 then
     TIMERA = 0
     14@ = 0
@@ -269,18 +272,6 @@ then
     return
 end
 
-// Exclude Special Actors during missions (Models 290..299)
-if
-    0E1D: is_on_mission
-then
-    if and
-        28@ >= 290
-        299 >= 28@
-    then
-        return
-    end
-end
-
 // Entourage group protection
 07AF: 27@ = player $PLAYER_CHAR group
 if
@@ -304,10 +295,88 @@ then
     return
 end
 
-if
+// Protect airborne and parachuting peds
+if or
     0818: actor 29@ in_air
+    0E92: is_char_really_in_air 29@
+    0611: actor 29@ performing_animation "PARA_OPEN"
+    0611: actor 29@ performing_animation "PARA_FLOAT"
+    0611: actor 29@ performing_animation "PARA_LAND"
+    0611: actor 29@ performing_animation "FALL_SKYDIVE"
+    0E42: is_char_doing_task_id 29@ 240
+    0E42: is_char_doing_task_id 29@ 241
 then
     return
+end
+
+if
+    0E42: is_char_doing_task_id 29@ 277
+then
+    return
+end
+
+// Mission-only protections (Special actors, invulnerable bosses, and friendly allies)
+if
+    0E1D: is_on_mission
+then
+    if and
+        28@ >= 290
+        299 >= 28@
+    then
+        return
+    end
+
+    // Skip invulnerable scripted escape/boss actors (BP + EP + MP)
+    0EAC: get_char_proofs 29@ bullet 16@ fire 17@ explosion 18@ collision 19@ melee 3@
+    if and
+        16@ == 1
+        18@ == 1
+        3@ == 1
+    then
+        return
+    end
+
+    // Protect scripted mission allies (Grove & Mission1..8 with Respect/Like to Player)
+    089F: get_actor 29@ pedtype_to 27@
+    if or
+        27@ == 8
+        27@ >= 24
+    then
+        if
+            31 >= 27@
+        then
+            if or
+                07E8: acquaintance 0 of_actors_type 27@ to_actors_type 0 set
+                07E8: acquaintance 1 of_actors_type 27@ to_actors_type 0 set
+            then
+                if and
+                    87E8: not acquaintance 4 of_actors_type 27@ to_actors_type 0 set
+                    87E8: not acquaintance 3 of_actors_type 27@ to_actors_type 0 set
+                then
+                    25@ = -1
+                    if
+                        0E44: get_char_kill_target_char 29@ store_to 25@
+                    then
+                        if
+                            803B: not 25@ == $PLAYER_ACTOR
+                        then
+                            if
+                                851A: not actor $PLAYER_ACTOR damaged_by_actor 29@
+                            then
+                                return
+                            end
+                        end
+                    else
+                        if
+                            851A: not actor $PLAYER_ACTOR damaged_by_actor 29@
+                        then
+                            return
+                        end
+                    end
+                end
+            end
+        end
+    end
 end
 
 if
@@ -415,6 +484,7 @@ then
     if
         0E1D: is_on_mission
     then
+        089F: get_actor 29@ pedtype_to 28@
         if and
             8039: not 28@ == 6 // Cops rely strictly on wanted level
             8039: not 28@ == 8 // Exclude Grove Street
@@ -424,6 +494,7 @@ then
             0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
 
             19@ = -1
+            27@ = 0 // Third-party guard
             if
                 0E44: get_char_kill_target_char 29@ store_to 19@
             then
@@ -440,6 +511,24 @@ then
                             003B: 19@ == 20@
                         then
                             16@ = 1
+                        else
+                            if and
+                                28@ >= 24
+                                31 >= 28@
+                            then
+                                if or
+                                    07E8: acquaintance 4 of_actors_type 28@ to_actors_type 0 set
+                                    07E8: acquaintance 3 of_actors_type 28@ to_actors_type 0 set
+                                then
+                                    16@ = 1
+                                end
+                            end
+
+                            if
+                                16@ == 0
+                            then
+                                27@ = 1
+                            end
                         end
                     end
                 end
@@ -447,7 +536,7 @@ then
 
             if and
                 16@ == 0
-                19@ <= 0 // Not explicitly targeting a third party
+                27@ == 0
             then
                 if or
                     0E42: is_char_doing_task_id 29@ 1034 // TASK_SEEK_COVER_UNTIL_TARGET_DEAD (0634)
@@ -542,7 +631,37 @@ then
                                 then
                                     18@ = 2
                                 else
-                                    3@ = 1
+                                    if and
+                                        0E1D: is_on_mission
+                                        19@ >= 24
+                                        31 >= 19@
+                                    then
+                                        if or
+                                            07E8: acquaintance 4 of_actors_type 19@ to_actors_type 0 set
+                                            07E8: acquaintance 3 of_actors_type 19@ to_actors_type 0 set
+                                        then
+                                            18@ = 1
+                                        end
+                                    end
+
+                                    if and
+                                        18@ == 0
+                                        087A: gang_war_in_progress
+                                    then
+                                        if and
+                                            19@ >= 7
+                                            16 >= 19@
+                                            8039: not 19@ == 8
+                                        then
+                                            18@ = 1
+                                        end
+                                    end
+
+                                    if
+                                        18@ == 0
+                                    then
+                                        3@ = 1
+                                    end
                                 end
                             end
                         end
@@ -619,10 +738,11 @@ then
                                     end
                                 end
 
-                                // Armed or mid-flinch PedType.Mission1 enemies
+                                // Armed or mid-flinch Mission1..Mission8 enemies
                                 if and
                                     18@ == 0
-                                    19@ == 24
+                                    19@ >= 24
+                                    31 >= 19@
                                 then
                                     if
                                         0E0A: is_char_script_controlled 29@
