@@ -97,10 +97,23 @@ then
     if
         13@ == 1
     then
-        if and
+        9@ = 0
+        if
             056E: car 10@ defined
-            8119: not car 10@ wrecked
-            0205: actor $PLAYER_ACTOR near_car 10@ radius 100.0 100.0 100.0 flag 0
+        then
+            if
+                8119: not car 10@ wrecked
+            then
+                if
+                    0205: actor $PLAYER_ACTOR near_car 10@ radius 100.0 100.0 100.0 flag 0
+                then
+                    9@ = 1
+                end
+            end
+        end
+
+        if
+            9@ == 1
         then
             if
                 TIMERB > 1200
@@ -119,10 +132,23 @@ then
     if
         13@ == 2
     then
-        if and
-            056D: actor 10@ defined 
-            8118: not actor 10@ dead 
-            0104: actor $PLAYER_ACTOR near_actor 10@ radius 100.0 100.0 100.0 sphere 0
+        9@ = 0
+        if
+            056D: actor 10@ defined
+        then
+            if
+                8118: not actor 10@ dead
+            then
+                if
+                    0104: actor $PLAYER_ACTOR near_actor 10@ radius 100.0 100.0 100.0 sphere 0
+                then
+                    9@ = 1
+                end
+            end
+        end
+
+        if
+            9@ == 1
         then
             if
                 TIMERB > 1200
@@ -209,18 +235,21 @@ end
 if
     6@ == 1
 then
-    if and
+    if
         056E: car 8@ defined
-        8119: not car 8@ wrecked
     then
-        00AA: store_car 8@ position_to 14@ 15@ 16@
-        050A: 26@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 14@ 15@ 16@
         if
-            0021: 23@ > 26@ // Closer than current best target!
+            8119: not car 8@ wrecked
         then
-            0087: 23@ = 26@
-            0085: 10@ = 8@
-            13@ = 1 // Type = Car
+            00AA: store_car 8@ position_to 14@ 15@ 16@
+            050A: 26@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 14@ 15@ 16@
+            if
+                0021: 23@ > 26@ // Closer than current best target!
+            then
+                0087: 23@ = 26@
+                0085: 10@ = 8@
+                13@ = 1 // Type = Car
+            end
         end
     end
 end
@@ -229,21 +258,24 @@ end
 if
     6@ == 2
 then
-    if and
-        056D: actor 8@ defined 
-        8118: not actor 8@ dead 
-        87D6: not 8@ == $PLAYER_ACTOR
-        803B: not 8@ == 11@
-        86EE: not actor 8@ in_group 12@ 
+    if
+        056D: actor 8@ defined
     then
-        00A0: store_actor 8@ position_to 14@ 15@ 16@
-        050A: 26@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 14@ 15@ 16@
-        if
-            0021: 23@ > 26@ // Closer than current best target!
+        if and
+            8118: not actor 8@ dead 
+            87D6: not 8@ == $PLAYER_ACTOR
+            803B: not 8@ == 11@
+            86EE: not actor 8@ in_group 12@ 
         then
-            0087: 23@ = 26@
-            0085: 10@ = 8@
-            13@ = 2 // Type = Ped
+            00A0: store_actor 8@ position_to 14@ 15@ 16@
+            050A: 26@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 14@ 15@ 16@
+            if
+                0021: 23@ > 26@ // Closer than current best target!
+            then
+                0087: 23@ = 26@
+                0085: 10@ = 8@
+                13@ = 2 // Type = Ped
+            end
         end
     end
 end
