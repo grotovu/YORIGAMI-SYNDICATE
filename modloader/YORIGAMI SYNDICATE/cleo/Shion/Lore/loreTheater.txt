@@ -2941,7 +2941,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L13C" text "~b~Shion: ~s~\"These fumes... they smell familiar. Sweeter than the swamp back home, but still heavy.\""
+0ADF: add_text_label "Y_L13C" text "~b~Shion: ~s~\"These fumes... they smell familiar. Sweeter than the forest back home, but still heavy.\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L13C' time 4300 flag 1
 wait 4300
