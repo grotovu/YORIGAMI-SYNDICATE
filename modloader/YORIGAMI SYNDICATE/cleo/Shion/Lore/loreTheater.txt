@@ -5776,10 +5776,10 @@ wait 3800
 return
 
 // =========================================================================
-// EPISODE 29: "The Metaphysical Loophole" (Bit 29)
+// EPISODE 29: "Off the Books" (Bit 29)
 // =========================================================================
 :Lore_Episode_29
-0ADF: add_text_label "Y_T29" text "~y~SISTER TALK~n~~w~THE METAPHYSICAL LOOPHOLE"
+0ADF: add_text_label "Y_T29" text "~y~SISTER TALK~n~~w~OFF THE BOOKS"
 00BA: show_text_styled GXT 'Y_T29' time 3500 style 5
 wait 3500
 gosub @Check_Theater_Alive_Or_Exit
@@ -5793,8 +5793,8 @@ end
 03EB: clear_small_messages_only
 0ADF: add_text_label "Y_L29A" text "~b~Shion: ~s~\"We own so many properties across the state now, Jo'on... We never have to sleep in the dirt again.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L29A' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L29A' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -5817,10 +5817,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L29C" text "~y~Jo'on: ~s~\"I bought these deeds! My name's on the title! These are MY luxury estates!\""
+0ADF: add_text_label "Y_L29C" text "~y~Jo'on: ~s~\"I bought these deeds! My name's on the title! These are MY houses!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L29C' time 4200 flag 1
-wait 4200
+00BC: show_text_highpriority GXT 'Y_L29C' time 4100 flag 1
+wait 4100
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -5856,9 +5856,22 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L29F" text "~y~Jo'on: ~s~\"You're a poverty god! What happens when a binbougami legally owns private real estate?!\""
+0ADF: add_text_label "Y_L29F" text "~y~Jo'on: ~s~\"What happens when a walkin' bad-luck magnet legally owns a house?!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L29F' time 4300 flag 1
+00BC: show_text_highpriority GXT 'Y_L29F' time 4100 flag 1
+wait 4100
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L29G" text "~y~Jo'on: ~s~\"The pipes burst, termites eat the walls, and the roof caves right in on our heads!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L29G' time 4300 flag 1
 wait 4300
 gosub @Check_Theater_Alive_Or_Exit
 if
@@ -5869,10 +5882,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L29G" text "~y~Jo'on: ~s~\"The pipes would burst, termites would eat the walls, and the roof would cave right in on our heads!\""
+0ADF: add_text_label "Y_L29H" text "~b~Shion: ~s~\"Wait... so if my name's nowhere on the lease, my bad luck doesn't know it's mine?\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L29G' time 4400 flag 1
-wait 4400
+00BC: show_text_highpriority GXT 'Y_L29H' time 4200 flag 1
+wait 4200
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -5882,23 +5895,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L29H" text "~b~Shion: ~s~\"Wait... so if my name is legally nowhere on the lease, the universe doesn't see it as mine?\""
+0ADF: add_text_label "Y_L29I" text "~y~Jo'on: ~s~\"BINGO! It's a curse-proof legal loophole! I hold the deeds, and you're just an unregistered squatter!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L29H' time 4300 flag 1
-wait 4300
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L29I" text "~y~Jo'on: ~s~\"BINGO! It's a metaphysical legal loophole! I hold the assets, you're just an unregistered squatter!\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L29I' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L29I' time 4500 flag 1
+wait 4500
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -5934,7 +5934,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L29L" text "~y~Jo'on: ~s~\"I'm protectin' my asset portfolio, not you! Don't make that sappy face at me, it's gross!\""
+0ADF: add_text_label "Y_L29L" text "~y~Jo'on: ~s~\"I'm protectin' MY real estate, not you! Quit makin' that sappy face at me, it's gross!\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L29L' time 4300 flag 1
 wait 4300
@@ -5947,10 +5947,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L29M" text "~y~Jo'on: ~s~\"Someone's gotta do the high-level schemin' around here! Now wipe your feet before ya ruin my imported rug!\""
+0ADF: add_text_label "Y_L29M" text "~y~Jo'on: ~s~\"Someone's gotta do the smart schemin' around here! Now wipe your feet before ya ruin my carpet!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L29M' time 4200 flag 1
-wait 4200
+00BC: show_text_highpriority GXT 'Y_L29M' time 4300 flag 1
+wait 4300
 return
 
 // =========================================================================
