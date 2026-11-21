@@ -534,17 +534,11 @@ end
 if
     8@ == 1
 then
-    // Tighten ring radii so coronaringb outlines hug the flame instead of flooding the screen
-    0013: 11@ *= 0.65
-    0013: 13@ *= 0.65
-    0013: 14@ *= 0.65
-    0013: 15@ *= 0.65
-
     // Compact pitch-black core puffs on bullet impact pulse
     if
         9@ == 1
     then
-        095C: create_smoke_at 2@ 3@ 4@ velocity 0.0 0.0 0.0 RGBA 0.0 0.0 0.0 1.0 size 0.38 last_factor 0.03
+        095C: create_smoke_at 2@ 3@ 4@ velocity 0.0 0.0 0.0 RGBA 0.0 0.0 0.0 1.0 size 0.38 last_factor 0.04
         095C: create_smoke_at 2@ 3@ 4@ velocity 0.0 0.0 0.0 RGBA 0.0 0.0 0.0 1.0 size 0.25 last_factor 0.02
     end
 
@@ -572,9 +566,9 @@ then
     000B: 7@ += 0.10
     04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 9 flare 0 RGB 175 25 225
 
-    // Tight purple-magenta deflection halo around the Hitodama
-    04D5: create_corona_at 2@ 3@ 4@ radius 0.52 type 9 flare 0 RGB 165 20 220
-    04D5: create_corona_at 2@ 3@ 4@ radius 0.40 type 9 flare 0 RGB 225 65 255
+    // Expanding outer purple-magenta deflection halo
+    04D5: create_corona_at 2@ 3@ 4@ radius 1.55 type 9 flare 0 RGB 165 20 220
+    04D5: create_corona_at 2@ 3@ 4@ radius 1.15 type 9 flare 0 RGB 225 65 255
 else
     // --- Mother Flame Layer 1: Base Root Anchor (Z -0.04) ---
     0087: 5@ = 2@
@@ -709,7 +703,7 @@ then
     if
         9@ == 1
     then
-        095C: create_smoke_at 5@ 6@ 7@ velocity 0.0 0.0 0.0 RGBA 0.0 0.0 0.0 1.0 size 0.16 last_factor 0.015
+        095C: create_smoke_at 5@ 6@ 7@ velocity 0.0 0.0 0.0 RGBA 0.0 0.0 0.0 1.0 size 0.16 last_factor 0.02
     end
     04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 9 flare 0 RGB 225 65 255
 else
@@ -850,7 +844,7 @@ then
     if
         9@ == 1
     then
-        095C: create_smoke_at 5@ 6@ 7@ velocity 0.0 0.0 0.0 RGBA 0.0 0.0 0.0 1.0 size 0.16 last_factor 0.015
+        095C: create_smoke_at 5@ 6@ 7@ velocity 0.0 0.0 0.0 RGBA 0.0 0.0 0.0 1.0 size 0.16 last_factor 0.02
     end
     04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 9 flare 0 RGB 225 65 255
 else
@@ -991,7 +985,7 @@ then
     if
         9@ == 1
     then
-        095C: create_smoke_at 5@ 6@ 7@ velocity 0.0 0.0 0.0 RGBA 0.0 0.0 0.0 1.0 size 0.16 last_factor 0.015
+        095C: create_smoke_at 5@ 6@ 7@ velocity 0.0 0.0 0.0 RGBA 0.0 0.0 0.0 1.0 size 0.16 last_factor 0.02
     end
     04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 9 flare 0 RGB 225 65 255
 else
