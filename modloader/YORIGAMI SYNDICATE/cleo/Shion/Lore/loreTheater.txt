@@ -2161,10 +2161,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L90A" text "~y~Jo'on: ~s~\"Hold up, Shion! Freeze! Look at that guy screamin' at the parkin' meter!\""
+0ADF: add_text_label "Y_L90A" text "~y~Jo'on: ~s~\"Did ya see that idiot dive under that taxi's front tire the second the horn tapped?!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L90A' time 4100 flag 1
-wait 4100
+00BC: show_text_highpriority GXT 'Y_L90A' time 4200 flag 1
+wait 4200
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -2174,10 +2174,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L90B" text "~y~Jo'on: ~s~\"Ain't that the exact same guy in the orange jacket who picked a fistfight with a mailbox two blocks back?!\""
+0ADF: add_text_label "Y_L90B" text "~b~Shion: ~s~\"Yeah... and the guy walking behind him has the exact same face and clothes, Jo'on.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L90B' time 4400 flag 1
-wait 4400
+00BC: show_text_highpriority GXT 'Y_L90B' time 4200 flag 1
+wait 4200
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -2187,7 +2187,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L90C" text "~b~Shion: ~s~\"Look across the street... there's two more of him yelling about crack at passing cars.\""
+0ADF: add_text_label "Y_L90C" text "~y~Jo'on: ~s~\"Look over there! That's the same shirtless guy in red pants claimin' he invented all of music!\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L90C' time 4400 flag 1
 wait 4400
@@ -2200,10 +2200,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L90D" text "~y~Jo'on: ~s~\"Wait a second! Identical faces, zero impulse control, screamin' whatever pops into their heads?!\""
+0ADF: add_text_label "Y_L90D" text "~b~Shion: ~s~\"And that old guy in the blue plaid shirt won't stop rambling about dirty cartoons to strangers...\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L90D' time 4400 flag 1
-wait 4400
+00BC: show_text_highpriority GXT 'Y_L90D' time 4500 flag 1
+wait 4500
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -2213,22 +2213,9 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L90E" text "~b~Shion: ~s~\"Dream World clones... they've got no filter and their heads are completely unhinged.\""
+0ADF: add_text_label "Y_L90E" text "~y~Jo'on: ~s~\"Not to mention that guy in orange babblin' about smokin' weed givin' him knowledge!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L90E' time 4000 flag 1
-wait 4000
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L90F" text "~y~Jo'on: ~s~\"I knew it! The Dream World didn't just leak into Gensokyo, it spilled all over this damn state!\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L90F' time 4300 flag 1
+00BC: show_text_highpriority GXT 'Y_L90E' time 4300 flag 1
 wait 4300
 gosub @Check_Theater_Alive_Or_Exit
 if
@@ -2239,7 +2226,20 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L90G" text "~b~Shion: ~s~\"Every freak walking these sidewalks is a crazy copy... it's kind of creepy, Jo'on.\""
+0ADF: add_text_label "Y_L90F" text "~b~Shion: ~s~\"They're dream clones. Yukari told us they blurt out their deepest thoughts with no filter.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L90F' time 4400 flag 1
+wait 4400
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L90G" text "~y~Jo'on: ~s~\"No filter and zero brains! Half of 'em jump straight into my bumper when I'm steerin' clear!\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L90G' time 4400 flag 1
 wait 4400
@@ -2252,10 +2252,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L90H" text "~y~Jo'on: ~s~\"Terrifyin'?! Are you kiddin' me?! Look at their back pockets!\""
+0ADF: add_text_label "Y_L90H" text "~b~Shion: ~s~\"Every time one bounces off the grill, green bills scatter across the asphalt...\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L90H' time 3800 flag 1
-wait 3800
+00BC: show_text_highpriority GXT 'Y_L90H' time 4200 flag 1
+wait 4200
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -2265,10 +2265,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L90I" text "~y~Jo'on: ~s~\"They might be psychotic dream phantoms, but their green cash is one hundred percent spendable!\""
+0ADF: add_text_label "Y_L90I" text "~y~Jo'on: ~s~\"Unhinged phantoms with fat pockets! Harvestin' dream wallets is public service! AHAHAHA!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L90I' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L90I' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -2278,22 +2278,9 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L90J" text "~y~Jo'on: ~s~\"Relievin' manic dream clones of their wallets is practically incident resolution! Grab your piece! AHAHAHA!\""
+0ADF: add_text_label "Y_L90J" text "~b~Shion: ~s~\"Just don't make me carry all the loose change... my pockets already have holes in them.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L90J' time 4500 flag 1
-wait 4500
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L90K" text "~b~Shion: ~s~\"...If they wake up in their beds tomorrow, at least they can't call the police on us.\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L90K' time 4200 flag 1
+00BC: show_text_highpriority GXT 'Y_L90J' time 4200 flag 1
 wait 4200
 return
 
