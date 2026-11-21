@@ -477,6 +477,31 @@ else
 end
 
 // =========================================================================
+// DEFLECTION FLASH STATE CHECK (8@ = Flash Active, 9@ = Impact Pulse)
+// =========================================================================
+8@ = 0
+9@ = 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_HITO_DEFLECT_TMR
+0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    20@ > 0
+then
+    8@ = 1
+    if
+        20@ >= 134
+    then
+        if
+            0021: 17@ > 0.1
+        then
+            9@ = 1
+        end
+    end
+end
+
+// =========================================================================
 // GREATER MOTHER FLAME (Centered at 2@ 3@ 4@)
 // =========================================================================
 02F7: 25@ = cosine 16@
@@ -505,46 +530,74 @@ end
 0087: 27@ = 24@
 0013: 27@ *= 0.18 // Incandescent Core Radius
 
-// --- Mother Flame Layer 1: Base Root Anchor (Z -0.04) ---
-0087: 5@ = 2@
-0087: 6@ = 3@
-0087: 7@ = 4@
-000F: 7@ -= 0.04
-04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 60 210
-
-// --- Mother Flame Layer 2: Main Radiant Belly (Z 0.00) ---
-0087: 5@ = 2@
-0087: 6@ = 3@
-0087: 7@ = 4@
-04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 100 255
-04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 100 210 255
-04D5: create_corona_at 5@ 6@ 7@ radius 27@ type 0 flare 0 RGB 235 250 255
-
-// --- Mother Flame Layer 3: Tapered Neck (Z +0.045) ---
-0087: 5@ = 2@
-0087: 6@ = 3@
-0087: 7@ = 4@
-000B: 7@ += 0.045
-04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 140 255
-04D5: create_corona_at 5@ 6@ 7@ radius 27@ type 0 flare 0 RGB 230 250 255
-
-// --- Mother Flame Layer 4: Flickering Tip (Z +0.10) ---
-0087: 5@ = 2@
-0087: 6@ = 3@
-0087: 7@ = 4@
-000B: 7@ += 0.10
-04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
-
-// Render brief electric deflection flare when Shion absorbs a bullet
-0085: 30@ = 31@
-000A: 30@ += MEM_HITO_DEFLECT_TMR
-0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
-
 if
-    20@ > 0
+    8@ == 1
 then
-    04D5: create_corona_at 2@ 3@ 4@ radius 1.5 type 0 flare 0 RGB 120 220 255
-    04D5: create_corona_at 2@ 3@ 4@ radius 0.7 type 0 flare 0 RGB 255 255 255
+    // Pitch-black core puffs on bullet impact pulse (3D occluded, alpha-blended)
+    if
+        9@ == 1
+    then
+        095C: create_smoke_at 2@ 3@ 4@ velocity 0.0 0.0 0.0 RGBA 0.0 0.0 0.0 1.0 size 0.70 last_factor 0.04
+        095C: create_smoke_at 2@ 3@ 4@ velocity 0.0 0.0 0.0 RGBA 0.0 0.0 0.0 1.0 size 0.45 last_factor 0.02
+    end
+
+    // --- Mother Flame Purple Ring Outlines (Hollow type 9 keeps center black) ---
+    0087: 5@ = 2@
+    0087: 6@ = 3@
+    0087: 7@ = 4@
+    000F: 7@ -= 0.04
+    04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 9 flare 0 RGB 145 15 205
+
+    0087: 5@ = 2@
+    0087: 6@ = 3@
+    0087: 7@ = 4@
+    04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 9 flare 0 RGB 225 65 255
+
+    0087: 5@ = 2@
+    0087: 6@ = 3@
+    0087: 7@ = 4@
+    000B: 7@ += 0.045
+    04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 9 flare 0 RGB 200 40 245
+
+    0087: 5@ = 2@
+    0087: 6@ = 3@
+    0087: 7@ = 4@
+    000B: 7@ += 0.10
+    04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 9 flare 0 RGB 175 25 225
+
+    // Expanding outer purple-magenta deflection halo
+    04D5: create_corona_at 2@ 3@ 4@ radius 1.55 type 9 flare 0 RGB 165 20 220
+    04D5: create_corona_at 2@ 3@ 4@ radius 1.15 type 9 flare 0 RGB 225 65 255
+else
+    // --- Mother Flame Layer 1: Base Root Anchor (Z -0.04) ---
+    0087: 5@ = 2@
+    0087: 6@ = 3@
+    0087: 7@ = 4@
+    000F: 7@ -= 0.04
+    04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 60 210
+
+    // --- Mother Flame Layer 2: Main Radiant Belly (Z 0.00) ---
+    0087: 5@ = 2@
+    0087: 6@ = 3@
+    0087: 7@ = 4@
+    04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 100 255
+    04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 100 210 255
+    04D5: create_corona_at 5@ 6@ 7@ radius 27@ type 0 flare 0 RGB 235 250 255
+
+    // --- Mother Flame Layer 3: Tapered Neck (Z +0.045) ---
+    0087: 5@ = 2@
+    0087: 6@ = 3@
+    0087: 7@ = 4@
+    000B: 7@ += 0.045
+    04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 140 255
+    04D5: create_corona_at 5@ 6@ 7@ radius 27@ type 0 flare 0 RGB 230 250 255
+
+    // --- Mother Flame Layer 4: Flickering Tip (Z +0.10) ---
+    0087: 5@ = 2@
+    0087: 6@ = 3@
+    0087: 7@ = 4@
+    000B: 7@ += 0.10
+    04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
 end
 
 // =========================================================================
@@ -610,7 +663,13 @@ end
 005B: 6@ += 20@
 0087: 7@ = 4@
 005B: 7@ += 24@
-04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+if
+    8@ == 1
+then
+    04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 9 flare 0 RGB 145 15 205
+else
+    04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+end
 
 // Sat 1 - Orb 2: Belly
 0087: 25@ = 0@
@@ -628,8 +687,19 @@ end
 005B: 6@ += 20@
 0087: 7@ = 4@
 005B: 7@ += 24@
-04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
-04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+if
+    8@ == 1
+then
+    if
+        9@ == 1
+    then
+        095C: create_smoke_at 5@ 6@ 7@ velocity 0.0 0.0 0.0 RGBA 0.0 0.0 0.0 1.0 size 0.28 last_factor 0.02
+    end
+    04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 9 flare 0 RGB 225 65 255
+else
+    04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+    04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+end
 
 // Sat 1 - Orb 3: Neck
 0087: 25@ = 0@
@@ -648,8 +718,14 @@ end
 005B: 6@ += 20@
 0087: 7@ = 4@
 005B: 7@ += 24@
-04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
-04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+if
+    8@ == 1
+then
+    04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 9 flare 0 RGB 200 40 245
+else
+    04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+    04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+end
 
 // Sat 1 - Orb 4: Flickering Tip
 0087: 25@ = 0@
@@ -668,7 +744,13 @@ end
 005B: 6@ += 20@
 0087: 7@ = 4@
 005B: 7@ += 24@
-04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+if
+    8@ == 1
+then
+    04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 9 flare 0 RGB 175 25 225
+else
+    04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+end
 
 // =========================================================================
 // SATELLITE 2 (Orbit Phase +120 deg - Full 4-Orb FX_Hitodama Teardrop)
@@ -722,7 +804,13 @@ end
 005B: 6@ += 20@
 0087: 7@ = 4@
 005B: 7@ += 24@
-04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+if
+    8@ == 1
+then
+    04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 9 flare 0 RGB 145 15 205
+else
+    04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+end
 
 // Sat 2 - Orb 2: Belly
 0087: 25@ = 1@
@@ -740,8 +828,19 @@ end
 005B: 6@ += 20@
 0087: 7@ = 4@
 005B: 7@ += 24@
-04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
-04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+if
+    8@ == 1
+then
+    if
+        9@ == 1
+    then
+        095C: create_smoke_at 5@ 6@ 7@ velocity 0.0 0.0 0.0 RGBA 0.0 0.0 0.0 1.0 size 0.28 last_factor 0.02
+    end
+    04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 9 flare 0 RGB 225 65 255
+else
+    04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+    04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+end
 
 // Sat 2 - Orb 3: Neck
 0087: 25@ = 1@
@@ -760,8 +859,14 @@ end
 005B: 6@ += 20@
 0087: 7@ = 4@
 005B: 7@ += 24@
-04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
-04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+if
+    8@ == 1
+then
+    04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 9 flare 0 RGB 200 40 245
+else
+    04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+    04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+end
 
 // Sat 2 - Orb 4: Flickering Tip
 0087: 25@ = 1@
@@ -780,7 +885,13 @@ end
 005B: 6@ += 20@
 0087: 7@ = 4@
 005B: 7@ += 24@
-04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+if
+    8@ == 1
+then
+    04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 9 flare 0 RGB 175 25 225
+else
+    04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+end
 
 // =========================================================================
 // SATELLITE 3 (Orbit Phase +240 deg - Full 4-Orb FX_Hitodama Teardrop)
@@ -834,7 +945,13 @@ end
 005B: 6@ += 20@
 0087: 7@ = 4@
 005B: 7@ += 24@
-04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+if
+    8@ == 1
+then
+    04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 9 flare 0 RGB 145 15 205
+else
+    04D5: create_corona_at 5@ 6@ 7@ radius 11@ type 0 flare 0 RGB 0 80 230
+end
 
 // Sat 3 - Orb 2: Belly
 0087: 25@ = 12@
@@ -852,8 +969,19 @@ end
 005B: 6@ += 20@
 0087: 7@ = 4@
 005B: 7@ += 24@
-04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
-04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+if
+    8@ == 1
+then
+    if
+        9@ == 1
+    then
+        095C: create_smoke_at 5@ 6@ 7@ velocity 0.0 0.0 0.0 RGBA 0.0 0.0 0.0 1.0 size 0.28 last_factor 0.02
+    end
+    04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 9 flare 0 RGB 225 65 255
+else
+    04D5: create_corona_at 5@ 6@ 7@ radius 13@ type 0 flare 0 RGB 0 110 255
+    04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+end
 
 // Sat 3 - Orb 3: Neck
 0087: 25@ = 12@
@@ -872,8 +1000,14 @@ end
 005B: 6@ += 20@
 0087: 7@ = 4@
 005B: 7@ += 24@
-04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
-04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+if
+    8@ == 1
+then
+    04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 9 flare 0 RGB 200 40 245
+else
+    04D5: create_corona_at 5@ 6@ 7@ radius 14@ type 0 flare 0 RGB 0 130 255
+    04D5: create_corona_at 5@ 6@ 7@ radius 26@ type 0 flare 0 RGB 220 245 255
+end
 
 // Sat 3 - Orb 4: Flickering Tip
 0087: 25@ = 12@
@@ -892,7 +1026,13 @@ end
 005B: 6@ += 20@
 0087: 7@ = 4@
 005B: 7@ += 24@
-04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+if
+    8@ == 1
+then
+    04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 9 flare 0 RGB 175 25 225
+else
+    04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 0 flare 0 RGB 140 220 255
+end
 
 // =========================================================================
 // HITODAMA OPEN-VEHICLE SHIELD (JO'ON MODE EXCLUSIVE)
@@ -965,8 +1105,14 @@ then
     // Get coordinates directly from vehicle matrix
     0407: store_coords_to 5@ 6@ 7@ from_car 20@ with_offset 0.0 -0.10 0.50
 
-    // Render soft translucent sapphire aura (always on while mounted with >100 HP and 0 Armour)
-    04D5: create_corona_at 5@ 6@ 7@ radius 23@ type 0 flare 0 RGB 20 80 200
+    // Flash purple ring when absorbing a bullet, otherwise soft sapphire aura
+    if
+        8@ == 1
+    then
+        04D5: create_corona_at 5@ 6@ 7@ radius 23@ type 9 flare 0 RGB 215 45 255
+    else
+        04D5: create_corona_at 5@ 6@ 7@ radius 23@ type 0 flare 0 RGB 20 80 200
+    end
 end
 
 goto @ShionHito_ChildLoop
