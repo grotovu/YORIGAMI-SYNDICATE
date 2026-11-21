@@ -601,12 +601,18 @@ then
                 then
                     18@ = 1
                 else
-                    if and
+                    if
                         10@ > 0
-                        056D: actor 10@ defined
-                        051A: actor 29@ damaged_by_actor 10@
                     then
-                        18@ = 2
+                        if
+                            056D: actor 10@ defined
+                        then
+                            if
+                                051A: actor 29@ damaged_by_actor 10@
+                            then
+                                18@ = 2
+                            end
+                        end
                     end
                 end
             end
@@ -707,13 +713,22 @@ then
             then
                 05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
             else
-                if and
+                if
                     18@ == 2
-                    10@ > 0
-                    056D: actor 10@ defined
-                    8118: not actor 10@ dead
                 then
-                    05E2: AS_actor -1 kill_actor 10@
+                    if
+                        10@ > 0
+                    then
+                        if
+                            056D: actor 10@ defined
+                        then
+                            if
+                                8118: not actor 10@ dead
+                            then
+                                05E2: AS_actor -1 kill_actor 10@
+                            end
+                        end
+                    end
                 end
             end
             0616: define_AS_pack_end 17@
@@ -733,13 +748,22 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 else
-                    if and
+                    if
                         18@ == 2
-                        10@ > 0
-                        056D: actor 10@ defined
-                        8118: not actor 10@ dead
                     then
-                        05E2: AS_actor -1 kill_actor 10@
+                        if
+                            10@ > 0
+                        then
+                            if
+                                056D: actor 10@ defined
+                            then
+                                if
+                                    8118: not actor 10@ dead
+                                then
+                                    05E2: AS_actor -1 kill_actor 10@
+                                end
+                            end
+                        end
                     end
                 end
                 0616: define_AS_pack_end 17@
@@ -758,13 +782,22 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 else
-                    if and
+                    if
                         18@ == 2
-                        10@ > 0
-                        056D: actor 10@ defined
-                        8118: not actor 10@ dead
                     then
-                        05E2: AS_actor -1 kill_actor 10@
+                        if
+                            10@ > 0
+                        then
+                            if
+                                056D: actor 10@ defined
+                            then
+                                if
+                                    8118: not actor 10@ dead
+                                then
+                                    05E2: AS_actor -1 kill_actor 10@
+                                end
+                            end
+                        end
                     end
                 end
                 0616: define_AS_pack_end 17@
@@ -783,13 +816,22 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 else
-                    if and
+                    if
                         18@ == 2
-                        10@ > 0
-                        056D: actor 10@ defined
-                        8118: not actor 10@ dead
                     then
-                        05E2: AS_actor -1 kill_actor 10@
+                        if
+                            10@ > 0
+                        then
+                            if
+                                056D: actor 10@ defined
+                            then
+                                if
+                                    8118: not actor 10@ dead
+                                then
+                                    05E2: AS_actor -1 kill_actor 10@
+                                end
+                            end
+                        end
                     end
                 end
                 0616: define_AS_pack_end 17@
@@ -808,13 +850,22 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 else
-                    if and
+                    if
                         18@ == 2
-                        10@ > 0
-                        056D: actor 10@ defined
-                        8118: not actor 10@ dead
                     then
-                        05E2: AS_actor -1 kill_actor 10@
+                        if
+                            10@ > 0
+                        then
+                            if
+                                056D: actor 10@ defined
+                            then
+                                if
+                                    8118: not actor 10@ dead
+                                then
+                                    05E2: AS_actor -1 kill_actor 10@
+                                end
+                            end
+                        end
                     end
                 end
                 0616: define_AS_pack_end 17@
