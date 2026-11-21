@@ -150,6 +150,10 @@ end
 000A: 30@ += MEM_SHION_CHUTE_OBJ
 0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
+0085: 30@ = 31@
+000A: 30@ += MEM_JACK_TARGET_CAR
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
 // Create permanent Zero-Panic Decision Maker once on boot (Task 200 = TASK_NONE)
 060A: create_decision_maker_type 0 store_to 1@
 0709: set_decision_maker 1@ on_event 31 task 200 respect 0.0 hate 0.0 like 0.0 dislike 0.0 in_car 1 on_foot 1
@@ -2389,18 +2393,6 @@ then
     03EB: clear_small_messages_only
     0ADF: add_text_label "Y_NOJK3" text "~r~CANNOT CARJACK AIRCRAFT OR BOATS"
     00BC: show_text_highpriority GXT 'Y_NOJK3' time 2000 flag 1
-    return
-end
-
-// Check 5: Exclude Single-Seaters & Tanks
-01EA: 23@ = car 24@ max_passengers
-if
-    23@ <= 0
-then
-    018C: play_sound 1057 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_NOJK4" text "~r~CANNOT CARJACK SINGLE-SEATER"
-    00BC: show_text_highpriority GXT 'Y_NOJK4' time 2000 flag 1
     return
 end
 

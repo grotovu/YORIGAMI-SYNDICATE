@@ -80,14 +80,6 @@ then
         0A93: terminate_this_custom_script
     end
 
-    // Mode 10 (Post-Jack Complaint) yields cleanly to Tier 4
-    if and
-        0039: 10@ == 10
-        04B5: 16@ >= 4
-    then
-        0A93: terminate_this_custom_script
-    end
-
     // Tier 4 Master Theater / Menus are completely inviolable even on death
     if
         04B5: 16@ >= 4
