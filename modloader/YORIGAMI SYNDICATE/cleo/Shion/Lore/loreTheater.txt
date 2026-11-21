@@ -1240,7 +1240,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L40K2" text "~y~Jo'on: ~s~\"She's a trust-fund celestial brat playin' delinquent with daddy's money! She didn't earn shit!\""
+0ADF: add_text_label "Y_L40K2" text "~y~Jo'on: ~s~\"She's a spoiled heaven brat slummin' it for kicks! She never fought for a single scrap in her life!\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L40K2' time 4300 flag 1
 wait 4300
