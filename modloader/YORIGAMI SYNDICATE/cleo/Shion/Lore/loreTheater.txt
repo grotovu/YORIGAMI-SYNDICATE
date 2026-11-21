@@ -957,7 +957,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L03F" text "~y~Jo'on: ~s~\"That's the scam! She tells rubes that scrubbin' floors and cookin' rice is \\\"spiritual trainin'\\\"!\""
+0ADF: add_text_label "Y_L03F" text "~y~Jo'on: ~s~\"That's the scam! She tells rubes that scrubbin' floors and cookin' rice is -spiritual trainin'-!\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L03F' time 4400 flag 1
 wait 4400
