@@ -100,7 +100,7 @@ then
         if and
             056E: car 10@ defined
             8119: not car 10@ wrecked
-            0EE5: locate_char_distance_to_car $PLAYER_ACTOR 10@ 100.0
+            0205: actor $PLAYER_ACTOR near_car 10@ radius 100.0 100.0 100.0 flag 0
         then
             if
                 TIMERB > 1200
@@ -122,7 +122,7 @@ then
         if and
             056D: actor 10@ defined 
             8118: not actor 10@ dead 
-            0EE4: locate_char_distance_to_char $PLAYER_ACTOR 10@ 100.0
+            0104: actor $PLAYER_ACTOR near_actor 10@ radius 100.0 100.0 100.0 sphere 0
         then
             if
                 TIMERB > 1200
