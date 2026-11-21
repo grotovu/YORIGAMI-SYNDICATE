@@ -135,4 +135,6 @@ const
     MEM_SHION_DIED_FIRST = 468       // 0 = Shion was alive when Jo'on went down, 1 = Shion was already dead
     MEM_LORE_PROGRESS_2 = 472
     MEM_TAG_SWITCH_REQ = 476
+    MEM_MELEE_DM = 480
+    MEM_JACK_TARGET_CAR = 484     // Target Vehicle Handle for Hitodama Carjack (0 = None)
 end

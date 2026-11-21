@@ -2,6 +2,7 @@
 {$USE CLEO+}
 {$USE memory}
 {$USE ini}
+{$USE bitwise}
 
 0000: NOP
 script_name "SpwShion"
@@ -40,6 +41,7 @@ const
     MEM_SHION_RECRUITED = 400     // 0 = Not in party / Loitering, 1 = Actively recruited
     MEM_SHION_CHUTE_OBJ = 408     // Parachute Canopy Object Handle
     MEM_SHION_DM = 412            // Persistent Zero-Panic Decision Maker Handle
+    MEM_JACK_TARGET_CAR = 484     // Target Vehicle Handle for Hitodama Carjack
 end
 
 :Connect_To_Brain
@@ -146,6 +148,10 @@ end
 
 0085: 30@ = 31@
 000A: 30@ += MEM_SHION_CHUTE_OBJ
+0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_JACK_TARGET_CAR
 0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
 // Create permanent Zero-Panic Decision Maker once on boot (Task 200 = TASK_NONE)
@@ -369,6 +375,63 @@ then
                 then
                     5@ = 0 // Manual player toggle clears pimping automation latch
                     gosub @Morph_Shion_To_Ped
+                end
+            end
+        end
+    end
+end
+
+// =========================================================================
+// HITODAMA CARJACK LISTENER: PRESS Y + Z (HITODAMA MODE ONLY)
+// =========================================================================
+if and
+    9@ == 2 // In Party
+    816B: not fading
+then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_SHION_HANDLE
+    0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
+
+    if
+        0039: 19@ == -1 // Strictly Hitodama Form
+    then
+        0085: 30@ = 31@
+        000A: 30@ += MEM_SHION_BUSY
+        0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+
+        if
+            0039: 25@ == 0 // Not currently busy performing actions
+        then
+            if
+                0AB0: is_key_pressed 3@ // Y Key (ModifierKey)
+            then
+                // Read ScavengeKey dynamically to ensure zero variable collisions
+                0AF0: 27@ = read_int_from_ini_file "cleo\Shion.ini" section "Controls" key "ScavengeKey"
+                if
+                    0039: 27@ == 0
+                then
+                    27@ = 90 // Z Key
+                end
+
+                if
+                    0AB0: is_key_pressed 27@ // Z Key
+                then
+                    :Wait_Jack_YZ_Rel
+                    wait 50
+                    if
+                        8256: not is_player_playing $PLAYER_CHAR
+                    then
+                        goto @SpawnShion_Loop
+                    end
+                    if or
+                        0AB0: is_key_pressed 3@
+                        0AB0: is_key_pressed 27@
+                    then
+                        goto @Wait_Jack_YZ_Rel
+                    end
+
+                    // Execute Carjack Target Search
+                    gosub @Find_Hitodama_Carjack_Target
                 end
             end
         end
@@ -2026,4 +2089,331 @@ then
 end
 
 0AF0: 14@ = read_int_from_ini_file "cleo\Shion.ini" section "Pimping" key "AutoHitodamaInTwoSeater"
+return
+
+// =========================================================================
+// SUBROUTINE: HITODAMA CARJACK TARGET ACQUISITION (MISSION & PEACETIME)
+// =========================================================================
+:Find_Hitodama_Carjack_Target
+24@ = -1 // Target Car Handle (-1 = None)
+26@ = 55.0 // Max Search Range (floats)
+
+// Store Player Coordinates
+00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
+
+// -------------------------------------------------------------------------
+// STEP 1: MISSION MODE SCAN (Search Radar Blip Pool 0xBA86F0 for Red Target)
+// -------------------------------------------------------------------------
+19@ = 0
+if
+    0E1D: is_on_mission
+then
+    19@ = 1
+end
+
+if
+    0039: 19@ == 1
+then
+    for 29@ = 0 to 174
+        0085: 23@ = 29@
+        0012: 23@ *= 40
+        000A: 23@ += 0xBA86F0 // Blip base address
+
+        // Check m_bInUse at offset +0x25 (Bit 1)
+        0085: 25@ = 23@
+        000A: 25@ += 0x25
+        0A8D: 27@ = read_memory 25@ size 1 virtual_protect 0
+        if
+            08B7: test 27@ bit 1
+        then
+            // Filter out Friendlies (Bit 3)
+            if
+                88B7: not test 27@ bit 3
+            then
+                // Check m_nBlipType at offset +0x26 (1 = Car, 2 = Ped)
+                0085: 25@ = 23@
+                000A: 25@ += 0x26
+                0A8D: 27@ = read_memory 25@ size 1 virtual_protect 0
+                0016: 27@ /= 4
+                0B17: 27@ &= 0x0F
+
+                // Check Red Color at offset +0x00 (0, 5, or 7)
+                0A8D: 25@ = read_memory 23@ size 4 virtual_protect 0
+                if or
+                    0039: 25@ == 0
+                    0039: 25@ == 5
+                    0039: 25@ == 7
+                then
+                    // Read Entity Handle from offset +0x04
+                    0085: 25@ = 23@
+                    000A: 25@ += 0x04
+                    0A8D: 25@ = read_memory 25@ size 4 virtual_protect 0
+
+                    if
+                        0019: 25@ > 0
+                    then
+                        // If marked entity is a Car (27@ == 1)
+                        if
+                            0039: 27@ == 1
+                        then
+                            if
+                                056E: car 25@ defined
+                            then
+                                if
+                                    8119: not car 25@ wrecked
+                                then
+                                    00AA: store_car 25@ position_to 16@ 17@ 18@
+                                    050A: 23@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 16@ 17@ 18@
+                                    if
+                                        0025: 26@ > 23@
+                                    then
+                                        // Validate candidate
+                                        0085: 24@ = 25@
+                                        0087: 26@ = 23@
+                                    end
+                                end
+                            end
+                        end
+
+                        // If marked entity is a Ped in a Car (27@ == 2)
+                        if
+                            0039: 27@ == 2
+                        then
+                            if
+                                056D: actor 25@ defined
+                            then
+                                if
+                                    0449: actor 25@ in_a_car
+                                then
+                                    03C0: 25@ = actor 25@ car
+                                    if
+                                        8119: not car 25@ wrecked
+                                    then
+                                        00AA: store_car 25@ position_to 16@ 17@ 18@
+                                        050A: 23@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 16@ 17@ 18@
+                                        if
+                                            0025: 26@ > 23@
+                                        then
+                                            0085: 24@ = 25@
+                                            0087: 26@ = 23@
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+// -------------------------------------------------------------------------
+// STEP 2: PEACETIME / FREE-ROAM SCAN (Search Vehicles in Front)
+// -------------------------------------------------------------------------
+if
+    0039: 24@ == -1
+then
+    26@ = 35.0 // 35m max search cone
+    29@ = 0    // Search iterator
+
+    :Scan_Ambient_Jack_Loop
+    if
+        0AE2: 25@ = random_vehicle_near_point 20@ 21@ 22@ in_radius 35.0 find_next 29@ pass_wrecked 1
+    then
+        29@ = 1
+        if
+            056E: car 25@ defined
+        then
+            // Player's own driven car is excluded
+            19@ = 0
+            if
+                00DF: actor $PLAYER_ACTOR driving
+            then
+                03C0: 23@ = actor $PLAYER_ACTOR car
+                if
+                    003B: 25@ == 23@
+                then
+                    19@ = 1
+                end
+            end
+
+            if
+                0039: 19@ == 0
+            then
+                if
+                    8119: not car 25@ wrecked
+                then
+                    00AA: store_car 25@ position_to 16@ 17@ 18@
+                    050A: 23@ = distance_between_XYZ 20@ 21@ 22@ and_XYZ 16@ 17@ 18@
+                    if
+                        0025: 26@ > 23@
+                    then
+                        // Check if vehicle has a live driver inside the car
+                        27@ = 0
+                        046C: 27@ = car 25@ driver
+                        if
+                            0019: 27@ > 0
+                        then
+                            if
+                                056D: actor 27@ defined
+                            then
+                                if and
+                                    8118: not actor 27@ dead
+                                    00DB: actor 27@ in_car 25@
+                                then
+                                    0085: 24@ = 25@
+                                    0087: 26@ = 23@
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        goto @Scan_Ambient_Jack_Loop
+    end
+end
+
+// -------------------------------------------------------------------------
+// STEP 3: STRICT VEHICLE VALIDATION
+// -------------------------------------------------------------------------
+if
+    0039: 24@ == -1
+then
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_NOJK0" text "~r~NO TARGET VEHICLE~n~~w~NONE IN RANGE"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_NOJK0' time 2000 style 5
+    return
+end
+
+// Check 1: Must have a live driver physically in the vehicle
+27@ = 0
+046C: 27@ = car 24@ driver
+25@ = 0
+
+if
+    0019: 27@ > 0
+then
+    if
+        056D: actor 27@ defined
+    then
+        if and
+            8118: not actor 27@ dead
+            00DB: actor 27@ in_car 24@
+        then
+            25@ = 1
+        end
+    end
+end
+
+if
+    0039: 25@ == 0
+then
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_NOJK6" text "~r~CANNOT CARJACK~n~~w~VEHICLE HAS NO DRIVER"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_NOJK6' time 2000 style 5
+    return
+end
+
+// Check 2: Exclude Single-Seaters & Tanks first so max_passengers (23@) is known
+01EA: 23@ = car 24@ max_passengers
+if
+    23@ <= 0
+then
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_NOJK4" text "~r~CANNOT CARJACK~n~~w~SINGLE-SEATER VEHICLE"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_NOJK4' time 2000 style 5
+    return
+end
+
+// Check 3: At least one passenger seat (0, 1, or 2) must be free
+25@ = 0
+if
+    0431: car 24@ passenger_seat_free 0
+then
+    25@ = 1
+else
+    if
+        23@ > 1
+    then
+        if
+            0431: car 24@ passenger_seat_free 1
+        then
+            25@ = 1
+        else
+            if
+                23@ > 2
+            then
+                if
+                    0431: car 24@ passenger_seat_free 2
+                then
+                    25@ = 1
+                end
+            end
+        end
+    end
+end
+
+if
+    0039: 25@ == 0
+then
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_NOJK1" text "~r~CANNOT CARJACK~n~~w~ALL PASSENGER SEATS OCCUPIED"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_NOJK1' time 2000 style 5
+    return
+end
+
+// Check 4: Exclude Bikes, Bicycles, and Quads
+0E12: get_vehicle 24@ subclass_to 25@
+if or
+    0039: 25@ == 9  // Motorcycle
+    0039: 25@ == 10 // Bicycle
+    0039: 25@ == 2  // Quadbike
+then
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_NOJK2" text "~r~CANNOT CARJACK~n~~w~OPEN BIKES"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_NOJK2' time 2000 style 5
+    return
+end
+
+// Check 5: Exclude Boats, Planes, and Helicopters
+0441: 27@ = car 24@ model
+if or
+    081E: model 27@ boat
+    081F: model 27@ plane
+    0820: model 27@ heli
+then
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_NOJK3" text "~r~CANNOT CARJACK~n~~w~AIRCRAFT OR BOATS"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_NOJK3' time 2000 style 5
+    return
+end
+
+// Check 6: Car must not be burning or wrecked
+0227: 23@ = car 24@ health
+if
+    002B: 250 >= 23@
+then
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    0ADF: add_text_label "Y_NOJK5" text "~r~CANNOT CARJACK~n~~w~VEHICLE IS BURNING"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_NOJK5' time 2000 style 5
+    return
+end
+
+// -------------------------------------------------------------------------
+// STEP 4: LAUNCH CARJACK SEQUENCE
+// -------------------------------------------------------------------------
+// Terminate any previous instance to prevent duplicates
+0ABA: terminate_all_custom_scripts_with_this_name "Sh_Jack"
+
+// Launch the dedicated orchestrator passing the validated car handle
+0A92: create_custom_thread "Shion\ShionJack.c" 24@
 return

@@ -609,7 +609,7 @@ return
 // Page 1 (8 to 15)
 0ADF: add_text_label "Y_E08" text "8: Gourmet of the Gutter"
 0ADF: add_text_label "Y_E09" text "9: Ghosts of the Sidewalk"
-0ADF: add_text_label "Y_E10" text "10: The Boundless Fishbowl"
+0ADF: add_text_label "Y_E10" text "10: Out of the Backyard"
 0ADF: add_text_label "Y_E11" text "11: The House Always Loses"
 0ADF: add_text_label "Y_E12" text "12: Vintage '82"
 0ADF: add_text_label "Y_E13" text "13: Refined Blood"
@@ -632,7 +632,7 @@ return
 0ADF: add_text_label "Y_E26" text "26: Cold Side of the Glass"
 0ADF: add_text_label "Y_E27" text "27: Two Sides of Dirty Gold"
 0ADF: add_text_label "Y_E28" text "28: Five-Star Gutter Guide"
-0ADF: add_text_label "Y_E29" text "29: The Metaphysical Loophole"
+0ADF: add_text_label "Y_E29" text "29: Off the Books"
 0ADF: add_text_label "Y_E30" text "30: Karma's Exchange Rate"
 0ADF: add_text_label "Y_E31" text "31: Customer Service Smile"
 return

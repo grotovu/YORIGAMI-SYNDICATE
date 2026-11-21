@@ -162,8 +162,11 @@ end
 // =========================================================================
 // SHION'S INNATE MISFORTUNE AURA (1s Pacing, 25m Radius)
 // =========================================================================
-if
+if and
     TIMERA > 1000
+    8E25: not is_on_cutscene
+    8EB7: not is_on_scripted_cutscene
+    03EE: player $PLAYER_CHAR controllable
 then
     TIMERA = 0
     if
@@ -295,19 +298,6 @@ then
     return
 end
 
-// Exclude Special Actors during missions (Models 290..299)
-if
-    0E1D: is_on_mission
-then
-    0665: get_actor 29@ model_to 25@
-    if and
-        25@ >= 290
-        299 >= 25@
-    then
-        return
-    end
-end
-
 // Must be strictly on foot (No vehicle passenger animation glitches!)
 if
     0449: actor 29@ in_a_car
@@ -320,6 +310,91 @@ if or
     0E4A: is_char_exiting_any_car 29@
 then
     return
+end
+
+// Protect airborne and parachuting peds
+if or
+    0818: actor 29@ in_air
+    0E92: is_char_really_in_air 29@
+    0611: actor 29@ performing_animation "PARA_OPEN"
+    0611: actor 29@ performing_animation "PARA_FLOAT"
+    0611: actor 29@ performing_animation "PARA_LAND"
+    0611: actor 29@ performing_animation "FALL_SKYDIVE"
+    0E42: is_char_doing_task_id 29@ 240
+    0E42: is_char_doing_task_id 29@ 241
+then
+    return
+end
+
+if
+    0E42: is_char_doing_task_id 29@ 277
+then
+    return
+end
+
+// Mission-only protections (Special actors, invulnerable bosses, and friendly allies)
+if
+    0E1D: is_on_mission
+then
+    0665: get_actor 29@ model_to 25@
+    if and
+        25@ >= 290
+        299 >= 25@
+    then
+        return
+    end
+
+    // Skip invulnerable scripted escape/boss actors (BP + EP + MP)
+    0EAC: get_char_proofs 29@ bullet 12@ fire 13@ explosion 16@ collision 18@ melee 19@
+    if and
+        12@ == 1
+        16@ == 1
+        19@ == 1
+    then
+        return
+    end
+
+    // Protect scripted mission allies (Grove & Mission1..8 with Respect/Like to Player)
+    089F: get_actor 29@ pedtype_to 26@
+    if or
+        26@ == 8
+        26@ >= 24
+    then
+        if
+            31 >= 26@
+        then
+            if or
+                07E8: acquaintance 0 of_actors_type 26@ to_actors_type 0 set
+                07E8: acquaintance 1 of_actors_type 26@ to_actors_type 0 set
+            then
+                if and
+                    87E8: not acquaintance 4 of_actors_type 26@ to_actors_type 0 set
+                    87E8: not acquaintance 3 of_actors_type 26@ to_actors_type 0 set
+                then
+                    23@ = -1
+                    if
+                        0E44: get_char_kill_target_char 29@ store_to 23@
+                    then
+                        if
+                            803B: not 23@ == $PLAYER_ACTOR
+                        then
+                            if
+                                851A: not actor $PLAYER_ACTOR damaged_by_actor 29@
+                            then
+                                return
+                            end
+                        end
+                    else
+                        if
+                            851A: not actor $PLAYER_ACTOR damaged_by_actor 29@
+                        then
+                            return
+                        end
+                    end
+                end
+            end
+        end
+    end
 end
 
 28@ = 0
@@ -348,6 +423,7 @@ then
             0E1D: is_on_mission
         then
             23@ = -1
+            15@ = 0
             if
                 0E44: get_char_kill_target_char 29@ store_to 23@
             then
@@ -364,6 +440,24 @@ then
                             003B: 23@ == 10@
                         then
                             28@ = 1
+                        else
+                            if and
+                                26@ >= 24
+                                31 >= 26@
+                            then
+                                if or
+                                    07E8: acquaintance 4 of_actors_type 26@ to_actors_type 0 set
+                                    07E8: acquaintance 3 of_actors_type 26@ to_actors_type 0 set
+                                then
+                                    28@ = 1
+                                end
+                            end
+
+                            if
+                                28@ == 0
+                            then
+                                15@ = 1
+                            end
                         end
                     end
                 end
@@ -371,7 +465,7 @@ then
 
             if and
                 28@ == 0
-                23@ <= 0 // Not explicitly targeting a third party
+                15@ == 0
             then
                 if or
                     0E42: is_char_doing_task_id 29@ 1034 // TASK_SEEK_COVER_UNTIL_TARGET_DEAD (0634)
@@ -463,7 +557,37 @@ then
                         then
                             18@ = 2
                         else
-                            15@ = 1
+                            if and
+                                0E1D: is_on_mission
+                                23@ >= 24
+                                31 >= 23@
+                            then
+                                if or
+                                    07E8: acquaintance 4 of_actors_type 23@ to_actors_type 0 set
+                                    07E8: acquaintance 3 of_actors_type 23@ to_actors_type 0 set
+                                then
+                                    18@ = 1
+                                end
+                            end
+
+                            if and
+                                18@ == 0
+                                087A: gang_war_in_progress
+                            then
+                                if and
+                                    23@ >= 7
+                                    16 >= 23@
+                                    8039: not 23@ == 8
+                                then
+                                    18@ = 1
+                                end
+                            end
+
+                            if
+                                18@ == 0
+                            then
+                                15@ = 1
+                            end
                         end
                     end
                 end
@@ -477,12 +601,18 @@ then
                 then
                     18@ = 1
                 else
-                    if and
+                    if
                         10@ > 0
-                        056D: actor 10@ defined
-                        051A: actor 29@ damaged_by_actor 10@
                     then
-                        18@ = 2
+                        if
+                            056D: actor 10@ defined
+                        then
+                            if
+                                051A: actor 29@ damaged_by_actor 10@
+                            then
+                                18@ = 2
+                            end
+                        end
                     end
                 end
             end
@@ -540,10 +670,11 @@ then
                             end
                         end
 
-                        // Armed or mid-flinch PedType.Mission1 enemies
+                        // Armed or mid-flinch Mission1..Mission8 enemies
                         if and
                             18@ == 0
-                            23@ == 24
+                            23@ >= 24
+                            31 >= 23@
                         then
                             if
                                 0E0A: is_char_script_controlled 29@
@@ -582,13 +713,22 @@ then
             then
                 05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
             else
-                if and
+                if
                     18@ == 2
-                    10@ > 0
-                    056D: actor 10@ defined
-                    8118: not actor 10@ dead
                 then
-                    05E2: AS_actor -1 kill_actor 10@
+                    if
+                        10@ > 0
+                    then
+                        if
+                            056D: actor 10@ defined
+                        then
+                            if
+                                8118: not actor 10@ dead
+                            then
+                                05E2: AS_actor -1 kill_actor 10@
+                            end
+                        end
+                    end
                 end
             end
             0616: define_AS_pack_end 17@
@@ -608,13 +748,22 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 else
-                    if and
+                    if
                         18@ == 2
-                        10@ > 0
-                        056D: actor 10@ defined
-                        8118: not actor 10@ dead
                     then
-                        05E2: AS_actor -1 kill_actor 10@
+                        if
+                            10@ > 0
+                        then
+                            if
+                                056D: actor 10@ defined
+                            then
+                                if
+                                    8118: not actor 10@ dead
+                                then
+                                    05E2: AS_actor -1 kill_actor 10@
+                                end
+                            end
+                        end
                     end
                 end
                 0616: define_AS_pack_end 17@
@@ -633,13 +782,22 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 else
-                    if and
+                    if
                         18@ == 2
-                        10@ > 0
-                        056D: actor 10@ defined
-                        8118: not actor 10@ dead
                     then
-                        05E2: AS_actor -1 kill_actor 10@
+                        if
+                            10@ > 0
+                        then
+                            if
+                                056D: actor 10@ defined
+                            then
+                                if
+                                    8118: not actor 10@ dead
+                                then
+                                    05E2: AS_actor -1 kill_actor 10@
+                                end
+                            end
+                        end
                     end
                 end
                 0616: define_AS_pack_end 17@
@@ -658,13 +816,22 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 else
-                    if and
+                    if
                         18@ == 2
-                        10@ > 0
-                        056D: actor 10@ defined
-                        8118: not actor 10@ dead
                     then
-                        05E2: AS_actor -1 kill_actor 10@
+                        if
+                            10@ > 0
+                        then
+                            if
+                                056D: actor 10@ defined
+                            then
+                                if
+                                    8118: not actor 10@ dead
+                                then
+                                    05E2: AS_actor -1 kill_actor 10@
+                                end
+                            end
+                        end
                     end
                 end
                 0616: define_AS_pack_end 17@
@@ -683,13 +850,22 @@ then
                 then
                     05E2: AS_actor -1 kill_actor $PLAYER_ACTOR
                 else
-                    if and
+                    if
                         18@ == 2
-                        10@ > 0
-                        056D: actor 10@ defined
-                        8118: not actor 10@ dead
                     then
-                        05E2: AS_actor -1 kill_actor 10@
+                        if
+                            10@ > 0
+                        then
+                            if
+                                056D: actor 10@ defined
+                            then
+                                if
+                                    8118: not actor 10@ dead
+                                then
+                                    05E2: AS_actor -1 kill_actor 10@
+                                end
+                            end
+                        end
                     end
                 end
                 0616: define_AS_pack_end 17@

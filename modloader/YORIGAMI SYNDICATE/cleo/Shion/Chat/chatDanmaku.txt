@@ -111,7 +111,7 @@ if
 then
     018C: play_sound 1058 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_DK1A" text "~b~Shion: ~s~\"Are we really gonna burn our cash on ammo? We haven't even had breakfast yet...\""
+    0ADF: add_text_label "Y_DK1A" text "~b~Shion: ~s~\"Are we really gonna burn cash on every shot? That's our grocery money for the week, Jo'on...\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_DK1A' time 3700 flag 1
     0001: wait 3700 ms

@@ -63,15 +63,21 @@ end
 :DeathTracker_Loop
 0001: wait 50 ms
 
-// Only pause if player actor is completely undefined (loading screens / boots)
+// Only pause if player actor pointer is completely null (loading screens / boots)
+0A8D: 20@ = read_memory 0xB7CD98 size 4 virtual_protect 0
 if
-    8256: not player $PLAYER_CHAR defined
+    0039: 20@ == 0
 then
     0002: jump @DeathTracker_Loop
 end
 
 // Continuously refresh live player actor handle to prevent stale references
 01F5: $PLAYER_ACTOR = get_player_actor $PLAYER_CHAR
+if
+    856D: not actor $PLAYER_ACTOR defined
+then
+    0002: jump @DeathTracker_Loop
+end
 
 // Read Live Shion Ped Handle
 0085: 30@ = 31@
@@ -158,6 +164,10 @@ then
             000A: 30@ += MEM_SHION_DIED_FIRST
             0A8C: write_memory 30@ size 4 value 28@ virtual_protect 0
 
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_DEATH_FLAG
+            0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
             if
                 0039: 28@ == 0
             then
@@ -235,6 +245,10 @@ then
                 000A: 30@ += MEM_SHION_DIED_FIRST
                 0A8C: write_memory 30@ size 4 value 28@ virtual_protect 0
 
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_DEATH_FLAG
+                0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
                 if
                     0039: 28@ == 0
                 then
@@ -253,7 +267,9 @@ then
     else
         // Reset latch once Jo'on has safely respawned outside hospital/precinct and has player control back
         if and
+            0256: player $PLAYER_CHAR defined
             8118: not actor $PLAYER_ACTOR dead
+            8741: not actor $PLAYER_ACTOR busted
             03EE: player $PLAYER_CHAR controllable
         then
             0226: 21@ = actor $PLAYER_ACTOR health
@@ -734,13 +750,14 @@ end
 // =========================================================================
 :Shion_Warp_Away_On_Casualty
 // Failsafe: If 10@ is stale or already zeroed by ShionFollow, scan for model 299 near player
-if and
+if
     8039: not 10@ == -1
 then
     if or
-        10@ <= 0
+        8019: not 10@ > 0
         856D: not actor 10@ defined
     then
+        10@ = 0
         00A0: store_actor $PLAYER_ACTOR position_to 20@ 21@ 22@
         29@ = 0
         :Find_Shion_Ped_Loop
@@ -762,7 +779,7 @@ then
             if
                 0039: 10@ == 0
             then
-                goto @Find_Shion_Ped_Loop
+                0002: jump @Find_Shion_Ped_Loop
             end
         end
     end

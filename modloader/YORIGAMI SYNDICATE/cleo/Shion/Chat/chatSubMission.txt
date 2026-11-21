@@ -120,7 +120,7 @@ then
         then
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_PMH1A" text "~b~Shion: ~s~\"The guy on the stretcher won't stop glaring at me... guess dying people can see spirits after all.\""
+            0ADF: add_text_label "Y_PMH1A" text "~b~Shion: ~s~\"The guy on the stretcher keeps staring at me... guess dying people can see spirits.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_PMH1A' time 3700 flag 1
             0001: wait 3700 ms
@@ -141,7 +141,7 @@ then
         then
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_PMH2A" text "~b~Shion: ~s~\"That flashing blue light is right in my face, Jo'on... it's giving me a splitting headache.\""
+            0ADF: add_text_label "Y_PMH2A" text "~b~Shion: ~s~\"That flashing roof siren is right next to me out here, Jo'on... it's blindingly bright.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_PMH2A' time 3600 flag 1
             0001: wait 3600 ms
@@ -622,7 +622,7 @@ then
         then
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_TXH1A" text "~y~Jo'on: ~s~\"Tell the fare that glowin' blue orb on the dashboard is custom European mood lightin'!\""
+            0ADF: add_text_label "Y_TXH1A" text "~y~Jo'on: ~s~\"Tell the fare that glowin' blue orb out the window is custom European street lightin'!\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_TXH1A' time 3600 flag 1
             0001: wait 3600 ms
@@ -866,7 +866,7 @@ then
         then
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_PI3AH" text "~b~Shion: ~s~\"The clients keep staring right at me... they think the backseat has custom neon lighting.\""
+            0ADF: add_text_label "Y_PI3AH" text "~b~Shion: ~s~\"The clients keep staring at me outside the window... they think your car has custom blue underglow.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_PI3AH' time 3700 flag 1
             0001: wait 3700 ms
@@ -1083,7 +1083,7 @@ then
 
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_BI1BH" text "~b~Shion: ~s~\"I'd help you carry it, sis... but my hands pass right through the metal.\""
+                0ADF: add_text_label "Y_BI1BH" text "~b~Shion: ~s~\"I'd help you carry it, sis... if I actually had arms right now.\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_BI1BH' time 3600 flag 1
                 0001: wait 3600 ms
@@ -1970,7 +1970,7 @@ then
 
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_VRH1B" text "~b~Shion: ~s~\"The cannon blast shook the whole block... at least inside this tank, nobody's bullets can touch us.\""
+                0ADF: add_text_label "Y_VRH1B" text "~b~Shion: ~s~\"The cannon blast shook the whole block... good luck to whoever tries shooting at sixty tons of steel.\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_VRH1B' time 3700 flag 1
                 0001: wait 3700 ms
@@ -2048,7 +2048,7 @@ then
             then
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_VHN1A" text "~b~Shion: ~s~\"It's freezing up here and I'm getting dizzy... they're running around like ants down there.\""
+                0ADF: add_text_label "Y_VHN1A" text "~b~Shion: ~s~\"The rotor wind is whipping me around up here... they look like tiny ants running on the freeway.\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_VHN1A' time 3700 flag 1
                 0001: wait 3700 ms
@@ -2922,9 +2922,17 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_TRK0B" text "~b~Shion: ~s~\"Don't honk so loud, Jo'on... sitting high up with this map feels kinda peaceful for once.\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_TRK0B' time 3700 flag 1
+            if
+                0039: 11@ == 1
+            then
+                0ADF: add_text_label "Y_TK0BH" text "~b~Shion: ~s~\"Don't honk so loud, Jo'on... floating above the highway traffic feels kinda peaceful for once.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_TK0BH' time 3700 flag 1
+            else
+                0ADF: add_text_label "Y_TRK0B" text "~b~Shion: ~s~\"Don't honk so loud, Jo'on... sitting high up with this map feels kinda peaceful for once.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_TRK0B' time 3700 flag 1
+            end
             0001: wait 3700 ms
             0002: jump @Finalize_Ambient_Chat
         end
@@ -2942,9 +2950,17 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_TRK1B" text "~b~Shion: ~s~\"They're paying in cash on delivery, sis... and the truck cab has an actual heater that works.\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_TRK1B' time 3700 flag 1
+            if
+                0039: 11@ == 1
+            then
+                0ADF: add_text_label "Y_TK1BH" text "~b~Shion: ~s~\"They're paying in cash on delivery, sis... just don't jackknife the trailer on the offramp.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_TK1BH' time 3700 flag 1
+            else
+                0ADF: add_text_label "Y_TRK1B" text "~b~Shion: ~s~\"They're paying in cash on delivery, sis... and the truck cab has an actual heater that works.\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_TRK1B' time 3700 flag 1
+            end
             0001: wait 3700 ms
             0002: jump @Finalize_Ambient_Chat
         end
@@ -3207,7 +3223,7 @@ then
 
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_CRB2B" text "~b~Shion: ~s~\"You've got terrible aim, Jo'on... I could've made that toss with my eyes closed.\""
+                0ADF: add_text_label "Y_CRB2B" text "~b~Shion: ~s~\"You've got terrible aim, Jo'on... even I wouldn't miss a porch that wide.\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_CRB2B' time 3600 flag 1
                 0001: wait 3600 ms
@@ -3228,7 +3244,7 @@ then
 
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_CRB3B" text "~b~Shion: ~s~\"Don't snap the chain... if we have to push this home on foot, I'm just lying down in the road.\""
+                0ADF: add_text_label "Y_CRB3B" text "~b~Shion: ~s~\"Don't snap the chain... if you have to push this home on foot, I'm not helping you carry the basket.\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_CRB3B' time 3700 flag 1
                 0001: wait 3700 ms
@@ -3467,9 +3483,17 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_CRG1B" text "~b~Shion: ~s~\"Guarding bags of hot food while my stomach eats itself is torture, Jo'on...\""
-            09C1: add_next_text_to_brief_history 1
-            00BC: show_text_highpriority GXT 'Y_CRG1B' time 3500 flag 1
+            if
+                0039: 11@ == 1
+            then
+                0ADF: add_text_label "Y_CR1GH" text "~b~Shion: ~s~\"Floating right behind a box of hot burgers I can't even touch is torture, Jo'on...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_CR1GH' time 3500 flag 1
+            else
+                0ADF: add_text_label "Y_CRG1B" text "~b~Shion: ~s~\"Guarding bags of hot food while my stomach eats itself is torture, Jo'on...\""
+                09C1: add_next_text_to_brief_history 1
+                00BC: show_text_highpriority GXT 'Y_CRG1B' time 3500 flag 1
+            end
             0001: wait 3500 ms
             0002: jump @Finalize_Ambient_Chat
         end
@@ -3883,7 +3907,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_SR3B" text "~b~Shion: ~s~\"Tenshi could take thirty rifle rounds without flinching, Jo'on... but good shot.\""
+            0ADF: add_text_label "Y_SR3B" text "~b~Shion: ~s~\"Miss Celestial could take thirty rifle rounds without flinching, Jo'on... but good shot.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_SR3B' time 3700 flag 1
             0001: wait 3700 ms
@@ -3955,6 +3979,7 @@ then
     end
 
     // FALLBACK: If player is in Ammu-Nation but not holding a valid minigame weapon, delegate to Interior chat
+    0050: gosub @Release_Sub_Lock_Safely
     0A92: create_custom_thread "Shion\Chat\chatInterior.c" 10@
     0A93: terminate_this_custom_script
 end
@@ -3962,11 +3987,7 @@ end
 // =========================================================================
 // MOUNT CHILIAD CHALLENGE ($ONMISSION_Chiliad == 1)
 // =========================================================================
-
-// =========================================================================
-// MOUNT CHILIAD CHALLENGE ($ONMISSION_Chiliad == 1)
-// =========================================================================
-if
+if and
     0038: $ONMISSION == 1
     0038: $ONMISSION_Chiliad == 1
 then
@@ -4100,7 +4121,7 @@ then
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_CH4B" text "~b~Shion: ~s~\"First place better pay in cash, Jo'on... my head is spinning just watching you take turns.\""
+        0ADF: add_text_label "Y_CH4B" text "~b~Shion: ~s~\"First place better pay in cash, Jo'on... I'm getting dizzy just watching you take turns.\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_CH4B' time 3700 flag 1
         0001: wait 3700 ms
@@ -4284,9 +4305,17 @@ then
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_NRG1B" text "~b~Shion: ~s~\"Watch the steel crane cables, Jo'on... you're gonna decapitate us.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_NRG1B' time 3600 flag 1
+        if
+            0039: 11@ == 1
+        then
+            0ADF: add_text_label "Y_NR1BH" text "~b~Shion: ~s~\"Watch the steel crane cables, Jo'on... you're gonna clothesline yourself.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_NR1BH' time 3600 flag 1
+        else
+            0ADF: add_text_label "Y_NRG1B" text "~b~Shion: ~s~\"Watch the steel crane cables, Jo'on... you're gonna decapitate us.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_NRG1B' time 3600 flag 1
+        end
         0001: wait 3600 ms
         0002: jump @Finalize_Ambient_Chat
     end
@@ -4326,9 +4355,17 @@ then
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_NRG3B" text "~b~Shion: ~s~\"Don't count the bonus until we land on rubber, Jo'on... my stomach's in my throat.\""
-        09C1: add_next_text_to_brief_history 1
-        00BC: show_text_highpriority GXT 'Y_NRG3B' time 3700 flag 1
+        if
+            0039: 11@ == 1
+        then
+            0ADF: add_text_label "Y_NR3BH" text "~b~Shion: ~s~\"Don't count the bonus until your tires touch concrete, Jo'on... you're still upside down.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_NR3BH' time 3700 flag 1
+        else
+            0ADF: add_text_label "Y_NRG3B" text "~b~Shion: ~s~\"Don't count the bonus until we land on rubber, Jo'on... my stomach's in my throat.\""
+            09C1: add_next_text_to_brief_history 1
+            00BC: show_text_highpriority GXT 'Y_NRG3B' time 3700 flag 1
+        end
         0001: wait 3700 ms
         0002: jump @Finalize_Ambient_Chat
     end
@@ -4860,7 +4897,7 @@ then
 
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_BL3B" text "~b~Shion: ~s~\"Black smoke is pouring through the dashboard vents, Jo'on... I can barely see.\""
+        0ADF: add_text_label "Y_BL3B" text "~b~Shion: ~s~\"Black smoke is pouring out from under the hood, Jo'on... I can barely see.\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_BL3B' time 3600 flag 1
         0001: wait 3600 ms
@@ -4940,7 +4977,7 @@ then
     then
         018C: play_sound 1058 at 0.0 0.0 0.0
         03EB: clear_small_messages_only
-        0ADF: add_text_label "Y_QAR1A" text "~b~Shion: ~s~\"These limestone boulders are so heavy... just looking at that dump truck makes my back ache.\""
+        0ADF: add_text_label "Y_QAR1A" text "~b~Shion: ~s~\"These limestone boulders are huge... good thing I don't have to shovel any of that gravel.\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_QAR1A' time 3700 flag 1
         0001: wait 3700 ms
@@ -5203,7 +5240,7 @@ then
                 if
                     0039: 11@ == 1
                 then
-                    0ADF: add_text_label "Y_RC0BH" text "~b~Shion: ~s~\"Just drive straight and win the cash, Jo'on... every turn smacks me against the windshield.\""
+                    0ADF: add_text_label "Y_RC0BH" text "~b~Shion: ~s~\"Just drive straight and win the cash, Jo'on... I can barely keep up floating behind your turns.\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC0BH' time 3700 flag 1
                 else
@@ -5221,7 +5258,7 @@ then
             then
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_RC1A1" text "~y~Jo'on: ~s~\"Clean asphalt ahead! That prize purse is already sit-tin' pretty in my wallet!\""
+                0ADF: add_text_label "Y_RC1A1" text "~y~Jo'on: ~s~\"Clean asphalt ahead! That prize purse is already sittin' pretty in my wallet!\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_RC1A1' time 3600 flag 1
                 0001: wait 3600 ms
@@ -5253,7 +5290,7 @@ then
                 if
                     0039: 11@ == 1
                 then
-                    0ADF: add_text_label "Y_RC2BH" text "~b~Shion: ~s~\"That bump bounced me right through the roof panel... I almost got left behind, Jo'on.\""
+                    0ADF: add_text_label "Y_RC2BH" text "~b~Shion: ~s~\"That speed bump nearly launched your car straight through me, Jo'on... watch the curb.\""
                     09C1: add_next_text_to_brief_history 1
                     00BC: show_text_highpriority GXT 'Y_RC2BH' time 3600 flag 1
                 else
@@ -5758,7 +5795,7 @@ then
             then
                 018C: play_sound 1058 at 0.0 0.0 0.0
                 03EB: clear_small_messages_only
-                0ADF: add_text_label "Y_TM3AH" text "~b~Shion: ~s~\"We've been racing for miles and miles, Jo'on... my head's spinning.\""
+                0ADF: add_text_label "Y_TM3AH" text "~b~Shion: ~s~\"We've been racing for miles and miles, Jo'on... I'm getting dizzy just trailing behind you.\""
                 09C1: add_next_text_to_brief_history 1
                 00BC: show_text_highpriority GXT 'Y_TM3AH' time 3600 flag 1
                 0001: wait 3600 ms
@@ -5866,6 +5903,7 @@ end
 // (e.g. wrong vehicle in Vigilante, or off-foot during Courier)
 // Route to standard ambient threads instead of staying completely silent.
 // =========================================================================
+0050: gosub @Release_Sub_Lock_Safely
 077E: get_active_interior_to 28@
 if
     0019: 28@ > 0
@@ -5943,7 +5981,6 @@ end
 0051: return
 
 :Release_Sub_Lock_Safely
-03EB: clear_small_messages_only
 0085: 30@ = 31@
 000A: 30@ += MEM_PRIORITY_LOCK
 0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
@@ -5951,6 +5988,7 @@ if or
     0039: 19@ == 2
     0039: 19@ == 3
 then
+    03EB: clear_small_messages_only
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0

@@ -942,7 +942,7 @@ end
 if
     29@ == 3
 then
-    0ADF: add_text_label "Y_PCF3" text "~y~Jo'on: ~s~\"Hands back in your rags, Shion. Don't ruin my vibe.\"~n~~b~Shion: ~w~\"Fine... sleeves are warmer anyway.\""
+    0ADF: add_text_label "Y_PCF3" text "~y~Jo'on: ~s~\"Hands back in your rags, Shion. Don't ruin my vibe.\"~n~~b~Shion: ~w~\"Fine... pockets are warmer anyway.\""
     09C1: add_next_text_to_brief_history 1
     00BC: show_text_highpriority GXT 'Y_PCF3' time 3000 flag 1
 end

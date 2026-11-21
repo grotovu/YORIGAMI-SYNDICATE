@@ -30,8 +30,10 @@ TIMERA = 0
 :FX_Warp_Loop
 wait 0 // Run every frame for smooth 60 FPS tracking
 
+// Check CWorld::Players[0].m_pPed directly so FX persists during Busted/Wasted
+0A8D: 27@ = read_memory 0xB7CD98 size 4 virtual_protect 0
 if
-    8256: not is_player_playing $PLAYER_CHAR
+    0039: 27@ == 0
 then
     0A93: terminate_this_custom_script
 end

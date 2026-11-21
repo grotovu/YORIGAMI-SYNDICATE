@@ -456,7 +456,7 @@ then
         if
             0039: 28@ == 3
         then
-            0ADF: add_text_label "Y_NORE4" text "~b~Shion: ~s~\"You need me back in your posse? Beg on your knees first.\""
+            0ADF: add_text_label "Y_NORE4" text "~b~Shion: ~s~\"You're being clingy. Give me some alone time.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_NORE4' time 3200 flag 1
         end

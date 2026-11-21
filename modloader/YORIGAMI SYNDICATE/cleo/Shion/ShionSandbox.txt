@@ -51,7 +51,7 @@ then
 end
 
 // Header initialization
-0@ = 0  // Dialogue Random Selector
+0@ = 0  // Last Driven Player Vehicle Handle
 1@ = 0  // Global Sandbox Reaction Cooldown Timer (ms)
 2@ = 0  // Swimming Duration Accumulator Timer (ms)
 3@ = 0  // Swimming In Deep Water Latch (0 = Ready, 1 = Latched/Spoken)
@@ -66,6 +66,7 @@ end
 13@ = 0 // Stunt Wheels Stabilization Timer (ms)
 14@ = -1 // Last Tracked Cars Wrecked Count (-1 = Uninitialized)
 15@ = 0 // Firetruck Hose-Down Stream Accumulator Timer (ms)
+16@ = 0 // Pending Car Wreck Explosion Watch Timer (ms)
 
 // Initialize heap tracking for killing spree baseline & cool-off
 0085: 30@ = 31@
@@ -105,6 +106,9 @@ end
 if
     10@ == 0
 then
+    0@ = 0
+    16@ = 0
+
     // Flush pending physical signals so they don't trigger when summoned later
     0085: 30@ = 31@
     000A: 30@ += MEM_FLEX_SIGNAL
@@ -197,6 +201,7 @@ if
 then
     4@ = 0  // Suppress and flush hydraulics bounce accumulator
     12@ = 0 // Cancel any queued reaction
+    16@ = 0 // Cancel pending car wreck explosion watch
     goto @ShionSandbox_Loop
 end
 
@@ -522,24 +527,24 @@ then
                 then
                     // Get Shion and Player coordinates
                     00A0: store_actor 10@ position_to 19@ 20@ 21@
-                    00A0: store_actor $PLAYER_ACTOR position_to 16@ 17@ 18@
+                    00A0: store_actor $PLAYER_ACTOR position_to 24@ 17@ 18@
 
                     // Water stream effective range (1.5m to 15.0m)
-                    050A: 22@ = distance_between_XYZ 16@ 17@ 18@ and_XYZ 19@ 20@ 21@
+                    050A: 22@ = distance_between_XYZ 24@ 17@ 18@ and_XYZ 19@ 20@ 21@
                     if and
                         0021: 22@ > 1.5
                         8021: not 22@ > 15.0
                     then
                         // Calculate True Camera Aiming Yaw Angle using Position and Target Point
-                        068D: get_camera_position_to 16@ 17@ 18@
+                        068D: get_camera_position_to 24@ 17@ 18@
                         068E: get_camera_target_point_to 26@ 27@ 28@
-                        0063: 26@ -= 16@ // CamDirX = TargetX - CamX
+                        0063: 26@ -= 24@ // CamDirX = TargetX - CamX
                         0063: 27@ -= 17@ // CamDirY = TargetY - CamY
                         0604: get_Z_angle_for_point 26@ 27@ store_to 28@ // True Crosshair Yaw Angle
 
                         // Calculate Angle from Camera Lens to Shion
                         0087: 26@ = 19@
-                        0063: 26@ -= 16@ // dx = ShionX - CamX
+                        0063: 26@ -= 24@ // dx = ShionX - CamX
                         0087: 27@ = 20@
                         0063: 27@ -= 17@ // dy = ShionY - CamY
                         0604: get_Z_angle_for_point 26@ 27@ store_to 29@ // Target Yaw Angle to Shion
@@ -1054,6 +1059,102 @@ then
     end
 end
 
+// Track Player's Current / Last Driven Vehicle
+if
+    00DF: actor $PLAYER_ACTOR driving
+then
+    03C0: 24@ = actor $PLAYER_ACTOR car
+    if
+        056E: car 24@ defined
+    then
+        if
+            0019: 16@ > 0
+        then
+            if
+                803B: not 24@ == 0@
+            then
+                // Player switched into another ride; cancel watch on old vehicle
+                16@ = 0
+            end
+        end
+        0085: 0@ = 24@
+    end
+else
+    if
+        0019: 0@ > 0
+    then
+        if
+            856E: not car 0@ defined
+        then
+            0@ = 0
+            16@ = 0
+        end
+    end
+end
+
+// Pending Burning / Flipped Vehicle Watch (Waits for actual explosion before firing Event 8)
+if
+    0019: 16@ > 0
+then
+    000E: 16@ -= 100
+    if or
+        0039: 0@ == 0
+        856E: not car 0@ defined
+    then
+        16@ = 0
+    else
+        27@ = 0
+        if
+            0019: 12@ > 0
+        then
+            27@ = 1
+        end
+        if
+            04AD: actor $PLAYER_ACTOR in_water
+        then
+            27@ = 1
+        end
+        if
+            02BF: car 0@ sunk
+        then
+            27@ = 1
+        end
+
+        if
+            0039: 27@ == 1
+        then
+            16@ = 0
+        else
+            if
+                0119: car 0@ wrecked
+            then
+                16@ = 0
+                if and
+                    8019: not 1@ > 0
+                    0202: actor $PLAYER_ACTOR near_car 0@ radius 100.0 100.0 sphere 0
+                then
+                    12@ = 8 // Queue Generic Car Destroyed Reaction
+                end
+            else
+                0227: 22@ = car 0@ health
+                if and
+                    8495: not car 0@ burning
+                    0029: 22@ >= 250
+                    81F4: not car 0@ flipped
+                then
+                    16@ = 0
+                else
+                    if
+                        002B: 0 >= 16@
+                    then
+                        16@ = 0
+                    end
+                end
+            end
+        end
+    end
+end
+
 // Vehicle Wreck / Destruction Watchdog (References MEM_CARS_WRECKED from Master Heap)
 0085: 30@ = 31@
 000A: 30@ += MEM_CARS_WRECKED
@@ -1085,10 +1186,39 @@ else
         if
             27@ == 0
         then
+            26@ = 0
             if
-                8019: not 1@ > 0
+                0019: 0@ > 0
             then
-                12@ = 8 // Queue Generic Car Destroyed Reaction
+                if
+                    056E: car 0@ defined
+                then
+                    if
+                        8119: not car 0@ wrecked
+                    then
+                        0227: 22@ = car 0@ health
+                        if or
+                            0495: car 0@ burning
+                            001B: 250 > 22@
+                            01F4: car 0@ flipped
+                        then
+                            26@ = 1
+                        end
+                    end
+                end
+            end
+
+            if
+                0039: 26@ == 1
+            then
+                // Vehicle is still burning / upside-down; wait for actual explosion
+                16@ = 15000
+            else
+                if
+                    8019: not 1@ > 0
+                then
+                    12@ = 8 // Queue Generic Car Destroyed Reaction
+                end
             end
         end
     else
