@@ -52,6 +52,19 @@ then
     0A93: terminate_this_custom_script
 end
 
+if
+    856D: not actor $PLAYER_ACTOR defined
+then
+    0A93: terminate_this_custom_script
+end
+
+if or
+    0118: actor $PLAYER_ACTOR dead
+    0741: actor $PLAYER_ACTOR busted
+then
+    0A93: terminate_this_custom_script
+end
+
 // Priority Arbitration: Never interrupt or override active conversations
 0085: 30@ = 31@
 000A: 30@ += MEM_PRIORITY_LOCK
@@ -94,12 +107,22 @@ then
     0A8D: 6@ = read_memory 30@ size 4 virtual_protect 0
 
     7@ = 0
-    if and
+    if
         0019: 6@ > 0
-        056D: actor 6@ defined
-        0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 6@ radius 3.0
     then
-        7@ = 1
+        if
+            056D: actor 6@ defined
+        then
+            if
+                056D: actor $PLAYER_ACTOR defined
+            then
+                if
+                    0EE4: locate_char_distance_to_char $PLAYER_ACTOR char 6@ radius 3.0
+                then
+                    7@ = 1
+                end
+            end
+        end
     end
 
     // Read Stance (0 = Peaceful/Unarmed, 1 = Hostile/Armed)

@@ -122,8 +122,18 @@ then
     0A93: terminate_this_custom_script
 end
 
+21@ = 0
 if
+    056D: actor $PLAYER_ACTOR defined
+then
+    0EAB: get_char_pedstate $PLAYER_ACTOR store_to 21@
+end
+0A8D: 20@ = read_memory 0xB7CDA4 size 4 virtual_protect 0
+
+if or
     0741: actor $PLAYER_ACTOR busted
+    0019: 20@ > 0
+    0039: 21@ == 62
 then
     if and
         0019: 10@ > 0
