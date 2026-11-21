@@ -15,6 +15,10 @@ const
     MEM_SHION_KILLER_IS_JOON = 384
     MEM_SHION_DEATH_WEAPON = 388
     MEM_SHION_DEATH_IN_CAR = 392
+    MEM_JOON_DEATH_STATE = 456
+    MEM_JOON_BUSTED_STARS = 460
+    MEM_JOON_DEATH_WEAPON = 464
+    MEM_SHION_DIED_FIRST = 468
 end
 
 :Connect_To_Brain
@@ -83,6 +87,44 @@ end
 0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
 018C: play_sound 1058 at 0.0 0.0 0.0
+
+// Read Jo'on Casualty Telemetry from Master Heap
+0085: 30@ = 31@
+000A: 30@ += MEM_JOON_DEATH_STATE
+0A8D: 18@ = read_memory 30@ size 4 virtual_protect 0 // 0 = None, 1 = Wasted, 2 = Busted
+
+0085: 30@ = 31@
+000A: 30@ += MEM_JOON_BUSTED_STARS
+0A8D: 19@ = read_memory 30@ size 4 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_JOON_DEATH_WEAPON
+0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_DIED_FIRST
+0A8D: 21@ = read_memory 30@ size 4 virtual_protect 0
+
+if
+    0019: 18@ > 0
+then
+    // Jo'on casualty takes priority: clear state registers
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JOON_DEATH_STATE
+    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+
+    if
+        0039: 18@ == 2
+    then
+        0002: jump @Joon_Busted_Spawn_Chat
+    end
+
+    if
+        0039: 18@ == 1
+    then
+        0002: jump @Joon_Wasted_Spawn_Chat
+    end
+end
 
 // =========================================================================
 // WEAPON-SPECIFIC POST-DEATH COMPLAINTS (SHION ONE-LINERS)
@@ -519,6 +561,287 @@ else
     00BC: show_text_highpriority GXT 'Y_SP16B' time 3500 flag 1
 end
 0001: wait 3500 ms
+0002: jump @Finish_Spawn_Chat
+
+// =========================================================================
+// SUBROUTINE: JO'ON BUSTED REACTIONS (SHION ONE-LINERS)
+// =========================================================================
+:Joon_Busted_Spawn_Chat
+// Chronology: Jo'on killed Shion first, then got arrested
+if and
+    0039: 21@ == 1
+    0039: 13@ == 1
+then
+    0ADF: add_text_label "Y_SBK" text "~b~Shion: ~s~\"You took me out and then immediately folded to the cops? That's just pathetic.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SBK' time 3500 flag 1
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// Chronology: Shion died first to world/cops, then Jo'on got arrested
+if and
+    0039: 21@ == 1
+    0039: 13@ == 0
+then
+    0ADF: add_text_label "Y_SBW" text "~b~Shion: ~s~\"You couldn't even get away without me taking the heat first, Jo'on.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SBW' time 3500 flag 1
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// Chronology: Shion was alive when Jo'on got arrested
+if
+    0029: 19@ >= 5
+then
+    // High heat (5 to 6 stars)
+    0209: 1@ = random_int_in_ranges 0 2
+    if
+        0039: 1@ == 0
+    then
+        0ADF: add_text_label "Y_SBH0" text "~b~Shion: ~s~\"You brought half the army down on us, and you still ended up in a tiny holding cell.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBH0' time 3500 flag 1
+    end
+    if
+        0039: 1@ == 1
+    then
+        0ADF: add_text_label "Y_SBH1" text "~b~Shion: ~s~\"All that gunfire just to get cuffed on the sidewalk. What a waste of energy.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBH1' time 3500 flag 1
+    end
+else
+    // Low to Mid heat (1 to 4 stars)
+    0209: 1@ = random_int_in_ranges 0 4
+    if
+        0039: 1@ == 0
+    then
+        0ADF: add_text_label "Y_SBL0" text "~b~Shion: ~s~\"Back from the precinct already? I hope you didn't let them take all your cash, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBL0' time 3500 flag 1
+    end
+    if
+        0039: 1@ == 1
+    then
+        0ADF: add_text_label "Y_SBL1" text "~b~Shion: ~s~\"I had to sit on the curb outside the station for hours. You owe me lunch for waiting.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBL1' time 3500 flag 1
+    end
+    if
+        0039: 1@ == 2
+    then
+        0ADF: add_text_label "Y_SBL2" text "~b~Shion: ~s~\"Watching you get shoved into the back of a cruiser was pretty embarrassing, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBL2' time 3500 flag 1
+    end
+    if
+        0039: 1@ == 3
+    then
+        0ADF: add_text_label "Y_SBL3" text "~b~Shion: ~s~\"They took your guns and your bail money... so does that mean we're both broke now?\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SBL3' time 3500 flag 1
+    end
+end
+0001: wait 3500 ms
+0002: jump @Finish_Spawn_Chat
+
+// =========================================================================
+// SUBROUTINE: JO'ON WASTED REACTIONS (SHION ONE-LINERS)
+// =========================================================================
+:Joon_Wasted_Spawn_Chat
+// Chronology: Jo'on killed Shion first, then died immediately
+if and
+    0039: 21@ == 1
+    0039: 13@ == 1
+then
+    0209: 1@ = random_int_in_ranges 0 3
+    if
+        0039: 1@ == 0
+    then
+        0ADF: add_text_label "Y_SWK0" text "~b~Shion: ~s~\"You wiped me out and died thirty seconds later... you really can't do anything alone.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SWK0' time 3500 flag 1
+    end
+    if
+        0039: 1@ == 1
+    then
+        0ADF: add_text_label "Y_SWK1" text "~b~Shion: ~s~\"Did you really think killing me would bring you good luck? We both ended up dead anyway.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SWK1' time 3500 flag 1
+    end
+    if
+        0039: 1@ == 2
+    then
+        0ADF: add_text_label "Y_SWK2" text "~b~Shion: ~s~\"If your intention was a double-suicide, usually it's up to the other person, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SWK2' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// Fatal cause evaluation
+
+// Gunfire & Shootouts (IDs 22 to 34, 38)
+22@ = 0
+if and
+    0029: 20@ >= 22
+    002B: 34 >= 20@
+then
+    22@ = 1
+end
+if
+    0039: 20@ == 38
+then
+    22@ = 1
+end
+
+if
+    0039: 22@ == 1
+then
+    0209: 1@ = random_int_in_ranges 0 3
+    if
+        0039: 1@ == 0
+    then
+        0ADF: add_text_label "Y_SWG0" text "~b~Shion: ~s~\"You talked all that trash just to get filled with lead. Buy me a burger, I'm starving.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SWG0' time 3500 flag 1
+    end
+    if
+        0039: 1@ == 1
+    then
+        0ADF: add_text_label "Y_SWG1" text "~b~Shion: ~s~\"I told you to find cover, but you just kept standing in the line of fire, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SWG1' time 3500 flag 1
+    end
+    if
+        0039: 1@ == 2
+    then
+        0ADF: add_text_label "Y_SWG2" text "~b~Shion: ~s~\"Waking up outside the hospital morgue smells awful. Don't drag me into a shootout again.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SWG2' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// Explosions & Heavy Ordnance / Blown-up Vehicles (IDs 16, 35, 36, 39, 51)
+if or
+    0039: 20@ == 16
+    0039: 20@ == 35
+    0039: 20@ == 36
+    0039: 20@ == 39
+    0039: 20@ == 51
+then
+    0209: 1@ = random_int_in_ranges 0 2
+    if
+        0039: 1@ == 0
+    then
+        0ADF: add_text_label "Y_SWE0" text "~b~Shion: ~s~\"You blew yourself straight to the emergency room, Jo'on. My ears are still ringing.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SWE0' time 3500 flag 1
+    end
+    if
+        0039: 1@ == 1
+    then
+        0ADF: add_text_label "Y_SWE1" text "~b~Shion: ~s~\"I could smell your burnt clothes from three blocks away. Let's not play with fire again.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SWE1' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// Vehicular Run-Over (IDs 49, 50)
+if or
+    0039: 20@ == 49
+    0039: 20@ == 50
+then
+    0209: 1@ = random_int_in_ranges 0 2
+    if
+        0039: 1@ == 0
+    then
+        0ADF: add_text_label "Y_SWR0" text "~b~Shion: ~s~\"Getting flattened like cardboard by street traffic... you looked completely ridiculous.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SWR0' time 3500 flag 1
+    end
+    if
+        0039: 1@ == 1
+    then
+        0ADF: add_text_label "Y_SWR1" text "~b~Shion: ~s~\"Even I know how to look both ways before crossing the road, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SWR1' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// Melee / Fistfight Beatdowns (IDs 0 to 15)
+if and
+    0029: 20@ >= 0
+    002B: 15 >= 20@
+then
+    0209: 1@ = random_int_in_ranges 0 2
+    if
+        0039: 1@ == 0
+    then
+        0ADF: add_text_label "Y_SWM0" text "~b~Shion: ~s~\"You bragged about your heavy gold rings and then got knocked out cold in a street brawl.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SWM0' time 3500 flag 1
+    end
+    if
+        0039: 1@ == 1
+    then
+        0ADF: add_text_label "Y_SWM1" text "~b~Shion: ~s~\"Losing a fistfight to random losers on the sidewalk... you have zero dignity, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SWM1' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// Drowning (ID 53)
+if
+    0039: 20@ == 53
+then
+    0209: 1@ = random_int_in_ranges 0 2
+    if
+        0039: 1@ == 0
+    then
+        0ADF: add_text_label "Y_SWD0" text "~b~Shion: ~s~\"You sank straight to the bottom like a sack of coins. Try floating next time, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SWD0' time 3500 flag 1
+    end
+    if
+        0039: 1@ == 1
+    then
+        0ADF: add_text_label "Y_SWD1" text "~b~Shion: ~s~\"You took a dive straight into the dirty water. I hope that sewer sludge tasted good.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_SWD1' time 3500 flag 1
+    end
+    0001: wait 3500 ms
+    0002: jump @Finish_Spawn_Chat
+end
+
+// Generic / Falls / Hospital Wake-Up (-1, 54, or unhandled)
+0209: 1@ = random_int_in_ranges 0 2
+if
+    0039: 1@ == 0
+then
+    0ADF: add_text_label "Y_SWF0" text "~b~Shion: ~s~\"The hospital bill took another bite out of your wallet, didn't it? Serves you right.\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SWF0' time 3500 flag 1
+end
+if
+    0039: 1@ == 1
+then
+    0ADF: add_text_label "Y_SWF1" text "~b~Shion: ~s~\"Waiting on the hospital steps gave me a headache. Are we getting food or not?\""
+    09C1: add_next_text_to_brief_history 1
+    00BC: show_text_highpriority GXT 'Y_SWF1' time 3500 flag 1
+end
+0001: wait 3500 ms
+0002: jump @Finish_Spawn_Chat
 
 :Finish_Spawn_Chat
 

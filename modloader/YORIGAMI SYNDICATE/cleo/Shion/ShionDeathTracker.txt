@@ -164,6 +164,10 @@ then
             000A: 30@ += MEM_SHION_DIED_FIRST
             0A8C: write_memory 30@ size 4 value 28@ virtual_protect 0
 
+            0085: 30@ = 31@
+            000A: 30@ += MEM_SHION_DEATH_FLAG
+            0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
+
             if
                 0039: 28@ == 0
             then
@@ -240,6 +244,10 @@ then
                 0085: 30@ = 31@
                 000A: 30@ += MEM_SHION_DIED_FIRST
                 0A8C: write_memory 30@ size 4 value 28@ virtual_protect 0
+
+                0085: 30@ = 31@
+                000A: 30@ += MEM_SHION_DEATH_FLAG
+                0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
 
                 if
                     0039: 28@ == 0
