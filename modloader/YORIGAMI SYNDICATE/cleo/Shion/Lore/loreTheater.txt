@@ -1071,7 +1071,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L40B" text "~b~Shion: ~s~\"Standing up here... I keep thinking about Tenshi.\""
+0ADF: add_text_label "Y_L40B" text "~b~Shion: ~s~\"Standing up here... I keep thinking about Miss Celestial.\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L40B' time 4000 flag 1
 wait 4000
@@ -1110,7 +1110,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L40E" text "~b~Shion: ~s~\"Hehe... the real Tenshi was just as wild. When you were stuck sweeping, she took me everywhere.\""
+0ADF: add_text_label "Y_L40E" text "~b~Shion: ~s~\"Hehe... the real Miss Celestial was just as wild. When you were stuck sweeping, she took me everywhere.\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L40E' time 4500 flag 1
 wait 4500
@@ -1162,7 +1162,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L40I" text "~b~Shion: ~s~\"They started calling me and Tenshi the 'Most Despicable and Disastrous Duo'...\""
+0ADF: add_text_label "Y_L40I" text "~b~Shion: ~s~\"They started calling me and Miss Celestial the 'Most Despicable and Disastrous Duo'...\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L40I' time 4200 flag 1
 wait 4200
@@ -1227,10 +1227,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L40L" text "~b~Shion: ~s~\"Her luck was endless, Jo'on. With her, I didn't feel like a walking curse dragging everyone into ruin...\""
+0ADF: add_text_label "Y_L40L1" text "~b~Shion: ~s~\"Miss Celestial's luck was endless, Jo'on.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L40L' time 4500 flag 1
-wait 4500
+00BC: show_text_highpriority GXT 'Y_L40L1' time 3500 flag 1
+wait 3500
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -1240,10 +1240,23 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L40M1" text "~y~Jo'on: ~s~\"ALRIGHT, SHUT YOUR TRAP!\""
+0ADF: add_text_label "Y_L40L2" text "~b~Shion: ~s~\"With her, I didn't feel like a walking curse dragging everyone into ruin...\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L40M1' time 3000 flag 1
-wait 3000
+00BC: show_text_highpriority GXT 'Y_L40L2' time 3500 flag 1
+wait 3500
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L40M1" text "~y~Jo'on: ~s~\"ALRIGHT, SHUT YOUR TRAP! Quit callin' her 'Miss Celestial' like she's your damn boss!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L40M1' time 4500 flag 1
+wait 4500
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -2545,7 +2558,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L11F" text "~b~Shion: ~s~\"Yes. Unless they have ridiculous celestial luck like Tenshi, nobody walks away with chips.\""
+0ADF: add_text_label "Y_L11F" text "~b~Shion: ~s~\"Yes. Unless they have ridiculous celestial luck like Miss Celestial, nobody walks away with chips.\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L11F' time 4300 flag 1
 wait 4300

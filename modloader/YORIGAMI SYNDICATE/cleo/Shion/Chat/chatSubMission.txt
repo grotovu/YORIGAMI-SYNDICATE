@@ -3907,7 +3907,7 @@ then
 
             018C: play_sound 1058 at 0.0 0.0 0.0
             03EB: clear_small_messages_only
-            0ADF: add_text_label "Y_SR3B" text "~b~Shion: ~s~\"Tenshi could take thirty rifle rounds without flinching, Jo'on... but good shot.\""
+            0ADF: add_text_label "Y_SR3B" text "~b~Shion: ~s~\"Miss Celestial could take thirty rifle rounds without flinching, Jo'on... but good shot.\""
             09C1: add_next_text_to_brief_history 1
             00BC: show_text_highpriority GXT 'Y_SR3B' time 3700 flag 1
             0001: wait 3700 ms
