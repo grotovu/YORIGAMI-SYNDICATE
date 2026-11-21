@@ -136,4 +136,5 @@ const
     MEM_LORE_PROGRESS_2 = 472
     MEM_TAG_SWITCH_REQ = 476
     MEM_MELEE_DM = 480
+    MEM_JACK_TARGET_CAR = 484     // Target Vehicle Handle for Hitodama Carjack (0 = None)
 end

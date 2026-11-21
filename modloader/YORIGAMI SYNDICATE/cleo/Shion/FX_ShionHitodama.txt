@@ -10,6 +10,7 @@ script_name "Sh_HitoF"
 // YORIGAMI MASTER HEAP DICTIONARY (PRUNED FOR SH_HITOF)
 // =========================================================================
 const
+    MEM_SHION_BUSY = 4
     MEM_PLAYER_FORM = 12
     MEM_PRIORITY_LOCK = 20
     MEM_SHION_HANDLE = 116
@@ -23,6 +24,7 @@ const
     MEM_HITO_SHIELD_BROKE = 180
     MEM_DMG_RECURSION_LCK = 184
     MEM_HITO_PAIN_MUTED = 348     // Spectral Shield Pain Audio Latch
+    MEM_JACK_TARGET_CAR = 484     // Target Vehicle Handle for Hitodama Carjack
 end
 
 :Connect_To_Brain
@@ -191,6 +193,18 @@ if
     84A4: not 25@ == -1 // Materialized into Ped (>0) or Dismissed (0)
 then
     18@ = 0.0 // Smooth fade out
+else
+    // Check if Shion is temporarily inside carjack cabin (State 3)
+    0085: 30@ = 31@
+    000A: 30@ += 4 // MEM_SHION_BUSY
+    0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        0039: 20@ == 3
+    then
+        18@ = 0.0 // Temporarily hide flames while Shion is inside the car
+    else
+        18@ = 1.0 // Visible Hitodama
+    end
 end
 
 // =========================================================================
@@ -275,15 +289,19 @@ then
     end
 end
 
-// Once fully faded out after state switch, terminate cleanly
+// Once fully faded out after state switch, terminate cleanly (ONLY if permanently materialized or dismissed)
 if
     0043: 18@ == 0.0
 then
     if
-        0023: 0.01 > 17@
+        84A4: not 25@ == -1 // Strictly terminate ONLY if Shion became a real ped (>0) or was dismissed (0)
     then
-        gosub @Restore_Pain_Audio_If_Configured
-        0A93: terminate_this_custom_script
+        if
+            0023: 0.01 > 17@
+        then
+            gosub @Restore_Pain_Audio_If_Configured
+            0A93: terminate_this_custom_script
+        end
     end
 end
 
@@ -291,42 +309,70 @@ end
 // TARGET ANCHOR CALCULATION & 3D SMOOTH LERP PHYSICS
 // =========================================================================
 24@ = 0 // Camera Freeze Flag (0 = Gravitate, 1 = Freeze in World Space)
+19@ = 0 // Carjack Swoop State Flag (0 = Standard Anchor, 1 = Swoop to Car)
+
+// Check if Shion is actively swooping to carjack a target vehicle
+0085: 30@ = 31@
+000A: 30@ += MEM_SHION_BUSY
+0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
 
 if
-    00DF: actor 29@ driving
+    0039: 25@ == 2 // State 2: Carjack Flight Active
 then
-    03C0: 20@ = actor 29@ car
-    0441: 25@ = car 20@ model
+    0085: 30@ = 31@
+    000A: 30@ += MEM_JACK_TARGET_CAR
+    0A8D: 20@ = read_memory 30@ size 4 virtual_protect 0
 
-    // Single Seater / Cockpit Handling (Rhino, Hydra, Kart, Bandito, Quad)
-    if or
-        25@ == 432 // Rhino
-        25@ == 520 // Hydra
-        25@ == 571 // Kart
-        25@ == 568 // Bandito
-        25@ == 471 // Quad
+    if and
+        0019: 20@ > 0
+        056E: car 20@ defined
+        8119: not car 20@ wrecked
     then
-        0407: store_coords_to 8@ 9@ 10@ from_car 20@ with_offset -0.75 0.0 0.85
-    else
-        // Standard Car: Float in front passenger space
-        0407: store_coords_to 8@ 9@ 10@ from_car 20@ with_offset 0.35 0.15 0.35
+        // Target Passenger Door Window / Seat 0 coordinates
+        0407: store_coords_to 8@ 9@ 10@ from_car 20@ with_offset 0.8 0.2 0.3
+        19@ = 1
     end
-else
-    // On Foot Anchor: Hover over Jo'on's left shoulder
-    04C4: store_coords_to 8@ 9@ 10@ from_actor 29@ with_offset -0.60 -0.55 0.65
+end
 
-    // Check if player is holding and aiming the camera
-    0470: 25@ = actor 29@ current_weapon
+if
+    0039: 19@ == 0
+then
     if
-        25@ == 43
+        00DF: actor 29@ driving
     then
+        03C0: 20@ = actor 29@ car
+        0441: 25@ = car 20@ model
+
+        // Single Seater / Cockpit Handling (Rhino, Hydra, Kart, Bandito, Quad)
         if or
-            0E67: is_aim_button_pressed 0
-            00E1: player 0 pressed_key 6
-            0E8D: is_any_fire_button_pressed 0
-            00E1: player 0 pressed_key 17
+            25@ == 432 // Rhino
+            25@ == 520 // Hydra
+            25@ == 571 // Kart
+            25@ == 568 // Bandito
+            25@ == 471 // Quad
         then
-            24@ = 1 // Freeze position in world space
+            0407: store_coords_to 8@ 9@ 10@ from_car 20@ with_offset -0.75 0.0 0.85
+        else
+            // Standard Car: Float in front passenger space
+            0407: store_coords_to 8@ 9@ 10@ from_car 20@ with_offset 0.35 0.15 0.35
+        end
+    else
+        // On Foot Anchor: Hover over Jo'on's left shoulder
+        04C4: store_coords_to 8@ 9@ 10@ from_actor 29@ with_offset -0.60 -0.55 0.65
+
+        // Check if player is holding and aiming the camera
+        0470: 25@ = actor 29@ current_weapon
+        if
+            25@ == 43
+        then
+            if or
+                0E67: is_aim_button_pressed 0
+                00E1: player 0 pressed_key 6
+                0E8D: is_any_fire_button_pressed 0
+                00E1: player 0 pressed_key 17
+            then
+                24@ = 1 // Freeze position in world space
+            end
         end
     end
 end
@@ -349,9 +395,10 @@ end
 // Distance to Target Anchor
 050A: 26@ = distance_between_XYZ 2@ 3@ 4@ and_XYZ 8@ 9@ 10@
 
-// Hard catch-up if player moves too far away (> 25m)
-if
-    0021: 26@ > 25.0
+// Hard catch-up if player moves too far away (> 45m), but NEVER snap if actively swooping to car!
+if and
+    0021: 26@ > 45.0
+    0039: 19@ == 0 // Only snap during normal cruising follow
 then
     0087: 2@ = 8@
     0087: 3@ = 9@
@@ -363,7 +410,13 @@ else
     then
         // Smooth 3D Exponential Lerp scaled by delta
         0087: 23@ = 28@
-        0013: 23@ *= 0.12
+        if
+            0039: 19@ == 1
+        then
+            0013: 23@ *= 0.18 // Smooth, visible 1.2-second swoop across the road!
+        else
+            0013: 23@ *= 0.12 // Normal cruising hover speed
+        end
 
         0087: 20@ = 8@
         0063: 20@ -= 2@

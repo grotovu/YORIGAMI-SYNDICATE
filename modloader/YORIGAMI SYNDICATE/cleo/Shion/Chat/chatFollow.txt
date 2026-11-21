@@ -80,6 +80,14 @@ then
         0A93: terminate_this_custom_script
     end
 
+    // Mode 10 (Post-Jack Complaint) yields cleanly to Tier 4
+    if and
+        0039: 10@ == 10
+        04B5: 16@ >= 4
+    then
+        0A93: terminate_this_custom_script
+    end
+
     // Tier 4 Master Theater / Menus are completely inviolable even on death
     if
         04B5: 16@ >= 4
@@ -3393,6 +3401,106 @@ then
     end
 
     0001: wait 2500 ms
+    0A93: terminate_this_custom_script
+end
+
+// =========================================================================
+// MODE 9: HITODAMA CARJACK LAUNCH COMMAND (JO'ON TACTICAL BARK)
+// =========================================================================
+if
+    0039: 10@ == 9
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+
+    0209: 1@ = random_int_in_ranges 0 5
+    if
+        0039: 1@ == 0
+    then
+        0ADF: add_text_label "Y_HJC0" text "~y~Jo'on: ~s~\"Haunt that ride, Shion! Toss the chump out!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HJC0' time 2500 flag 1
+    end
+    if
+        0039: 1@ == 1
+    then
+        0ADF: add_text_label "Y_HJC1" text "~y~Jo'on: ~s~\"Front seat, Shion! Kick 'em to the curb!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HJC1' time 2500 flag 1
+    end
+    if
+        0039: 1@ == 2
+    then
+        0ADF: add_text_label "Y_HJC2" text "~y~Jo'on: ~s~\"Clear that car for me, right now!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HJC2' time 2500 flag 1
+    end
+    if
+        0039: 1@ == 3
+    then
+        0ADF: add_text_label "Y_HJC3" text "~y~Jo'on: ~s~\"Don't just float there! Jack that ride!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HJC3' time 2500 flag 1
+    end
+    if
+        0039: 1@ == 4
+    then
+        0ADF: add_text_label "Y_HJC4" text "~y~Jo'on: ~s~\"Spook that driver out of my new wheels!\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HJC4' time 2500 flag 1
+    end
+
+    0001: wait 2500 ms
+    0A93: terminate_this_custom_script
+end
+
+// =========================================================================
+// MODE 10: HITODAMA CARJACK AFTERMATH COMPLAINT (SHION DEADPAN)
+// =========================================================================
+if
+    0039: 10@ == 10
+then
+    018C: play_sound 1058 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+
+    0209: 1@ = random_int_in_ranges 0 5
+    if
+        0039: 1@ == 0
+    then
+        0ADF: add_text_label "Y_HJS0" text "~b~Shion: ~s~\"Ugh... his seat was sticky. You owe me lunch, Jo'on.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HJS0' time 3000 flag 1
+    end
+    if
+        0039: 1@ == 1
+    then
+        0ADF: add_text_label "Y_HJS1" text "~b~Shion: ~s~\"He was so terrified he dropped his wallet on the asphalt. Grab it.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HJS1' time 3000 flag 1
+    end
+    if
+        0039: 1@ == 2
+    then
+        0ADF: add_text_label "Y_HJS2" text "~b~Shion: ~s~\"My back hurts from that... the car is empty, I'm going back to floating.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HJS2' time 3000 flag 1
+    end
+    if
+        0039: 1@ == 3
+    then
+        0ADF: add_text_label "Y_HJS3" text "~b~Shion: ~s~\"Do you know how bad this guy's air freshener smelled...? Never make me do that again.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HJS3' time 3000 flag 1
+    end
+    if
+        0039: 1@ == 4
+    then
+        0ADF: add_text_label "Y_HJS4" text "~b~Shion: ~s~\"He panicked and bailed. The keys are still in the ignition.\""
+        09C1: add_next_text_to_brief_history 1
+        00BC: show_text_highpriority GXT 'Y_HJS4' time 3000 flag 1
+    end
+
+    0001: wait 3000 ms
     0A93: terminate_this_custom_script
 end
 
