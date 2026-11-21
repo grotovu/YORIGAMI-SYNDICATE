@@ -5021,10 +5021,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L26A" text "~b~Shion: ~s~\"You've been staring through that boutique window for five minutes without blinking, Jo'on.\""
+0ADF: add_text_label "Y_L26A" text "~b~Shion: ~s~\"You've been standing outside this shop window for five minutes, Jo'on. The store's closed.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L26A' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L26A' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -5034,10 +5034,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L26B" text "~y~Jo'on: ~s~\"Look at it. In this city, luxury gets locked up behind two inches of bulletproof glass.\""
+0ADF: add_text_label "Y_L26B" text "~y~Jo'on: ~s~\"I know it's closed. Look at how they lock every nice coat behind thick glass and iron bars.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L26B' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L26B' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -5047,10 +5047,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L26C" text "~y~Jo'on: ~s~\"They flash it to the street just to tell the sidewalk: 'Look all ya want, scrubs, you can't touch.'\""
+0ADF: add_text_label "Y_L26C" text "~y~Jo'on: ~s~\"Whole street says the same thing: if you ain't holdin' cash, stay on the dark side of the curb.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L26C' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L26C' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -5060,10 +5060,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L26D" text "~b~Shion: ~s~\"Reminds me of how people looked at us back home. Especially that rabbit, Reisen.\""
+0ADF: add_text_label "Y_L26D" text "~b~Shion: ~s~\"Sounds like Reisen... telling you your trashy roots still show through the expensive silk.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L26D' time 4200 flag 1
-wait 4200
+00BC: show_text_highpriority GXT 'Y_L26D' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -5073,10 +5073,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L26E" text "~y~Jo'on: ~s~\"Tch! 'No matter how fancy ya dress, your gutter trash roots bleed through!' Smug lunar brat.\""
+0ADF: add_text_label "Y_L26E" text "~y~Jo'on: ~s~\"Keep that rabbit's mouth outta my ear! Like she knows a damn thing about what I did to get here!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L26E' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L26E' time 4500 flag 1
+wait 4500
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -5086,7 +5086,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L26F" text "~b~Shion: ~s~\"She wasn't lying, though. We were born in the ditch, Jo'on. Discarded pests nobody wanted.\""
+0ADF: add_text_label "Y_L26F" text "~b~Shion: ~s~\"...You swallowed a lot of pride back then, Jo'on. Just so we wouldn't keep starving.\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L26F' time 4300 flag 1
 wait 4300
@@ -5099,10 +5099,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L26G" text "~y~Jo'on: ~s~\"Shut it! Whaddya think, I forgot the mud?! I know damn well where we crawled out from!\""
+0ADF: add_text_label "Y_L26G" text "~y~Jo'on: ~s~\"Don't bring up old crap! Once ya cross that line and dirty your hands, there ain't no goin' back!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L26G' time 4100 flag 1
-wait 4100
+00BC: show_text_highpriority GXT 'Y_L26G' time 4500 flag 1
+wait 4500
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -5112,48 +5112,9 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L26H" text "~y~Jo'on: ~s~\"That's why I drown myself in gold! Why I wrap myself in silk and blow every stack I steal!\""
+0ADF: add_text_label "Y_L26H" text "~y~Jo'on: ~s~\"The second I take these rings off or let up for one minute, I'm right back on the cold pavement!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L26H' time 4200 flag 1
-wait 4200
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L26I" text "~y~Jo'on: ~s~\"The second the bling comes off... the second the pockets run dry...\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L26I' time 3800 flag 1
-wait 3800
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L26J" text "~y~Jo'on: ~s~\"...I feel poor again. Deep in my bones. And I ain't ever feelin' that cold again!\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L26J' time 4200 flag 1
-wait 4200
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L26K" text "~b~Shion: ~s~\"Even if all the gold melts away, sis... you're still the one who dragged us out of that ditch.\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L26K' time 4400 flag 1
+00BC: show_text_highpriority GXT 'Y_L26H' time 4400 flag 1
 wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
@@ -5164,10 +5125,49 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L26L" text "~y~Jo'on: ~s~\"...Hmph. Save the sap for someone who cares. Tomorrow night, I'm buyin' out that whole damn display.\""
+0ADF: add_text_label "Y_L26I" text "~y~Jo'on: ~s~\"Nobody gets to look down at me like a stray ever again! Not some rabbit, not this city, nobody!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L26L' time 4300 flag 1
+00BC: show_text_highpriority GXT 'Y_L26I' time 4400 flag 1
+wait 4400
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L26J" text "~b~Shion: ~s~\"...And I just kept letting you carry all of it, didn't I? Because it was easier for me.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L26J' time 4400 flag 1
+wait 4400
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L26K" text "~y~Jo'on: ~s~\"Tch! Quit talkin' crazy! Who asked ya to feel guilty?! A parasite's gotta eat, don't she?!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L26K' time 4300 flag 1
 wait 4300
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L26L" text "~y~Jo'on: ~s~\"Stop dawdlin' in the cold. Tomorrow, I'm walkin' through that front door and cleanin' out the racks.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L26L' time 4400 flag 1
+wait 4400
 return
 
 
