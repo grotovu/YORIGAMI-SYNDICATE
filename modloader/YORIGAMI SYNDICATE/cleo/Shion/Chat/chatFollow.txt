@@ -3417,14 +3417,14 @@ then
     if
         0039: 1@ == 0
     then
-        0ADF: add_text_label "Y_HJC0" text "~y~Jo'on: ~s~\"Haunt that ride, Shion! Toss the chump out!\""
+        0ADF: add_text_label "Y_HJC0" text "~y~Jo'on: ~s~\"Haunt that ride, Shion! Toss 'em all out!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_HJC0' time 2500 flag 1
     end
     if
         0039: 1@ == 1
     then
-        0ADF: add_text_label "Y_HJC1" text "~y~Jo'on: ~s~\"Front seat, Shion! Kick 'em to the curb!\""
+        0ADF: add_text_label "Y_HJC1" text "~y~Jo'on: ~s~\"Hop in that ride, Shion! Kick 'em to the curb!\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_HJC1' time 2500 flag 1
     end

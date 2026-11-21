@@ -2314,18 +2314,57 @@ then
     return
 end
 
-// Check 2: Seat 0 must be completely free
+// Check 2: Exclude Single-Seaters & Tanks first so max_passengers (23@) is known
+01EA: 23@ = car 24@ max_passengers
 if
-    8431: not car 24@ passenger_seat_free 0
+    23@ <= 0
 then
     018C: play_sound 1057 at 0.0 0.0 0.0
     03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_NOJK1" text "~r~PASSENGER SEAT OCCUPIED"
+    0ADF: add_text_label "Y_NOJK4" text "~r~CANNOT CARJACK SINGLE-SEATER"
+    00BC: show_text_highpriority GXT 'Y_NOJK4' time 2000 flag 1
+    return
+end
+
+// Check 3: At least one passenger seat (0, 1, or 2) must be free
+25@ = 0
+if
+    0431: car 24@ passenger_seat_free 0
+then
+    25@ = 1
+else
+    if
+        23@ > 1
+    then
+        if
+            0431: car 24@ passenger_seat_free 1
+        then
+            25@ = 1
+        else
+            if
+                23@ > 2
+            then
+                if
+                    0431: car 24@ passenger_seat_free 2
+                then
+                    25@ = 1
+                end
+            end
+        end
+    end
+end
+
+if
+    0039: 25@ == 0
+then
+    018C: play_sound 1057 at 0.0 0.0 0.0
+    03EB: clear_small_messages_only
+    0ADF: add_text_label "Y_NOJK1" text "~r~ALL PASSENGER SEATS OCCUPIED"
     00BC: show_text_highpriority GXT 'Y_NOJK1' time 2000 flag 1
     return
 end
 
-// Check 3: Exclude Bikes, Bicycles, and Quads
+// Check 4: Exclude Bikes, Bicycles, and Quads
 0E12: get_vehicle 24@ subclass_to 25@
 if or
     0039: 25@ == 9  // Motorcycle
@@ -2339,7 +2378,7 @@ then
     return
 end
 
-// Check 4: Exclude Boats, Planes, and Helicopters
+// Check 5: Exclude Boats, Planes, and Helicopters
 0441: 27@ = car 24@ model
 if or
     081E: model 27@ boat
