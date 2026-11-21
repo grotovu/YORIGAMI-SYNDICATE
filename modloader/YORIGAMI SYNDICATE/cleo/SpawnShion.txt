@@ -2282,9 +2282,9 @@ if
     0039: 24@ == -1
 then
     018C: play_sound 1057 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_NOJK0" text "~r~NO TARGET VEHICLE IN RANGE"
-    00BC: show_text_highpriority GXT 'Y_NOJK0' time 2000 flag 1
+    0ADF: add_text_label "Y_NOJK0" text "~r~NO TARGET VEHICLE~n~~w~NONE IN RANGE"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_NOJK0' time 2000 style 5
     return
 end
 
@@ -2312,9 +2312,9 @@ if
     0039: 25@ == 0
 then
     018C: play_sound 1057 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_NOJK6" text "~r~VEHICLE HAS NO DRIVER"
-    00BC: show_text_highpriority GXT 'Y_NOJK6' time 2000 flag 1
+    0ADF: add_text_label "Y_NOJK6" text "~r~CANNOT CARJACK~n~~w~VEHICLE HAS NO DRIVER"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_NOJK6' time 2000 style 5
     return
 end
 
@@ -2324,9 +2324,9 @@ if
     23@ <= 0
 then
     018C: play_sound 1057 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_NOJK4" text "~r~CANNOT CARJACK SINGLE-SEATER"
-    00BC: show_text_highpriority GXT 'Y_NOJK4' time 2000 flag 1
+    0ADF: add_text_label "Y_NOJK4" text "~r~CANNOT CARJACK~n~~w~SINGLE-SEATER VEHICLE"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_NOJK4' time 2000 style 5
     return
 end
 
@@ -2362,9 +2362,9 @@ if
     0039: 25@ == 0
 then
     018C: play_sound 1057 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_NOJK1" text "~r~ALL PASSENGER SEATS OCCUPIED"
-    00BC: show_text_highpriority GXT 'Y_NOJK1' time 2000 flag 1
+    0ADF: add_text_label "Y_NOJK1" text "~r~CANNOT CARJACK~n~~w~ALL PASSENGER SEATS OCCUPIED"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_NOJK1' time 2000 style 5
     return
 end
 
@@ -2376,9 +2376,9 @@ if or
     0039: 25@ == 2  // Quadbike
 then
     018C: play_sound 1057 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_NOJK2" text "~r~CANNOT CARJACK OPEN BIKES"
-    00BC: show_text_highpriority GXT 'Y_NOJK2' time 2000 flag 1
+    0ADF: add_text_label "Y_NOJK2" text "~r~CANNOT CARJACK~n~~w~OPEN BIKES"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_NOJK2' time 2000 style 5
     return
 end
 
@@ -2390,9 +2390,9 @@ if or
     0820: model 27@ heli
 then
     018C: play_sound 1057 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_NOJK3" text "~r~CANNOT CARJACK AIRCRAFT OR BOATS"
-    00BC: show_text_highpriority GXT 'Y_NOJK3' time 2000 flag 1
+    0ADF: add_text_label "Y_NOJK3" text "~r~CANNOT CARJACK~n~~w~AIRCRAFT OR BOATS"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_NOJK3' time 2000 style 5
     return
 end
 
@@ -2402,9 +2402,9 @@ if
     002B: 250 >= 23@
 then
     018C: play_sound 1057 at 0.0 0.0 0.0
-    03EB: clear_small_messages_only
-    0ADF: add_text_label "Y_NOJK5" text "~r~VEHICLE IS BURNING"
-    00BC: show_text_highpriority GXT 'Y_NOJK5' time 2000 flag 1
+    0ADF: add_text_label "Y_NOJK5" text "~r~CANNOT CARJACK~n~~w~VEHICLE IS BURNING"
+    09C1: add_next_text_to_brief_history 1
+    00BA: show_text_styled GXT 'Y_NOJK5' time 2000 style 5
     return
 end
 
