@@ -279,6 +279,7 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
 * **`ShionCombatRedMarker.txt` (`Sh_RedM`):**
   * Reads the game engine's radar trace pool at address `0xBA86F0` (up to 175 blips).
   * Filters for active red blips (colors 0, 5, 7; blip types 1 = Car, 2 = Ped; non-friendly).
+  * Uses outer `056D`/`056E` entity existence guards prior to `8118`, `8119`, `86EE`, and native `0104`/`0205` proximity checks so GTA SA's non-short-circuiting `if and` evaluation never dereferences deleted/despawned ped or vehicle handles during multi-target combat.
   * Directs Shion's AI tasks (`0672: attack_car` or `05E2: kill_actor`) toward the nearest marked target within 100m. If seated in a car driven by Jo'on, executes native drive-bys (`0713`).
 * **`ShionChute.txt` (`Sh_Chut`):** 
   * Triggers when Shion is in freefall outdoors > 15m altitude, strictly filtering against player/companion water immersion (`84AD`, `8965`) and verifying elevation is > 15m above the local water surface (`092E: get_water_height_at`) to prevent misfires while swimming or treading water above deep seabeds.
@@ -805,3 +806,18 @@ The following table details the cross-script dependencies for every component in
 | **Follow & Transit Vocalizer**| `Shion\Chat\chatFollow.txt`| Triggered by `ShionFollow.c`, `ShionVehicle.c`, or death events (Modes 0–8) | `MEM_PRIORITY_LOCK` (Modes 2 & 3 only) | `MEM_PRIORITY_LOCK`, `MEM_PLAYER_FORM`, `MEM_SHION_STANCE`, `MEM_SAFEHOUSE_DOOR_ID`, `MEM_SHION_KILLER_IS_JOON`, `MEM_SHION_DEATH_WEAPON`, `MEM_SHION_DEATH_IN_CAR` | Delivers low-priority non-locking command barks, safehouse/indoor/outdoor spatial branching, seat cycling lines, and Tier 3 stance-aware death reactions |
 | **Weather Banter**    | `Shion\Chat\chatWeather.txt`| Streamed by `ShionChat.c` on weather change/timer | `MEM_PRIORITY_LOCK`, `MEM_LAST_WEATHER_TIME` | `MEM_PRIORITY_LOCK`, `MEM_SHION_HANDLE`, `MEM_LAST_WEATHER_TIME` | Reads `[VehicleRoofTypes]` in `ShionVehicles.ini`, classifies open/enclosed cabins, delivers 5-group weather dialogue |
 | **Debug Subsystem**   | `Shion\ShionDebug.txt` | Cheats "SHDBG", "KILLPOOR", "HUNGRY", "FOOD", "INJURED", "LORE", "KILLTHEPOOR", "TRIGGERCHAT" | `MEM_SHION_PRES_HP`, `MEM_SHION_PRES_ARMOUR`, `MEM_LAST_FED_HOURS`, `MEM_SHION_HUNGRY`, `MEM_LORE_MENU_SIGNAL` | `MEM_SHION_HANDLE` | Centralized QA harness gated by `DebugMode`, sets HP/armour, triggers hunger, opens lore archive, spawns assassin ped, tests dialogue |
+
+---
+
+## 9. Bundled Compatibility Patches
+
+Optional drop-in compatibility patches are packaged under `__Compatibility Patches\` in the release archive for third-party CLEO mods that interact with `$PLAYER_GROUP` or companion AI.
+
+### Better Group Adjustments Patch (`__Compatibility Patches\BetterGroupAdjustments Patch\`)
+* **Target Mod:** *Better Group Adjustments (CLEO)* by AlvarynGTA (`https://libertycity.net/files/gta-san-andreas/237501-better-group-adjustments-cleo.html`).
+* **Bundled Files:** `BGA_AutoAttack.s`, `BGA_AutoAttack.txt`, `README.txt`.
+* **Problem Resolved:** With `ENABLE_AUTO_ATTACK = 1` in `BetterGroupAdjustments.ini`, `BGA_AAT` (`BGA_AutoAttack.s`) unconditionally issues `05E2: AS_actor kill_actor` every 250ms and `05D3: goto_point` / `07B3: give_command 0` on reset, forcing Shion and recruited homies out of vehicles during gang wars and interrupting boarding.
+* **Patch Behavior (`BGA_AutoAttack.s`):**
+  1. **Shion Isolation (`model == 299`):** Continues scanning gang war targets and streaming `BGA_TargetBlip.s` red radar markers for Shion (allowing `ShionCombatRedMarker.txt` to engage marked enemies automatically), while skipping `05E2` / `0713` task overrides on model `299` so `ShionControl` Peaceful/Hostile stances remain intact.
+  2. **Vehicle & Boarding Yield:** Yields combat task assignment whenever the player is inside a passenger-capable vehicle (`00DF` and `max_passengers > 0`), preventing `05E2` from pulling homies away from boarding or forcing seated passengers out of doors.
+  3. **Busted/Wasted & End-of-War Guards (`:BGA_AAT_644` & `:BGA_AAT_1628`):** Gates `@BGA_AAT_1600` regrouping behind `0256: player defined` and `80DF: not actor driving` so busted/wasted teardowns and in-car gang war endings do not disrupt passengers or boarding homies, and nests `8449: not actor in_a_car` outside the non-short-circuiting `if and` block in `:BGA_AAT_1628` (preventing null-ped `0x46C` crashes on empty group slots).
