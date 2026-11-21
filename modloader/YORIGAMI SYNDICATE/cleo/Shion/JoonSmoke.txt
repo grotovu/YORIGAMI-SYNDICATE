@@ -53,7 +53,7 @@ end
 21@ = 0     // Loading Screen / Respawn Reset Watchdog Flag
 22@ = 0     // Cigarette Render Object Handle (CLEO+)
 
-26@ = 0     // Chosen Dialogue Variant
+26@ = 0     // Cut off dialogue flag (0 = Keep playing, 1 = Abort dialogue)
 27@ = -999  // Last Tracked Save Slot Tracker (Reallocated from 30@)
 28@ = 0     // Dialogue Step Progression Flag
 29@ = 0     // Shion Dialogue Eligible Flag
@@ -86,6 +86,18 @@ wait 50
 if
     8256: not is_player_playing $PLAYER_CHAR
 then
+    0085: 30@ = 31@
+    000A: 30@ += MEM_PRIORITY_LOCK
+    0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        14@ == 1
+    then
+        0ABA: terminate_all_custom_scripts_with_this_name "Y_SmkC"
+        03EB: clear_small_messages_only
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
     21@ = 1
     goto @JoonSmoke_MainLoop
 end
@@ -119,8 +131,62 @@ end
 if
     8039: not 11@ == 1
 then
+    26@ = 1
     gosub @Cleanup_Smoking_State
     0A93: terminate_this_custom_script
+end
+
+// Post-smoke Tier 1 dialogue watchdog: cut off leftover smoke banter only on combat, cutscene, phone, death, or mission
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+if
+    14@ == 1
+then
+    13@ = 0
+    if or
+        0118: actor $PLAYER_ACTOR dead
+        016B: fading
+        0E25: is_on_cutscene
+        0038: $ONMISSION_BURGLARY == 1
+        0038: $ONMISSION == 1
+        0E1D: is_on_mission
+    then
+        13@ = 1
+    end
+
+    if or
+        02E0: actor $PLAYER_ACTOR firing_weapon
+        0E67: is_aim_button_pressed 0
+        0E8D: is_any_fire_button_pressed 0
+        0E47: is_char_fighting $PLAYER_ACTOR
+        00E1: player 0 pressed_key 17 // Fire Key
+        00E1: player 0 pressed_key 6  // Aim Key
+    then
+        13@ = 1
+    end
+
+    if or
+        0E42: is_char_doing_task_id $PLAYER_ACTOR 1600
+        0E42: is_char_doing_task_id $PLAYER_ACTOR 1601
+        0E42: is_char_doing_task_id $PLAYER_ACTOR 1602
+        0E42: is_char_doing_task_id $PLAYER_ACTOR 1603
+        0611: actor $PLAYER_ACTOR performing_animation "phone_talk"
+        0611: actor $PLAYER_ACTOR performing_animation "phone_in"
+        0611: actor $PLAYER_ACTOR performing_animation "phone_out"
+    then
+        13@ = 1
+    end
+
+    if
+        13@ == 1
+    then
+        0ABA: terminate_all_custom_scripts_with_this_name "Y_SmkC"
+        03EB: clear_small_messages_only
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
 end
 
 // Tick down smoking cooldown
@@ -574,6 +640,7 @@ end
 
 0@ = 1  // Smoking active flag
 3@ = 0  // Smoke puff latch
+26@ = 0 // Cut off dialogue flag (0 = Keep playing, 1 = Abort dialogue)
 28@ = 0 // Dialogue step
 TIMERA = 0
 
@@ -645,28 +712,37 @@ end
 :Smoking_Active_Loop
 wait 50
 
-// Instant combat abort checks for zero-lag weapon restoration
+// Instant combat & hard abort checks for zero-lag weapon restoration
 13@ = 0
+26@ = 0
 
 if or
     8256: not is_player_playing $PLAYER_CHAR
     0118: actor $PLAYER_ACTOR dead
+    016B: fading
+    0E25: is_on_cutscene
+then
+    13@ = 1
+    26@ = 1
+end
+
+if or
     02E0: actor $PLAYER_ACTOR firing_weapon
     0E67: is_aim_button_pressed 0
     0E8D: is_any_fire_button_pressed 0
     0E47: is_char_fighting $PLAYER_ACTOR
-then
-    13@ = 1
-end
-
-if or
     00E1: player 0 pressed_key 17 // Fire Key
     00E1: player 0 pressed_key 6  // Aim Key
+then
+    13@ = 1
+    26@ = 1
+end
+
+// Non-combat movement/entry interruptions drop the cigarette without cutting off dialogue
+if or
     0E49: is_char_entering_any_car $PLAYER_ACTOR
     0E4A: is_char_exiting_any_car $PLAYER_ACTOR
     04AD: actor $PLAYER_ACTOR in_water
-    016B: fading
-    0E25: is_on_cutscene
 then
     13@ = 1
 end
@@ -676,6 +752,7 @@ if
     0038: $ONMISSION_BURGLARY == 1
 then
     13@ = 1
+    26@ = 1
 end
 
 // Abort active smoking immediately if an incoming phone call is picked up
@@ -686,6 +763,7 @@ if or
     0E42: is_char_doing_task_id $PLAYER_ACTOR 1603
 then
     13@ = 1
+    26@ = 1
 end
 
 if or
@@ -694,7 +772,39 @@ if or
     0611: actor $PLAYER_ACTOR performing_animation "phone_out"
 then
     13@ = 1
+    26@ = 1
 end
+
+// If a higher priority dialogue takes over mid-smoke, ensure active smoke banter is terminated
+0085: 30@ = 31@
+000A: 30@ += MEM_PRIORITY_LOCK
+0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+if
+    14@ > 1
+then
+    0AAA: 14@ = get_script_struct_named 'Y_SmkC'
+    if
+        14@ > 0
+    then
+        0ABA: terminate_all_custom_scripts_with_this_name "Y_SmkC"
+    end
+else
+    if
+        14@ == 1
+    then
+        if or
+            0038: $ONMISSION == 1
+            0E1D: is_on_mission
+        then
+            0ABA: terminate_all_custom_scripts_with_this_name "Y_SmkC"
+            03EB: clear_small_messages_only
+            0085: 30@ = 31@
+            000A: 30@ += MEM_PRIORITY_LOCK
+            0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+        end
+    end
+end
+
 // Vehicle state abort checks while inside a car
 if
     0449: actor $PLAYER_ACTOR in_a_car
@@ -784,6 +894,7 @@ if
     8039: not 11@ == 1
 then
     13@ = 1
+    26@ = 1
 end
 
 if
@@ -924,24 +1035,29 @@ then
     01B9: set_actor $PLAYER_ACTOR armed_weapon_to 4@
 end
 
-// Terminate vocalizer thread if early cancellation occurred
-0ABA: terminate_all_custom_scripts_with_this_name "Y_SmkC"
-0085: 30@ = 31@
-000A: 30@ += MEM_PRIORITY_LOCK
-0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+// Terminate vocalizer thread only on combat, higher priority, cutscene, phone, or form-switch aborts
 if
-    14@ == 1
+    26@ == 1
 then
-    03EB: clear_small_messages_only
+    0ABA: terminate_all_custom_scripts_with_this_name "Y_SmkC"
     0085: 30@ = 31@
     000A: 30@ += MEM_PRIORITY_LOCK
-    0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    0A8D: 14@ = read_memory 30@ size 4 virtual_protect 0
+    if
+        14@ == 1
+    then
+        03EB: clear_small_messages_only
+        0085: 30@ = 31@
+        000A: 30@ += MEM_PRIORITY_LOCK
+        0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
+    end
 end
 
 0085: 7@ = 6@ // Set Cooldown Timer
 8@ = 0        // Reset Idle Hands Timer
 0@ = 0        // Clear Active Flag
 3@ = 0        // Clear Smoke Puff Latch
+26@ = 0       // Clear Cut Off Dialogue Flag
 28@ = 0       // Clear Dialogue Step
 29@ = 0       // Clear Dialogue Active Flag
 return
