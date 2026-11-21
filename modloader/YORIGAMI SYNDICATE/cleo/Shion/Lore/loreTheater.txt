@@ -4523,7 +4523,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L23A" text "~b~Shion: ~s~\"It's all gone. The penthouse, the sports cars... all that cash. We're flat broke again.\""
+0ADF: add_text_label "Y_L23A" text "~b~Shion: ~s~\"It's all gone, Jo'on. The penthouse, the cars, the luxury shopping... our balance is zero.\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L23A' time 4400 flag 1
 wait 4400
@@ -4536,22 +4536,9 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L23B" text "~y~Jo'on: ~s~\"Alright. Deep breaths, Jo'on. It's fine! Just a tiny bump in the road! A fresh hustle!\""
+0ADF: add_text_label "Y_L23B" text "~y~Jo'on: ~s~\"Pfft! A planned maneuver! You think I want taxes and paper trails trailin' my heels?!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L23B' time 4200 flag 1
-wait 4200
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L23C" text "~b~Shion: ~s~\"It's okay to cry, Jo'on. I'm used to this. We can sit on the curb and split a bread crust.\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L23C' time 4300 flag 1
+00BC: show_text_highpriority GXT 'Y_L23B' time 4300 flag 1
 wait 4300
 gosub @Check_Theater_Alive_Or_Exit
 if
@@ -4562,10 +4549,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L23D" text "~y~Jo'on: ~s~\"Cry?! Whaddya, nuts?! I feel... relieved! Nobody can rob us! Nobody can repo our ride!\""
+0ADF: add_text_label "Y_L23C" text "~b~Shion: ~s~\"You emptied your wallet into slot machines and bought diamond earrings that fell down a drain.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L23D' time 4400 flag 1
-wait 4400
+00BC: show_text_highpriority GXT 'Y_L23C' time 4500 flag 1
+wait 4500
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4575,9 +4562,9 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L23E" text "~b~Shion: ~s~\"You're scaring me, sis. You're grinning like a maniac and your left eye won't stop twitching.\""
+0ADF: add_text_label "Y_L23D" text "~y~Jo'on: ~s~\"Details, moocher! Look on the bright side! We ain't lookin' over our shoulders anymore!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L23E' time 4300 flag 1
+00BC: show_text_highpriority GXT 'Y_L23D' time 4300 flag 1
 wait 4300
 gosub @Check_Theater_Alive_Or_Exit
 if
@@ -4588,48 +4575,9 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L23F1" text "~y~Jo'on: ~s~\"When you're sittin' on stacks, you're always lookin' over your shoulder!\""
+0ADF: add_text_label "Y_L23E" text "~b~Shion: ~s~\"You're shivering, Jo'on. And not from being scared.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L23F1' time 4100 flag 1
-wait 4100
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L23F2" text "~y~Jo'on: ~s~\"It turns ya soft and paranoid!\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L23F2' time 3400 flag 1
-wait 3400
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L23G1" text "~y~Jo'on: ~s~\"When your pockets are bone-dry, you've got nothin' left to lose!\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L23G1' time 4000 flag 1
-wait 4000
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L23G2" text "~y~Jo'on: ~s~\"Every sucker walkin' this curb is our prey!\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L23G2' time 3600 flag 1
+00BC: show_text_highpriority GXT 'Y_L23E' time 3600 flag 1
 wait 3600
 gosub @Check_Theater_Alive_Or_Exit
 if
@@ -4640,10 +4588,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L23H" text "~b~Shion: ~s~\"...You're already picking out targets, aren't you?\""
+0ADF: add_text_label "Y_L23F" text "~y~Jo'on: ~s~\"...Tch. Every damn time we hit zero, this weird cold creeps into my bones.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L23H' time 3800 flag 1
-wait 3800
+00BC: show_text_highpriority GXT 'Y_L23F' time 4100 flag 1
+wait 4100
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4653,10 +4601,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L23I" text "~y~Jo'on: ~s~\"Spot that jewelry shop?! Grab that brick, Shion, we're makin' our first deposit! AHAHAHA!\""
+0ADF: add_text_label "Y_L23G" text "~b~Shion: ~s~\"That's the poverty curse settling in. It's cold, but it keeps you breathing.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L23I' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L23G' time 4100 flag 1
+wait 4100
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4666,10 +4614,75 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L23J" text "~b~Shion: ~s~\"...Back to square one. Let's go get our lunch money back.\""
+0ADF: add_text_label "Y_L23H" text "~y~Jo'on: ~s~\"Yeah... feels like nothin' in this city can touch me right now. No creditors, no bullets, nothin'.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L23J' time 4000 flag 1
+00BC: show_text_highpriority GXT 'Y_L23H' time 4500 flag 1
+wait 4500
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L23I" text "~b~Shion: ~s~\"Because you can't bleed a stone, Jo'on. There's nothing left for the universe to take from you.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L23I' time 4500 flag 1
+wait 4500
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L23J" text "~y~Jo'on: ~s~\"Hah! Then that makes me the most dangerous bitch on this sidewalk!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L23J' time 3900 flag 1
+wait 3900
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L23K" text "~b~Shion: ~s~\"...You really can't stay humble for more than two seconds, can you?\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L23K' time 4000 flag 1
 wait 4000
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L23L" text "~y~Jo'on: ~s~\"Humble is for losers! Grab your piece, Shion! We're usin' this streak to steal it all back! AHAHAHA!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L23L' time 4500 flag 1
+wait 4500
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L23M" text "~b~Shion: ~s~\"Alright, boss. Just make sure the first ten dollars goes toward hot noodles.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L23M' time 4300 flag 1
+wait 4300
 return
 
 
