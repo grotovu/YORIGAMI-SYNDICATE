@@ -243,14 +243,15 @@ end
 if
     20@ == 1
 then
-    // Suppress hurt audio so deflecting bullets does not make Jo'on scream
+    // Suppress hurt audio and flinch animations while Hitodama shield is absorbing hits
     094E: set_actor 29@ mute_pain_audio 1
+    0ED9: set_char_ignore_damage_anims 29@ 1
 
     0085: 30@ = 31@
     000A: 30@ += MEM_HITO_PAIN_MUTED
     0A8C: write_memory 30@ size 4 value 1 virtual_protect 0
 else
-    // Shield is broken, armoured, or inactive; restore pain audio
+    // Shield is broken, armoured, or inactive; restore pain audio and flinch anims
     gosub @Restore_Pain_Audio_If_Configured
 end
 
@@ -1303,21 +1304,31 @@ then
     000A: 30@ += MEM_HITO_PAIN_MUTED
     0A8C: write_memory 30@ size 4 value 0 virtual_protect 0
 
-    0AF0: 20@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "MuteCharacterVoice"
     if
-        20@ < 0
+        0256: player $PLAYER_CHAR defined
     then
-        20@ = 1
-    end
-
-    if
-        8039: not 20@ == 1
-    then
-        if and
+        01F5: 29@ = get_player_actor $PLAYER_CHAR
+        if
             056D: actor 29@ defined
-            8118: not actor 29@ dead
         then
-            094F: enable_actor 29@ pain_audio
+            0ED9: set_char_ignore_damage_anims 29@ 0
+
+            0AF0: 20@ = read_int_from_ini_file "cleo\Shion.ini" section "Companion" key "MuteCharacterVoice"
+            if
+                20@ < 0
+            then
+                20@ = 1
+            end
+
+            if
+                8039: not 20@ == 1
+            then
+                if
+                    8118: not actor 29@ dead
+                then
+                    094F: enable_actor 29@ pain_audio
+                end
+            end
         end
     end
 end
