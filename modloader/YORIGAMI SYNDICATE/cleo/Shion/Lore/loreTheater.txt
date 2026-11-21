@@ -2558,7 +2558,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L11F" text "~b~Shion: ~s~\"Yes. Unless they have ridiculous celestial luck like Miss Celestial, nobody walks away with chips.\""
+0ADF: add_text_label "Y_L11F" text "~b~Shion: ~s~\"Yes. Unless they have ridiculous heavenly luck like Miss Celestial, nobody walks away with chips.\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L11F' time 4300 flag 1
 wait 4300
