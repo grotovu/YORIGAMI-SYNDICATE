@@ -673,7 +673,7 @@ then
     if
         0039: 1@ == 2
     then
-        0ADF: add_text_label "Y_SWK2" text "~b~Shion: ~s~\"If your intention was a double-suicide, usually it's up to the other person, Jo'on.\""
+        0ADF: add_text_label "Y_SWK2" text "~b~Shion: ~s~\"If you were planning a double-suicide, you're supposed to ask first, Jo'on.\""
         09C1: add_next_text_to_brief_history 1
         00BC: show_text_highpriority GXT 'Y_SWK2' time 3500 flag 1
     end
