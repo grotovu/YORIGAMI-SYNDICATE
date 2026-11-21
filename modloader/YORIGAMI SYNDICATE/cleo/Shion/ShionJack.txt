@@ -7,6 +7,7 @@ script_name "Sh_Jack"
 
 // 0@ = Target Vehicle Handle passed from SpawnShion
 0085: 24@ = 0@
+10@ = 0
 
 :Connect_To_Brain
 wait 0
@@ -68,6 +69,16 @@ if or
     0741: actor $PLAYER_ACTOR busted
     856E: not car 24@ defined
     0119: car 24@ wrecked
+then
+    goto @Abort_Jack
+end
+
+// Abort cleanly if player swapped out of Jo'on form mid-flight
+0085: 30@ = 31@
+000A: 30@ += 12 // MEM_PLAYER_FORM
+0A8D: 25@ = read_memory 30@ size 4 virtual_protect 0
+if
+    8039: not 25@ == 1
 then
     goto @Abort_Jack
 end
