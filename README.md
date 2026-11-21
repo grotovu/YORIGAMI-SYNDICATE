@@ -45,7 +45,7 @@ You will need a standard downgraded, mod-ready GTA SA setup:
 1. Drag the `modloader` (and `models` if effects were updated) folder into your root GTA San Andreas directory.
 2. Choose **"Replace files in the destination"** when prompted.
 3. Check the `_UPDATED INIs` folder: copy any new keys or updated configuration settings into your existing `.ini` files located in `modloader/YORIGAMI SYNDICATE/cleo/` so you do not miss out on new features.
-4. Check the `_Optional Tweaks` folder for new scripts or optional patches.
+4. Check the `_Optional Tweaks` and `__Compatibility Patches` folders for optional scripts or mod patches (such as the *Better Group Adjustments* patch).
 5. **Your Saves are Safe:** Active saves, perk points, and memory ledgers inside `cleo/savedata/` remain 100% intact.
 
 ---
@@ -69,10 +69,12 @@ You will need a standard downgraded, mod-ready GTA SA setup:
   * **Hold `Y` + `J`** — Didier Sachs Flex (throw money to buy Y-Points directly)
   * **Hold `Y` + `G`** — Toggle Money Danmaku (Jo'on)
   * **Hold `Y` + `C`** — Cast Pestilence Fever (Jo'on)
-  * **Hold `Y` + `Z`** — Tell Shion to scavenge nearby trash bins / dumpsters
+  * **Hold `Y` + `Z`** — Command Shion to scavenge nearby bins/dumpsters (Ped form), or **Hitodama Carjack** an occupied vehicle (Hitodama form)
   * **Hold `Y` + `R`** — Swap weapons and ammo back and forth with Shion
   * **Hold `Y` + `T`** — Talk to Shion (triggers contextual banter on command)
   * **Hold `TAB`** — Contextual interactions (open Shion's settings in safehouses, order at diners, or hand off burglary loot to Shion)
+  * **`JUMP` (as Shion, unarmed/knuckles)** — Hitodama Jump (requires 10+ *Jo'on's Bling* & *Vehicle Smasher*)
+  * **`LMB` (descending mid-air / falling)** — Trigger **Cash Crash** meteor dive (tags in Jo'on mid-air if playing as Shion; requires 10+ *Jo'on's Bling* & *Vehicle Smasher*)
 
 ---
 
@@ -84,7 +86,7 @@ You will need a standard downgraded, mod-ready GTA SA setup:
 
 ### 1. Playing as the Sisters & The Companion System
 * You can play as CJ, Jo'on, or Shion.
-* If you play as Jo'on, Shion acts as a follower. To fix GTA's notoriously bad follower AI, she can turn into a Hitodama (a floating blue orb). As a ghost, she floats over your shoulder, acts as a bullet-deflecting shield, and warps into the car (press `G` or drive away at a certain distance) with you so she never gets lost or stuck on fences.
+* If you play as Jo'on, Shion acts as a follower. To fix GTA's notoriously bad follower AI, she can turn into a Hitodama (a floating blue orb). As a ghost, she floats over your shoulder, acts as a bullet-deflecting shield, remotely hijacks occupied vehicles on command (`Y + Z` — usable on foot or mid-chase), and warps into the car (press `G` or drive away at a certain distance) with you so she never gets lost or stuck on fences.
 * You can swap guns with her (which runs out of ammo, make sure to restock), tell her to haul your stolen burglary items, and have her take hits for you.
 
 ### 2. Yorigami Prestige (The Sink for Useless Late-Game Cash)
@@ -93,6 +95,7 @@ Every $10,000 you spend or lose in the game earns you 1 **Y-Point** (praying to 
 * **Jo'on (Greed & Wealth):**
   * *Jo'on's Bling:* Fists damage boost. Locking onto someone and punching lets you do a fast gap-closing dash with 2 seconds of bullet immunity ("graze").
   * *Vehicle Smasher:* Lets you punch cars until they blow up, _because cars are nothing but containers of petroleum._
+  * *Cash Crash (Synergy — 10+ Bling & Smasher):* Unlocks Shion's Hitodama high jump (with airborne fall immunity) and an explosive meteor dive (`LMB` while falling) that tags Jo'on in mid-air and wrecks whatever vehicle you slam onto.
   * *Taxi Extortion:* Vastly increases the payout of Taxi sub-mission fares. (Limitless scaling. Once you're maxed out, dump your extra Y-Points here for stupid amounts of money extorted per fare.)
   * *Midas Magnet:* Pulls cash pickups straight to you from far away. No more running to pick up money. _Wealth naturally comes to you._
   * *Drip Worship:* Raises sex appeal and charms civilians, drug dealers, and rival gang members into your entourage (`Aim` + `G`).
@@ -142,7 +145,8 @@ A massive pool of contextual dialogue reactive to what you do:
 * **Radio:** Dedicated commentaries for every single radio station in the game.
 * **World awareness:** Specific dialogue depending on where you are (Rodeo Drive, the desert, hoods, inside clothing stores, gun shops, casinos).
 * **Physics/Driving:** Shion complains if you drive like a maniac, do flips, end up underwater, or punch random civilians.
-* **Sister Talk (31 Lore Episodes):** Unlocked through milestones (spending money, surviving on $0, doing paramedic jobs, hitting Mt. Chiliad, etc.). Replayable anytime via the in-game Lore Archive menu.
+* **Casualty & Arrest Memory:** Shion tracks how you both get Wasted or Busted (wanted stars, cause of death, and who went down first) and brings it up when you reunite or summon her.
+* **Sister Talk (32 Lore Episodes):** Unlocked through milestones (spending money, surviving on $0, doing paramedic jobs, hitting Mt. Chiliad, etc.). Replayable anytime via the in-game Lore Archive menu.
 
 ### 5. Persistent Tracker (`ShionMemories.ini`)
 The mod saves lifetime stats per save slot in the `savedata/` folder:
