@@ -4702,22 +4702,9 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L24A" text "~b~Shion: ~s~\"We've been sitting in this sweltering car for five hours staring at those bank doors, Jo'on.\""
+0ADF: add_text_label "Y_L24A" text "~b~Shion: ~s~\"Are you really timing bank guards with a stopwatch while waving a greasy chicken box?\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L24A' time 4300 flag 1
-wait 4300
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L24B" text "~b~Shion: ~s~\"I thought you hated working? You complained for three days straight when Hijiri made you sweep.\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L24B' time 4400 flag 1
+00BC: show_text_highpriority GXT 'Y_L24A' time 4400 flag 1
 wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
@@ -4728,9 +4715,35 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L24C" text "~y~Jo'on: ~s~\"This AIN'T work! Real work is what those miserable clerks do! Punchin' a clock for peanut wages!\""
+0ADF: add_text_label "Y_L24B" text "~y~Jo'on: ~s~\"Shut up! Two more minutes and I'll know their exact shift change!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L24C' time 4400 flag 1
+00BC: show_text_highpriority GXT 'Y_L24B' time 4000 flag 1
+wait 4000
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L24C" text "~b~Shion: ~s~\"You swore you'd never work a day in your life... yet look at you.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L24C' time 4000 flag 1
+wait 4000
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L24D" text "~b~Shion: ~s~\"First rich guys spoiled you. Then you fought over hell oil. Then fake village stocks.\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L24D' time 4400 flag 1
 wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
@@ -4741,20 +4754,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L24D" text "~y~Jo'on: ~s~\"Wearin' scratchy polyester suits and smilin' at peons all day?! I'd rather swallow broken glass!\""
-09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L24D' time 4300 flag 1
-wait 4300
-gosub @Check_Theater_Alive_Or_Exit
-if
-    28@ == 1
-then
-    return
-end
-
-018C: play_sound 1058 at 0.0 0.0 0.0
-03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L24E" text "~b~Shion: ~s~\"You've been sweating through your silk blouse with a stopwatch timing the guard shifts.\""
+0ADF: add_text_label "Y_L24E" text "~b~Shion: ~s~\"And now we're pulling five-hour stakeouts in a stolen car to hit an armored van.\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L24E' time 4300 flag 1
 wait 4300
@@ -4767,7 +4767,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L24F" text "~b~Shion: ~s~\"You're working ten times harder than the road crew laying black asphalt down the block.\""
+0ADF: add_text_label "Y_L24F" text "~y~Jo'on: ~s~\"Don't say that like I'm slippin'! A real boss plays whatever game's payin' out!\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L24F' time 4300 flag 1
 wait 4300
@@ -4780,7 +4780,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L24G" text "~y~Jo'on: ~s~\"That's completely different! This is high-stakes enterprise! I'm an elite criminal genius!\""
+0ADF: add_text_label "Y_L24G" text "~y~Jo'on: ~s~\"You think some stiff in San Andreas is handin' over cash 'cause I smiled nice?!\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L24G' time 4300 flag 1
 wait 4300
@@ -4793,10 +4793,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L24H" text "~b~Shion: ~s~\"You're drawing getaway routes on a greasy chicken wrapper with a broken red crayon, sis.\""
+0ADF: add_text_label "Y_L24H" text "~y~Jo'on: ~s~\"Back home, people fell for slick talk and shiny promises. Out here, cash moves in steel trucks!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L24H' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L24H' time 4500 flag 1
+wait 4500
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4806,7 +4806,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L24I" text "~y~Jo'on: ~s~\"It's a tactical master plan, dummy! Shut up and time the seconds until that armored truck driver hops out!\""
+0ADF: add_text_label "Y_L24I" text "~b~Shion: ~s~\"You put more hours into robbing people than the bank tellers put into counting the cash.\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L24I' time 4400 flag 1
 wait 4400
@@ -4819,7 +4819,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L24J" text "~b~Shion: ~s~\"...You'd really work yourself half to death in the heat just to avoid earning an honest dollar.\""
+0ADF: add_text_label "Y_L24J" text "~y~Jo'on: ~s~\"Yeah, and I make in five minutes what they make in five years! That's the difference!\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L24J' time 4300 flag 1
 wait 4300
@@ -4832,9 +4832,22 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L24K" text "~y~Jo'on: ~s~\"Every single day of the week! Honest pay is for suckers! Grab your iron, Shion, it's showtime! AHAHAHA!\""
+0ADF: add_text_label "Y_L24K" text "~b~Shion: ~s~\"...Still sounds like hard work to me. You owe me dinner after this.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L24K' time 4400 flag 1
+00BC: show_text_highpriority GXT 'Y_L24K' time 4100 flag 1
+wait 4100
+gosub @Check_Theater_Alive_Or_Exit
+if
+    28@ == 1
+then
+    return
+end
+
+018C: play_sound 1058 at 0.0 0.0 0.0
+03EB: clear_small_messages_only
+0ADF: add_text_label "Y_L24L" text "~y~Jo'on: ~s~\"Five-star steaks tonight, baby! Now shut up and load up, I see headlights! AHAHAHA!\""
+09C1: add_next_text_to_brief_history 1
+00BC: show_text_highpriority GXT 'Y_L24L' time 4400 flag 1
 wait 4400
 return
 
