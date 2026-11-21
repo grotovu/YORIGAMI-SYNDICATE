@@ -1281,8 +1281,8 @@ end
 03EB: clear_small_messages_only
 0ADF: add_text_label "Y_L40N" text "~y~Jo'on: ~s~\"We're stuck on the street! And the only person puttin' food in your stomach and keepin' ya breathin' is ME!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L40N' time 4400 flag 1
-wait 4400
+00BC: show_text_highpriority GXT 'Y_L40N' time 5000 flag 1
+wait 5000
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
