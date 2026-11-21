@@ -4204,7 +4204,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L21A" text "~y~Jo'on: ~s~\"Now THAT is how ya work a crowd! These street punks think they invented bass with hydraulic switches?!\""
+0ADF: add_text_label "Y_L21A" text "~y~Jo'on: ~s~\"Now THAT is how ya work a crowd! Look at these street punks actin' like they invented rhythm!\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L21A' time 4300 flag 1
 wait 4300
@@ -4217,10 +4217,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L21B" text "~y~Jo'on: ~s~\"Back in Tokyo, I had whole stadiums wavin' feather fans to beats like that before they were born!\""
+0ADF: add_text_label "Y_L21B" text "~y~Jo'on: ~s~\"A few years ago in Tokyo, I had whole club floors wavin' feather fans and poppin' champagne to heavy beats!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L21B' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L21B' time 4500 flag 1
+wait 4500
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4230,10 +4230,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L21C" text "~b~Shion: ~s~\"My teeth are still vibrating, Jo'on... that rusty suspension groaned like it was gonna snap in half.\""
+0ADF: add_text_label "Y_L21C" text "~b~Shion: ~s~\"My teeth are still rattling, Jo'on... those Tokyo clubs didn't bounce you up and down on rusty springs.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L21C' time 4200 flag 1
-wait 4200
+00BC: show_text_highpriority GXT 'Y_L21C' time 4500 flag 1
+wait 4500
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4245,8 +4245,8 @@ end
 03EB: clear_small_messages_only
 0ADF: add_text_label "Y_L21D" text "~b~Shion: ~s~\"You had me strapped into the passenger seat getting whiplash while you waved that gold fan out the window.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L21D' time 4400 flag 1
-wait 4400
+00BC: show_text_highpriority GXT 'Y_L21D' time 4500 flag 1
+wait 4500
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4256,10 +4256,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L21E" text "~y~Jo'on: ~s~\"It's called rhythm, dummy! The second that bass drops and the hydraulics kick, marks stop thinkin'!\""
+0ADF: add_text_label "Y_L21E" text "~y~Jo'on: ~s~\"It's called showmanship, dummy! The second the bass drops and the car hops, marks stop thinkin'!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L21E' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L21E' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4271,8 +4271,8 @@ end
 03EB: clear_small_messages_only
 0ADF: add_text_label "Y_L21F" text "~y~Jo'on: ~s~\"And the second a crowd stops thinkin', their fingers get loose on their wallets! That's the golden rule!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L21F' time 4400 flag 1
-wait 4400
+00BC: show_text_highpriority GXT 'Y_L21F' time 4500 flag 1
+wait 4500
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4282,10 +4282,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L21G" text "~b~Shion: ~s~\"Is that why you challenged their gang leader to double-or-nothing on a three-wheel hop?\""
+0ADF: add_text_label "Y_L21G" text "~b~Shion: ~s~\"Is that why you bet every cent we had against a bunch of strangers by the train tracks?\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L21G' time 4100 flag 1
-wait 4100
+00BC: show_text_highpriority GXT 'Y_L21G' time 4200 flag 1
+wait 4200
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4295,7 +4295,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L21H" text "~y~Jo'on: ~s~\"Duh! And we walked away with three grand of his cash! It's high-class extortion! AHAHAHA!\""
+0ADF: add_text_label "Y_L21H" text "~y~Jo'on: ~s~\"Duh! Nailed every switch on the beat and walked away with the whole pot! High-class extortion! AHAHAHA!\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L21H' time 4500 flag 1
 wait 4500
@@ -4308,10 +4308,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L21I" text "~b~Shion: ~s~\"...I just hope our front axle survives until we reach the burger joint, sis.\""
+0ADF: add_text_label "Y_L21I" text "~b~Shion: ~s~\"...Well, at least my stomach won't be empty tonight. Just hope the axle lasts until we reach a drive-thru.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L21I' time 4100 flag 1
-wait 4100
+00BC: show_text_highpriority GXT 'Y_L21I' time 4500 flag 1
+wait 4500
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4321,10 +4321,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L21J" text "~y~Jo'on: ~s~\"If it snaps, we buy a fresh ride with their bets! Now hit the radio, I wanna hear that synth bass again!\""
+0ADF: add_text_label "Y_L21J" text "~y~Jo'on: ~s~\"If it snaps, we buy a fresh ride with their cash! Now hit the radio, I wanna hear that bassline again!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L21J' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L21J' time 4400 flag 1
+wait 4400
 return
 
 
