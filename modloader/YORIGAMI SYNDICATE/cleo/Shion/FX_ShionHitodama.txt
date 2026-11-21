@@ -421,7 +421,7 @@ else
         if
             0039: 19@ == 1
         then
-            0013: 23@ *= 0.055 // Dramatic ~1.3s swoop across the street to the car
+            0013: 23@ *= 0.055 // ~1.3s swoop across the street to the car
         else
             0013: 23@ *= 0.12 // Original shoulder follow speed (stays in view while sprinting!)
         end
@@ -567,8 +567,8 @@ then
     04D5: create_corona_at 5@ 6@ 7@ radius 15@ type 9 flare 0 RGB 175 25 225
 
     // Expanding outer purple-magenta deflection halo
-    04D5: create_corona_at 2@ 3@ 4@ radius 1.55 type 9 flare 0 RGB 165 20 220
-    04D5: create_corona_at 2@ 3@ 4@ radius 1.15 type 9 flare 0 RGB 225 65 255
+    04D5: create_corona_at 2@ 3@ 4@ radius 1.40 type 9 flare 0 RGB 165 20 220
+    04D5: create_corona_at 2@ 3@ 4@ radius 1.00 type 9 flare 0 RGB 225 65 255
 else
     // --- Mother Flame Layer 1: Base Root Anchor (Z -0.04) ---
     0087: 5@ = 2@
