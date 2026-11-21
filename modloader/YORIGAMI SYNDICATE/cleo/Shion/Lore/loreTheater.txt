@@ -4357,10 +4357,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L22A" text "~b~Shion: ~s~\"Hear that clatter on the tracks? Smell the diesel and grease... this is real traveling, Jo'on.\""
+0ADF: add_text_label "Y_L22A" text "~y~Jo'on: ~s~\"Ugh, my back is killin' me on these cheap plastic seats! Why didn't we just boost a sports car?!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L22A' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L22A' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4370,10 +4370,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L22B" text "~b~Shion: ~s~\"Reminds me of hopping old wooden freight cars back then with a single sack of dry beans.\""
+0ADF: add_text_label "Y_L22B" text "~b~Shion: ~s~\"Because cars need gas, repairs, and Pay 'n' Spray bribes, Jo'on... the train's completely free.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L22B' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L22B' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4383,10 +4383,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L22C" text "~y~Jo'on: ~s~\"Real travelin' my ass! This is an iron cattle car! Where's the private steward?!\""
+0ADF: add_text_label "Y_L22C" text "~b~Shion: ~s~\"Plus there's nobody else in this coach. No cops checking our pockets, no wind, and a dry roof.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L22C' time 4100 flag 1
-wait 4100
+00BC: show_text_highpriority GXT 'Y_L22C' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4396,10 +4396,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L22D" text "~y~Jo'on: ~s~\"Why am I sharin' air with broke chumps eatin' room-temperature boiled eggs outta foil?!\""
+0ADF: add_text_label "Y_L22D" text "~y~Jo'on: ~s~\"A dry roof?! What is this, a homeless shelter on wheels?! Where's the velvet curtains and champagne?!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L22D' time 4200 flag 1
-wait 4200
+00BC: show_text_highpriority GXT 'Y_L22D' time 4500 flag 1
+wait 4500
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4409,10 +4409,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L22E" text "~b~Shion: ~s~\"That guy across the aisle has salt in a little paper packet... it actually smells really good.\""
+0ADF: add_text_label "Y_L22E" text "~b~Shion: ~s~\"You blew three grand on champagne yesterday... three grand could feed me for six whole years.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L22E' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L22E' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4422,10 +4422,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L22F" text "~y~Jo'on: ~s~\"Don't you dare drool at that commuter's lunch! I'm wearin' five grand in silk! Act like a VIP!\""
+0ADF: add_text_label "Y_L22F" text "~y~Jo'on: ~s~\"Six years?! What're ya eatin', plain dirt and rainwater?!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L22F' time 4200 flag 1
-wait 4200
+00BC: show_text_highpriority GXT 'Y_L22F' time 3800 flag 1
+wait 3800
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4435,10 +4435,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L22G" text "~b~Shion: ~s~\"The ticket was only five dollars, sis... and it takes us across the whole state with zero cops.\""
+0ADF: add_text_label "Y_L22G" text "~b~Shion: ~s~\"Two-dollar noodles, leftover ketchup packets from burger counters, and free park tap water.\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L22G' time 4300 flag 1
-wait 4300
+00BC: show_text_highpriority GXT 'Y_L22G' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4448,7 +4448,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L22H" text "~b~Shion: ~s~\"Nobody checks our pockets, nobody throws rocks at my rags... you can just sit and look out the window.\""
+0ADF: add_text_label "Y_L22H" text "~b~Shion: ~s~\"If I stretch one dollar right, I can make food last three days without touching a dumpster.\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L22H' time 4400 flag 1
 wait 4400
@@ -4461,7 +4461,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L22I" text "~y~Jo'on: ~s~\"Five bucks is an insult to my tax bracket! Real VIPs charter private sleepers with velvet curtains!\""
+0ADF: add_text_label "Y_L22I" text "~y~Jo'on: ~s~\"Stop! I'm gonna throw up! Talkin' about ketchup packets is cursin' my luxury handbag!\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L22I' time 4300 flag 1
 wait 4300
@@ -4474,10 +4474,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L22J" text "~y~Jo'on: ~s~\"When we hit the next depot, we're ditchin' this rattle-trap and jackin' a proper luxury coupe!\""
+0ADF: add_text_label "Y_L22J" text "~y~Jo'on: ~s~\"The second those brakes screech at the next platform, I'm gettin' out and stealin' a limousine!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L22J' time 4200 flag 1
-wait 4200
+00BC: show_text_highpriority GXT 'Y_L22J' time 4400 flag 1
+wait 4400
 gosub @Check_Theater_Alive_Or_Exit
 if
     28@ == 1
@@ -4487,7 +4487,7 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L22K" text "~b~Shion: ~s~\"Fine... but don't wake me up until the brakes screech. The swaying is putting me right to sleep, Jo'on.\""
+0ADF: add_text_label "Y_L22K" text "~b~Shion: ~s~\"Fine... wake me when we stop, then. Free shelter is free shelter, and I'm getting sleepy...\""
 09C1: add_next_text_to_brief_history 1
 00BC: show_text_highpriority GXT 'Y_L22K' time 4400 flag 1
 wait 4400
@@ -4500,10 +4500,10 @@ end
 
 018C: play_sound 1058 at 0.0 0.0 0.0
 03EB: clear_small_messages_only
-0ADF: add_text_label "Y_L22L" text "~y~Jo'on: ~s~\"Don't ya dare nap on my shoulder! Your greasy hair's gonna leave a smudge on my designer lapel!\""
+0ADF: add_text_label "Y_L22L" text "~y~Jo'on: ~s~\"Don't ya dare nap on my shoulder! Your greasy hair's gonna leave a smudge on my designer jacket!\""
 09C1: add_next_text_to_brief_history 1
-00BC: show_text_highpriority GXT 'Y_L22L' time 4200 flag 1
-wait 4200
+00BC: show_text_highpriority GXT 'Y_L22L' time 4400 flag 1
+wait 4400
 return
 
 
