@@ -365,11 +365,6 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
   * If elapsed >= 48 hours or Shion HP < 950, sets `MEM_SHION_HUNGRY = 1`.
   * Monitors drive-thrus and restaurant counters. When parked near outdoor fast food locations or standing near indoor counters, presents `[TAB]` prompt.
   * **Drive-Thru Law Enforcement Interception:** Evaluates active pursuit heat (`wanted_level > 0`). If the player has any wanted stars, the drive-thru prompt (`Y_FDRV`) is completely suppressed, `[TAB]` key input is ignored, and prompt latches (`0@`) and hold timers (`8@`) are flushed so the prompt re-arms cleanly once heat is lost. Pressing `TAB` outside of pursuit claims Tier 4 priority and launches `foodDiner.c`.
-* **`ShionFood.txt` (`Sh_Food`):**
-  * Calculates elapsed in-game hours: `(Days * 24 + CurrentHour) - MEM_LAST_FED_HOURS`.
-  * If elapsed >= 48 hours or Shion HP < 950, sets `MEM_SHION_HUNGRY = 1`.
-  * Monitors drive-thrus and restaurant counters. When parked near outdoor fast food locations or standing near indoor counters, presents `[TAB]` prompt.
-  * Launches `foodDiner.c` (`MEM_PRIORITY_LOCK = 4`), clearing all background chatter via `clear_all_chat.txt`.
 * **`foodDiner.txt` (`Sh_Dine`):**
   * Creates native interactive menu panel with bill options: $1, $2, $5, $10, $20, $50, $100.
   * Freezes player movement, deducts cash, increments `MEM_TIMES_TREATED` and `MEM_TOTAL_CASH_GIVEN`.
@@ -439,7 +434,6 @@ Tier 0 (Value: 0)  ──>  Channel Clear / Available
     * Detects stunt flips (car flips upside down in air and stabilizes continuously on wheels for >= 1.0s).
     * Intercepts punches or vehicular hit-and-runs on innocent, unarmed civilians via `0EDE`.
     * Tracks rapid lethal sprees (5 kills within 7.0s) via damage telemetry.
-    * Intercepts punches or vehicular hit-and-runs on innocent, unarmed civilians via `0EDE`.
     * Tracks civilian killing sprees: samples engine Stat 121 (`People you've wasted`), runs radial corpse sweeps (`0EA7`) to subtract Ballas, rival gangs (PedTypes 7–16), Cops (PedType 6), dealers, and armed hostiles, triggering when 5 unarmed innocent bystanders are killed within 8.0s.
     * Tracks the player's last driven vehicle (`0@`) and gates `MEM_CARS_WRECKED` destruction dialogue behind a 15-second pending-explosion watcher (`16@`), holding commentary while a vehicle is burning (`0495`), upside down (`01F4`), or below 250 HP until `0119: car wrecked` confirms actual detonation within 100m (canceling cleanly if repaired, sunk, or swapped into a new ride).
     * Catches Car Smasher vehicle punch explosions (`MEM_CAR_SMASH_SIGNAL`).
@@ -770,7 +764,6 @@ The following table details the cross-script dependencies for every component in
 | **Jo'on Bling** | `Yorigami\Bling.txt` | Fists/Knuckles melee attacks, Vehicle punches | `MEM_CAR_SMASH_SIGNAL` | `MEM_ALLOC_JOONBLING`, `MEM_ALLOC_SMASHER`, `MEM_PLAYER_FORM` | Spawns `FX_JoonGraze`, triggers `ShionSandbox` & `ShionDeathTracker` |
 | **Cash Crash** | `Yorigami\CashCrash.txt` | Freefall `LMB`, Shion high-jump apex `LMB` (10+ Bling & Smasher), Boot | `MEM_TAG_SWITCH_REQ` | `MEM_SAVE_SLOT`, `MEM_PLAYER_FORM`, `MEM_ALLOC_JOONBLING`, `MEM_ALLOC_SMASHER`, `MEM_TAG_SWITCH_REQ` | Manages Shion high jump & fall immunity, strips chute if configured, spawns `FX_ShionJumpHito`, arbitrates aerial tag dive, triggers SFW explosion & shockwave |
 | **Shion Jump Hitodama FX** | `Yorigami\FX_ShionJumpHito.txt` | Spawned by `CashCrash.c` during Shion high jump | None | `MEM_PLAYER_FORM` | Renders centered 4-layer Mother Flame & 3 orbiting teardrop flames, manages smooth 350ms alpha crossfade, restores alpha 255 on landing/ledge hang |
-| **Cash Crash** | `Yorigami\CashCrash.txt` | `LMB` mid-fall (10+ Bling & Smasher), launched on boot by `yorigami.cs` | None | `MEM_SAVE_SLOT`, `MEM_PLAYER_FORM`, `MEM_ALLOC_JOONBLING`, `MEM_ALLOC_SMASHER` | Strips chute if `StripParachute=1`, aborts on Water/Flight, triggers gold explosion & scaled ped/car shockwave |
 | **Money Danmaku** | `Yorigami\Danmaku.txt` | `Y + G` toggle, Bullet impacts | `MEM_DANMAKU_TOGGLE`, `MEM_DANMAKU_CASH_SPENT` | `MEM_ALLOC_DANMAKU`, `MEM_SHION_HANDLE` | Triggers `FX_ShionMoneyDanmaku`, `FX_JoonFlames`, `FX_ShionFlames` |
 | **Pestilence Fever** | `Yorigami\Fever.txt` | `Y + C` active cast | None | `MEM_ALLOC_FEVER`, `MEM_SHION_HANDLE` | Spawns cash pickups, forces ped flee tasks |
 | **Street Shakedown** | `Yorigami\Shakedown.txt`| Aim + `Y` on ped | `MEM_LAST_EXTORTED_PED` | `MEM_ALLOC_SHAKEDOWN`, `MEM_ACTIVE_MARK` | Cooperates with `Mark.txt`, drops cash/weapons |
